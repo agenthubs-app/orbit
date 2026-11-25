@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>新用户引导 三步版</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<script src="kit/data.js"></script>
+<style>
+  .doc { min-width: 1520px; }
+  .web.bare { display: block; }
+  .phone .foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; padding: 22px 18px 30px; background: linear-gradient(to bottom, transparent, var(--bg) 28%); display: grid; gap: 8px; }
+  .h1 { font-size: 24px; font-weight: 900; line-height: 1.35; letter-spacing: -.01em; }
+  .mt { font-size: 22px; font-weight: 900; }
+  .center { text-align: center; }
+  .lnk { color: var(--accent); font-weight: 700; cursor: pointer; }
+
+  /* 表单 */
+  .fld { margin-top: 12px; }
+  .fld label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; }
+  .fld .in { height: 48px; border-radius: 14px; background: var(--surface); display: flex; align-items: center; gap: 8px; padding: 0 14px; font-size: 14px; color: var(--ink); border: 1.5px solid transparent; }
+  .on-surface .fld .in, .card .fld .in { background: var(--surface-2); }
+  .fld .in > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fld .in.ph > span { color: var(--ink-4); }
+  .fld .in .tail { font-size: 11.5px; color: var(--ink-3); font-weight: 700; flex: none; }
+  .fld.focus .in { border-color: var(--plum-500); background: var(--surface); }
+  .fld.err .in { border-color: var(--coral); background: var(--coral-soft); }
+  .fld .msg { font-size: 11.5px; margin-top: 6px; font-weight: 600; color: var(--ink-3); line-height: 1.55; }
+  .fld.err .msg { color: var(--coral); }
+  .fld.info .in { border-color: var(--plum-300); }
+  .fld.info .msg { color: var(--ink-2); background: var(--accent-soft); padding: 10px 12px; border-radius: 12px; }
+  .caret { display: inline-block; width: 1.5px; height: 18px; background: var(--plum-700); margin-left: -6px; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* 步骤进度 */
+  .stp { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .stp i { height: 5px; border-radius: 3px; background: var(--surface-3); }
+  .stp i.d { background: var(--plum-500); } .stp i.n { background: linear-gradient(90deg, var(--plum-700) 50%, var(--surface-3) 50%); }
+  .wstp { display: flex; align-items: center; gap: 10px; }
+  .wstp > div { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+  .wstp > div .n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font-weight: 800; font-size: 12px; }
+  .wstp > div.d { color: var(--ink-2); } .wstp > div.d .n { background: var(--ok); color: var(--on-accent); }
+  .wstp > div.n { color: var(--ink); font-weight: 800; } .wstp > div.n .n { background: var(--accent); color: var(--on-accent); }
+  .wstp em { width: 28px; height: 1.5px; background: var(--surface-3); }
+  .obw { height: 100%; display: flex; flex-direction: column; }
+  .obw-h { height: 84px; padding: 0 40px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); flex: none; }
+  .obw-b { flex: 1; padding: 30px 120px; overflow: hidden; }
+  .obw-b .wgrid > .card { padding: 28px; }
+  .obw-foot { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 20px; }
+
+  /* 选择 */
+  .gt { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .gt.w3 { grid-template-columns: repeat(3, 1fr); }
+  .gt button { background: var(--surface); border-radius: 20px; padding: 13px; text-align: left; display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 13px; border: 2px solid transparent; position: relative; transition: border-color .2s, transform .15s var(--ease); }
+  .card .gt button { background: var(--surface-2); }
+  .gt button small { font-size: 11px; color: var(--ink-3); font-weight: 500; }
+  .gt button.on { border-color: var(--plum-500); }
+  .card .gt button.on { background: var(--surface); }
+  .gt .ord { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+  .tog { display: inline-flex; align-items: center; gap: 5px; padding: 8px 13px; border-radius: 999px; background: var(--surface); font-size: 12.5px; font-weight: 700; color: var(--ink-2); border: 1.5px solid transparent; white-space: nowrap; }
+  .card .tog { background: var(--surface-2); }
+  .tog.on { background: var(--accent-soft); color: var(--ink); border-color: var(--plum-500); }
+  .card .tog.on { background: var(--accent-soft); }
+  .tog.add { border: 1.5px dashed var(--ink-4); background: transparent; color: var(--ink-3); }
+  .tog.ai { border: 1.5px dashed var(--plum-300); background: transparent; color: var(--ink-2); }
+  .togs { display: flex; flex-wrap: wrap; gap: 7px; }
+  .grp + .grp { margin-top: 16px; }
+  .grp-h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; font-weight: 800; }
+  .dropbig { border: 2px dashed var(--plum-300); border-radius: 26px; background: color-mix(in srgb, var(--accent-soft) 55%, transparent); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 40px; }
+  .dropbig.hover { border-color: var(--plum-700); background: var(--accent-soft); }
+  /* ===== 本稿新增 ===== */
+  .decide { display: grid; grid-template-columns: 1fr 1.35fr 1fr; gap: 18px; margin-bottom: 18px; max-width: 1440px; }
+  .decide .box { background: var(--surface); border-radius: 22px; padding: 20px 22px; font-size: 13px; line-height: 1.75; color: var(--ink-2); }
+  .decide .box h3 { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 10px; }
+  .decide .box b { color: var(--ink); }
+  .decide ol { padding-left: 18px; display: grid; gap: 6px; }
+  .decide table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .decide th, .decide td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .decide th { color: var(--ink-3); font-weight: 700; }
+  .stp.s3 { grid-template-columns: repeat(3, 1fr); }
+  /* 每页顶部固定提示 */
+  .once { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 16px; background: var(--accent-soft); font-size: 12.5px; line-height: 1.65; color: var(--ink-2); font-weight: 600; }
+  .once b { color: var(--ink); font-weight: 800; }
+  .once .emo { flex: none; background: var(--surface); }
+  .obw-b .once { margin-bottom: 16px; font-size: 13.5px; padding: 14px 18px; align-items: center; }
+  .obw-b { padding-top: 22px; }
+  /* 名片区：第一屏主角 */
+  .scanbig { border: 2px dashed var(--plum-300); border-radius: 22px; background: color-mix(in srgb, var(--accent-soft) 55%, transparent); padding: 22px 18px; display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+  .scanbig .t { flex: 1; min-width: 0; }
+  .scanbig b { font-size: 15px; display: block; white-space: nowrap; }
+  .scanbig.done { border-style: solid; border-color: transparent; background: var(--mac-lav); padding: 14px 18px; }
+  .scanbig.done b { font-size: 14px; }
+  .scanp { border: 2px dashed var(--plum-300); border-radius: 22px; background: color-mix(in srgb, var(--accent-soft) 55%, transparent); padding: 18px 16px; text-align: center; margin-top: 12px; display: grid; gap: 10px; justify-items: center; }
+  .scanp b { font-size: 15px; }
+  /* 缺项 */
+  .miss { color: var(--coral-text); font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+  .fld.err .msg { color: var(--coral-text); }
+  .gt.err { outline: 1.5px solid var(--coral); outline-offset: 6px; border-radius: 22px; }
+  .errline { color: var(--coral-text); font-size: 12px; font-weight: 700; margin-top: 12px; }
+  .eta { font-size: 12px; color: var(--ink-3); font-weight: 700; margin-left: 12px; white-space: nowrap; }
+  .sidec .grp-h { font-size: 13.5px; }
+  .phone .foot .miss { justify-content: center; }
+  /* 手机浏览器框（同 b8 m390） */
+  .mweb .scroll { padding-bottom: 200px; }
+  .mweb .foot { bottom: 92px; padding-bottom: 14px; }
+  .sbar { position: absolute; left: 0; right: 0; bottom: 0; height: 92px; z-index: 34; background: var(--glass); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border-top: 1px solid var(--line); padding: 10px 14px 0; display: flex; gap: 10px; align-items: flex-start; }
+  .sbar .url { flex: 1; height: 42px; border-radius: 14px; background: var(--surface); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; color: var(--ink-2); font-weight: 600; }
+  .sbar .ub { width: 42px; height: 42px; display: grid; place-items: center; color: var(--ink-2); font-size: 14px; font-weight: 700; }
+  .mw-head { display: flex; align-items: center; gap: 8px; padding: 6px 0 12px; }
+  .mw-head .logo { width: 34px; height: 34px; border-radius: 11px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
+  /* iPad 834 × 1194：单栏，不出右侧预览 */
+  .web.w834 { width: 834px; height: 1194px; }
+  .w834 .obw-h { padding: 0 24px; }
+  .w834 .obw-b { padding: 20px 28px 28px; }
+  .w834 .tcard { height: calc(100% - 66px); display: flex; flex-direction: column; padding: 28px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit Redesign · 2026-11-25 · 两端提案（Web 1440 / 834 / 390 · App）· 待用户确认</div>
+      <h1>新用户引导：五步压成三步，扫名片填大部分，不许跳过</h1>
+      <p>取代 b1 A3「资料 onboarding 5 步」（#16–#20）。路由不变：Web /app/profile/onboarding，App /profile/onboarding。界面文案以日语为准，中英文同义翻译。示例人物均为虚构。</p>
+    </div>
+    <div class="doc-tools">
+      <div class="seg" data-ctl="theme"><button data-v="light">浅色</button><button data-v="dark">深色</button></div>
+      <div class="seg" data-ctl="pins"><button data-v="on" class="on">标注 ON</button><button data-v="off">OFF</button></div>
+    </div>
+  </div>
+  <div class="decide">
+    <div class="box">
+      <h3>改了什么</h3>
+      <ol>
+        <li><b>五步 → 三步</b>：① 名片与基本信息 ② 目标与强项 ③ 确认自我介绍。进度条旁写「約1分」。</li>
+        <li><b>第一屏以扫名片为主角</b>：扫完后各页是「确认」不是「填写」。</li>
+        <li><b>去掉「あとで設定する」</b>：右上角改为「ログアウト」。已填内容自动保存，下次登录接着填。</li>
+        <li><b>每页顶部一行固定提示</b>：这份资料只填一次，之后每场活动都用。</li>
+        <li><b>缺项不能下一步</b>：按钮保持可点；点了之后标红缺的字段，按钮旁写出还差哪几项。</li>
+        <li><b>原第 5 步「导入别人的名片」移出引导</b>：进首页后作为第一件待办（沿用首页现有待办卡，不新画）。</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>字段表：谁来填</h3>
+      <table>
+        <tr><th>字段</th><th>必填</th><th>谁填</th><th>没读到时</th></tr>
+        <tr><td>氏名</td><td>是</td><td>名片</td><td>空，用户填</td></tr>
+        <tr><td>会社 · 役職</td><td>否</td><td>名片</td><td>空，可不填</td></tr>
+        <tr><td>メール · 電話</td><td>否</td><td>名片（不公开）</td><td>不显示这一行</td></tr>
+        <tr><td>業界 · 詳細</td><td>是</td><td>AI 按公司和职位从行业表选</td><td>空，用户选</td></tr>
+        <tr><td>提供できること ≤5</td><td>否</td><td>AI 预选，用户增减</td><td>只给候选，不预选</td></tr>
+        <tr><td>話せる話題 ≤8</td><td>否</td><td>AI 预选，用户增减</td><td>只给候选，不预选</td></tr>
+        <tr><td>求めていること ≤5</td><td>否</td><td>选了目标后 AI 给虚线候选</td><td>只给通用候选</td></tr>
+        <tr><td>目標 1–2 个</td><td>是</td><td><b>只能用户选</b></td><td>—</td></tr>
+        <tr><td>生年月日</td><td>否</td><td><b>只能用户填</b></td><td>—</td></tr>
+        <tr><td>自己紹介</td><td>是</td><td>AI 按以上内容起草，用户可改</td><td>失败时让用户重试</td></tr>
+      </table>
+    </div>
+    <div class="box">
+      <h3>对标与待定</h3>
+      <ol>
+        <li><b>LinkedIn / Eight 注册</b>：必填资料不能跳过，但用导入（简历、名片）把填写变成确认；步骤数控制在 3 以内并标出所需时间。</li>
+        <li><b>Stripe / Apple ID 表单</b>：提交按钮不置灰；点击后定位到第一个错误并在字段下方说明。置灰按钮不告诉用户缺什么。</li>
+        <li><b>待定 1</b>：行业、强项的 AI 推断准确率没测过，上线前要拿一批真名片校准（付费 AI，先报预算）。</li>
+        <li><b>待定 2</b>：名片上的邮箱和电话填进联系方式后默认不公开；是否在引导里显示这一行由你定，本稿显示。</li>
+        <li><b>待定 3</b>：以前点过「稍后设置」、资料不完整的老用户，下次登录会被要求填完。</li>
+      </ol>
+    </div>
+  </div>
+  <nav class="doc-nav" id="docnav"></nav>
+  <div id="out"></div>
+</div>
+<script>
+const TAGS = {};
+const back = `<button class="rbtn">${ic('left')}</button>`;
+const foot = (h) => `<div class="foot">${h}</div>`;
+const bare = ({ body, overlay = '', pins = '', theme = '' }) => `<div class="web no-rail bare" ${theme ? `data-theme="${theme}"` : ''}>${body}${overlay}${pins}</div>`;
+const fld = (label, val, o = {}) => `<div class="fld ${o.cls || ''}"><label>${label}${o.hint ? `<span class="chip ${o.hc || 'lav'}">${o.hint}</span>` : ''}</label><div class="in ${o.ph ? 'ph' : ''}">${o.icon ? ic(o.icon, 'sm') : ''}<span>${val}</span>${o.caret ? '<i class="caret"></i>' : ''}${o.end || ''}</div>${o.msg ? `<div class="msg">${o.msg}</div>` : ''}</div>`;
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+const notesHtml = (notes, wide) => notes ? `<ul class="note-list" ${wide ? 'style="max-width:1440px;grid-template-columns:repeat(3,1fr);display:grid"' : ''}>${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : '';
+const tagHtml = (tag) => tag ? `<span class="tag">${tag}</span>` : '';
+const boards = (items) => `<div class="boards">${items.map(([label, tag, html, notes]) => `<div class="board"><div class="board-label">${label}${tagHtml(tag)}</div>${html}${notesHtml(notes)}</div>`).join('')}</div>`;
+const board = (label, tag, html, notes) => `<div class="board" style="margin-bottom:34px"><div class="board-label">${label}${tagHtml(tag)}</div>${html}${notesHtml(notes, true)}</div>`;
+const P = (o) => phone(Object.assign({ tab: -1 }, o));
+const sbar = `<div class="sbar"><span class="ub">aA</span><div class="url">${ic('search', 'sm')}orbit.app</div><span class="ub">${ic('refresh', 'sm')}</span></div>`;
+const M = ({ body, pins = '' }) => phone({ tab: -1, body, overlay: sbar, pins }).replace('class="phone"', 'class="phone mweb"');
+
+const OBS = ['名刺・基本情報', '目標と強み', '自己紹介'];
+const ONCE = 'このプロフィールは<b>一度入力すれば、今後参加するすべてのイベントで使われます</b>。';
+const ONCE_SCAN = ONCE + '名刺を読み取ると、ほとんどの項目が自動で入ります。';
+const once = (k) => `<div class="once"><span class="emo sm lav">🪪</span><div>${k === 0 ? ONCE_SCAN : ONCE}</div></div>`;
+const AI = { hint: 'AI 推定', hc: 'blue' };
+const CARD = { hint: '名刺から' };
+const down = ic('down', 'sm');
+const GOALS = [['💰', 'pink', '資金調達', '投資家・金融機関'], ['🏭', 'blue', '新規顧客開拓', '決裁者・購買担当'], ['🧑‍💼', 'teal', '採用', '候補者・紹介者'], ['🤝', 'apricot', '提携先探し', '協業・販路'], ['📣', 'lav', '認知拡大', '登壇・メディア'], ['📚', 'blue', '情報収集', '業界の知見']];
+const goalCards = (picked, cls = '') => `<div class="gt ${cls}">${GOALS.map(([e, c, t, d], i) => { const o = picked.indexOf(i) + 1; return `<button class="${o ? 'on' : ''}">${o ? `<span class="ord">${o}</span>` : ''}<span class="emo sm ${c}">${e}</span>${t}<small>${d}</small></button>`; }).join('')}</div>`;
+const GIVE = [['資本政策の知見', 1], ['SaaS の営業組織づくり', 1], ['エンジニア採用', 1], ['補助金の申請', 0], ['海外展開', 0]];
+const NEED = [['VC パートナー', 0], ['製造業の決裁者', 0], ['CFO 候補', 0]];
+const NEED_ON = [['VC パートナー', 1], ['製造業の決裁者', 1], ['CFO 候補', 0]];
+const TOPIC = [['SaaS', 1], ['製造業 DX', 1], ['組織づくり', 1], ['ゴルフ', 0], ['サウナ', 0], ['経営書', 0]];
+const togs = (arr, ai) => `<div class="togs">${arr.map(([t, on]) => `<span class="tog ${on ? 'on' : ''}">${on ? ic('check', 'sm') : ''}${t}</span>`).join('')}${ai ? `<span class="tog ai">${ic('sparkle', 'sm')}${ai}</span>` : ''}<span class="tog add">${ic('plus', 'sm')}追加</span></div>`;
+const aiChip = `<span class="chip blue" style="margin-left:6px">AI 推定</span>`;
+const groups = (picked) => `
+  <div class="grp k-give"><div class="grp-h"><span class="emo sm teal">🎁</span>提供できること${aiChip}</div>${togs(GIVE)}</div>
+  <div class="grp k-need"><div class="grp-h"><span class="emo sm pink">🔎</span>求めていること</div>${picked ? togs(NEED_ON, '事業会社の経営企画') : togs(NEED)}</div>
+  <div class="grp k-topic"><div class="grp-h"><span class="emo sm apricot">☕</span>話せる話題${aiChip}</div>${togs(TOPIC)}</div>`;
+const INTRO = '株式会社ミナトリンク代表の佐藤です。製造業向けの業務 SaaS を展開しており、現在はシリーズAの資金調達と、製造業の新規顧客開拓に力を入れています。資本政策や SaaS の営業組織づくりについては、お力になれることがあると思います。お気軽にお声がけください。';
+const miss = (t) => `<span class="miss">${ic('flag', 'sm')}${t}</span>`;
+
+/* ===================== Web ===================== */
+const wstepper = (k) => `<div class="row" style="gap:0"><div class="wstp">${OBS.map((t, i) => `<div class="${i < k ? 'd' : i === k ? 'n' : ''}"><span class="n">${i < k ? ic('check', 'sm') : i + 1}</span>${t}</div>`).join('<em></em>')}</div><span class="eta">約1分</span></div>`;
+const meCard = (full) => `<div class="lbl" style="margin-bottom:10px">相手から見えるあなた</div><div class="card"><div class="row" style="gap:14px"><div class="av lg c1">${full ? '佐' : ''}</div><div>${full ? `<div style="font-size:19px;font-weight:800">佐藤 健一</div><div class="sub">株式会社ミナトリンク · 代表取締役 CEO</div>` : `<div class="ghost-row" style="width:220px;height:34px"><i></i>氏名 · 会社 · 役職</div>`}</div></div>${full ? `<div class="chips" style="margin-top:12px"><span class="chip blue">IT・ソフトウェア › SaaS</span></div>` : ''}<div class="ghost-row" style="margin-top:14px"><i></i>提供できること · 求めていること</div><div class="ghost-row"><i></i>自己紹介（ステップ3で作成）</div></div>
+  <div class="card flat" style="margin-top:14px"><div class="row" style="gap:10px"><span class="emo sm lav">🔒</span><div class="sub">生年月日と連絡先は相手に公開されません。</div></div></div>`;
+function obWeb(k, s, t) {
+  let main, side, btn = `次へ ${ic('right', 'sm')}`, warn = '';
+  if (k === 0) {
+    const scanned = s === 'done', err = s === 'err';
+    main = `<div class="mt">まずは、あなたのことを</div>
+      ${scanned
+        ? `<div class="scanbig done"><span class="emo lav" style="background:var(--surface)">📇</span><div class="t"><b>名刺から 5 項目、AI の推定で 2 項目を入力しました</b><div class="lbl">内容を確認して、違うところだけ直してください</div></div><button class="btn sm" style="background:var(--surface)">別の画像にする</button></div>`
+        : `<div class="scanbig"><span style="font-size:40px">📇</span><div class="t"><b>名刺の画像をここにドロップ</b><div class="lbl">JPG・PNG・HEIC・PDF · 画像は保存されません</div></div><button class="btn sm">${ic('phone', 'sm')}スマホで撮る（QR）</button><button class="btn primary">ファイルを選ぶ</button></div>`}
+      <div class="grid2" style="gap:0 14px">
+        ${scanned ? fld('氏名', '佐藤 健一', CARD) : fld('氏名', err ? '' : '例）佐藤 健一', err ? { cls: 'err', msg: '氏名を入力してください' } : { ph: true })}
+        ${scanned ? fld('会社', '株式会社ミナトリンク', CARD) : fld('会社（任意）', '例）株式会社ミナトリンク', { ph: true })}
+        ${scanned ? fld('役職', '代表取締役 CEO', CARD) : fld('役職（任意）', '例）代表取締役', { ph: true })}
+        ${fld('生年月日（任意）', '年 / 月 / 日', { ph: true, end: ic('calendar', 'sm') })}
+        ${scanned ? fld('業界', 'IT・ソフトウェア', Object.assign({ end: down }, AI)) : fld('業界', '選択してください', Object.assign({ ph: true, end: down }, err ? { cls: 'err', msg: '業界を選んでください' } : {}))}
+        ${scanned ? fld('業界の詳細', 'SaaS', Object.assign({ end: down }, AI)) : fld('業界の詳細', '先に業界を選択', { ph: true, end: down })}
+        ${scanned ? fld('メール', 'sato@minatolink.example', CARD) + fld('電話', '03-5555-0142', CARD) : ''}
+      </div>`;
+    side = meCard(scanned);
+    if (err) warn = miss('あと 2 項目：氏名、業界');
+  } else if (k === 1) {
+    const err = s === 'err';
+    main = `<div class="mt">いちばん達成したいことは？</div><div class="sub">2個まで。選んだ順に優先します。</div>
+      <div style="margin-top:18px">${goalCards(err ? [] : [0, 1], 'w3' + (err ? ' err' : ''))}</div>
+      ${err ? `<div class="errline">目標を 1 つ以上選んでください</div>` : ''}
+      <div style="margin-top:6px">${fld('ひとことで（任意）', err ? '例）シリーズAで3億円を調達' : 'シリーズAで3億円を調達', { ph: err, msg: '金額などの数字が入ると、話すべき人が具体的になります' })}</div>`;
+    side = `<div class="card sidec" style="padding:24px"><div class="mt" style="font-size:17px">あなたの「強み」と「求めていること」</div><div class="sub" style="margin:4px 0 16px">${err ? '名刺の内容から候補を選んであります。' : '名刺と目標から候補を選んであります。'}増やす・外すは自由です。</div>${groups(!err)}</div>`;
+    if (t) main += `<div class="mt" style="font-size:17px;margin-top:24px">あなたの「強み」と「求めていること」</div><div class="sub" style="margin:4px 0 16px">${err ? '名刺の内容から候補を選んであります。' : '名刺と目標から候補を選んであります。'}増やす・外すは自由です。</div>${groups(!err)}`;
+    if (err) warn = miss('あと 1 項目：目標');
+  } else {
+    main = `<div class="row between"><div><div class="mt">自己紹介文をつくりました</div><div class="sub">イベントのプロフィールや、メール下書きの冒頭に使います。</div></div><div class="seg"><button class="on">ビジネス</button><button>やわらかめ</button><button>English</button></div></div>
+      <div class="k-intro" style="margin-top:18px;padding:18px;border-radius:18px;background:var(--surface-2);font-size:14.5px;line-height:1.9" data-why-box>${INTRO}<div class="row" style="margin-top:10px;gap:8px"><span class="lbl">${INTRO.length}文字</span><span class="why" style="margin-left:auto">?</span></div><div class="why-body" hidden style="background:var(--surface)">使った情報：基本情報 · 目標2つ · 提供できること3つ · 話題3つ。生年月日と連絡先は使っていません。</div></div>
+      <div class="row" style="gap:8px;margin-top:12px"><button class="btn">${ic('refresh', 'sm')}別の案をつくる <span class="chip" style="background:var(--surface)">残り 2回</span></button><button class="btn">${ic('pen', 'sm')}直接編集</button><span class="lbl" style="margin-left:auto">自動で公開・送信されることはありません</span></div>`;
+    side = `<div class="lbl" style="margin-bottom:10px">使われる場所</div><div class="card"><div class="row" style="gap:10px"><span class="emo sm blue">🎟️</span><b style="font-size:13px">イベントのプロフィール</b></div><div class="sub" style="margin-top:8px;line-height:1.7;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${INTRO}</div></div>
+      <div class="card" style="margin-top:14px"><div class="row" style="gap:10px"><span class="emo sm pink">✉️</span><b style="font-size:13px">メール下書きの冒頭</b></div><div class="sub" style="margin-top:8px">「突然のご連絡失礼いたします。株式会社ミナトリンク代表の佐藤です。…」</div><div class="lbl" style="margin-top:8px">メール・メッセージは下書きまで。送信はあなたが行います。</div></div>`;
+    btn = `この内容ではじめる ${ic('right', 'sm')}`;
+  }
+  const footH = `<div class="obw-foot">${k ? `<button class="btn">${ic('left', 'sm')}戻る</button>` : ''}<span class="lbl k-saved">${s === 'empty' || s === 'err' ? '' : ic('check', 'sm') + ' 自動保存済み'}</span><span style="flex:1"></span>${warn}<button class="btn primary xl k-next">${btn}</button></div>`;
+  const grid = t ? `<div class="card rise tcard">${main}${footH}</div>` : `<div class="wgrid" style="height:calc(100% - 66px)"><div class="card span7 rise">${main}${footH}</div><div class="span5">${side}</div></div>`;
+  return `<div class="obw"><div class="obw-h"><div class="row" style="gap:10px"><span class="lp-logo" style="width:34px;height:34px">O</span><b>Orbit</b></div>${wstepper(k)}<button class="btn ghost k-logout">ログアウト</button></div>
+    <div class="obw-b">${once(k)}${grid}</div></div>`;
+}
+const T = (o) => bare(o).replace('class="web no-rail bare"', 'class="web no-rail bare w834"');
+
+/* ===================== App ===================== */
+const stepper = (k) => `<div class="stp s3">${OBS.map((t, i) => `<i class="${i < k ? 'd' : i === k ? 'n' : ''}"></i>`).join('')}</div><div class="row between lbl" style="margin:7px 0 12px"><span>ステップ ${k + 1} / 3 · ${OBS[k]}</span><span>約1分</span></div>`;
+const logout = `<button class="btn sm ghost k-logout" style="padding:0">ログアウト</button>`;
+function obApp(k, s, web) {
+  const head = (web ? `<div class="mw-head">${k ? back : '<div class="logo">O</div>'}<b style="font-size:16px">Orbit</b><div style="flex:1"></div>${logout}</div>` : topbar('プロフィール設定', '', k ? back : '', logout)) + stepper(k) + once(k);
+  if (web) return obAppRaw(k, s, head).replace('自分の名刺を撮って自動入力', '自分の名刺の画像で自動入力').replace(`${ic('scan', 'sm')}名刺を撮る`, `${ic('image', 'sm')}写真を選ぶ`).replace('写真から選ぶ', 'カメラで撮る').replace('撮り直す', '別の画像');
+  return obAppRaw(k, s, head);
+}
+function obAppRaw(k, s, head) {
+  if (k === 0) {
+    const scanned = s === 'done', err = s === 'err';
+    return head + (scanned
+      ? `<div class="mac lav row" style="gap:12px;margin-top:12px;padding:12px 14px"><span class="emo" style="background:var(--surface)">📇</span><div style="flex:1;min-width:0"><b style="font-size:13.5px">名刺から 5 項目、AI の推定で 2 項目</b><div class="lbl">違うところだけ直してください</div></div><button class="btn sm" style="background:var(--surface)">撮り直す</button></div>`
+      : `<div class="scanp"><span style="font-size:34px">📇</span><b>自分の名刺を撮って自動入力</b><button class="btn primary" style="height:46px;padding:0 22px">${ic('scan', 'sm')}名刺を撮る</button><button class="btn sm ghost">写真から選ぶ</button></div>`) +
+      (scanned ? fld('氏名', '佐藤 健一', CARD) : fld('氏名', err ? '' : '例）佐藤 健一', err ? { cls: 'err', msg: '氏名を入力してください' } : { ph: true })) +
+      (scanned ? fld('会社', '株式会社ミナトリンク', CARD) + fld('役職', '代表取締役 CEO', CARD) : fld('会社（任意）', '例）株式会社ミナトリンク', { ph: true }) + fld('役職（任意）', '例）代表取締役', { ph: true })) +
+      `<div class="grid2" style="gap:8px">${scanned ? fld('業界', 'IT・ソフトウェア', Object.assign({ end: down }, AI)) + fld('詳細', 'SaaS', Object.assign({ end: down }, AI)) : fld('業界', '選択', Object.assign({ ph: true, end: down }, err ? { cls: 'err', msg: '業界を選んでください' } : {})) + fld('詳細', '—', { ph: true, end: down })}</div>` +
+      (scanned ? fld('メール', 'sato@minatolink.example', CARD) + fld('電話', '03-5555-0142', CARD) : '') +
+      fld('生年月日（任意）', '年 / 月 / 日', { ph: true, end: ic('calendar', 'sm'), msg: '相手に公開されません。' }) + `<div style="height:120px"></div>` +
+      foot(`${err ? miss('あと 2 項目：氏名、業界') : ''}<button class="btn primary block xl k-next">次へ</button>`);
+  }
+  if (k === 1) {
+    const err = s === 'err', low = s === 'low';
+    return head + `<div class="h1" style="margin-top:14px">いちばん達成したいことは？</div><div class="sub" style="margin:4px 0 14px">2個まで。選んだ順に優先します。</div>
+      ${goalCards(err ? [] : [0, 1], err ? 'err' : '')}
+      ${err ? `<div class="errline">目標を 1 つ以上選んでください</div>` : ''}
+      ${fld('ひとことで（任意）', err ? '例）シリーズAで3億円を調達' : 'シリーズAで3億円を調達', { ph: err })}
+      <div class="h1 ${low ? 'scrollto' : ''}" data-off="250" style="font-size:19px;margin:22px 0 4px">あなたの「強み」と「求めていること」</div><div class="sub" style="margin-bottom:14px">名刺と目標から候補を選んであります。増やす・外すは自由です。</div>
+      ${groups(!err)}<div style="height:130px"></div>` +
+      foot(`${err ? miss('あと 1 項目：目標') : ''}<button class="btn primary block xl k-next">次へ${err ? '' : ' <span style="opacity:.6;font-weight:600">· 目標 2 / 2</span>'}</button>`);
+  }
+  return head + `<div class="h1" style="margin-top:14px">自己紹介文をつくりました</div><div class="sub" style="margin:4px 0 14px">イベントのプロフィールや、メール下書きの冒頭に使います。</div>
+    <div class="seg" style="margin-bottom:12px"><button class="on">ビジネス</button><button>やわらかめ</button><button>English</button></div>
+    <div class="card k-intro" data-why-box><div style="font-size:14px;line-height:1.85">${INTRO}</div>
+      <div class="row" style="margin-top:12px;gap:8px"><span class="lbl">${INTRO.length}文字</span><span class="why" style="margin-left:auto">?</span><button class="btn sm">${ic('pen', 'sm')}編集</button></div>
+      <div class="why-body" hidden>使った情報：基本情報 · 目標2つ · 提供できること3つ · 話題3つ。生年月日と連絡先は使っていません。</div></div>
+    <button class="btn block" style="margin-top:12px">${ic('refresh', 'sm')}別の案をつくる <span class="chip" style="background:var(--surface)">残り 2回</span></button>
+    <div class="lbl center" style="margin-top:10px">自動で公開・送信されることはありません</div><div style="height:110px"></div>` +
+    foot(`<button class="btn primary block xl k-next">この内容ではじめる</button>`);
+}
+
+let h = '';
+h += sec('① Web 桌面 1440', '顶栏：Logo · 三步进度 +「約1分」· ログアウト。每页卡片上方一行固定提示');
+h += board('W1 · ① 名片与基本信息 · 扫描前', '提案', bare({ body: obWeb(0, 'empty'), pins: pin(1, '.once') + pin(2, '.scanbig') + pin(3, '.k-logout') }),
+  ['每页固定的一行提示。第 1 屏多一句「名刺を読み取ると、ほとんどの項目が自動で入ります」，后两屏只留第一句', '名片区是这一屏最大的元素：拖入、选文件、或扫码用手机拍。图片只用于识别，不保存', '「あとで設定する」去掉，换成「ログアウト」。已填内容自动保存，下次登录回到同一步']);
+h += board('W2 · ① 扫描后', '提案', bare({ body: obWeb(0, 'done'), pins: pin(1, '.scanbig.done') + pin(2, '.fld label .chip.lav') + pin(3, '.fld label .chip.blue') }),
+  ['名片区收成一行完成态，写明名片读到几项、AI 推了几项；「別の画像にする」重新识别', '「名刺から」= 名片上印着的内容。用户改动后 chip 消失', '「AI 推定」= 名片上没有、按公司和职位推出来的（行业）。用蓝色 chip 与名片读到的区分；都可以改']);
+h += board('W3 · ① 缺项时点「次へ」', '状态', bare({ body: obWeb(0, 'err'), pins: pin(1, '.fld.err') + pin(2, '.miss') + pin(3, '.k-next') }),
+  ['缺的必填字段标红，字段下方写清要做什么；页面滚到第一个缺项并把焦点放进去', '按钮左侧一句汇总：还差几项、分别是什么。补齐后消失', '「次へ」始终可点、不置灰。顶部进度条的后两步不能点']);
+h += board('W4 · ② 目标与强项', '提案', bare({ body: obWeb(1, 'ok'), pins: pin(1, '.gt button.on') + pin(2, '.k-give .chip') + pin(3, '.tog.ai') }),
+  ['目标只能用户自己选，最多 2 个，选择顺序 = 优先级。这是整个引导里唯一必须动手的必填项', '右栏原来是示意图，改成强项、需求、话题。「提供できること」「話せる話題」由 AI 按名片预选（实线 = 已选），用户增减', '「求めていること」在选了目标之后给虚线候选，点一下才加入，不自动选']);
+h += board('W5 · ② 没选目标点「次へ」', '状态', bare({ body: obWeb(1, 'err'), pins: pin(1, '.gt.err') + pin(2, '.miss') }),
+  ['目标区红色描边，下方一句「目標を 1 つ以上選んでください」', '按钮左侧同样给汇总。强项、需求、话题都是选填，不拦']);
+h += board('W6 · ③ 确认自我介绍', '提案', bare({ body: obWeb(2, 'ok'), pins: pin(1, '.k-intro') + pin(2, '.k-next') }),
+  ['AI 按前两步内容起草，与现有第 4 屏相同（语气切换、换一版 2 次、直接编辑）。生成中或超字数时「次へ」会提示原因', '最后一步的按钮是「この内容ではじめる」，点完直接进首页或回到来源页（如活动报名页）。导入别人名片不再是引导的一步']);
+
+h += sec('② Web iPad 834', '单栏：不出右侧预览；第 2 屏的强项接在目标下面。顶栏和固定提示与桌面相同');
+h += boards([
+  ['T1 · ① 扫描后', '提案', T({ body: obWeb(0, 'done', true), pins: pin(1, '.once') + pin(2, '.fld label .chip.blue') }), ['固定提示占满内容宽度', '字段仍是两列；「AI 推定」标记同桌面']],
+  ['T2 · ① 缺项', '状态', T({ body: obWeb(0, 'err', true), pins: pin(1, '.fld.err') + pin(2, '.miss') }), ['标红与说明同桌面', '汇总在按钮左侧']],
+]);
+h += boards([
+  ['T3 · ② 目标与强项', '提案', T({ body: obWeb(1, 'ok', true), pins: pin(1, '.gt button.on') + pin(2, '.k-give .chip') }), ['目标 3 列', '强项、需求、话题接在目标下面，同一张卡']],
+  ['T4 · ③ 确认自我介绍', '提案', T({ body: obWeb(2, 'ok', true), pins: pin(1, '.k-intro') + pin(2, '.k-next') }), ['「使われる場所」示例不出', '按钮在卡片底部右侧']],
+]);
+h += sec('③ Web 手机 390', '顶栏随内容滚走、不吸顶；「次へ」固定在浏览器工具栏上方。Web 没有连拍相机，名片区是选图片或调系统相机');
+h += boards([
+  ['M1 · ① 扫描前', '提案', M({ body: obApp(0, 'empty', true), pins: pin(1, '.once') + pin(2, '.scanp') + pin(3, '.k-logout') }), ['固定提示，文案同桌面', '「写真を選ぶ」打开系统相册；「カメラで撮る」调系统相机', '顶栏：Logo · ログアウト；第 2 屏起 Logo 位置换成返回']],
+  ['M2 · ① 扫描后', '提案', M({ body: obApp(0, 'done', true), pins: pin(1, '.mac.lav') + pin(2, '.fld label .chip.blue') }), ['完成态一行', '「AI 推定」蓝色 chip']],
+  ['M3 · ① 缺项', '状态', M({ body: obApp(0, 'err', true), pins: pin(1, '.fld.err') + pin(2, '.miss') }), ['标红并滚到第一个缺项', '汇总在按钮上方']],
+  ['M4 · ② 目标', '提案', M({ body: obApp(1, 'ok', true), pins: pin(1, '.gt button.on') + pin(2, '.k-next') }), ['目标 2 列', '按钮里显示已选目标数']],
+  ['M5 · ② 没选目标', '状态', M({ body: obApp(1, 'err', true), pins: pin(1, '.gt.err') + pin(2, '.miss') }), ['目标区红色描边 + 一句说明', '汇总在按钮上方']],
+  ['M6 · ③ 确认自我介绍', '提案', M({ body: obApp(2, 'ok', true), pins: pin(1, '.k-intro') + pin(2, '.k-next') }), ['同桌面第 3 屏', '点完进首页或回到来源页']],
+]);
+h += sec('④ App', '顶栏右上「ログアウト」；3 段进度条；每页进度条下方一行固定提示');
+h += boards([
+  ['A1 · ① 扫描前', '提案', P({ body: obApp(0, 'empty'), pins: pin(1, '.once') + pin(2, '.scanp') + pin(3, '.k-logout') }), ['固定提示，文案与 Web 相同', '「名刺を撮る」打开相机（单张）；也可以从相册选', '原「あとで」和欢迎卡的「先逛逛」去掉，换成「ログアウト」']],
+  ['A2 · ① 扫描后', '提案', P({ body: obApp(0, 'done'), pins: pin(1, '.mac.lav') + pin(2, '.fld label .chip.lav') + pin(3, '.fld label .chip.blue') }), ['完成态一行，写明各读到几项', '「名刺から」：名片上印着的', '「AI 推定」：行业两项，蓝色 chip']],
+  ['A3 · ① 缺项', '状态', P({ body: obApp(0, 'err'), pins: pin(1, '.fld.err') + pin(2, '.miss') }), ['缺项标红并滚到第一个缺的字段，键盘弹出', '按钮上方一句汇总；按钮不置灰']],
+  ['A4 · ② 目标', '提案', P({ body: obApp(1, 'ok'), pins: pin(1, '.gt button.on') + pin(2, '.k-next') }), ['目标与强项放在同一屏，目标在上', '按钮里显示已选目标数']],
+  ['A5 · ② 下半屏：强项', '提案', P({ body: obApp(1, 'low'), pins: pin(1, '.k-give .chip') + pin(2, '.tog.ai') }), ['AI 预选的两组带「AI 推定」', '「求めていること」的虚线候选要点一下才加入']],
+  ['A6 · ② 没选目标', '状态', P({ body: obApp(1, 'err'), pins: pin(1, '.gt.err') + pin(2, '.miss') }), ['目标区红色描边 + 一句说明', '按钮上方汇总']],
+  ['A7 · ③ 确认自我介绍', '提案', P({ body: obApp(2, 'ok'), pins: pin(1, '.k-intro') + pin(2, '.k-next') }), ['与现有第 4 屏相同', '点完进首页；首页第一件待办是「名刺を取り込む」']],
+]);
+
+document.getElementById('out').innerHTML = h;
+document.querySelectorAll('.scrollto').forEach(m => {
+  const sc = m.closest('.phone .scroll, .web .main'); if (!sc) return;
+  sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - (+m.dataset.off || 70);
+});
+docNav(''); orbitChrome();
+</script>
+</body>
+</html>
