@@ -534,7 +534,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   }
   if (view === "loadError") {
     return (
-      <OnboardingFrame footer={<KitButton block label={t("onboarding.v3.retry")} onPress={() => void load()} variant="primary" />}>
+      <OnboardingFrame footer={<KitButton block label={t("onboarding.v3.retry")} onPress={() => void load()} size="xl" variant="primary" />}>
         <OnboardingTopBar onLogout={() => void logOut()} />
         <View style={{ marginTop: 160 }}><MissLine text={signOutError ?? t("onboarding.v3.loadFailed")} /></View>
       </OnboardingFrame>
@@ -546,7 +546,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   const footer = (
     <>
       {shown.length ? <MissLine text={summaryOf(shown)} /> : noticeText ? <MissLine text={noticeText} /> : null}
-      <KitButton block label={label} onPress={() => void onNext(view)} testID="onboarding-next" variant="primary"
+      <KitButton block label={label} onPress={() => void onNext(view)} size="xl" testID="onboarding-next" variant="primary"
         trailing={view === "goals" && goals.length && !saving ? t("onboarding.v3.nextGoals", { count: goals.length, limit: GOAL_LIMIT }) : undefined} />
     </>
   );

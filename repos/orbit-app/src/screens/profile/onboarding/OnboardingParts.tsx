@@ -123,12 +123,12 @@ export function Emo({ emoji, tone, large = false }: { emoji: string; tone: GoalT
   return <View style={[styles.emo, large && styles.emoLarge, styles[`emo_${tone}`]]}><UiText maxFontSizeMultiplier={1.2} style={large ? styles.emoTextLarge : styles.emoText}>{emoji}</UiText></View>;
 }
 
-/** .btn: 40 pill (sm 32); `xl` on the board has no rule of its own, so block buttons are 40 too. */
+/** .btn: 40 pill, sm 32, xl 50 (the page's main button). */
 export function KitButton({ label, onPress, variant = "soft", size: height = "md", block = false, icon, iconSize = 16, badge, trailing, disabled = false, accessibilityLabel, testID }: {
   label: string;
   onPress: () => void;
   variant?: "primary" | "soft" | "surface" | "ghost";
-  size?: "md" | "sm" | "take";
+  size?: "md" | "sm" | "take" | "xl";
   block?: boolean;
   icon?: IconName;
   iconSize?: 16;
@@ -142,9 +142,9 @@ export function KitButton({ label, onPress, variant = "soft", size: height = "md
   const color = variant === "primary" ? colors.bg : variant === "ghost" ? colors.ink2 : colors.ink;
   return (
     <UiPressable accessibilityLabel={accessibilityLabel ?? label} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} hitSlop={height === "sm" ? 6 : 2} onPress={onPress} testID={testID}
-      style={[styles.btn, height === "sm" && styles.btnSm, height === "take" && styles.btnTake, styles[`btn_${variant}`], block && styles.block, disabled && styles.disabled]}>
+      style={[styles.btn, height === "sm" && styles.btnSm, height === "take" && styles.btnTake, height === "xl" && styles.btnXl, styles[`btn_${variant}`], block && styles.block, disabled && styles.disabled]}>
       {icon ? <Icon color={color} name={icon} size={iconSize} /> : null}
-      <UiText numberOfLines={1} style={[styles.btnText, height === "sm" && styles.btnTextSm, { color }]}>{label}{trailing ? <UiText style={[styles.btnTrailing, { color }]}>{` ${trailing}`}</UiText> : null}</UiText>
+      <UiText numberOfLines={1} style={[styles.btnText, height === "sm" && styles.btnTextSm, height === "xl" && styles.btnTextXl, { color }]}>{label}{trailing ? <UiText style={[styles.btnTrailing, height === "xl" && styles.btnTrailingXl, { color }]}>{` ${trailing}`}</UiText> : null}</UiText>
       {badge ? <View style={styles.badge}><UiText style={styles.badgeText}>{badge}</UiText></View> : null}
     </UiPressable>
   );
@@ -277,6 +277,7 @@ export const useOnboardingStyles = createThemedStyles(colors => StyleSheet.creat
   btn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 40, paddingHorizontal: 16, borderRadius: 999, alignSelf: "center" },
   btnSm: { height: 32, paddingHorizontal: 12 },
   btnTake: { height: 46, paddingHorizontal: 22 },
+  btnXl: { height: 50 },
   btn_primary: { backgroundColor: colors.ink },
   btn_soft: { backgroundColor: colors.surface2 },
   btn_surface: { backgroundColor: colors.surface },
@@ -285,6 +286,8 @@ export const useOnboardingStyles = createThemedStyles(colors => StyleSheet.creat
   disabled: { opacity: 0.45 },
   btnText: { ...type(13, "700") },
   btnTextSm: { ...type(12, "700") },
+  btnTextXl: { ...type(14.5, "700") },
+  btnTrailingXl: { ...type(14.5, "600") },
   btnTrailing: { opacity: 0.6, ...type(13, "600") },
   badge: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, backgroundColor: colors.surface },
   badgeText: { color: colors.ink2, ...type(11, "700") },

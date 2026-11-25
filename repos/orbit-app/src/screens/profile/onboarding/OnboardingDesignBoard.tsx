@@ -38,7 +38,7 @@ export function OnboardingDesignBoard({ board }: { board: Board }) {
   return (
     <OnboardingFrame scrollRef={scroll} footer={<>
       {missing ? <MissLine text={missing} /> : null}
-      <KitButton block label={t(step === "intro" ? "onboarding.v3.start" : "onboarding.v3.next")} onPress={nothing} variant="primary" trailing={step === "goals" && goals.length ? t("onboarding.v3.nextGoals", { count: goals.length, limit: GOAL_LIMIT }) : undefined} />
+      <KitButton block label={t(step === "intro" ? "onboarding.v3.start" : "onboarding.v3.next")} onPress={nothing} size="xl" variant="primary" trailing={step === "goals" && goals.length ? t("onboarding.v3.nextGoals", { count: goals.length, limit: GOAL_LIMIT }) : undefined} />
     </>}>
       <OnboardingTopBar onBack={index ? nothing : undefined} onLogout={nothing} />
       <OnboardingProgress eta={t("onboarding.v3.eta")} index={index} label={t("onboarding.v3.step", { step: index + 1, total: 3, name })} total={3} />

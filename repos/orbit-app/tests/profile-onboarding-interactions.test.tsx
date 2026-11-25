@@ -203,6 +203,7 @@ test("「下一步」 is never greyed out: it lists what is missing, marks it, a
   const page = await open(t);
   await next(page).waitFor();
   assert.equal(await next(page).isDisabled(), false);
+  assert.equal(Math.round((await next(page).boundingBox())!.height), 50, "the page's main button (.btn.xl)");
   await page.evaluate(() => document.querySelector('[data-testid="onboarding-scroll"]')!.scrollTo(0, 9999));
   await next(page).click();
   assert.deepEqual(await alerts(page), ["请填写姓名", "请选择行业", "还差2项: 姓名、行业".replace(": ", "：")]);
