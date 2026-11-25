@@ -121,13 +121,16 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const wide = useWide();
   const phone = usePhone();
 
+  // What the profile already says is selected from the start (2026-11-25); it can be unselected like any option.
+  const showStep = (next: EventJoinStep) => { setStep(next); setSelected([...(next.question?.prefill ?? [])]); };
+
   const [loadFailed, setLoadFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let live = true;
     setLoadFailed(false);
     void journeyApi.overview(eventId).then((res) => { if (live && res.ok) setEvent(res.data); });
-    void joinApi.next(eventId, []).then((res) => { if (!live) return; if (res.ok) setStep(res.data); else setLoadFailed(true); });
+    void joinApi.next(eventId, []).then((res) => { if (!live) return; if (res.ok) showStep(res.data); else setLoadFailed(true); });
     void joinApi.profile(eventId, [], false).then((res) => { if (live && res.ok) setProfile(res.data); });
     return () => { live = false; };
   }, [eventId, attempt]);
@@ -149,8 +152,8 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     const [nextStep, nextProfile] = await Promise.all([joinApi.next(eventId, next), joinApi.profile(eventId, next, false)]);
     // 成功才记下这一答（失败时题目不变、选项保留，重答不会带着同一个 questionToken 重复入列）。
     if (!nextStep.ok) { toast.error(at("genericError")); setBusy(false); return; }
-    setAnswers(next); setSelected([]); setFree("");
-    setStep(nextStep.data);
+    setAnswers(next); setFree("");
+    showStep(nextStep.data);
     if (nextProfile.ok) setProfile(nextProfile.data);
     if (nextStep.ok && nextStep.data.done) {
       const drafted = await joinApi.profile(eventId, next, true);
@@ -163,7 +166,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     setBusy(true);
     const res = await joinApi.next(eventId, answers, true);
     setBusy(false);
-    if (res.ok) setStep(res.data); else toast.error(at("genericError"));
+    if (res.ok) showStep(res.data); else toast.error(at("genericError"));
   };
   const apply = async () => {
     setBusy(true);

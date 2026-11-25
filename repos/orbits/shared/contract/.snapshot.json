@@ -7811,6 +7811,11 @@
           "optional": false,
           "kind": "text",
           "type": "boolean"
+        },
+        "sent": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -9711,6 +9716,11 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "prefill": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
         }
       }
     },

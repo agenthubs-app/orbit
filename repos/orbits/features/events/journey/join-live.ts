@@ -8,7 +8,7 @@ import type { EventJoinAnswer, EventJoinQuestion } from "../../../shared/contrac
 import { AppError } from "../../../shared/errors/app-error";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import { createPostgresActorRecordStore } from "../actor-records/store";
-import type { JoinPorts } from "./join";
+import { profileFactQuestions, type JoinPorts } from "./join";
 import type { JourneyLivePorts } from "./ports";
 import type { JourneyLanguage } from "./prep-core";
 
@@ -31,6 +31,31 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     const service = createConfiguredPersonalScheduleService();
     if (!service) throw new Error("personal schedule storage is not configured");
     return service;
+  };
+  const selfProfile = async (actorId: string, language: JourneyLanguage) => {
+    const { getSelfProfileForAi } = await import("../../profile/self-profile-reader");
+    const result = await getSelfProfileForAi({ actorId, mode: "live" }, { locale: language });
+    return result.status === "ok" ? result.profile : null;
+  };
+  // Signed as fixed questions so both paths (direct registration, admission application) take them; at most 5 + 2 answers.
+  // A profile that cannot be read never stops a registration.
+  const profileFactResponses = async (eventId: string, answered: readonly string[], from: { actorId: string; language: JourneyLanguage }) => {
+    try {
+      const profile = await selfProfile(from.actorId, from.language);
+      if (!profile) return [];
+      const language = from.language === "en" ? "en" as const : "zh" as const;
+      const { signAdaptiveInterviewQuestion } = await import("../registration/interview-question-token.server");
+      const { FIXED_INTERVIEW_QUESTION_MODEL, FIXED_INTERVIEW_QUESTION_PROVIDER } = await import("../registration/adaptive-interview-service");
+      const { loadEventForRegistration } = await import("../registration/event-loader");
+      const event = await loadEventForRegistration(eventId, from.actorId);
+      if (!event) return [];
+      return profileFactQuestions({ industry: profile.industry.primaryLabel, organization: profile.organization, role: profile.role }, answered, language)
+        .map(({ answer, ...question }) => ({ answer, questionToken: signAdaptiveInterviewQuestion({ actorId: from.actorId, eventId: event.id, language, question: { ...question, acknowledgment: "",
+          provenance: { fallbackReason: "profile", generationMethod: "deterministic-fallback", model: FIXED_INTERVIEW_QUESTION_MODEL, provider: FIXED_INTERVIEW_QUESTION_PROVIDER } } }) }));
+    } catch {
+      console.warn(JSON.stringify({ event: "join_profile_facts_failed" }));
+      return [];
+    }
   };
   return {
     async event(eventId) {
@@ -60,6 +85,10 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     async profileIntro(actorId) {
       return (await input.journey.selfIntro(actorId, "").catch(() => null))?.text ?? null;
     },
+    async profileTags(actorId) {
+      const profile = await selfProfile(actorId, "ja");
+      return profile ? { offering: profile.offering, seeking: profile.seeking } : null;
+    },
     async hostQuestions(eventId) {
       const result = await input.query(`/* events:r17-join:host-questions */ select published -> 'questions' as questions from event_host_question_sets where workspace_id = $1 and event_id = $2 and published is not null`, [input.workspaceId, eventId]).catch(() => ({ rows: [] as Array<Record<string, unknown>> }));
       const raw = result.rows[0]?.questions;
@@ -69,9 +98,10 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     async saveHostAnswers(actorId, eventId, answers) {
       await store.put("eventHostAnswers", actorId, `eha:${createHash("sha256").update(`${actorId}\u0000${eventId}`).digest("hex").slice(0, 32)}`, { answers: { ...answers }, eventId }, new Date().toISOString());
     },
-    async submit(eventId, answers) {
+    async submit(eventId, answers, from) {
       const { POST } = await import("../../../app/api/events/[id]/registration/route");
-      const responses = answers.map((answer) => ({ answer: answer.answer, questionToken: answer.questionToken }));
+      const responses = [...answers.map((answer) => ({ answer: answer.answer, questionToken: answer.questionToken })),
+        ...(from ? await profileFactResponses(eventId, answers.map((answer) => answer.field), from) : [])];
       // 审核制按活动设定判断（不靠 409 猜：截止 / 已开始 / 问卷变了也是 409）。
       if ((await input.journey.event(eventId))?.review) {
         const { createEventAdmissionApplicationPostHandler } = await import("../../../app/api/events/[id]/admission/application/handler");

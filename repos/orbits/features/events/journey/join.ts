@@ -64,13 +64,53 @@ export function tentativeTitle(title: string, language: JourneyLanguage, final =
   return final ? short : tri(language, `仮：${short}`, `暂定：${short}`, `Tentative: ${short}`);
 }
 
+/** 资料里已经有的：会いたい人 = 求めていること、提供できること = 提供。 */
+export interface JoinProfileTags { offering: readonly string[]; seeking: readonly string[] }
+
+const OPTIONS_MAX = 12;
+const PREFILL_MAX = 3;
+
+/** 资料里填过的放到选项最前并先选上；单选题把几项并成一个选项。主办方的申込質問不动。 */
+export function prefillQuestion(question: EventJoinQuestion, tags: JoinProfileTags | null): EventJoinQuestion {
+  const own = question.field === "targetAttendees" ? tags?.seeking : question.field === "valueOffered" ? tags?.offering : null;
+  const values = [...new Set((own ?? []).map((item) => item.trim()).filter(Boolean))].slice(0, PREFILL_MAX);
+  if (!values.length) return question;
+  const prefill = question.multi ? values : [values.join(" · ")];
+  return { ...question, options: [...prefill, ...question.options.filter((option) => !prefill.includes(option))].slice(0, OPTIONS_MAX), prefill };
+}
+
+export interface JoinProfileFacts { organization: string | null; role: string | null; industry: string | null }
+
+const FACT_QUESTIONS = {
+  industry: { en: "What industry are you in?", zh: "你所在的行业是什么？" },
+  positioning: { en: "What are your role and company?", zh: "你的职位和公司是什么？" },
+} as const;
+
+/**
+ * 活动侧的公司・职位、行业取自报名回答（event-operations/participant.ts）。问答没问到时，用个人资料里的补上，
+ * 当作本人回答的固定题：「職位 @ 会社」。只有职位没有公司时不补（会被当成公司名）。
+ */
+export function profileFactQuestions(facts: JoinProfileFacts | null, answered: readonly string[], language: "en" | "zh") {
+  const organization = facts?.organization?.trim();
+  const role = facts?.role?.trim();
+  const industry = facts?.industry?.trim();
+  const values = { industry, positioning: organization ? (role ? `${role} @ ${organization}` : organization) : undefined };
+  return (["positioning", "industry"] as const).flatMap((field) => {
+    const answer = values[field]?.slice(0, 80);
+    if (!answer || answered.includes(field)) return [];
+    return [{ answer, field, options: [answer, language === "en" ? "Prefer not to say" : "不填"], prompt: FACT_QUESTIONS[field][language] }];
+  });
+}
+
 export interface JoinPorts {
   event(eventId: string): Promise<{ title: string; startsAt: string; endsAt: string | null; review: boolean; registrationClosesAt: string | null; hostContact?: HostEventContact | null } | null>;
   /** `more`：用户在确认页点了「追加 / 質問に戻る」，即使访谈认为够了也再问一题（live 由 AI 自己决定，可能仍然结束）。 */
   next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more?: boolean): Promise<Omit<EventJoinQuestion, "multi" | "max" | "help"> | null>;
   persona(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage): Promise<{ selfIntroDraft?: string | null; tags?: readonly string[] } | null>;
   profileIntro(actorId: string): Promise<string | null>;
-  submit(eventId: string, answers: readonly EventJoinAnswer[]): Promise<{ status: "registered" | "pending_review"; submittedAt: string }>;
+  profileTags?(actorId: string): Promise<JoinProfileTags | null>;
+  /** `from`：谁、用什么语言报名——问答没问到的公司・职位、行业由资料补上。 */
+  submit(eventId: string, answers: readonly EventJoinAnswer[], from?: { actorId: string; language: JourneyLanguage }): Promise<{ status: "registered" | "pending_review"; submittedAt: string }>;
   /** 确认页改过的自己紹介，跟这次报名一起留存。 */
   saveIntro(actorId: string, eventId: string, text: string): Promise<void>;
   /** 取消报名（现有取消路由）；之后由 syncTentative 删掉仮予定。 */
@@ -110,7 +150,7 @@ export function validHostAnswers(questions: readonly HostSetupQuestion[], answer
 export function createJoinService(deps: { ports: JoinPorts }) {
   const { ports } = deps;
   const service = {
-    async next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more = false): Promise<EventJoinStep | null> {
+    async next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more = false, actorId: string | null = null): Promise<EventJoinStep | null> {
       if (!(await ports.event(eventId))) return null;
       if (answers.length >= JOIN_TOTAL) return joinStep(answers.length, null, language);
       // R17：主办方的申込質問先问（按顺序），问完再由访谈补足；访谈只看访谈自己的回答。
@@ -119,7 +159,10 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       if (pending) {
         return joinStep(answers.length, { allowCustom: pending.kind === "free", field: `${HOST_QUESTION_FIELD_PREFIX}${pending.id}`, multi: pending.kind === "multiple", options: [...pending.options], prompt: pending.prompt, questionToken: `${HOST_QUESTION_FIELD_PREFIX}${pending.id}` }, language);
       }
-      return joinStep(answers.length, await ports.next(eventId, answers.filter((answer) => !isHostAnswer(answer)), language, more), language);
+      const step = joinStep(answers.length, await ports.next(eventId, answers.filter((answer) => !isHostAnswer(answer)), language, more), language);
+      if (!step.question || !actorId || !["targetAttendees", "valueOffered"].includes(step.question.field)) return step;
+      const tags = await ports.profileTags?.(actorId).catch(() => null) ?? null;
+      return { ...step, question: prefillQuestion(step.question, tags) };
     },
     async profile(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], draft: boolean, language: JourneyLanguage): Promise<EventJoinProfile | null> {
       const event = await ports.event(eventId);
@@ -137,7 +180,7 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const event = await ports.event(eventId);
       if (!event) return null;
       const hostQuestions = ports.hostQuestions ? await ports.hostQuestions(eventId).catch(() => []) : [];
-      const outcome = await ports.submit(eventId, answers.filter((answer) => !isHostAnswer(answer)));
+      const outcome = await ports.submit(eventId, answers.filter((answer) => !isHostAnswer(answer)), { actorId, language });
       const hostAnswers = validHostAnswers(hostQuestions, answers);
       if (ports.saveHostAnswers && Object.keys(hostAnswers).length > 0) await ports.saveHostAnswers(actorId, eventId, hostAnswers);
       if (selfIntro) await ports.saveIntro(actorId, eventId, selfIntro);

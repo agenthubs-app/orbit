@@ -7,9 +7,10 @@ import test from "node:test";
 
 import { eventJoinProfileSchema, eventJoinStepSchema } from "../../shared/api-schema/event-join";
 import { JOURNEY_EVENT_ID } from "../../shared/mock/demo-world/events-journey";
-import { registrationFieldVisibility } from "../../features/events/registration/interview-question-token.server";
+import { registrationFieldVisibility, signAdaptiveInterviewQuestion, verifyInterviewResponseSubmissions } from "../../features/events/registration/interview-question-token.server";
+import { eventOperationsParticipantFromRegistration } from "../../features/events/event-operations/participant";
 import { createEventJourneyRoutes } from "../../features/events/journey/handlers";
-import { createJoinService, profileFromAnswers, questionShape, tentativeTitle, type JoinPorts } from "../../features/events/journey/join";
+import { createJoinService, profileFactQuestions, profileFromAnswers, questionShape, tentativeTitle, type JoinPorts } from "../../features/events/journey/join";
 
 const answer = (field: string, value: string, n: number) => ({ answer: value, field, prompt: `q${n}`, questionToken: `t${n}` });
 const post = (body: unknown) => new Request("http://localhost/x", { body: JSON.stringify(body), headers: { "content-type": "application/json" }, method: "POST" });
@@ -110,6 +111,39 @@ function fakePorts(overrides: Partial<JoinPorts> = {}): JoinPorts {
     ...overrides,
   };
 }
+
+test("会いたい人 / 提供できること: what the profile already says comes first and selected; other questions stay as asked", async () => {
+  let field = "targetAttendees";
+  const service = createJoinService({ ports: fakePorts({
+    next: async () => ({ allowCustom: true, field, options: ["投資家", "同業者"], prompt: "?", questionToken: "t" }),
+    profileTags: async () => ({ offering: ["紹介", "業界の知見"], seeking: ["投資家", "顧客"] }),
+  }) });
+  const ask = async () => (await service.next("ev", [], "ja", false, "actor:a"))?.question;
+  assert.deepEqual([(await ask())?.options, (await ask())?.prefill], [["投資家", "顧客", "同業者"], ["投資家", "顧客"]]);
+  field = "valueOffered"; // single choice: one option
+  assert.deepEqual([(await ask())?.options, (await ask())?.prefill], [["紹介 · 業界の知見", "投資家", "同業者"], ["紹介 · 業界の知見"]]);
+  field = "desiredOutcome";
+  assert.equal((await ask())?.prefill, undefined);
+  field = "targetAttendees";
+  assert.equal((await service.next("ev", [], "ja"))?.question?.prefill, undefined);
+});
+
+test("公司・职位、行业：问答没问到的由资料补上（固定题，签名后两条报名路都收）；问到的不动；只有职位不补", async () => {
+  const facts = { industry: "金融・投資", organization: "株式会社ミナトリンク", role: "代表取締役 CEO" };
+  const questions = profileFactQuestions(facts, ["targetAttendees"], "zh");
+  assert.deepEqual(questions.map((item) => [item.field, item.answer]), [["positioning", "代表取締役 CEO @ 株式会社ミナトリンク"], ["industry", "金融・投資"]]);
+  assert.deepEqual(profileFactQuestions(facts, ["positioning", "industry"], "en"), []);
+  assert.deepEqual(profileFactQuestions({ ...facts, organization: null }, [], "en").map((item) => item.field), ["industry"]);
+  assert.deepEqual(profileFactQuestions(null, [], "en"), []);
+  const responses = questions.map(({ answer, ...question }) => ({ answer, questionToken: signAdaptiveInterviewQuestion({ actorId: "a", eventId: "e", language: "zh", secret: "s".repeat(32),
+    question: { ...question, acknowledgment: "", provenance: { fallbackReason: "profile", generationMethod: "deterministic-fallback", model: "fixed-questions-v1", provider: "orbit-fixed" } } }) }));
+  const verified = verifyInterviewResponseSubmissions({ actorId: "a", eventId: "e", responses, secret: "s".repeat(32) });
+  const participant = eventOperationsParticipantFromRegistration({ id: "r", participantProfile: { answers: {}, displayName: "佐藤", interviewResponses: verified }, participantProfileId: "p", registeredAt: "2026-11-25T00:00:00.000Z", userId: "a" } as never, { lateRegistration: false, profileEditDeadlineAt: null });
+  assert.deepEqual([participant.company, participant.role, participant.industry], ["株式会社ミナトリンク", "代表取締役 CEO", "金融・投資"]);
+  let seen: unknown;
+  await createJoinService({ ports: fakePorts({ submit: async (_event, _answers, from) => { seen = from; return { status: "registered", submittedAt: "2026-09-20T05:32:00.000Z" }; } }) }).submit("actor:a", "ev", [], "ja");
+  assert.deepEqual(seen, { actorId: "actor:a", language: "ja" });
+});
 
 test("cancel: the registration is cancelled and the tentative calendar entry goes with it", async () => {
   const calls: string[] = [];

@@ -15,6 +15,7 @@ export const eventJoinQuestionObject = z.object({
   max: z.number().int().min(1).nullable().optional(),
   allowCustom: z.boolean(),
   questionToken: z.string().min(1),
+  prefill: z.array(z.string()).max(12).optional().catch(undefined),
 });
 export const eventJoinStepObject = z.object({
   index: z.number().int().min(0),

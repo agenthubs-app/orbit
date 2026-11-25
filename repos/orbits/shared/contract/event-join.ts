@@ -18,6 +18,8 @@ export interface EventJoinQuestion {
   max?: number | null;
   allowCustom: boolean;
   questionToken: string;
+  /** Options already in the person's own profile (会いたい人 / 提供できること): shown selected, still changeable. Always a subset of `options`. */
+  prefill?: readonly string[];
 }
 
 export interface EventJoinAnswer {
