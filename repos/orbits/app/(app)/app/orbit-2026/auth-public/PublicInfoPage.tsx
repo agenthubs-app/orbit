@@ -8,6 +8,7 @@ import { legalCopy } from "../copy/legal";
 import { publicCopy, publicFaqSearchKeywords } from "../copy/public";
 import { pickCopy } from "../copy/types";
 import { Icon, Orbit2026Scope } from "../ui";
+import { CurrentPageLoginLink } from "./current-return-path";
 import { filterPublicFaq } from "./public-faq-search";
 import s from "./PublicInfoPage.module.css";
 
@@ -77,7 +78,8 @@ export function PublicInfoPage({ kind, language, signedIn, contactEmail = suppor
         <a href="/terms" aria-current={kind === "terms" ? "page" : undefined}>{t("termsNav")}</a>
         <a href="/privacy" aria-current={kind === "privacy" ? "page" : undefined}>{t("privacyNav")}</a>
       </nav>
-      <a className={s.accountAction} href={signedIn ? "/app/settings" : "/app/account/login"}>{t(signedIn ? "settings" : "login")}</a>
+      {signedIn ? <a className={s.accountAction} href="/app/settings">{t("settings")}</a>
+        : <CurrentPageLoginLink className={s.accountAction} fallback={`/${kind}`}>{t("login")}</CurrentPageLoginLink>}
     </header>
     <main className={s.body}>
       <div className={s.eyebrow}>{t("publicPage")}</div>

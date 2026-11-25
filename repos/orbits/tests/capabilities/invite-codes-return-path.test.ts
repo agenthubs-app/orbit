@@ -52,9 +52,11 @@ test("the existing branches are unchanged", () => {
   assert.equal(normalizeOrbitAuthReturnPath(null), "/app/home");
 });
 
-test("after sign-up / sign-in an invite next goes straight back, not through the profile continuation", () => {
+test("after sign-up / sign-in an invite next goes through the profile continuation (new users finish onboarding first)", () => {
   assert.equal(normalizeProfileAuthReturnPath("/i/K7QX-2M9P"), "/i/K7QX-2M9P");
-  assert.equal(profileContinuationPath("/i/K7QX-2M9P"), "/i/K7QX-2M9P");
+  // 2026-11-26：新用户先走完三步引导再回招待页；续接页对已走完的人直接回 /i/<码>。
+  assert.equal(profileContinuationPath("/i/K7QX-2M9P"), "/app/profile/continue?next=%2Fi%2FK7QX-2M9P");
+  assert.equal(normalizeProfileAuthReturnPath(profileContinuationPath("/i/K7QX-2M9P")), "/i/K7QX-2M9P");
   assert.equal(productHref("/i/K7QX-2M9P"), "/i/K7QX-2M9P", "the invite page lives outside /app");
   // 其余 next 照旧经过资料引导。
   assert.equal(profileContinuationPath("/app/contacts"), "/app/profile/continue?next=%2Fapp%2Fcontacts");

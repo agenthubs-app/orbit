@@ -54,7 +54,8 @@ export function profileOnboardingSettled(input: {
   return !input.flow || Boolean(input.flow.finishedAt) || Boolean(input.flow.deferred && input.answered);
 }
 
-function requestSearchWithoutRsc(search: string): string {
+/** 站内换页的请求带 `_rsc`，不属于页面地址。 */
+export function requestSearchWithoutRsc(search: string): string {
   const params = new URLSearchParams(search);
   params.delete("_rsc");
   const serialized = params.toString();

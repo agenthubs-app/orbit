@@ -27,8 +27,8 @@ export function AuthReset() {
           <h2 className="au-h2" id={titleId}>{t({ en: "This link cannot be used", ja: "このリンクは使えません", zh: "此链接无法使用" })}</h2>
           <p className="au-sub" role="alert">{t({ en: "The link may be invalid or already used.\nPlease request a reset again.", ja: "リンクが無効か、すでに使われている可能性があります。\nもう一度、再設定をお申し込みください。", zh: "链接可能已失效或已被使用。\n请重新申请重置密码。" })}</p>
         </div>
-        <a className="btn au-btn-primary au-btn-link" href={authRoutePath("forgot", "")}>{t({ en: "Request a reset", ja: "再設定を申し込む", zh: "申请重置密码" })}</a>
-        <p className="au-switch au-foot"><a className="au-switch-link" href={authRoutePath("login", "")}>{t({ en: "Back to sign in", ja: "ログインに戻る", zh: "返回登录" })}</a></p>
+        <a className="btn au-btn-primary au-btn-link" href={authRoutePath("forgot", session.next)}>{t({ en: "Request a reset", ja: "再設定を申し込む", zh: "申请重置密码" })}</a>
+        <p className="au-switch au-foot"><a className="au-switch-link" href={authRoutePath("login", session.next)}>{t({ en: "Back to sign in", ja: "ログインに戻る", zh: "返回登录" })}</a></p>
       </div>
     );
   }
@@ -54,7 +54,7 @@ export function AuthReset() {
         <p className="au-sub">{session.done ? t({ en: "Sign in with your new password.", ja: "新しいパスワードでログインできます。", zh: "请使用新密码登录。" }) : t({ en: "Set it from the link in your email.", ja: "メールで受け取ったリンクから設定します。", zh: "通过邮件中的链接设置密码。" })}</p>
       </div>
       {session.done ? (
-        <a className="btn au-btn-primary au-btn-link" href={authRoutePath("login", "")}>{t({ en: "Sign in with the new password", ja: "新しいパスワードでログイン", zh: "用新密码登录" })}</a>
+        <a className="btn au-btn-primary au-btn-link" href={authRoutePath("login", session.next)}>{t({ en: "Sign in with the new password", ja: "新しいパスワードでログイン", zh: "用新密码登录" })}</a>
       ) : (
         <form className="au-view" noValidate onSubmit={onSubmit}>
           <div className="au-fields">

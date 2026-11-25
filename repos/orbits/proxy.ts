@@ -16,6 +16,7 @@ import {
 import {
   profileOnboardingRedirectPath,
   profileOnboardingSettled,
+  requestSearchWithoutRsc,
   shouldGateProfileOnboardingRequest,
 } from "./app/(app)/app/profile/profile-onboarding-route-policy";
 import {
@@ -24,6 +25,12 @@ import {
   hasOnboardingSettledValue,
   onboardingSettledValue,
 } from "./app/(app)/app/profile/profile-onboarding-settled-cookie";
+import {
+  ONBOARDING_RETURN_COOKIE,
+  ONBOARDING_RETURN_MAX_AGE,
+  onboardingReturnValue,
+} from "./app/(app)/app/profile/profile-onboarding-return-cookie";
+import { PROFILE_ONBOARDING_FLOW_ROUTE } from "./app/(app)/app/profile/profile-onboarding-navigation";
 
 function isPublicApiPath(pathname: string): boolean {
   return (
@@ -116,7 +123,7 @@ export const proxy = auth(async (request) => {
     loginUrl.searchParams.set(
       "next",
       normalizeOrbitAuthReturnPath(
-        `${request.nextUrl.pathname}${request.nextUrl.search}`,
+        `${request.nextUrl.pathname}${requestSearchWithoutRsc(request.nextUrl.search)}`,
       ),
     );
 
@@ -233,6 +240,20 @@ export const proxy = auth(async (request) => {
   // answered from the session read this request made anyway.
   if (request.cookies.get(EMAIL_NOTICE_COOKIE)?.value === "pending" && request.auth?.user?.emailVerification?.verified) {
     response.cookies.set(EMAIL_NOTICE_COOKIE, "done", { maxAge: 86400, path: "/", sameSite: "lax" });
+  }
+
+  // Opening the onboarding remembers where it goes afterwards, for a page that is closed half way; done = forgotten.
+  const userId = request.auth?.user?.id;
+  if (userId && request.nextUrl.pathname === PROFILE_ONBOARDING_FLOW_ROUTE) {
+    const value = onboardingReturnValue(userId, request.nextUrl.searchParams.get("next"));
+    if (value && value !== request.cookies.get(ONBOARDING_RETURN_COOKIE)?.value) {
+      response.cookies.set(ONBOARDING_RETURN_COOKIE, value, {
+        httpOnly: true, maxAge: ONBOARDING_RETURN_MAX_AGE, path: "/app", sameSite: "lax", secure: request.nextUrl.protocol === "https:",
+      });
+    }
+  }
+  if (settledValue && request.cookies.has(ONBOARDING_RETURN_COOKIE)) {
+    response.cookies.set(ONBOARDING_RETURN_COOKIE, "", { maxAge: 0, path: "/app" });
   }
 
   if (settledValue) {

@@ -35,7 +35,7 @@ test("public FAQ filters locally, expands answers, and stays usable on a phone i
     assert.equal(await page.getByText("名刺の読み取りが間違っているときは？").count(), 1);
     assert.equal(await page.getByText("Gmail 連携で読むのはどの範囲？").count(), 0);
     assert.equal(await page.locator("body").evaluate((element) => element.scrollWidth <= window.innerWidth), true);
-    assert.equal(await page.locator('a[href="/app/account/login"]').count(), 1);
+    assert.equal(await page.locator('a[href="/app/account/login?next=%2Fhelp"]').count(), 1);
     assert.equal(await page.locator('a[href^="mailto:"]').count(), 0);
   }
 });

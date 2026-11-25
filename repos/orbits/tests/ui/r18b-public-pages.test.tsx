@@ -13,7 +13,7 @@ test("public help has local FAQ, safe navigation, and no unconfigured contact ac
   assert.match(html, /名刺の読み取りが間違っているときは？/);
   assert.match(html, /type="search"/);
   assert.match(html, /準備中/);
-  assert.match(html, /href="\/app\/account\/login"/);
+  assert.match(html, /href="\/app\/account\/login\?next=%2Fhelp"/);
   assert.match(html, /href="\/terms"/);
   assert.match(html, /href="\/privacy"/);
   assert.doesNotMatch(html, /mailto:|フォームを開く|送信しました/);
@@ -37,7 +37,7 @@ test("public legal pages show substantive terms and privacy policy in each langu
 test("public pages are language-aware and show settings rather than login for a session", () => {
   const signedIn = renderToStaticMarkup(<PublicInfoPage kind="help" language="ja" signedIn />);
   assert.match(signedIn, /href="\/app\/settings"/);
-  assert.doesNotMatch(signedIn, /href="\/app\/account\/login"/);
+  assert.doesNotMatch(signedIn, /href="\/app\/account\/login/);
   assert.match(renderToStaticMarkup(<PublicInfoPage kind="terms" language="en" signedIn={false} />), /Terms of Use/);
   assert.match(renderToStaticMarkup(<PublicInfoPage kind="privacy" language="zh" signedIn={false} />), /隐私/);
 });

@@ -114,7 +114,7 @@ export function ProposalConfirmPage({ initial }: { initial: ProposalPageInitial 
               <h2>{t("otherAccountTitle")}</h2>
               <p>{t("otherAccountLine", { b: signedInAs })}</p>
               <div className={s.lockButtons}>
-                <button type="button" className={`btn ${s.pill} ${s.pillDark}`} onClick={() => void signOutAndForget(`/app/account/login?next=${encodeURIComponent(window.location.pathname)}`)}>{t("switchAccount")}</button>
+                <button type="button" className={`btn ${s.pill} ${s.pillDark}`} onClick={() => void signOutAndForget(`/app/account/login?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`)}>{t("switchAccount")}</button>
                 <Link className={`${s.pill} ${s.pillLight}`} href="/app/home">{t("goHome")}</Link>
               </div>
             </section>

@@ -25,6 +25,8 @@ import { HostContactCard } from "./HostContact";
 import { canSeeHostContact } from "../../../../../shared/compute/host-contact";
 import { eventsApi, eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
+import { authRoutePath } from "../auth-public/auth-model";
+import { currentReturnPath, useCurrentReturnPath } from "../auth-public/current-return-path";
 import { useDetailTiming, useLiveClock } from "./detail-timing";
 import { personRailOrDrawer, usePersonDetail, type AttendeeSeed } from "./AttendeeProfile";
 import r from "./record.module.css";
@@ -152,9 +154,9 @@ function CoverCard({ data, t, language }: { data: EventOverviewResponse; t: Jour
 }
 
 /** 「あなたに関係すること」的引导去向：未登录 → 登录后回到这场；已登录没计划 → 设定目标。 */
-function relevanceGuideCta(data: EventOverviewResponse, t: JourneyT) {
+function relevanceGuideCta(data: EventOverviewResponse, t: JourneyT, returnPath: string) {
   return data.signedOut
-    ? { href: `/app/account/login?next=${encodeURIComponent(`/app/events/${encodeURIComponent(data.eventId)}`)}`, label: t("navLogin") }
+    ? { href: authRoutePath("login", returnPath), label: t("navLogin") }
     : { href: "/app/tasks?tab=plan", label: t("setGoal") };
 }
 
@@ -163,10 +165,11 @@ function relevanceGuideCta(data: EventOverviewResponse, t: JourneyT) {
  * 已结束不出（调用方判断）。≥1280 在右栏，< 1280 / 手机在封面下。
  */
 export function DetailRelevance({ data, t, language, className, phone = false }: { data: EventOverviewResponse; t: JourneyT; language: OrbitLanguage; className?: string; phone?: boolean }) {
+  const returnPath = useCurrentReturnPath(`/app/events/${encodeURIComponent(data.eventId)}`);
   const guide = data.signedOut || noPlan(data);
   const rows = guide ? [] : relevanceRows(data.assessment?.relevance, language).slice(0, 3);
   if (!guide && rows.length === 0) return null;
-  const cta = relevanceGuideCta(data, t);
+  const cta = relevanceGuideCta(data, t, returnPath);
   return (
     <div className={`${styles.card} ${x.relCard} ${className ?? ""}`} data-detail-relevance="">
       {phone ? <div className={`${styles.lbl} ${x.pRelLbl}`}>{relevanceTitle(language)}</div> : <h4 className={x.cardH4}>{relevanceTitle(language)}</h4>}
@@ -363,7 +366,7 @@ export function HostCard({ data, t, language, className, heading = true, compact
     setBusy(false);
     if (result.ok) setFollowing(!following); else toast.error(assessTranslator(language)("genericError"));
   };
-  const here = `/app/events/${encodeURIComponent(data.eventId)}`;
+  const here = useCurrentReturnPath(`/app/events/${encodeURIComponent(data.eventId)}`);
   // 「你去过 N 次」是个人数据：未登录（服务端不给）不写；0 次也不写。
   const stats = [
     organizer.editions ? t("hostRanN", { n: organizer.editions }) : null,
@@ -379,7 +382,7 @@ export function HostCard({ data, t, language, className, heading = true, compact
       <div className={x.orgRow}>
         <span className={`${styles.emo} ${styles.t_lav}`}>{organizer.emoji ?? data.emoji}</span>
         <div className={x.meta}><b>{hostName(data, t)}</b>{stats ? <span data-detail-host-stats="">{stats}</span> : null}</div>
-        {data.signedOut ? <a className={`btn ${styles.btn} ${styles.sm} ${x.followBtn}`} href={`/app/account/login?next=${encodeURIComponent(here)}`}>{t("hostFollow")}</a>
+        {data.signedOut ? <a className={`btn ${styles.btn} ${styles.sm} ${x.followBtn}`} href={authRoutePath("login", here)}>{t("hostFollow")}</a>
           : organizerId ? <button type="button" className={`btn ${styles.btn} ${styles.sm} ${x.followBtn}`} aria-pressed={following} disabled={busy} onClick={() => void toggle()} data-detail-follow="">{following ? t("following") : t("hostFollow")}</button> : null}
       </div>
       {!compact && organizer.bio ? <div className={`${styles.sub} ${x.orgBio}`} data-detail-host-bio="">{organizer.bio}</div> : null}
@@ -502,7 +505,7 @@ export function PhoneDetailBody({ data, language, t, onRegister, onOpenPerson, a
   // ★ 保存 = 记成 R26 的评估（出现在「評価」列表），同一活动重复保存由服务端按来源去重。
   const save = async () => {
     // 未登录（公开页）：保存要账号，先去登录再回到这场。
-    if (data.signedOut) { window.location.assign(`/app/account/login?next=${encodeURIComponent(`/app/events/${encodeURIComponent(data.eventId)}`)}`); return; }
+    if (data.signedOut) { window.location.assign(authRoutePath("login", currentReturnPath(`/app/events/${encodeURIComponent(data.eventId)}`))); return; }
     const created = await eventsApi.create({ eventId: data.eventId, idempotencyKey: newIdempotencyKey(), sourceKind: "orbit_event" });
     if (created.ok) toast.success(t("savedToAssess")); else toast.error(assessTranslator(language)("genericError"));
   };

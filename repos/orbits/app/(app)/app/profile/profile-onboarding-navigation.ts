@@ -1,5 +1,4 @@
 import { normalizeOrbitAuthReturnPath } from "../../../../features/auth/app-auth-routing";
-import { isInviteCodePath } from "../../../../shared/compute/invite-code-format";
 
 const PROFILE_ROUTE_PREFIX = "/app/profile";
 const PROFILE_CONTINUE_ROUTE = "/app/profile/continue";
@@ -14,11 +13,15 @@ function pathnameOf(value: string): string | null {
   }
 }
 
+/**
+ * 引导 / 续接这两个流程页自身与账户页（登录、注册、改密等）不能当去处，否则会绕回流程里。
+ * 其余资料页（/app/profile、/app/profile/goal-editor …）可以：登录前打开它们，登录后照样回去。
+ */
 function isBlockedDestination(pathname: string | null): boolean {
   return Boolean(
     pathname &&
-      (pathname === PROFILE_ROUTE_PREFIX ||
-        pathname.startsWith(`${PROFILE_ROUTE_PREFIX}/`) ||
+      (pathname === PROFILE_CONTINUE_ROUTE ||
+        pathname === PROFILE_ONBOARDING_FLOW_ROUTE ||
         pathname === "/app/account" ||
         pathname.startsWith("/app/account/")),
   );
@@ -26,7 +29,9 @@ function isBlockedDestination(pathname: string | null): boolean {
 
 /**
  * Normalize a post-onboarding destination and reject destinations that would
- * send the user back through the profile or auth flow indefinitely.
+ * send the user back through the profile or auth flow indefinitely. A flow
+ * page that carries its own `?next=` (login, signup, continue, onboarding) is
+ * unwrapped to its innermost safe destination by `normalizeOrbitAuthReturnPath`.
  */
 export function normalizeProfileOnboardingNext(
   value: string | string[] | null | undefined,
@@ -47,32 +52,16 @@ export function normalizeProfileOnboardingNext(
 }
 
 /**
- * The existing auth boundary may wrap a deep link once as
- * `/app/profile/continue?next=...` before rendering the client form. Unwrap
- * only that known wrapper; the regular onboarding normalizer still rejects a
- * continuation/profile/auth destination supplied as the inner value.
+ * The login / signup forms read `?next=` with this. Kept as the forms' entry
+ * point; wrapped flow pages (`/app/profile/continue?next=…`,
+ * `/app/profile/onboarding?next=…`, nested login links) are unwrapped to the
+ * innermost destination instead of being dropped to the home page.
  */
 export function normalizeProfileAuthReturnPath(
   value: string | string[] | null | undefined,
   fallback = "/app/home",
 ): string {
-  const safeFallback = normalizeProfileOnboardingNext(fallback);
-  const normalized = normalizeOrbitAuthReturnPath(value, safeFallback);
-
-  if (pathnameOf(normalized) !== PROFILE_CONTINUE_ROUTE) {
-    return normalizeProfileOnboardingNext(normalized, safeFallback);
-  }
-
-  try {
-    const innerNext = new URL(normalized, "https://orbit.local").searchParams.get(
-      "next",
-    );
-    return innerNext
-      ? normalizeProfileOnboardingNext(innerNext, safeFallback)
-      : safeFallback;
-  } catch {
-    return safeFallback;
-  }
+  return normalizeProfileOnboardingNext(value, normalizeProfileOnboardingNext(fallback));
 }
 
 export function profileOnboardingPath(next: string): string {
@@ -87,9 +76,7 @@ export function profileOnboardingFlowPath(next: string): string {
 }
 
 export function profileContinuationPath(next: string): string {
-  // R15（DESIGN add-and-invite §2.5 第 2 步）：注册 / 登录后要回招待页 `/i/<码>` 时直接回去，不先进资料引导
-  // （资料门禁在之后第一次进 /app 时照常出现）。
-  if (isInviteCodePath(next)) return next;
+  // 2026-11-26：招待页 `/i/<码>` 也先经续接页——新用户先走完三步引导再回招待页（旧做法 R15 直接回去、跳过引导）。
   const safeNext = normalizeProfileOnboardingNext(next);
   return `${PROFILE_CONTINUE_ROUTE}?next=${encodeURIComponent(safeNext)}`;
 }

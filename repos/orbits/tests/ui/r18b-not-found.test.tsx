@@ -9,7 +9,7 @@ test("public 404 offers only safe public destinations", () => {
   assert.match(html, /このページは見つかりません/);
   assert.match(html, /href="\/"/);
   assert.match(html, /href="\/help"/);
-  assert.match(html, /href="\/app\/account\/login"/);
+  assert.match(html, /href="\/app\/account\/login\?next=%2Fapp%2Fhome"/);
   assert.match(html, /URL が<br[^>]*\/>間違っている可能性があります。/);
   assert.doesNotMatch(html, /href="\/app\/home"|data-orbit-2026-shell/);
 });
@@ -20,5 +20,5 @@ test("signed-in app 404 leaves shell chrome to its layout and goes to app home",
   assert.match(html, /href="\/app\/home"/);
   assert.match(html, /href="\/help"/);
   assert.doesNotMatch(html, /<br/);
-  assert.doesNotMatch(html, /href="\/app\/account\/login"|<header/);
+  assert.doesNotMatch(html, /href="\/app\/account\/login|<header/);
 });

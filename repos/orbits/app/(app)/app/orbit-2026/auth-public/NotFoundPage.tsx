@@ -2,6 +2,7 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { publicCopy } from "../copy/public";
 import { pickCopy } from "../copy/types";
 import { Orbit2026Scope } from "../ui";
+import { CurrentPageLoginLink } from "./current-return-path";
 import p from "./PublicInfoPage.module.css";
 import s from "./NotFoundPage.module.css";
 
@@ -24,7 +25,8 @@ export function NotFoundPage({ language, signedIn, insideApp }: {
         <a href="/terms">{t("termsNav")}</a>
         <a href="/privacy">{t("privacyNav")}</a>
       </nav>
-      <a className={p.accountAction} href={signedIn ? "/app/settings" : "/app/account/login"}>{t(signedIn ? "settings" : "login")}</a>
+      {signedIn ? <a className={p.accountAction} href="/app/settings">{t("settings")}</a>
+        : <CurrentPageLoginLink className={p.accountAction}>{t("login")}</CurrentPageLoginLink>}
     </header> : null}
     <main className={s.content}>
       <div className={s.icon} aria-hidden="true">🧭</div>

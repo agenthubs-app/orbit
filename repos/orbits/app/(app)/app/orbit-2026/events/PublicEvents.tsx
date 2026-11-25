@@ -8,6 +8,7 @@ import type { EventDiscoverResponse } from "../../../../../shared/contract/event
 import type { EventOverviewResponse } from "../../../../../shared/contract/event-overview";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { authRoutePath } from "../auth-public/auth-model";
+import { useCurrentReturnPath } from "../auth-public/current-return-path";
 import { Icon, Orbit2026Scope, ToastProvider } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { DEFAULT_DISCOVER_QUERY, coverBands, discoverWhen, journeyTranslator, rowTone, type JourneyT } from "./DiscoverTab";
@@ -22,8 +23,9 @@ import r from "./record.module.css";
 
 const LOGIN = "/app/account/login";
 
-/** `next`：登录 / 注册完回到的页面（这条顶栏所在的活动列表或详情）。 */
-export function PublicNav({ t, next }: { t: JourneyT; next: string }) {
+/** `next`：登录 / 注册完回到的页面（这条顶栏所在的活动列表或详情）；挂载后换成当前地址（路径 + 查询参数，如 `?inv=`）。 */
+export function PublicNav({ t, next: fallback }: { t: JourneyT; next: string }) {
+  const next = useCurrentReturnPath(fallback);
   return (
     <nav className={p.lpNav} data-public-nav="">
       <a className={`${styles.row} ${p.brand}`} href="/" style={{ gap: 10 }}><span className={p.logo}>O</span><b>Orbit</b></a>
@@ -39,12 +41,13 @@ export function PublicNav({ t, next }: { t: JourneyT; next: string }) {
 /** 列表页顶部整行的「这场活动值得去吗？」。只做整行：窄卡（span4）会把标题和说明挤成一列（11-12 已从详情右上角撤下，由示例评估卡替代）。 */
 export function LoginAssessCard({ t, language }: { t: JourneyT; language: OrbitLanguage }) {
   const at = assessTranslator(language);
+  const next = useCurrentReturnPath("/app/events");
   return (
     <div className={`${styles.card} ${styles.span12} ${p.loginCard}`} data-public-login="">
       <div className={styles.row} style={{ gap: 12 }}>
         <span className={`${styles.emo} ${styles.t_lav}`}>🔍</span>
         <div style={{ flex: 1 }}><b className={p.loginTitle}>{at("assessTitle")}</b><div className={styles.lbl}>{t("loginAssessSub")}</div></div>
-        <a className={`btn ${styles.btn} ${styles.primary}`} href={LOGIN}>{t("loginAssessBtn")}</a>
+        <a className={`btn ${styles.btn} ${styles.primary}`} href={authRoutePath("login", next)}>{t("loginAssessBtn")}</a>
       </div>
     </div>
   );
@@ -128,7 +131,9 @@ function DetailInner({ eventId, language, inviteCode, frame = false }: { eventId
   const phone = usePhone();
   // 报名对没有账号的人就是注册：直接去注册页（里面有「已有账号？登录」，next 一起带过去）。
   const here = inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : eventId ? `/app/events/${encodeURIComponent(eventId)}` : "/app/events";
-  const registerHref = authRoutePath("register", inviteCode ? here : `${here}/register`);
+  // 当前地址的查询参数（如 `?inv=`）也带到报名页。
+  const [herePath, hereQuery] = useCurrentReturnPath(here).split("?");
+  const registerHref = authRoutePath("register", inviteCode ? here : `${here}/register${herePath === here && hereQuery ? `?${hereQuery}` : ""}`);
   useEffect(() => { if (!frame) void journeyApi.overview(eventId).then((result) => { if (result.ok) setData({ ...result.data, signedOut: true }); else setMissing(true); }); }, [eventId, frame]);
   return (
     <div className={p.page}>

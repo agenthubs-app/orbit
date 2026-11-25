@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { useOrbitLanguage } from "./orbit-language-context";
 import { Icon } from "./orbit-reference-primitives";
 import { productHref } from "./orbit-product-href";
+import { useCurrentReturnPath } from "./orbit-2026/auth-public/current-return-path";
 import { ORBIT_Z } from "./orbit-z";
 
 // iOrbit 任务 6a：`/app/schedule`、`/app/followups`、`/app/today` 三条路由已随
@@ -53,6 +54,8 @@ function OrbitNavAccountControl({
   const { preserveHref, t } = useOrbitLanguage();
   const { data: session, hasProvider, status } = useOrbitNavSession();
   const pathname = usePathname();
+  // 登录 / 注册回到当前页面（路径 + 查询参数）；首帧用路径。
+  const nextPath = useCurrentReturnPath(pathname || "/app");
   const [menuOpen, setMenuOpen] = useState(false);
 
   const sessionUser: OrbitNavSessionUser | null | undefined =
@@ -102,7 +105,6 @@ function OrbitNavAccountControl({
   }
 
   if (sessionUser === null) {
-    const nextPath = pathname || "/app";
 
     return (
       <span style={{ alignItems: "center", display: "inline-flex", gap: 18 }}>
@@ -260,6 +262,7 @@ function OrbitNavMobileAccountLinks({
   const { preserveHref, t } = useOrbitLanguage();
   const { data: session, status } = useOrbitNavSession();
   const pathname = usePathname();
+  const nextPath = useCurrentReturnPath(pathname || "/app");
 
   if (status === "loading") {
     return (
@@ -301,8 +304,6 @@ function OrbitNavMobileAccountLinks({
       </>
     );
   }
-
-  const nextPath = pathname || "/app";
 
   return (
     <>

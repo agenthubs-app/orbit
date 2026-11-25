@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
-import { normalizeOrbitAuthReturnPath } from "../../../../../features/auth/app-auth-routing";
+import { isOrbitPublicReturnPath, normalizeOrbitAuthReturnPath } from "../../../../../features/auth/app-auth-routing";
 import { isInviteCodePath } from "../../../../../shared/compute/invite-code-format";
 import {
   normalizeProfileAuthReturnPath,
@@ -15,6 +15,7 @@ import type { AccountRegisterEmailVerification, AccountRegisterRequest } from ".
 import type { SignupFunnelOpenedInput, SignupFunnelSource } from "../../../../../shared/contract/signup-funnel";
 import { AUTH_ERROR_COPY, registerErrorCopy } from "./auth-model";
 import { credentialsLandingPath } from "./password-change-client";
+import { rememberPasswordResetReturnPath } from "./use-password-reset";
 
 // 原样抽自 account/orbit-real-account-auth.tsx（15–57 行：productHref / navigate /
 // AccountAuthQuery / SSR 安全回退 / 从 location 读 query；68–78 行：状态；83–87 行：
@@ -34,6 +35,8 @@ import { credentialsLandingPath } from "./password-change-client";
 export function productHref(prototypeHref: string) {
   // R15：招待页 `/i/<码>` 在 /app 之外（注册 / 登录后从这里回去），原样返回。
   if (isInviteCodePath(prototypeHref)) return prototypeHref;
+  // 主办方页、申込短链、帮助 / 条款 / 隐私也在 /app 之外。
+  if (isOrbitPublicReturnPath(prototypeHref.split(/[?#]/u)[0] ?? "")) return prototypeHref;
   if (prototypeHref === "/") return "/app";
   if (prototypeHref.startsWith("/app")) return prototypeHref;
   if (prototypeHref.startsWith("/account/")) return `/app${prototypeHref}`;
@@ -243,6 +246,8 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
           return;
         }
         // 受理 ≠ 送达：只置位，文案由找回屏给出（设计 401–404 + 「如果该邮箱支持密码恢复，链接会很快送达。」）。
+        // 邮件链接只带 token：原页面记在本机，重设完成后「用新密码登录」带回去。
+        rememberPasswordResetReturnPath(query.next);
         setResetSent(true);
         return;
       }

@@ -30,6 +30,9 @@ test("personal app route trees are private", () => {
     "/app/events/demo-event/prep",
     "/app/events/demo-event/live",
     "/app/events/demo-event/after",
+    // 2026-11-26：页面自己跳登录时会丢查询参数，改由代理拦。
+    "/app/events/demo-event/people",
+    "/app/start",
   ]) {
     assert.equal(isOrbitPrivateAppPath(pathname), true, pathname);
   }

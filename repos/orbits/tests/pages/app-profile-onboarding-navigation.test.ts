@@ -234,11 +234,14 @@ test("profile onboarding next preserves an in-app deep link and rejects loops", 
     "/app/profile?onboarding=1&next=%2Fapp%2Fcontacts%3Ffrom%3Dw1%23contact-list",
   );
 
+  // 2026-11-26：资料页本身可以当回跳目标（登录前打开 /app/profile，登录后回去）；流程页自身仍不行。
+  assert.equal(normalizeProfileOnboardingNext("/app/profile"), "/app/profile");
+  assert.equal(normalizeProfileOnboardingNext("/app/profile/goal-editor?x=1"), "/app/profile/goal-editor?x=1");
   for (const unsafeNext of [
-    "/app/profile",
     "/app/profile/continue",
-    "/app/profile/%70rofile",
+    "/app/profile/onboarding",
     "/app/%70rofile/continue",
+    "/app/profile/%6Fnboarding",
     "/app/%61ccount/login",
     "/app/account/login",
     "https://evil.example/steal",
@@ -249,11 +252,15 @@ test("profile onboarding next preserves an in-app deep link and rejects loops", 
   }
   assert.equal(
     normalizeProfileOnboardingNext("https://evil.example/next", "/app/profile"),
+    "/app/profile",
+  );
+  assert.equal(
+    normalizeProfileOnboardingNext("https://evil.example/next", "/app/profile/onboarding"),
     "/app/home",
   );
 });
 
-test("auth client unwraps exactly one known proxy continuation wrapper", () => {
+test("auth client unwraps nested flow wrappers to the innermost destination", () => {
   const deepLink = "/app/contacts?from=w1#contact-list";
   const wrapped = profileContinuationPath(deepLink);
   assert.equal(normalizeProfileAuthReturnPath(wrapped), deepLink);
@@ -261,11 +268,11 @@ test("auth client unwraps exactly one known proxy continuation wrapper", () => {
     normalizeProfileAuthReturnPath(
       "/app/profile/continue?next=%2Fapp%2Fprofile%2Fcontinue%3Fnext%3D%252Fapp%252Fcontacts",
     ),
-    "/app/home",
+    "/app/contacts",
   );
   assert.equal(
     normalizeProfileAuthReturnPath("/app/profile/continue", "/app/profile"),
-    "/app/home",
+    "/app/profile",
   );
   assert.equal(
     normalizeProfileAuthReturnPath(
@@ -432,6 +439,43 @@ test("continuation keeps an incomplete real store profile on onboarding in produ
       "/app/profile/onboarding?next=%2Fapp%2Fcontacts%3Ffrom%3Dprod",
     );
   }, undefined, "production");
+});
+
+test("a new user signing in from an invite or an event page finishes onboarding first, then returns there", async (t) => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const service = createLiveProfileService({
+    provider: createStorageProfileProvider({ store, workspaceId: profileFixtureWorkspace }),
+  });
+
+  for (const [next, expected] of [
+    ["/i/K7QX-2M9P", "/app/profile/onboarding?next=%2Fi%2FK7QX-2M9P"],
+    ["/app/events/evt-1?inv=AB12-CD34", "/app/profile/onboarding?next=%2Fapp%2Fevents%2Fevt-1%3Finv%3DAB12-CD34"],
+    ["/app/events/evt-1/register", "/app/profile/onboarding?next=%2Fapp%2Fevents%2Fevt-1%2Fregister"],
+    // 引导中途退出后再登录：next 套在引导页地址里，解包回原页面，不丢成首页。
+    ["/app/profile/onboarding?next=%2Fapp%2Fevents%2Fevt-1", "/app/profile/onboarding?next=%2Fapp%2Fevents%2Fevt-1"],
+  ] as const) {
+    await withProfileEnvironment(async () => {
+      const { calls, page, redirected } = loadProfileContinuePage(t, { profileService: service });
+      await assert.rejects(page({ searchParams: Promise.resolve({ next }) }), (error) => error === redirected);
+      assert.equal(calls.find((call) => call.operation === "redirect")?.input, expected, next);
+    }, undefined, "production");
+  }
+});
+
+test("a finished user signing in from an invite, a public page or a profile page goes straight back there", async (t) => {
+  const { accountId, store } = profileMembershipFixture();
+  const service = createLiveProfileService({ provider: createStorageProfileProvider({ store, workspaceId: profileFixtureWorkspace }) });
+  assert.equal((await service.updateProfile({
+    birthDate: "2000-02-29", displayName: "Back Again", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.enterprise_software",
+  }, { actorId: accountId })).success, true);
+
+  for (const next of ["/i/K7QX-2M9P", "/o/tokyo-founders", "/help", "/app/profile", "/app/events/evt-1?inv=AB12-CD34"]) {
+    await withProfileEnvironment(async () => {
+      const { calls, page, redirected } = loadProfileContinuePage(t, { profileService: service });
+      await assert.rejects(page({ searchParams: Promise.resolve({ next }) }), (error) => error === redirected);
+      assert.equal(calls.find((call) => call.operation === "redirect")?.input, next, next);
+    }, "live");
+  }
 });
 
 test("continuation shows a retry state for a failed real profile read in production", async (t) => {
