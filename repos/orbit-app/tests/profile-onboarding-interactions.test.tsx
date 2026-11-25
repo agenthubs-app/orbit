@@ -231,6 +231,17 @@ test("「下一步」 is never greyed out: it lists what is missing, marks it, a
   assert.deepEqual(await alerts(page), []);
 });
 
+test("the card's WeChat, LINE and website only fill what the profile leaves empty", async t => {
+  const scan = { draft: { displayName: "林晓", organization: "Orbit", role: "CEO", email: "lin@orbit.example", phone: "" }, ocr: { structuredExtraction: { ...IT, contactPoints: [{ type: "wechat", value: "card-wechat" }, { type: "line", value: "card-line" }], website: "https://card.example" } } };
+  const page = await open(t, { card: true, scan, ...withProfile({ handles: { wechatId: "my-wechat", website: "", xHandle: "lin" } }) });
+  await page.getByRole("button", { name: "从相册选择" }).click();
+  await page.getByText(/^名片读到/u).waitFor();
+  assert.equal(await page.getByText("card-line").count(), 0, "step 1 has no box for them");
+  await next(page).click();
+  await page.getByText("第2/3步 · 目标与强项", { exact: true }).waitFor();
+  assert.deepEqual((await fx(page)).profile.handles, { email: "lin@orbit.example", wechatId: "my-wechat", lineId: "card-line", website: "https://card.example", xHandle: "lin" });
+});
+
 test("the own card fills what is printed and what AI judged, says which is which, and a change drops the mark", async t => {
   const scan = { draft: { displayName: "佐藤 健一", organization: "株式会社ミナトリンク", role: "代表取締役 CEO", email: "sato@minatolink.example", phone: "03-5555-0142" }, ocr: { structuredExtraction: IT } };
   const page = await open(t, { card: true, scan, infer: { status: "ready", offering: ["客户引荐", "人才推荐"], topics: ["生成式 AI"] } });

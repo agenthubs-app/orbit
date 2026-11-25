@@ -26,6 +26,7 @@ import {
   scanOwnBusinessCard,
   suggestOnboardingSeeking,
   type OnboardingProfileFields,
+  type OwnCard,
 } from "../../../api/profile-onboarding";
 import { readProfileOnboardingProgress, updateProfileOnboardingProgress, type AppProfileOnboardingProgress } from "../../../api/profile-onboarding-progress";
 import { isTabPageHref, openMainTab, resetStackTo } from "../../../components/shell-navigation";
@@ -137,6 +138,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   const [fillRevision, setFillRevision] = useState(0);
   const [marks, setMarks] = useState<Marks>({});
   const [scan, setScan] = useState<ScanState>({ kind: "idle" });
+  const cardHandles = useRef<OwnCard["handles"]>({});
   const [introStatus, setIntroStatus] = useState<IntroStatus>("idle");
   const [tone, setTone] = useState<IntroTone>("native");
   const [editing, setEditing] = useState(false);
@@ -284,9 +286,9 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   function fieldsFor(step: OnboardingStep): OnboardingProfileFields {
     if (step === "goals") return { relationshipGoal: composeRelationshipGoal({ goals, focus, horizon }, locale.language), offering: offer, seeking: seek, topics };
     if (step === "intro") return { bio: bio.trim(), headline: headline.trim() };
-    // PUT replaces handles as a whole: keep what is saved, in the response schema's key order (the receipt is compared as text).
+    // What the card prints only fills handles still empty. PUT replaces handles as a whole: keep what is saved, in the response schema's key order (the receipt is compared as text).
     const saved = detail?.profile?.handles;
-    const merged: Record<string, string | undefined> = { ...saved, email: basic.email.trim(), phone: basic.phone.trim() };
+    const merged: Record<string, string | undefined> = { ...cardHandles.current, ...Object.fromEntries(Object.entries(saved ?? {}).filter(([, value]) => value)), email: basic.email.trim(), phone: basic.phone.trim() };
     const handles = Object.fromEntries(HANDLE_KEYS.filter(key => merged[key]).map(key => [key, merged[key]!]));
     const contacts = saved || Object.keys(handles).length ? { handles } : {};
     return {
@@ -446,6 +448,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
         ...(card.industry ? { primaryIndustryId: "ai" as const, secondaryIndustryId: "ai" as const } : {}),
         ...(card.seniorityLevel ? { seniorityLevel: "ai" as const } : {}),
       }));
+      cardHandles.current = card.handles;
       setScan({ kind: "done", card: found.length, ai: (card.industry ? 2 : 0) + (card.seniorityLevel ? 1 : 0) });
       seniorityTouched.current = false;
       void infer({ displayName: card.name, organization: card.company, role: card.title, industry: card.industry });

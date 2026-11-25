@@ -170,9 +170,9 @@ test("intro draft posts the language and accepts only a complete draft", async (
 });
 
 test("own business card scan keeps what is printed apart from the industry AI judged", async () => {
-  const server = aiServer(() => ok({ draft: { displayName: " 林晓 ", organization: "Orbit", role: "产品负责人", email: "x@y.z" }, ocr: { structuredExtraction: { primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data", seniorityLevel: "founder", regionCountryCode: "JP", regionCity: "Tokyo" } } }));
+  const server = aiServer(() => ok({ draft: { displayName: " 林晓 ", organization: "Orbit", role: "产品负责人", email: "x@y.z" }, ocr: { structuredExtraction: { primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data", seniorityLevel: "founder", regionCountryCode: "JP", regionCity: "Tokyo", contactPoints: [{ type: "email", value: "x@y.z" }, { type: "wechat", value: " " }, { type: "wechat", value: " lin_xiao " }, { type: "website", value: "https://b.example" }], website: null } } }));
   const result = await scanOwnBusinessCard(server.client, { base64: "AAAA", mimeType: "image/jpeg", fileName: "card.jpg", size: 3 });
-  assert.deepEqual(result, { ok: true, name: "林晓", company: "Orbit", title: "产品负责人", email: "x@y.z", phone: "", industry: { primary: "technology_internet", secondary: "technology_internet.ai_data" }, seniorityLevel: "founder", region: { countryCode: "JP", city: "Tokyo" } });
+  assert.deepEqual(result, { ok: true, name: "林晓", company: "Orbit", title: "产品负责人", email: "x@y.z", phone: "", industry: { primary: "technology_internet", secondary: "technology_internet.ai_data" }, seniorityLevel: "founder", region: { countryCode: "JP", city: "Tokyo" }, handles: { website: "https://b.example", wechatId: "lin_xiao" } });
   const mismatched = await scanOwnBusinessCard(aiServer(() => ok({ draft: { displayName: "林晓" }, ocr: { structuredExtraction: { primaryIndustryId: "technology_internet", secondaryIndustryId: "food_hospitality.restaurants" } } })).client, { base64: "A", mimeType: "image/jpeg", fileName: "c.jpg", size: 1 });
   assert.equal(mismatched.ok && mismatched.industry, null, "never half an industry");
   assert.deepEqual(server.requests[0], { path: "/api/contact-drafts/business-card/scan", body: { imageBase64: "AAAA", imageName: "card.jpg", imageSizeBytes: 3, mimeType: "image/jpeg" } });

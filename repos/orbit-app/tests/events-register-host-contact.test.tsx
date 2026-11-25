@@ -83,8 +83,12 @@ test("first come, first served: 报名 → 确定参加 → 当天, nothing abou
 
 test("the review names everything attendees see, wrapped inside the card", async (t) => {
   const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: responses({ lineId: null, note: null, wechatId: null }) });
-  const line = page.getByText("名字 · 公司 · 行业 · 自我介绍 · 话题 · 能提供的 · 交流方式 · 会后联系方式", { exact: true });
+  const line = page.getByText("名字 · 公司 · 行业 · 自我介绍 · 参加目的 · 想见的人 · 话题 · 能提供的 · 交流方式 · 会后联系方式", { exact: true });
   await line.waitFor();
   const box = (await line.boundingBox())!;
   assert.ok(box.x + box.width <= (page.viewportSize()?.width ?? 390) - 18, JSON.stringify(box));
+  // 「参加目的」「想见的人」也公开给参加者，不再有「仅主办方」一行。
+  assert.equal(await page.getByText("仅主办方", { exact: true }).count(), 0);
+  const chip = (await page.getByText("所有参会者", { exact: true }).boundingBox())!;
+  assert.ok(chip.height < 24, `the chip stays on one line: ${JSON.stringify(chip)}`);
 });

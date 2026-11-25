@@ -6,6 +6,7 @@
 //      - 名片上印着的（标「名刺から」）：draft 的 displayName / organization / role / email / phone，空串 = 没读到；
 //      - AI 判断的（标「AI 推定」）：ocr.structuredExtraction 的行业、职级、地区。文字整理那一次调用顺带给出，不多等一轮；
 //        已由服务端校验（行业不合法、一二级不匹配时两项都是 null）。
+//    微信号、LINE、网址（contactPoints / website）也写进 handles，只补空的，不改已有的值。
 //    email / phone 写进资料的 handles（PUT /api/profile 的 handles 是**整体替换**，先合并读到的旧值）。
 //    handles 不在公开投影里，默认不公开。
 //
@@ -48,6 +49,9 @@ export interface OwnCardScanContract {
       regionCountryCode?: string | null;
       /** 城市英文名（如 Tokyo）。 */
       regionCity?: string | null;
+      /** 名片上印的联系渠道（2026-11-26 起引导读 wechat / line / website，写进 handles；其余类型不用）。 */
+      contactPoints?: readonly { type: string; value: string }[];
+      website?: string | null;
     };
   };
 }

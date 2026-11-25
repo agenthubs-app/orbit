@@ -1926,8 +1926,6 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["eventsJourney.visibilityTitle", "label"],
   ["eventsJourney.visAll", "label"],
   ["eventsJourney.visAllFields", "label"],
-  ["eventsJourney.visOrg", "label"],
-  ["eventsJourney.visOrgFields", "label"],
   ["eventsJourney.applyNow", "fullButton"],
   ["eventsJourney.editableUntil", "label"],
   ["eventsJourney.doneTitle", "pageTitle"],

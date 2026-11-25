@@ -33,3 +33,23 @@ test("without one there is no empty line; with nothing at all there is no card",
   await bare.getByTestId("events-attendee-request").waitFor();
   assert.equal(await bare.getByTestId("events-attendee-intro").count(), 0);
 });
+
+// 「参加目的」「想见的人」按服务端给的问答显示：有就两行，旧报名没有就不留空行，最多 8 行都显示。
+test("the purpose and who to meet show as questions when the server gives them", async (t) => {
+  const page = await harness.open(t, { screen: "attendee", responses: { [path]: { ...base, answers: [...base.answers, { a: "找到合作伙伴", q: "参加目的" }, { a: "投资人、创业者", q: "想见的人" }], intro: null } } });
+  const card = page.getByTestId("events-attendee-intro");
+  await card.waitFor();
+  assert.match(await card.innerText(), /参加目的\s+找到合作伙伴\s+想见的人\s+投资人、创业者$/u);
+  const old = await harness.open(t, { screen: "attendee", responses: { [path]: { ...base, intro: null } } });
+  await old.getByTestId("events-attendee-intro").waitFor();
+  assert.equal(await old.getByText("参加目的", { exact: true }).count() + await old.getByText("想见的人", { exact: true }).count(), 0);
+});
+
+test("all eight questions show", async (t) => {
+  const answers = Array.from({ length: 8 }, (_, index) => ({ a: `回答${index + 1}`, q: `问题${index + 1}` }));
+  const page = await harness.open(t, { screen: "attendee", responses: { [path]: { ...base, answers, intro: "介绍" } } });
+  const card = page.getByTestId("events-attendee-intro");
+  await card.waitFor();
+  const text = await card.innerText();
+  for (const { a, q } of answers) assert.ok(text.includes(q) && text.includes(a), `${q} missing: ${text}`);
+});

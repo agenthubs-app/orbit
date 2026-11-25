@@ -284,7 +284,6 @@ function RegisterFlow() {
         <View style={[styles.card, styles.gap, styles.flat]}>
           <UiText style={[styles.lbl, { marginBottom: 8 }]}>{t("visibilityTitle")}</UiText>
           <View style={[styles.row, { gap: 8 }]}><View style={[styles.chip, { backgroundColor: colors.macTeal }]}><UiText style={[styles.chipText, { color: colors.macTealInk }]}>{t("visAll")}</UiText></View><UiText style={[styles.sub, styles.fill]}>{t("visAllFields")}</UiText></View>
-          <View style={[styles.row, { gap: 8, marginTop: 6 }]}><View style={styles.chip}><UiText style={styles.chipText}>{t("visOrg")}</UiText></View><UiText style={[styles.sub, styles.fill]}>{t("visOrgFields")}</UiText></View>
         </View>
         <UiPressable accessibilityRole="button" accessibilityLabel={t("applyNow")} disabled={busy} onPress={() => void apply()} style={styles.block48} testID="events-join-apply"><UiText style={styles.primaryText}>{t("applyNow")}</UiText></UiPressable>
         {profile?.editableUntil ? <UiText style={[styles.lbl, { marginTop: 8, textAlign: "center" }]}>{t("editableUntil", { date: monthDaySlash(profile.editableUntil) })}</UiText> : null}

@@ -105,6 +105,8 @@ export interface OwnCard {
   seniorityLevel: SeniorityLevelValue | null;
   /** The region of the printed address: ISO country code + canonical English city. */
   region: { countryCode: string; city: string } | null;
+  /** WeChat, LINE and the website printed on the card. Step 1 has no box for them; they only fill what the profile leaves empty. */
+  handles: { lineId?: string; website?: string; wechatId?: string };
 }
 
 const text = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
@@ -112,6 +114,13 @@ const text = (value: unknown): string => (typeof value === "string" ? value.trim
 function industryPair(primary: unknown, secondary: unknown): OwnCard["industry"] {
   if (!isIndustryIdCode(primary) || typeof secondary !== "string") return null;
   return validateIndustrySelection({ primaryIndustryId: primary, secondaryIndustryId: secondary }).valid ? { primary, secondary: secondary as SecondaryIndustryIdCode } : null;
+}
+
+function printedHandles(read: OwnCardScanContract["ocr"]["structuredExtraction"]): OwnCard["handles"] {
+  const points = Array.isArray(read?.contactPoints) ? read.contactPoints : [];
+  const point = (type: string) => points.filter(item => item?.type === type).map(item => text(item.value)).find(Boolean) ?? "";
+  const found = { lineId: point("line"), website: text(read?.website) || point("website"), wechatId: point("wechat") };
+  return Object.fromEntries(Object.entries(found).filter(([, value]) => value));
 }
 
 /** The scan only returns a draft for review; it does not create a contact. */
@@ -131,6 +140,7 @@ export async function scanOwnBusinessCard(
     industry: industryPair(judged?.primaryIndustryId, judged?.secondaryIndustryId),
     seniorityLevel: isSeniorityLevelValue(judged?.seniorityLevel) ? judged.seniorityLevel : null,
     region: /^[A-Z]{2}$/u.test(text(judged?.regionCountryCode)) ? { countryCode: text(judged?.regionCountryCode), city: text(judged?.regionCity) } : null,
+    handles: printedHandles(judged),
   };
 }
 
