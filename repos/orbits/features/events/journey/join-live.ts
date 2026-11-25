@@ -108,8 +108,8 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     return service;
   };
   const selfProfile = async (actorId: string, language: JourneyLanguage) => {
-    const { getSelfProfileForAi } = await import("../../profile/self-profile-reader");
-    const result = await getSelfProfileForAi({ actorId, mode: "live" }, { locale: language });
+    const { getSelfProfileForRegistration } = await import("../../profile/self-profile-reader");
+    const result = await getSelfProfileForRegistration({ actorId, mode: "live" }, { locale: language });
     return result.status === "ok" ? result.profile : null;
   };
   // Signed as fixed questions so both paths (direct registration, admission application) take them; at most 5 + 2 answers.

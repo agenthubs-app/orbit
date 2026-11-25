@@ -101,7 +101,7 @@ export function resolveAuthenticatedApiActorIdentity({
     email: session.email,
     id: account.id,
     name: session.name ?? profile.displayName,
-    ...(profile.displayName.trim() ? { profileName: profile.displayName.trim() } : {}),
+    ...(profile.displayName?.trim() ? { profileName: profile.displayName.trim() } : {}),
     profileId: profile.id,
     userId: session.userId,
     workspaceId,

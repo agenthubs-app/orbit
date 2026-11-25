@@ -1,4 +1,5 @@
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
+import type { ManualProfileContract } from "../../shared/contract/profile";
 import type { OrbitLanguage } from "../../shared/contract/language";
 import { INDUSTRY_TAXONOMY_VERSION, industryLabel, secondaryIndustryLabel, validateIndustrySelection } from "../../shared/domain/industries";
 import { projectPublicProfile } from "./public-projection";
@@ -17,9 +18,6 @@ export type SelfProfileForAi = {
   offering: readonly string[];
   seeking: readonly string[];
   topics: readonly string[];
-  /** 资料里的目标原文（profile-onboarding-goal 的写法）；没填为 null。 */
-  relationshipGoal: string | null;
-  seniorityLevel: string | null;
   spokenLanguages: readonly string[];
   industry: {
     primaryIndustryId: IndustryIdCode | null;
@@ -30,17 +28,28 @@ export type SelfProfileForAi = {
   };
   updatedAt: string;
 };
-export type SelfProfileReadResult =
-  | { status: "ok"; profile: SelfProfileForAi }
+/** 报名页给本人预选用的两项：目标原文（profile-onboarding-goal 的写法）、职级。不进给 AI 的资料（SelfProfileForAi）。 */
+export type SelfProfileForRegistration = SelfProfileForAi & { relationshipGoal: string | null; seniorityLevel: string | null };
+export type SelfProfileReadResult<T = SelfProfileForAi> =
+  | { status: "ok"; profile: T }
   | { status: "empty"; profile: null }
   | { status: "error"; code: "UNAUTHORIZED" | "FORBIDDEN" | "SERVICE_UNAVAILABLE" };
 
 // Actor identity comes from server assembly, never from model arguments.
 // No cache or mock fallback: account changes and live failures stay isolated.
-export async function getSelfProfileForAi(
+export async function getSelfProfileForAi(context: SelfProfileReadContext, input: { locale: OrbitLanguage }): Promise<SelfProfileReadResult> {
+  return readSelfProfile(context, input, () => ({}));
+}
+
+export async function getSelfProfileForRegistration(context: SelfProfileReadContext, input: { locale: OrbitLanguage }): Promise<SelfProfileReadResult<SelfProfileForRegistration>> {
+  return readSelfProfile(context, input, (profile) => ({ relationshipGoal: profile.relationshipGoal?.trim() || null, seniorityLevel: profile.seniorityLevel ?? null }));
+}
+
+async function readSelfProfile<T extends object>(
   context: SelfProfileReadContext,
   input: { locale: OrbitLanguage },
-): Promise<SelfProfileReadResult> {
+  extra: (profile: ManualProfileContract) => T,
+): Promise<SelfProfileReadResult<SelfProfileForAi & T>> {
   const actorId = context.actorId.trim();
   if (!actorId) return { status: "error", code: "UNAUTHORIZED" };
   try {
@@ -74,8 +83,6 @@ export async function getSelfProfileForAi(
         offering: [...(publicProfile.offering ?? [])],
         seeking: [...(publicProfile.seeking ?? [])],
         topics: [...(publicProfile.topics ?? [])],
-        relationshipGoal: profile.relationshipGoal?.trim() || null,
-        seniorityLevel: profile.seniorityLevel ?? null,
         spokenLanguages: [...(publicProfile.spokenLanguages ?? [])],
         industry: {
           primaryIndustryId,
@@ -85,6 +92,7 @@ export async function getSelfProfileForAi(
           taxonomyVersion: INDUSTRY_TAXONOMY_VERSION,
         },
         updatedAt: publicProfile.updatedAt,
+        ...extra(profile),
       },
     };
   } catch {
