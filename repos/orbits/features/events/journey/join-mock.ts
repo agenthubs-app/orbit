@@ -11,10 +11,13 @@ export function createJoinMockPorts(): JoinPorts {
   return {
     async event(eventId) { return eventId === JOURNEY_EVENT_ID ? EVENT : null; },
     // 示例访谈问到「会いたい人」（第 3 问）就认为够了；确认页点「追加」（more）再问下一题（画板 #370：86 % · 提供できること △）。
-    async next(_eventId, answers, _language, more) {
+    // `plan`：跳过已覆盖的字段；满 5 题后的追问只问缺的项（同 live 访谈）。
+    async next(_eventId, answers, _language, more, plan) {
       if (answers.length >= 3 && !more) return null;
-      const question = JOURNEY_JOIN_QUESTIONS[answers.length];
-      return question ? { allowCustom: true, field: question.field, options: [...question.options], prompt: question.prompt, questionToken: `sample-question-${answers.length + 1}` } : null;
+      const answered = new Set(answers.map((answer) => answer.field));
+      const index = JOURNEY_JOIN_QUESTIONS.findIndex((item) => !answered.has(item.field) && !plan?.skipFields?.includes(item.field) && (!plan?.focusFields || plan.focusFields.includes(item.field)));
+      const question = JOURNEY_JOIN_QUESTIONS[index];
+      return question ? { allowCustom: true, field: question.field, options: [...question.options], prompt: question.prompt, questionToken: `sample-question-${index + 1}` } : null;
     },
     async persona() { return { selfIntroDraft: JOURNEY_JOIN_SELF_INTRO, tags: ["SaaS の KPI 開示"] }; },
     async profileIntro() { return null; },

@@ -1,7 +1,7 @@
 /**
  * R23 生成流程的路由处理（`app/api/agent/plans/{goal-kind,intakes,drafts}/**` 只 re-export 这里）。
  * 写法同 `handlers.ts`：live 要登录、mock 用演示账号；请求体 schema 严格，响应先过 schema；
- * 界面语言取 `x-orbit-lang` 或 `?lang`，深链平台取 `x-orbit-platform` 或 `?platform`（`app` / 默认 `web`）。
+ * 界面语言取 `?lang`、`x-orbit-lang`、`orbit-lang` cookie（缺省 ja），深链平台取 `x-orbit-platform` 或 `?platform`（`app` / 默认 `web`）。
  */
 import { NextResponse } from "next/server";
 import { z, type ZodType } from "zod";
@@ -38,6 +38,7 @@ import {
 } from "../../../shared/api-schema/plan-v2";
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
 import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-copy";
+import { requestLanguageTag } from "../../../shared/compute/request-language";
 import type { PlanHrefPlatform } from "../../../shared/compute/plan-href";
 import type { FeatureMode } from "../../../shared/config/feature-mode";
 import { DEMO_ACTOR_ID } from "../../../shared/mock/demo-world/fixtures";
@@ -63,7 +64,8 @@ export interface PlanFlowRouteDependencies {
 
 export function requestContext(request: Request): PlanFlowRequestContext {
   const url = new URL(request.url);
-  const lang = (url.searchParams.get("lang") ?? request.headers.get("x-orbit-lang") ?? "ja").toLowerCase();
+  // 与 events 运营同一顺序：?lang → x-orbit-lang → Web 的 orbit-lang cookie → ja（Web 有的调用不带语言头，靠 cookie）。
+  const lang = (requestLanguageTag(request) ?? "ja").toLowerCase();
   const platform = (url.searchParams.get("platform") ?? request.headers.get("x-orbit-platform") ?? "web").toLowerCase();
   const language: PlanCopyLanguage = lang.startsWith("zh") ? "zh" : lang.startsWith("en") ? "en" : "ja";
   return { language, platform: (platform === "app" ? "app" : "web") as PlanHrefPlatform };

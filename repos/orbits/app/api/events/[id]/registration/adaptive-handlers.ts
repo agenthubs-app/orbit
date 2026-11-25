@@ -5,6 +5,7 @@ import {
   fixedInterviewQuestion,
   generateEventPersona,
   nextAdaptiveInterviewQuestion,
+  readInterviewFieldList,
   readInterviewTranscript,
 } from "../../../../../features/events/registration/adaptive-interview-service";
 import { signAdaptiveInterviewQuestion } from "../../../../../features/events/registration/interview-question-token.server";
@@ -94,6 +95,8 @@ export function createRegistrationInterviewPostHandler(
       language?: unknown;
       transcript?: unknown;
       fallback?: unknown;
+      skipFields?: unknown;
+      focusFields?: unknown;
     };
     if (body.mode === "renew-stored-question") {
       try {
@@ -115,6 +118,10 @@ export function createRegistrationInterviewPostHandler(
         await portraitService.prepareInterview({ actorId: actor.id, event });
       } catch (error) { return portraitErrorResponse(error, mode); }
     }
+    // 报名页（join/next）的出题计划：跳过资料已有 / 主办方题已覆盖的字段，满 5 题后只追问缺的项。
+    const skipFields = readInterviewFieldList(body.skipFields);
+    const focusFields = readInterviewFieldList(body.focusFields);
+    const plan = skipFields || focusFields ? { ...(skipFields ? { skipFields } : {}), ...(focusFields ? { focusFields } : {}) } : undefined;
     let step;
     // LF13: every question is one ledgered operation (event_registration_question, 40 a Tokyo day); a refused ledger sends nothing.
     const ledgered = createLedgeredRunner({ actorId: actor.id, gate: getLedger(), idempotencyKey: `event-question:${event.id}:${Date.now()}`, purpose: "event_registration_question", refuseWithoutLedger: true, runner: runOrbitAgentModelText });
@@ -128,6 +135,7 @@ export function createRegistrationInterviewPostHandler(
           venue: bilingualSegment(event.venue, language),
         },
         language: questionLanguage,
+        plan,
         transcript: readInterviewTranscript(body.transcript),
         modelRunner: ledgered.run,
       });
@@ -138,7 +146,7 @@ export function createRegistrationInterviewPostHandler(
       if (allowFixed && (refusal !== null || error instanceof AdaptiveInterviewGenerationError)) {
         const reason = refusal === "quota" ? "AI_LIMIT" : refusal === "unavailable" ? "AI_UNAVAILABLE" : (error as AdaptiveInterviewGenerationError).code;
         console.warn(JSON.stringify({ event: "event_registration_fixed_question", eventId: event.id, reason }));
-        step = fixedInterviewQuestion({ language: questionLanguage, reason, transcript: readInterviewTranscript(body.transcript) });
+        step = fixedInterviewQuestion({ language: questionLanguage, plan, reason, transcript: readInterviewTranscript(body.transcript) });
       } else {
         const refused = ledgerRefusalResponse(ledgered, mode, "Your answers were kept.");
         if (refused) return refused;
@@ -238,6 +246,8 @@ export function createRegistrationPersonaPostHandler(
     }
 
     const language = body.language === "en" ? ("en" as const) : ("zh" as const);
+    // 同访谈：自己紹介草稿可以用日文写（活动名 / 场地仍按中英两版）；以前 ja 被当成 zh，日文界面拿到中文草稿。
+    const personaLanguage = body.language === "ja" ? ("ja" as const) : language;
     let persona;
     // LF13: the older persona route counts as a self-introduction (event_registration_interview, 30 a Tokyo month).
     const ledgered = createLedgeredRunner({ actorId: actor.id, gate: getLedger(), idempotencyKey: `event-persona-legacy:${event.id}:${Date.now()}`, purpose: "event_registration_interview", refuseWithoutLedger: true, runner: runOrbitAgentModelText });
@@ -248,7 +258,7 @@ export function createRegistrationPersonaPostHandler(
           title: localizedEventTitle(event, language),
           venue: bilingualSegment(event.venue, language),
         },
-        language,
+        language: personaLanguage,
         transcript,
         modelRunner: ledgered.run,
       });

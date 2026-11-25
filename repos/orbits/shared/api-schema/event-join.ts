@@ -56,7 +56,8 @@ export const eventJoinCancelResultSchema = eventJoinCancelResultObject as z.ZodT
 
 export const eventJoinAnswerObject = z.object({ field: z.string().min(1).max(40), prompt: z.string().max(240), answer: z.string().trim().min(1).max(1000), questionToken: z.string().min(1).max(4000) }).strict();
 export const eventJoinAnswerSchema = eventJoinAnswerObject as z.ZodType<EventJoinAnswer>;
-const answers = z.array(eventJoinAnswerObject).max(5);
+// 5 问；满 5 问仍缺项时确认页「追加」针对缺项追问，最多再 4 问（join.ts JOIN_ANSWER_MAX）。
+const answers = z.array(eventJoinAnswerObject).max(9);
 /** `more`: ask one more question although the interview judged it had enough (review 「追加」 / 「質問に戻る」). */
 export const eventJoinNextInputObject = z.object({ answers, more: z.boolean().default(false) }).strict();
 export const eventJoinProfileInputObject = z.object({ answers, draft: z.boolean().default(false) }).strict();

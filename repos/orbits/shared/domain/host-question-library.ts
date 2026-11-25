@@ -420,11 +420,41 @@ export const hostQuestionLibrary = (language: OrbitLanguage): HostSetupQuestion[
  * サーバーの「質問案」は言語を知らないので日本語で来る → 画面の言語に直して足す。
  */
 export function localizeQuestion(question: HostSetupQuestion, language: OrbitLanguage): HostSetupQuestion {
-  const entry = BY_ID.get(question.id);
-  if (!entry || question.kind !== entry.kind) return question;
-  const untouched = ([0, 1, 2] as const).some((i) => question.prompt === entry.prompt[i] && question.options.length === entry.options.length && question.options.every((option, k) => option === entry.options[k]![i]));
-  return untouched ? { ...entryQuestion(entry, language), required: question.required } : question;
+  const entry = untouchedLibraryEntry(question);
+  return entry ? { ...entryQuestion(entry, language), required: question.required } : question;
 }
+
+/** 文面・選択肢がどれかの言語版と完全に一致する質問集の質問なら、その質問集の項目（主催者が手で変えていたら null）。 */
+function untouchedLibraryEntry(question: HostSetupQuestion): HostLibraryEntry | null {
+  const entry = BY_ID.get(question.id);
+  if (!entry || question.kind !== entry.kind) return null;
+  const untouched = ([0, 1, 2] as const).some((i) => question.prompt === entry.prompt[i] && question.options.length === entry.options.length && question.options.every((option, k) => option === entry.options[k]![i]));
+  return untouched ? entry : null;
+}
+
+/**
+ * 参加登録で受け付ける選択肢の表記 → 公開された選択肢（主催者の画面の言語のまま）。
+ * 参加者には自分の言語で出す（localizeQuestion）ので、どの言語版で答えても同じ選択肢として受け付け、保存は公開された表記に戻す
+ * （主催者の回答一覧・絞り込みは公開された選択肢の文字列で照合する）。主催者が手で変えた質問は公開された表記だけ。
+ */
+export function hostQuestionOptionAliases(question: HostSetupQuestion): ReadonlyMap<string, string> {
+  const map = new Map<string, string>(question.options.map((option) => [option, option]));
+  const entry = untouchedLibraryEntry(question);
+  if (entry) entry.options.forEach((tri, k) => { const published = question.options[k]; if (published !== undefined) for (const text of tri) if (!map.has(text)) map.set(text, published); });
+  return map;
+}
+
+/** 参加登録の確認資料で、この質問の回答が埋める項目（参加目的 / 話したいテーマ / 会いたい人 / 提供できること）。文面ではなく質問集の id で決める。 */
+export type HostQuestionProfileItem = "purpose" | "topics" | "target" | "offer";
+export const HOST_QUESTION_PROFILE_ITEM: Readonly<Record<string, HostQuestionProfileItem>> = {
+  "lib-purpose": "purpose",
+  "lib-seek": "purpose",
+  "lib-topic": "topics",
+  "lib-share": "topics",
+  "lib-meet": "target",
+  "lib-meet-free": "target",
+  "lib-offer": "offer",
+};
 
 export type HostQuestionTemplate = "mixer" | "study" | "round";
 

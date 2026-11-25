@@ -114,12 +114,36 @@ export function readInterviewTranscript(
 const sensitivePattern =
   /\b(password|passcode|credit card|bank account|social security|passport|身份证|银行卡|密码|护照)\b/i;
 
+/**
+ * 报名页（join facade）的出题计划。给了就按报名页的顺序：两道核心题 → 参会目的・想聊的话题 → 其它。
+ * - `skipFields`：不要再问的字段（资料已有的 positioning / industry、主办方题已覆盖的项）。
+ * - `focusFields`：满 5 题后确认页「追加」只针对缺的项追问；此时题数上限放宽到 ADAPTIVE_INTERVIEW_MAX_TURNS。
+ */
+export interface AdaptiveInterviewPlan {
+  skipFields?: readonly EventParticipantProfileField[];
+  focusFields?: readonly EventParticipantProfileField[];
+}
+
 interface AdaptiveInterviewInput {
   event: EventRecord;
   language?: "en" | "zh" | "ja";
   modelConfig?: GeminiOrbitAgentProviderConfig;
   modelRunner?: AdaptiveInterviewModelRunner;
+  plan?: AdaptiveInterviewPlan;
   transcript: readonly AdaptiveInterviewTurn[];
+}
+
+/** 报名页在两道核心题之后优先问的字段。 */
+const JOIN_SECOND_FIELDS: readonly EventParticipantProfileField[] = ["desiredOutcome", "experienceHighlight"];
+
+/** 读请求体里的字段列表（只留枚举内的；不是数组 → undefined）。 */
+export function readInterviewFieldList(value: unknown): readonly EventParticipantProfileField[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((field): field is EventParticipantProfileField => typeof field === "string" && (EVENT_PARTICIPANT_PROFILE_FIELDS as readonly string[]).includes(field));
+}
+
+function questionLimitFor(plan: AdaptiveInterviewPlan | undefined): number {
+  return plan?.focusFields ? ADAPTIVE_INTERVIEW_MAX_TURNS : ADAPTIVE_INTERVIEW_QUESTION_LIMIT;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -135,17 +159,22 @@ function stripCodeFence(value: string): string {
 
 function remainingFieldsFor(
   transcript: readonly AdaptiveInterviewTurn[],
+  plan?: AdaptiveInterviewPlan,
 ): readonly EventParticipantProfileField[] {
-  const answered = new Set(transcript.map((turn) => turn.field));
+  const answered = new Set([...transcript.map((turn) => turn.field), ...(plan?.skipFields ?? [])]);
   const remaining = EVENT_PARTICIPANT_PROFILE_FIELDS.filter(
     (field) => !answered.has(field),
   );
+  if (plan?.focusFields) return remaining.filter((field) => plan.focusFields!.includes(field));
   // 报名前只允许追问两项必答（想认识谁 / 能提供什么）；两项完成后，服务
   // 仍可为报名后的画像深化生成其它字段，但报名工作区不会再调用第三题。
   const coreRemaining = remaining.filter((field) =>
     (EVENT_PROFILE_CORE_FIELDS as readonly EventParticipantProfileField[]).includes(field),
   );
-  return coreRemaining.length > 0 ? coreRemaining : remaining;
+  if (coreRemaining.length > 0) return coreRemaining;
+  // 报名页：核心题之后先问参会目的・想聊的话题（确认资料的两项），再是其它。
+  const secondRemaining = plan ? remaining.filter((field) => JOIN_SECOND_FIELDS.includes(field)) : [];
+  return secondRemaining.length > 0 ? secondRemaining : remaining;
 }
 
 function readModelQuestion(
@@ -210,12 +239,12 @@ export async function nextAdaptiveInterviewQuestion(
   // R27：日文界面的问题用日文写（标签 / 活动名仍是中英两版，由调用方处理）。
   const language = input.language === "en" ? "en" : input.language === "ja" ? "ja" : "zh";
   const transcript = input.transcript.slice(0, ADAPTIVE_INTERVIEW_MAX_TURNS);
-  const remainingFields = remainingFieldsFor(transcript);
+  const remainingFields = remainingFieldsFor(transcript, input.plan);
 
   if (
     remainingFields.length === 0 ||
     transcript.length >= ADAPTIVE_INTERVIEW_MAX_TURNS ||
-    transcript.length >= ADAPTIVE_INTERVIEW_QUESTION_LIMIT
+    transcript.length >= questionLimitFor(input.plan)
   ) {
     return { done: true, question: null };
   }
@@ -296,12 +325,14 @@ const FIXED_INTERVIEW_QUESTIONS: readonly { field: EventParticipantProfileField;
  * A fixed next question for when the model cannot be used (daily AI limit used up, AI unavailable, invalid output),
  * so registration can always finish. Same limits as the model path; done when nothing is left to ask.
  */
-export function fixedInterviewQuestion(input: { language?: "en" | "zh" | "ja"; reason: string; transcript: readonly AdaptiveInterviewTurn[] }): AdaptiveInterviewStep {
+export function fixedInterviewQuestion(input: { language?: "en" | "zh" | "ja"; plan?: AdaptiveInterviewPlan; reason: string; transcript: readonly AdaptiveInterviewTurn[] }): AdaptiveInterviewStep {
   const language = input.language === "en" ? "en" : input.language === "ja" ? "ja" : "zh";
   const transcript = input.transcript.slice(0, ADAPTIVE_INTERVIEW_MAX_TURNS);
-  const answered = new Set(transcript.map((turn) => turn.field));
-  const next = FIXED_INTERVIEW_QUESTIONS.find((item) => !answered.has(item.field));
-  if (!next || transcript.length >= ADAPTIVE_INTERVIEW_QUESTION_LIMIT) return { done: true, question: null };
+  // 同模型路：跳过已覆盖的字段；满 5 题后的追问只问缺的项（固定题的顺序本来就是核心题 → 目的 → 话题 → 其它）。
+  const answered = new Set([...transcript.map((turn) => turn.field), ...(input.plan?.skipFields ?? [])]);
+  const focus = input.plan?.focusFields;
+  const next = FIXED_INTERVIEW_QUESTIONS.find((item) => !answered.has(item.field) && (!focus || focus.includes(item.field)));
+  if (!next || transcript.length >= ADAPTIVE_INTERVIEW_MAX_TURNS || transcript.length >= questionLimitFor(input.plan)) return { done: true, question: null };
   const text = next[language];
   return {
     done: false,

@@ -8,9 +8,13 @@
 import type { HostEventContact } from "../../../shared/contract/host-events";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import type { EventJoinAnswer, EventJoinCancelResult, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
+import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../../../shared/compute/profile-tag-options";
+import { HOST_QUESTION_PROFILE_ITEM, hostQuestionOptionAliases, localizeQuestion } from "../../../shared/domain/host-question-library";
 import type { JourneyLanguage } from "./prep-core";
 
 export const JOIN_TOTAL = 5;
+/** 满 5 题后仍缺项：确认页「追加」只针对缺的那一项再问，缺几项补几项（目的・话题・想见的人・能提供 最多 4 项），不无限追问。 */
+export const JOIN_ANSWER_MAX = JOIN_TOTAL + 4;
 /** 每题约 20 秒（「残り 約1分」）。 */
 const SECONDS_PER_QUESTION = 20;
 
@@ -18,6 +22,27 @@ const SECONDS_PER_QUESTION = 20;
 const ITEM_OF_FIELD: Readonly<Record<string, EventJoinProfileItemKey>> = { desiredOutcome: "purpose", experienceHighlight: "topics", targetAttendees: "target", valueOffered: "offer" };
 const ITEM_WEIGHT: Readonly<Record<EventJoinProfileItemKey, number>> = { company: 44, offer: 14, purpose: 14, target: 14, topics: 14 };
 const ITEMS: readonly EventJoinProfileItemKey[] = ["company", "purpose", "topics", "target", "offer"];
+type AnswerItem = Exclude<EventJoinProfileItemKey, "company">;
+/** 访谈优先补的顺序（会いたい人・提供できること 两道核心题在前，再是目的、话题）。 */
+const ANSWER_ITEMS: readonly AnswerItem[] = ["target", "offer", "purpose", "topics"];
+const FIELD_OF_ITEM: Readonly<Record<AnswerItem, string>> = { offer: "valueOffered", purpose: "desiredOutcome", target: "targetAttendees", topics: "experienceHighlight" };
+/** 资料里已经有的（公司・职位、行业由资料补上），报名访谈不再问。 */
+const PROFILE_FIELDS = ["positioning", "industry"] as const;
+
+/** 这一答填的是哪一项：访谈字段按 ITEM_OF_FIELD，主办方的申込質問按题库 id（HOST_QUESTION_PROFILE_ITEM，不看文案）。 */
+function itemOfAnswer(field: string): AnswerItem | null {
+  if (field.startsWith(HOST_QUESTION_FIELD_PREFIX)) return HOST_QUESTION_PROFILE_ITEM[field.slice(HOST_QUESTION_FIELD_PREFIX.length)] ?? null;
+  return (ITEM_OF_FIELD[field] as AnswerItem | undefined) ?? null;
+}
+
+export function filledItems(answers: readonly EventJoinAnswer[]): Set<EventJoinProfileItemKey> {
+  const filled = new Set<EventJoinProfileItemKey>(["company"]);
+  for (const answer of answers) { const item = itemOfAnswer(answer.field); if (item && answer.answer.trim()) filled.add(item); }
+  return filled;
+}
+
+/** 题库「その他 / 其他 / Other」不当成话题。 */
+const OTHER_TEXTS = new Set(["その他", "其他", "Other"]);
 
 const tri = (language: JourneyLanguage, ja: string, zh: string, en: string) => (language === "zh" ? zh : language === "en" ? en : ja);
 
@@ -27,25 +52,25 @@ export function questionShape(field: string, language: JourneyLanguage): Pick<Ev
   return { help: null, max: null, multi: false };
 }
 
-export function joinStep(answered: number, question: (Omit<EventJoinQuestion, "multi" | "max" | "help"> & { multi?: boolean }) | null, language: JourneyLanguage): EventJoinStep {
-  const done = !question || answered >= JOIN_TOTAL;
-  const remaining = Math.max(0, JOIN_TOTAL - answered);
+export function joinStep(answered: number, question: (Omit<EventJoinQuestion, "multi" | "max" | "help"> & { multi?: boolean }) | null, language: JourneyLanguage, total = JOIN_TOTAL): EventJoinStep {
+  const done = !question || answered >= total;
+  const remaining = Math.max(0, total - answered);
   const { multi, ...rest } = question ?? ({} as Omit<EventJoinQuestion, "multi" | "max" | "help"> & { multi?: boolean });
   return {
     done,
     index: done ? answered : answered + 1,
     question: done ? null : { ...rest, ...questionShape(rest.field, language), ...(multi !== undefined ? { max: null, multi } : {}) },
     remainingMinutes: Math.max(done ? 0 : 1, Math.round((remaining * SECONDS_PER_QUESTION) / 60)),
-    total: JOIN_TOTAL,
+    total,
   };
 }
 
 export function profileFromAnswers(answers: readonly EventJoinAnswer[], extras: { selfIntro?: EventJoinProfile["selfIntro"]; selfIntroBasis?: string | null; personaTopics?: readonly string[]; editableUntil?: string | null; reviewUntil?: string | null; review: boolean }): EventJoinProfile {
-  const filled = new Set<EventJoinProfileItemKey>(["company"]);
-  for (const answer of answers) { const item = ITEM_OF_FIELD[answer.field]; if (item && answer.answer.trim()) filled.add(item); }
+  const filled = filledItems(answers);
   const coverage = ITEMS.reduce((sum, key) => sum + (filled.has(key) ? ITEM_WEIGHT[key] : 0), 0);
-  const topicAnswer = answers.find((answer) => answer.field === "experienceHighlight")?.answer ?? "";
-  const topics = [...new Set([...topicAnswer.split(/\s*[·、,，]\s*/).map((item) => item.trim()).filter(Boolean), ...(extras.personaTopics ?? [])])].slice(0, 6);
+  // 话题 chip：访谈的「話したいテーマ」与主办方的话题题（lib-topic 等）都算。
+  const topicAnswers = answers.filter((answer) => itemOfAnswer(answer.field) === "topics").flatMap((answer) => answer.answer.split(/\s*[·、,，]\s*/).map((item) => item.trim()).filter((item) => item && !OTHER_TEXTS.has(item)));
+  const topics = [...new Set([...topicAnswers, ...(extras.personaTopics ?? [])])].slice(0, 6);
   return {
     coverage,
     editableUntil: extras.editableUntil ?? null,
@@ -70,10 +95,17 @@ export interface JoinProfileTags { offering: readonly string[]; seeking: readonl
 const OPTIONS_MAX = 12;
 const PREFILL_MAX = 3;
 
-/** 资料里填过的放到选项最前并先选上；单选题把几项并成一个选项。主办方的申込質問不动。 */
-export function prefillQuestion(question: EventJoinQuestion, tags: JoinProfileTags | null): EventJoinQuestion {
+const PROFILE_TAG_OPTIONS = [...OFFER_OPTIONS, ...SEEK_OPTIONS, ...TOPIC_OPTIONS];
+/** 资料标签命中三语候选表（任一语言的写法）就换成当前语言；自己写的标签原样。 */
+export function localizeProfileTag(tag: string, language: JourneyLanguage): string {
+  const hit = PROFILE_TAG_OPTIONS.find((option) => option.ja === tag || option.zh === tag || option.en === tag);
+  return hit ? hit[language] : tag;
+}
+
+/** 资料里填过的放到选项最前并先选上（按当前语言显示）；单选题把几项并成一个选项。主办方的申込質問不动。 */
+export function prefillQuestion(question: EventJoinQuestion, tags: JoinProfileTags | null, language: JourneyLanguage = "ja"): EventJoinQuestion {
   const own = question.field === "targetAttendees" ? tags?.seeking : question.field === "valueOffered" ? tags?.offering : null;
-  const values = [...new Set((own ?? []).map((item) => item.trim()).filter(Boolean))].slice(0, PREFILL_MAX);
+  const values = [...new Set((own ?? []).map((item) => localizeProfileTag(item.trim(), language)).filter(Boolean))].slice(0, PREFILL_MAX);
   if (!values.length) return question;
   const prefill = question.multi ? values : [values.join(" · ")];
   return { ...question, options: [...prefill, ...question.options.filter((option) => !prefill.includes(option))].slice(0, OPTIONS_MAX), prefill };
@@ -104,11 +136,14 @@ export function profileFactQuestions(facts: JoinProfileFacts | null, answered: r
 
 export interface JoinPorts {
   event(eventId: string): Promise<{ title: string; startsAt: string; endsAt: string | null; review: boolean; registrationClosesAt: string | null; hostContact?: HostEventContact | null } | null>;
-  /** `more`：用户在确认页点了「追加 / 質問に戻る」，即使访谈认为够了也再问一题（live 由 AI 自己决定，可能仍然结束）。 */
-  next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more?: boolean): Promise<Omit<EventJoinQuestion, "multi" | "max" | "help"> | null>;
+  /**
+   * `more`：用户在确认页点了「追加 / 質問に戻る」，即使访谈认为够了也再问一题（live 由 AI 自己决定，可能仍然结束）。
+   * `plan`：`skipFields` = 不要再问的字段（资料已有 / 主办方题已覆盖）；`focusFields` = 满 5 题后只针对缺的项追问。
+   */
+  next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more?: boolean, plan?: JoinInterviewPlan): Promise<Omit<EventJoinQuestion, "multi" | "max" | "help"> | null>;
   persona(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage): Promise<{ selfIntroDraft?: string | null; tags?: readonly string[] } | null>;
   profileIntro(actorId: string): Promise<string | null>;
-  profileTags?(actorId: string): Promise<JoinProfileTags | null>;
+  profileTags?(actorId: string, language?: JourneyLanguage): Promise<JoinProfileTags | null>;
   /** `from`：谁、用什么语言报名——问答没问到的公司・职位、行业由资料补上。 */
   submit(eventId: string, answers: readonly EventJoinAnswer[], from?: { actorId: string; language: JourneyLanguage }): Promise<{ status: "registered" | "pending_review"; submittedAt: string }>;
   /** 确认页改过的自己紹介，跟这次报名一起留存。 */
@@ -127,11 +162,17 @@ export interface JoinPorts {
   saveHostAnswers?(actorId: string, eventId: string, answers: Readonly<Record<string, string>>): Promise<void>;
 }
 
+export interface JoinInterviewPlan { skipFields?: readonly string[]; focusFields?: readonly string[] }
+
 /** 申込質問的字段前缀（与访谈字段区分；令牌由服务端按公开问题集校验，不需要签名）。 */
 export const HOST_QUESTION_FIELD_PREFIX = "host:";
 const isHostAnswer = (answer: EventJoinAnswer) => answer.field.startsWith(HOST_QUESTION_FIELD_PREFIX);
 
-/** 只留下属于公开问题集、选项合法的回答（自由回答 ≤200 字）。 */
+/**
+ * 只留下属于公开问题集、选项合法的回答（自由回答 ≤200 字）。
+ * 题库题按参加者的界面语言显示，所以任一语言版的选项都认；存的是主办方公开的那个写法（按选项位置换回），
+ * 主办方的回答一览 / 按选项筛选照旧对得上。
+ */
 export function validHostAnswers(questions: readonly HostSetupQuestion[], answers: readonly EventJoinAnswer[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const answer of answers.filter(isHostAnswer)) {
@@ -139,12 +180,23 @@ export function validHostAnswers(questions: readonly HostSetupQuestion[], answer
     const text = answer.answer.trim();
     if (!question || !text) continue;
     if (question.kind === "free") { out[question.id] = text.slice(0, 200); continue; }
+    const aliases = hostQuestionOptionAliases(question);
     // 选项本身含「·」（旧模板的「专业服务 · 支援机构」）时整句就是一个选项，不能按「·」拆开。
-    const picked = question.options.includes(text) ? [text] : text.split(/\s*·\s*/u).filter((item) => question.options.includes(item));
+    const whole = aliases.get(text);
+    const picked = whole !== undefined ? [whole] : [...new Set(text.split(/\s*·\s*/u).flatMap((item) => { const published = aliases.get(item); return published === undefined ? [] : [published]; }))];
     if (picked.length === 0 || (question.kind === "single" && picked.length > 1)) continue;
     out[question.id] = picked.join(" · ");
   }
   return out;
+}
+
+/** 自己紹介草稿用的回答：访谈回答 + 填了某一项的主办方题（按那一项的访谈字段交给 persona，其余主办方题不给）。 */
+function personaAnswers(answers: readonly EventJoinAnswer[]): EventJoinAnswer[] {
+  return answers.flatMap((answer) => {
+    if (!isHostAnswer(answer)) return [answer];
+    const item = itemOfAnswer(answer.field);
+    return item ? [{ ...answer, field: FIELD_OF_ITEM[item] }] : [];
+  });
 }
 
 export function createJoinService(deps: { ports: JoinPorts }) {
@@ -152,22 +204,34 @@ export function createJoinService(deps: { ports: JoinPorts }) {
   const service = {
     async next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more = false, actorId: string | null = null): Promise<EventJoinStep | null> {
       if (!(await ports.event(eventId))) return null;
-      if (answers.length >= JOIN_TOTAL) return joinStep(answers.length, null, language);
-      // R17：主办方的申込質問先问（按顺序），问完再由访谈补足；访谈只看访谈自己的回答。
-      const hostQuestions = ports.hostQuestions ? await ports.hostQuestions(eventId).catch(() => []) : [];
-      const pending = hostQuestions.find((question) => !answers.some((answer) => answer.field === `${HOST_QUESTION_FIELD_PREFIX}${question.id}`));
-      if (pending) {
-        return joinStep(answers.length, { allowCustom: pending.kind === "free", field: `${HOST_QUESTION_FIELD_PREFIX}${pending.id}`, multi: pending.kind === "multiple", options: [...pending.options], prompt: pending.prompt, questionToken: `${HOST_QUESTION_FIELD_PREFIX}${pending.id}` }, language);
+      const filled = filledItems(answers);
+      const missing = ANSWER_ITEMS.filter((item) => !filled.has(item));
+      // 满 5 题：平时就是结束；确认页「追加」且还有缺项时，只针对缺的项再问一题（上限 JOIN_ANSWER_MAX）。
+      const extra = answers.length >= JOIN_TOTAL;
+      if (extra && (!more || missing.length === 0 || answers.length >= JOIN_ANSWER_MAX)) return joinStep(answers.length, null, language);
+      if (!extra) {
+        // R17：主办方的申込質問先问（按顺序），问完再由访谈补足；访谈只看访谈自己的回答。
+        // 题库题按当前界面语言显示（主办方自己改写过的题保持原文）；回答在提交时换回公开的写法（validHostAnswers）。
+        const hostQuestions = ports.hostQuestions ? await ports.hostQuestions(eventId).catch(() => []) : [];
+        const pending = hostQuestions.find((question) => !answers.some((answer) => answer.field === `${HOST_QUESTION_FIELD_PREFIX}${question.id}`));
+        if (pending) {
+          const shown = localizeQuestion(pending, language);
+          return joinStep(answers.length, { allowCustom: shown.kind === "free", field: `${HOST_QUESTION_FIELD_PREFIX}${pending.id}`, multi: shown.kind === "multiple", options: [...shown.options], prompt: shown.prompt, questionToken: `${HOST_QUESTION_FIELD_PREFIX}${pending.id}` }, language);
+        }
       }
-      const step = joinStep(answers.length, await ports.next(eventId, answers.filter((answer) => !isHostAnswer(answer)), language, more), language);
+      // 访谈不再问：资料已有的公司・职位 / 行业，和已被回答（含主办方题）覆盖的项。满 5 题后的追问只问缺的项。
+      const covered = ANSWER_ITEMS.filter((item) => filled.has(item)).map((item) => FIELD_OF_ITEM[item]);
+      const plan: JoinInterviewPlan = extra ? { focusFields: missing.map((item) => FIELD_OF_ITEM[item]) } : { skipFields: [...PROFILE_FIELDS, ...covered] };
+      const question = await ports.next(eventId, answers.filter((answer) => !isHostAnswer(answer)), language, more, plan);
+      const step = joinStep(answers.length, question, language, extra ? answers.length + 1 : JOIN_TOTAL);
       if (!step.question || !actorId || !["targetAttendees", "valueOffered"].includes(step.question.field)) return step;
-      const tags = await ports.profileTags?.(actorId).catch(() => null) ?? null;
-      return { ...step, question: prefillQuestion(step.question, tags) };
+      const tags = await ports.profileTags?.(actorId, language).catch(() => null) ?? null;
+      return { ...step, question: prefillQuestion(step.question, tags, language) };
     },
     async profile(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], draft: boolean, language: JourneyLanguage): Promise<EventJoinProfile | null> {
       const event = await ports.event(eventId);
       if (!event) return null;
-      const persona = draft ? await ports.persona(eventId, answers.filter((answer) => !isHostAnswer(answer)), language).catch(() => null) : null;
+      const persona = draft ? await ports.persona(eventId, personaAnswers(answers), language).catch(() => null) : null;
       const intro = persona?.selfIntroDraft ? { source: "ai_draft" as const, text: persona.selfIntroDraft } : draft ? await ports.profileIntro(actorId).then((text) => (text ? { source: "profile" as const, text } : null)) : null;
       const basis = intro?.source === "ai_draft" ? tri(language, "回答（目的・テーマ・会いたい人）とプロフィールから作成。売上などの数値は入れていません。", "根据回答（目的、话题、想见的人）和个人资料写成，没有放入营收等数字。", "Written from your answers (goal, topics, who to meet) and your profile. No revenue or other figures.") : null;
       // Answers stay editable until registration closes (the policy's profile-edit deadline is the close); a day before the

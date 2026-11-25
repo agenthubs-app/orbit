@@ -62,9 +62,10 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
       const event = await input.journey.event(eventId);
       return event ? { endsAt: event.endsAt, hostContact: event.hostContact ?? null, registrationClosesAt: event.registrationClosesAt, review: event.review, startsAt: event.startsAt, title: event.title } : null;
     },
-    async next(eventId, answers, language) {
+    async next(eventId, answers, language, _more, plan) {
       const { createRegistrationInterviewPostHandler } = await import("../../../app/api/events/[id]/registration/adaptive-handlers");
-      const { data, message, status } = await callHandler(createRegistrationInterviewPostHandler(), eventId, "registration/interview", { fallback: "fixed", language, transcript: transcript(answers) });
+      const { data, message, status } = await callHandler(createRegistrationInterviewPostHandler(), eventId, "registration/interview", { fallback: "fixed", language, transcript: transcript(answers),
+        ...(plan?.skipFields ? { skipFields: [...plan.skipFields] } : {}), ...(plan?.focusFields ? { focusFields: [...plan.focusFields] } : {}) });
       // fallback "fixed": when the model cannot be used (daily AI limit, AI down) the interview answers with fixed questions, so registration always finishes.
       // A closed event (409 not open) is a known answer, not a 500.
       if (status === 409) throw new AppError("CONFLICT", message ?? "This event is not open for registration.");
@@ -85,8 +86,9 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     async profileIntro(actorId) {
       return (await input.journey.selfIntro(actorId, "").catch(() => null))?.text ?? null;
     },
-    async profileTags(actorId) {
-      const profile = await selfProfile(actorId, "ja");
+    async profileTags(actorId, language = "ja") {
+      // 标签按存的原文给；当前语言的写法由 prefillQuestion 换（localizeProfileTag）。
+      const profile = await selfProfile(actorId, language);
       return profile ? { offering: profile.offering, seeking: profile.seeking } : null;
     },
     async hostQuestions(eventId) {

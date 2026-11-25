@@ -10,6 +10,7 @@ import type {
   EventOperationsTable,
   EventOperationsTextLanguage,
 } from "./contract";
+import { requestLanguageTag } from "../../../shared/compute/request-language";
 
 /** 界面语言（ja / zh / en，或带地区的写法）→ 文字语言。未知一律按 ja（产品默认语言）。 */
 export function eventOperationsTextLanguage(language: string | null | undefined): EventOperationsTextLanguage {
@@ -43,7 +44,5 @@ export const HOST_PLACED_REASON_I18N: Readonly<Record<EventOperationsTextLanguag
 
 /** 查看者语言：`?lang=` → App 的 `x-orbit-lang` → Web 的 `orbit-lang` cookie → ja。 */
 export function eventOperationsRequestLanguage(request: Request): EventOperationsTextLanguage {
-  const fromQuery = new URL(request.url).searchParams.get("lang");
-  const fromCookie = /(?:^|;\s*)orbit-lang=([a-z]{2})/u.exec(request.headers.get("cookie") ?? "")?.[1] ?? null;
-  return eventOperationsTextLanguage(fromQuery ?? request.headers.get("x-orbit-lang") ?? fromCookie);
+  return eventOperationsTextLanguage(requestLanguageTag(request));
 }

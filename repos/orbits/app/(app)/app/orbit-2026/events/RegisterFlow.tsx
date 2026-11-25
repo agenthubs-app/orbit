@@ -25,14 +25,18 @@ import x from "./detail.module.css";
 import r from "./register.module.css";
 
 const id = (value: string) => encodeURIComponent(value);
-const joinApi = {
-  next: (eventId: string, answers: readonly EventJoinAnswer[], more = false) => eventsCall(`/api/events/${id(eventId)}/join/next`, { body: JSON.stringify({ answers, more }), method: "POST" }, eventJoinStepSchema as ZodType<EventJoinStep>),
-  profile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean) => eventsCall(`/api/events/${id(eventId)}/join/profile`, { body: JSON.stringify({ answers, draft }), method: "POST" }, eventJoinProfileSchema as ZodType<EventJoinProfile>),
-  submit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey(), ...(selfIntro ? { selfIntro } : {}) }), method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
-  cancel: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/cancel`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), method: "POST" }, eventJoinCancelResultSchema),
-  tentative: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/tentative`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), method: "POST" }, eventJoinTentativeResultSchema),
-};
-export { joinApi };
+// Every call carries the UI language in `x-orbit-lang` (as plan-api.ts), so questions, options and the drafted
+// self-introduction follow the page language; the server also falls back to the orbit-lang cookie.
+export function joinApiFor(language: OrbitLanguage) {
+  const headers = { "x-orbit-lang": language };
+  return {
+    next: (eventId: string, answers: readonly EventJoinAnswer[], more = false) => eventsCall(`/api/events/${id(eventId)}/join/next`, { body: JSON.stringify({ answers, more }), headers, method: "POST" }, eventJoinStepSchema as ZodType<EventJoinStep>),
+    profile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean) => eventsCall(`/api/events/${id(eventId)}/join/profile`, { body: JSON.stringify({ answers, draft }), headers, method: "POST" }, eventJoinProfileSchema as ZodType<EventJoinProfile>),
+    submit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey(), ...(selfIntro ? { selfIntro } : {}) }), headers, method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
+    cancel: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/cancel`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinCancelResultSchema),
+    tentative: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/tentative`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinTentativeResultSchema),
+  };
+}
 
 const ITEM_LABEL: Record<EventJoinProfileItemKey, "itemCompany" | "itemPurpose" | "itemTopics" | "itemTarget" | "itemOffer"> = { company: "itemCompany", offer: "itemOffer", purpose: "itemPurpose", target: "itemTarget", topics: "itemTopics" };
 
@@ -100,6 +104,7 @@ export function ProfileCard({ profile, t, mode }: { profile: EventJoinProfile | 
 function RegisterInner({ eventId, language }: { eventId: string; language: OrbitLanguage }) {
   const t = useMemo(() => journeyTranslator(language), [language]);
   const at = useMemo(() => assessTranslator(language), [language]);
+  const joinApi = useMemo(() => joinApiFor(language), [language]);
   const toast = useToast();
   const [event, setEvent] = useState<EventOverviewResponse | null>(null);
   const [answers, setAnswers] = useState<EventJoinAnswer[]>([]);
@@ -133,7 +138,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     void joinApi.next(eventId, []).then((res) => { if (!live) return; if (res.ok) showStep(res.data); else setLoadFailed(true); });
     void joinApi.profile(eventId, [], false).then((res) => { if (live && res.ok) setProfile(res.data); });
     return () => { live = false; };
-  }, [eventId, attempt]);
+  }, [eventId, attempt, joinApi]);
 
   const question = step?.question ?? null;
   const reviewing = Boolean(step?.done) && !result;

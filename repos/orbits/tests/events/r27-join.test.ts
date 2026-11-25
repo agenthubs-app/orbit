@@ -24,7 +24,10 @@ test("questions: 会いたい人 is multi-select, 話したいテーマ at most 
   const five = ["desiredOutcome", "experienceHighlight", "targetAttendees", "valueOffered", "followUpPreference"].map((field, n) => answer(field, "x", n));
   const done = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: five }), params)).json()).data);
   assert.deepEqual([done.done, done.question ?? null], [true, null]);
-  assert.equal((await routes.joinNext(post({ answers: [...five, answer("industry", "x", 6)] }), params)).status, 400, "a sixth answer is rejected");
+  const six = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: [...five, answer("industry", "x", 6)] }), params)).json()).data);
+  assert.equal(six.done, true, "past 5 answers the flow only ends (a follow-up is asked only for a missing item, see below)");
+  const ten = Array.from({ length: 10 }, (_, n) => answer("industry", "x", n));
+  assert.equal((await routes.joinNext(post({ answers: ten }), params)).status, 400, "a tenth answer is rejected (5 + at most 4 follow-ups)");
   const three = five.slice(0, 3);
   const enough = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: three }), params)).json()).data);
   assert.deepEqual([enough.done, enough.index], [true, 3], "the sample interview judges 3 answers enough (review shows 提供できること △)");

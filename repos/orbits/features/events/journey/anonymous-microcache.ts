@@ -7,6 +7,8 @@
  * - 条目上限 500，超出先删最旧的；TTL 到期惰性淘汰。
  * - 对外仍是 `private, no-store`，浏览器 / CDN 行为不变。
  */
+import { orbitLanguageCookie } from "../../../shared/compute/request-language";
+
 const SESSION_COOKIE = /(?:^|;\s*)(?:__Secure-)?authjs\.session-token(?:\.\d+)?=/u;
 const MAX_ENTRIES = 500;
 // 影响响应内容的请求头（语言 / 平台见 plans/v2 requestContext）。
@@ -35,7 +37,8 @@ export function anonymousMicrocache(options: { ttlMs: number; sampleHeader?: str
 
   return async function cached(request: Request, load: () => Promise<Response>): Promise<Response> {
     if (!isAnonymousRequest(request, options.sampleHeader)) return load();
-    const key = [request.url, ...VARY_HEADERS.map((name) => request.headers.get(name) ?? "")].join("|");
+    // 语言也可能只在 orbit-lang cookie 里（requestContext 会读它），键要带上，免得把别的语言的版本发出去。
+    const key = [request.url, ...VARY_HEADERS.map((name) => request.headers.get(name) ?? ""), orbitLanguageCookie(request) ?? ""].join("|");
     const hit = entries.get(key);
     if (hit && hit.expiresAt > now()) return toResponse(hit);
     if (hit) entries.delete(key);
