@@ -7072,7 +7072,7 @@ function wReg() {
 const wRegRail = () => `<h4>${ic('calendar', 'sm')}申込先</h4>
   <div class="card" style="padding:16px"><div class="row" style="gap:12px">${mring(74, 48, 5, 14)}<div><b style="font-size:13.5px">${EV.n}</b><div class="lbl">10/7（水）19:00 · 渋谷</div></div></div></div>
   <div class="card p-wflow" style="padding:16px"><div class="lbl" style="margin-bottom:10px">このあとの流れ</div>${[['申込', '質問に答えてプロフィールを確認', 'n'], ['審査', '主催者が確認（〜10/3）', ''], ['結果通知', '通知とメールで届きます', ''], ['当日', '受付 QR · 会場モード', '']].map(([t, d, c], k) => `<div class="tline ${c}"><time>${k + 1}</time><span class="dot"></span><div><b>${t}</b><span class="lbl">${d}</span></div></div>`).join('')}</div>
-  <div class="mac lav" style="font-size:12px">✓ 会社 · 役職 · 業界 · 所在地はプロフィールから入力済み</div>`;
+  <div class="mac lav" style="font-size:12px">✓ 会社 · 役職 · 業界はプロフィールから入力済み</div>`;
 
 /* ============================================================
    ⑤ 会う準備

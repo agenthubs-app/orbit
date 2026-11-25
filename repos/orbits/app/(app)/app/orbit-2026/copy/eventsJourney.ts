@@ -314,7 +314,7 @@ export const eventsJourneyCopy = {
   flowResultSub: { ja: "通知とメールで届きます", zh: "通过通知和邮件告知", en: "By notification and email", kind: "label" },
   flowDay: { ja: "当日", zh: "当天", en: "On the day", kind: "label" },
   flowDaySub: { ja: "受付 QR · 会場モード", zh: "签到二维码 · 会场模式", en: "Entry QR · venue mode", kind: "label" },
-  prefilledNote: { ja: "✓ 会社 · 役職 · 業界 · 所在地はプロフィールから入力済み", zh: "✓ 公司、职位、行业、所在地已从资料填好", en: "✓ Company, title, industry and location come from your profile", kind: "label" },
+  prefilledNote: { ja: "✓ 会社 · 役職 · 業界はプロフィールから入力済み", zh: "✓ 公司、职位、行业已从资料填好", en: "✓ Company, title and industry come from your profile", kind: "label" },
   draftedByAi: { ja: "回答から AI が下書きしました", zh: "AI 根据回答写好了草稿", en: "AI drafted this from your answers", kind: "label" },
   add: { ja: "追加", zh: "添加", en: "Add", kind: "button" },
   offerHint: { ja: "「提供できること」を足すと、相手からも声をかけられやすくなります", zh: "补上「能提供的」，别人也更容易来找你", en: "Add what you offer and people will find it easier to approach you", kind: "label" },
