@@ -115,16 +115,20 @@ export const INTRO_REGENERATE_LIMIT = 2;
 // ── 本地草稿：刷新/中途离开后回到同一步，未提交的输入不丢（「自動保存済み」）；只在完成引导时清除 ──
 /** 一项内容的来源：名片上印着的 / AI 推断的；用户一改就去掉。 */
 export type FieldOrigin = "card" | "ai";
-export type BasicField = "name" | "company" | "title" | "email" | "phone" | "primaryIndustryId" | "secondaryIndustryId";
+export type BasicField = "name" | "company" | "title" | "email" | "phone" | "homeMarket" | "seniorityLevel" | "primaryIndustryId" | "secondaryIndustryId";
 
 export interface OnboardingBasicDraft {
   birthDate: string;
   company: string;
   email: string;
+  /** 所在地（自由文本）。 */
+  homeMarket: string;
   name: string;
   phone: string;
   primaryIndustryId: string;
   secondaryIndustryId: string;
+  /** 役職層（SENIORITY_LEVELS 六档，空串 = 未选）。 */
+  seniorityLevel: string;
   title: string;
 }
 
@@ -137,14 +141,12 @@ export interface OnboardingDraftFields {
   bio?: string;
 }
 
-/** 扫描带来的附加信息：各项来源、读到 / 推断到几项、AI 预选还没被动过的两组、一并保存的职级与所在地。 */
+/** 扫描带来的附加信息：各项来源、读到 / 推断到几项、AI 预选还没被动过的两组。 */
 export interface OnboardingScanDraft {
   ai: number;
   card: number;
   offerFromAi: boolean;
   origins: Partial<Record<BasicField, FieldOrigin>>;
-  region?: string;
-  seniorityLevel?: string;
   topicsFromAi: boolean;
 }
 
@@ -167,8 +169,8 @@ function draftFields(value: unknown): OnboardingDraftFields | undefined {
   const basicRaw = raw.basic && typeof raw.basic === "object" ? raw.basic as Record<string, unknown> : null;
   const text = (key: string) => (basicRaw && typeof basicRaw[key] === "string" ? basicRaw[key] as string : "");
   return {
-    // 五步版草稿没有 email / phone：读成空。
-    basic: basicRaw ? { birthDate: text("birthDate"), company: text("company"), email: text("email"), name: text("name"), phone: text("phone"), primaryIndustryId: text("primaryIndustryId"), secondaryIndustryId: text("secondaryIndustryId"), title: text("title") } : undefined,
+    // 五步版草稿没有 email / phone / 役職層 / 所在地：读成空。
+    basic: basicRaw ? { birthDate: text("birthDate"), company: text("company"), email: text("email"), homeMarket: text("homeMarket"), name: text("name"), phone: text("phone"), primaryIndustryId: text("primaryIndustryId"), secondaryIndustryId: text("secondaryIndustryId"), seniorityLevel: text("seniorityLevel"), title: text("title") } : undefined,
     offer: strings(raw.offer),
     seek: strings(raw.seek),
     topics: strings(raw.topics),
@@ -186,8 +188,6 @@ function draftScan(value: unknown): OnboardingScanDraft | undefined {
     card: count(raw.card),
     offerFromAi: raw.offerFromAi === true,
     origins: Object.fromEntries(Object.entries(origins).filter(([, origin]) => origin === "card" || origin === "ai")) as OnboardingScanDraft["origins"],
-    ...(typeof raw.region === "string" ? { region: raw.region } : {}),
-    ...(typeof raw.seniorityLevel === "string" ? { seniorityLevel: raw.seniorityLevel } : {}),
     topicsFromAi: raw.topicsFromAi === true,
   };
 }

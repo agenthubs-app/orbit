@@ -78,9 +78,10 @@ select.input option { color: var(--ink); }
 .msg { display: block; margin-top: 6px; color: var(--ink-3); font-size: var(--fs-label); font-weight: 600; line-height: 1.55; }
 .err .msg, .errMsg { color: var(--coral-text); }
 .phoneOnly { display: none; }
-.chipLav, .chipBlue { display: inline-flex; max-width: 100%; align-items: center; overflow: hidden; padding: 3px 9px; border-radius: var(--r-pill); font-size: var(--fs-caption); font-weight: var(--fw-bold); text-overflow: ellipsis; white-space: nowrap; }
+.chipLav, .chipBlue, .chipPlain { display: inline-flex; max-width: 100%; align-items: center; overflow: hidden; padding: 3px 9px; border-radius: var(--r-pill); font-size: var(--fs-caption); font-weight: var(--fw-bold); text-overflow: ellipsis; white-space: nowrap; }
 .chipLav { background: var(--mac-lav); color: var(--mac-lav-ink); }
 .chipBlue { background: var(--mac-blue); color: var(--mac-blue-ink); }
+.chipPlain { background: var(--surface-2); color: var(--ink-2); }
 
 /* ② 目標 */
 .goals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
@@ -198,7 +199,7 @@ select.input option { color: var(--ink); }
   .grid2 { gap: 0 8px; }
   .grid2 > .field { grid-column: 1 / -1; }
   .grid2 > .half { grid-column: auto; }
-  .fName { order: 1; } .fCompany { order: 2; } .fTitle { order: 3; } .fIndustry { order: 4; } .fDetail { order: 5; } .fEmail { order: 6; } .fPhone { order: 7; } .fBirth { order: 8; }
+  .fName { order: 1; } .fCompany { order: 2; } .fTitle { order: 3; } .fIndustry { order: 4; } .fDetail { order: 5; } .fSeniority { order: 6; } .fPlace { order: 7; } .fEmail { order: 8; } .fPhone { order: 9; } .fBirth { order: 10; }
   .input { background: var(--surface); }
   .wideOnly { display: none; }
   .phoneOnly { display: inline; }

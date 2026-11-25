@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import type { ProfilePayload } from "../../../../../features/profile/contract";
-import type { ContactHandlesContract, ProfileOnboardingProgressCommandContract, ProfileOnboardingProgressContract, SeniorityLevelCode } from "../../../../../shared/contract/profile";
+import type { ContactHandlesContract, ProfileOnboardingProgressCommandContract, ProfileOnboardingProgressContract } from "../../../../../shared/contract/profile";
 import { composeProfileOnboardingGoal, parseProfileOnboardingGoal } from "../../../../../shared/compute/profile-onboarding-goal";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
 import { isIndustryIdCode, validateIndustrySelection } from "../../../../../shared/domain/industries";
@@ -82,7 +82,7 @@ export interface OnboardingFlowProps {
   todayIso: string;
 }
 
-const EMPTY_BASIC: BasicDraft = { birthDate: "", company: "", email: "", name: "", phone: "", primaryIndustryId: "", secondaryIndustryId: "", title: "" };
+const EMPTY_BASIC: BasicDraft = { birthDate: "", company: "", email: "", homeMarket: "", name: "", phone: "", primaryIndustryId: "", secondaryIndustryId: "", seniorityLevel: "", title: "" };
 const SEEK_DEBOUNCE_MS = 700;
 
 function basicFromPayload(payload: ProfilePayload): BasicDraft {
@@ -92,10 +92,12 @@ function basicFromPayload(payload: ProfilePayload): BasicDraft {
     birthDate: profile.birthDate ?? "",
     company: profile.organization ?? "",
     email: profile.handles?.email ?? "",
+    homeMarket: profile.homeMarket ?? "",
     name: profile.displayName ?? "",
     phone: profile.handles?.phone ?? "",
     primaryIndustryId: isIndustryIdCode(profile.primaryIndustryId) ? profile.primaryIndustryId : "",
     secondaryIndustryId: (profile.secondaryIndustryId as SecondaryIndustryIdCode | undefined) ?? "",
+    seniorityLevel: isSeniorityLevelValue(profile.seniorityLevel) ? profile.seniorityLevel : "",
     title: profile.role ?? "",
   };
 }
@@ -106,6 +108,7 @@ function basicFromDraft(draft: NonNullable<NonNullable<ReturnType<typeof readOnb
     ...draft,
     primaryIndustryId: isIndustryIdCode(draft.primaryIndustryId) ? draft.primaryIndustryId : "",
     secondaryIndustryId: draft.secondaryIndustryId as SecondaryIndustryIdCode | "",
+    seniorityLevel: isSeniorityLevelValue(draft.seniorityLevel) ? draft.seniorityLevel : "",
   };
 }
 
@@ -123,8 +126,6 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const [basic, setBasic] = useState<BasicDraft>(EMPTY_BASIC);
   const [origins, setOrigins] = useState<Origins>({});
   const [scan, setScan] = useState<{ ai: number; card: number } | null>(null);
-  const [region, setRegion] = useState("");
-  const [seniority, setSeniority] = useState<SeniorityLevelCode | null>(null);
   const [goalText, setGoalText] = useState("");
   const [goalChoices, setGoalChoices] = useState<string[]>([]);
   const [offer, setOffer] = useState<string[]>([]);
@@ -149,7 +150,6 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const [draftSaved, setDraftSaved] = useState(false);
   const draftBaselineRef = useRef<string | null>(null);
   const handlesRef = useRef<ContactHandlesContract>({});
-  const savedPlaceRef = useRef({ homeMarket: "", seniority: false });
   const progressRef = useRef<ProfileOnboardingProgressContract | null>(null);
   const initMutationRef = useRef<string | null>(null);
   const pendingConfirmRef = useRef<ProfileOnboardingProgressCommandContract | null>(null);
@@ -158,7 +158,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const introActionKeyRef = useRef<string | null>(null);
   const inferredForRef = useRef<string | null>(null);
   // 用户动过的字段：后到的 AI 结果不覆盖。
-  const touchedRef = useRef({ industry: false, offer: false, topics: false });
+  const touchedRef = useRef({ industry: false, offer: false, seniority: false, topics: false });
   const basicRef = useRef(basic);
   basicRef.current = basic;
   const [error, setError] = useState("");
@@ -184,7 +184,6 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         setConfirmed(done);
         const profile = payload.profile;
         handlesRef.current = { ...(profile?.handles ?? {}) };
-        savedPlaceRef.current = { homeMarket: profile?.homeMarket?.trim() ?? "", seniority: Boolean(profile?.seniorityLevel) };
         const complete = payload.onboarding?.status === "complete";
         const draft = readOnboardingDraft(actorKey);
         const fields = draft?.fields;
@@ -204,8 +203,6 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
           if (draft.scan) {
             if (draftBasic) { setOrigins(draft.scan.origins); setScan({ ai: draft.scan.ai, card: draft.scan.card }); }
             if (done < 3) { setOfferFromAi(draft.scan.offerFromAi); setTopicsFromAi(draft.scan.topicsFromAi); }
-            setRegion(draft.scan.region ?? "");
-            if (isSeniorityLevelValue(draft.scan.seniorityLevel)) setSeniority(draft.scan.seniorityLevel);
           }
         }
         if (done >= 2 || !draft?.goalText.trim()) {
@@ -237,12 +234,12 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     const fields = { basic, offer, seek, topics, bio };
     const written = writeOnboardingDraft(actorKey, {
       view, goalText, goalChoices, horizon: "", introRegenerations, fields,
-      ...(scan || offerFromAi || topicsFromAi ? { scan: { ai: scan?.ai ?? 0, card: scan?.card ?? 0, offerFromAi, origins, region, topicsFromAi, ...(seniority ? { seniorityLevel: seniority } : {}) } } : {}),
+      ...(scan || offerFromAi || topicsFromAi ? { scan: { ai: scan?.ai ?? 0, card: scan?.card ?? 0, offerFromAi, origins, topicsFromAi } } : {}),
     });
     const input = JSON.stringify([goalText, goalChoices, fields]);
     if (draftBaselineRef.current === null) draftBaselineRef.current = input;
     else if (written && input !== draftBaselineRef.current) setDraftSaved(true);
-  }, [actorKey, goalText, goalChoices, introRegenerations, loaded, view, basic, offer, seek, topics, bio, scan, origins, offerFromAi, topicsFromAi, region, seniority]);
+  }, [actorKey, goalText, goalChoices, introRegenerations, loaded, view, basic, offer, seek, topics, bio, scan, origins, offerFromAi, topicsFromAi]);
 
   function go(nextView: OnboardingView) {
     setError("");
@@ -346,9 +343,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       primaryIndustryId: basic.primaryIndustryId as IndustryIdCode,
       role: basic.title.trim(),
       secondaryIndustryId: basic.secondaryIndustryId as SecondaryIndustryIdCode,
-      // 名片地址与职位给出的所在地、职级：只在资料里还没有时补上，之后可在账户里改。
-      ...(region && !savedPlaceRef.current.homeMarket ? { homeMarket: region } : {}),
-      ...(seniority && !savedPlaceRef.current.seniority ? { seniorityLevel: seniority } : {}),
+      homeMarket: basic.homeMarket.trim(),
+      seniorityLevel: basic.seniorityLevel || null,
     };
   }
 
@@ -423,6 +419,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   function editBasic(patch: Partial<BasicDraft>) {
     setBasic(current => ({ ...current, ...patch }));
     if ("primaryIndustryId" in patch || "secondaryIndustryId" in patch) touchedRef.current.industry = true;
+    if ("seniorityLevel" in patch) touchedRef.current.seniority = true;
     setOrigins(current => {
       const kept = { ...current };
       for (const key of Object.keys(patch)) delete kept[key as BasicField];
@@ -445,9 +442,14 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       const pair = { primaryIndustryId: result.primaryIndustryId, secondaryIndustryId: result.secondaryIndustryId };
       setBasic(current => (current.primaryIndustryId ? current : { ...current, ...pair }));
       setOrigins(current => ({ ...current, primaryIndustryId: "ai", secondaryIndustryId: "ai" }));
-      setScan(current => (current ? { ...current, ai: 2 } : current));
+      setScan(current => (current ? { ...current, ai: current.ai + 2 } : current));
     }
-    if (result.seniorityLevel) setSeniority(current => current ?? result.seniorityLevel);
+    const level = result.seniorityLevel;
+    if (level && !touchedRef.current.seniority && !basicRef.current.seniorityLevel) {
+      setBasic(current => (current.seniorityLevel ? current : { ...current, seniorityLevel: level }));
+      setOrigins(current => ({ ...current, seniorityLevel: "ai" }));
+      setScan(current => (current ? { ...current, ai: current.ai + 1 } : current));
+    }
     if (!touchedRef.current.offer && result.offering.length) setOffer(current => { if (current.length) return current; setOfferFromAi(true); return [...result.offering]; });
     if (!touchedRef.current.topics && result.topics.length) setTopics(current => { if (current.length) return current; setTopicsFromAi(true); return [...result.topics]; });
   }
@@ -458,17 +460,16 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     setError("");
     try {
       const card = await scanOwnBusinessCard(file);
-      const printed = ([["name", card.name], ["company", card.company], ["title", card.title], ["email", card.email], ["phone", card.phone]] as const).filter(([, value]) => value);
+      const printed = ([["name", card.name], ["company", card.company], ["title", card.title], ["email", card.email], ["phone", card.phone], ["homeMarket", card.region ? regionDisplayName({ city: card.region.city ?? null, countryCode: card.region.countryCode }, language) : ""]] as const).filter(([, value]) => value);
       if (!printed.length) throw new Error("empty card");
-      const filled: BasicDraft = { ...basicRef.current, ...Object.fromEntries(printed), ...(card.industry ?? {}) };
+      const filled: BasicDraft = { ...basicRef.current, ...Object.fromEntries(printed), ...(card.industry ?? {}), ...(card.seniorityLevel ? { seniorityLevel: card.seniorityLevel } : {}) };
       const nextOrigins: Origins = { ...origins };
       for (const [key] of printed) nextOrigins[key] = "card";
       if (card.industry) { nextOrigins.primaryIndustryId = "ai"; nextOrigins.secondaryIndustryId = "ai"; touchedRef.current.industry = false; }
+      if (card.seniorityLevel) { nextOrigins.seniorityLevel = "ai"; touchedRef.current.seniority = false; }
       setBasic(filled);
       setOrigins(nextOrigins);
-      setScan({ ai: card.industry ? 2 : 0, card: printed.length });
-      if (card.region) setRegion(regionDisplayName({ city: card.region.city ?? null, countryCode: card.region.countryCode }, language));
-      if (card.seniorityLevel) setSeniority(card.seniorityLevel);
+      setScan({ ai: (card.industry ? 2 : 0) + (card.seniorityLevel ? 1 : 0), card: printed.length });
       void infer(filled);
     } catch {
       setError(t(ONBOARDING_COPY.flow023));

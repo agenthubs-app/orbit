@@ -114,3 +114,16 @@ for (const mode of ["live", "mock"] as const) {
     });
   });
 }
+
+test("live seniorityLevel: omitted keeps it, null clears it; homeMarket empty string clears it", async () => {
+  const service = createLiveProfileService({ provider: createStorageProfileProvider({ store: createMemoryLiveRecordStore(), workspaceId: "onboarding-policy" }), now: () => "2026-11-25T00:00:00.000Z" });
+  const save = async (update: ManualProfileUpdateInput) => {
+    const result = await service.updateProfile(update, { actorId: "actor-seniority" });
+    assert.equal(result.success, true);
+    return result.success ? result.data.profile : null;
+  };
+  assert.equal((await save({ ...required, homeMarket: "東京", seniorityLevel: "c_level" }))?.seniorityLevel, "c_level");
+  assert.equal((await save({ bio: "a" }))?.seniorityLevel, "c_level");
+  const cleared = await save({ homeMarket: "", seniorityLevel: null });
+  assert.deepEqual([cleared?.seniorityLevel, cleared?.homeMarket], [undefined, ""]);
+});

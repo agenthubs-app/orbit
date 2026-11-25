@@ -359,18 +359,21 @@ test("scan: printed items are 来自名片, the industry is AI 推断, a user ed
   await scanCard(root);
   assert.equal(field(root, "onb-name")!.props.value, "佐藤 健一");
   assert.equal(field(root, "onb-email")!.props.value, "sato@minatolink.example");
-  assert.match(output(root), /名片读到 5 项，AI 推断 2 项/);
+  assert.match(output(root), /名片读到 6 项，AI 推断 3 项/);
   const count = (text: string) => root.root.findAll(node => typeof node.type === "string" && node.children.length === 1 && node.children[0] === text).length;
-  assert.equal(count("来自名片"), 5);
-  assert.equal(count("AI 推断"), 2);
+  assert.equal(count("来自名片"), 6);
+  assert.equal(count("AI 推断"), 3);
+  assert.deepEqual([field(root, "onb-seniority")!.props.value, field(root, "onb-place")!.props.value], ["c_level", "日本 · 东京"]);
   await act(async () => { field(root, "onb-company")!.props.onChange({ target: { value: "ミナトリンク" } }); });
-  assert.equal(count("来自名片"), 4);
+  assert.equal(count("来自名片"), 5);
+  await act(async () => { field(root, "onb-seniority")!.props.onChange({ target: { value: "founder" } }); });
+  assert.equal(count("AI 推断"), 2, "changing the level drops its mark");
   assert.deepEqual(api.inferences[0], { displayName: "佐藤 健一", language: "zh", organization: "株式会社ミナトリンク", primaryIndustryId: "technology_internet", role: "代表取締役 CEO", secondaryIndustryId: "technology_internet.enterprise_software" });
   assert.equal(api.puts.length, 0, "a scan only fills the form");
   await click(root, nextButton(root));
   const saved = api.puts[0]!;
   assert.deepEqual(saved.handles, { email: "sato@minatolink.example", phone: "03-5555-0142", wechatId: "keep-me" });
-  assert.equal(saved.seniorityLevel, "c_level");
+  assert.equal(saved.seniorityLevel, "founder");
   assert.match(String(saved.homeMarket), /东京/);
   assert.equal(saved.secondaryIndustryId, "technology_internet.enterprise_software");
   assert.deepEqual(api.commands.map(command => [command.action, command.screen]), [["initialize", undefined], ["confirm", 1]]);
@@ -381,6 +384,19 @@ test("scan: printed items are 来自名片, the industry is AI 推断, a user ed
   await click(root, button(root, "资本政策的经验"));
   await click(root, button(root, "起业支援"));
   assert.doesNotMatch(output(root), /资本政策的经验/);
+  act(() => root.unmount());
+});
+
+test("level and place are optional: empty ones never block 下一步 and are saved as cleared", async (t) => {
+  stubWindow(t, new Map());
+  const api = stubProfileApi(t, "", { ...BLANK, displayName: "张三", homeMarket: "大阪", primaryIndustryId: "other", secondaryIndustryId: "other.other", seniorityLevel: "manager" });
+  const root = await mountFlow("u-optional");
+  assert.deepEqual([field(root, "onb-seniority")!.props.value, field(root, "onb-place")!.props.value], ["manager", "大阪"]);
+  await act(async () => { field(root, "onb-seniority")!.props.onChange({ target: { value: "" } }); });
+  await act(async () => { field(root, "onb-place")!.props.onChange({ target: { value: " " } }); });
+  await click(root, nextButton(root));
+  assert.deepEqual(alerts(root), []);
+  assert.deepEqual([api.puts[0]!.seniorityLevel, api.puts[0]!.homeMarket], [null, ""]);
   act(() => root.unmount());
 });
 

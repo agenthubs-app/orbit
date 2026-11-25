@@ -4,8 +4,10 @@
 import { useId, useState, type ChangeEvent, type DragEvent, type ReactNode, type RefObject } from "react";
 
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
+import type { SeniorityLevelCode } from "../../../../../shared/contract/profile";
 import { PROFILE_ONBOARDING_GOALS } from "../../../../../shared/compute/profile-onboarding-goal";
 import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel } from "../../../../../shared/domain/industries";
+import { SENIORITY_LEVELS, SENIORITY_LEVEL_LABELS } from "../../../../../shared/compute/seniority-group";
 import { Icon, MacTile, WhyBody, WhyButton } from "../ui";
 import type { AvatarTone } from "../ui/Basics";
 import { ONBOARDING_COPY, ONBOARDING_SCREEN_LABELS } from "../copy/onboarding";
@@ -35,10 +37,12 @@ export interface BasicDraft {
   birthDate: string;
   company: string;
   email: string;
+  homeMarket: string;
   name: string;
   phone: string;
   primaryIndustryId: IndustryIdCode | "";
   secondaryIndustryId: SecondaryIndustryIdCode | "";
+  seniorityLevel: SeniorityLevelCode | "";
   title: string;
 }
 
@@ -142,7 +146,7 @@ export function ProfileStep({
   todayIso: string;
 }) {
   const [over, setOver] = useState(false);
-  const text = (key: "name" | "company" | "title" | "email" | "phone" | "birthDate") => (event: ChangeEvent<HTMLInputElement>) => onUserEdit({ [key]: event.target.value });
+  const text = (key: "name" | "company" | "title" | "email" | "phone" | "homeMarket" | "birthDate") => (event: ChangeEvent<HTMLInputElement>) => onUserEdit({ [key]: event.target.value });
   const drag = {
     onDragLeave: () => setOver(false),
     onDragOver: (event: DragEvent<HTMLDivElement>) => { event.preventDefault(); if (!disabled && !scanning) setOver(true); },
@@ -222,6 +226,16 @@ export function ProfileStep({
             <option value="">{detailHint}</option>
             {(basic.primaryIndustryId ? listSecondaryIndustries(basic.primaryIndustryId) : []).map(item => <option key={item.id} value={item.id}>{secondaryIndustryLabel(item.id, language)}</option>)}
           </select>{basic.secondaryIndustryId ? null : <SelectHint wide={detailHint} phone={basic.primaryIndustryId ? t({ ja: "選択", zh: "请选择", en: "Select" }) : "—"} />}<Icon name="down" size={16} /></span>
+        </Field>
+        <Field className={styles.fSeniority} id="onb-seniority" label={origins.seniorityLevel ? { ja: "役職層", zh: "职级", en: "Level" } : { ja: "役職層（任意）", zh: "职级（选填）", en: "Level (optional)" }} origin={origins.seniorityLevel} t={t}>
+          <span className={styles.wrap}><select className={`${styles.input} ${basic.seniorityLevel ? "" : styles.empty}`} disabled={disabled} id="onb-seniority" value={basic.seniorityLevel}
+            onChange={event => onUserEdit({ seniorityLevel: event.target.value as SeniorityLevelCode | "" })}>
+            <option value="">{t({ ja: "選択してください", zh: "请选择", en: "Select" })}</option>
+            {SENIORITY_LEVELS.map(level => <option key={level} value={level}>{SENIORITY_LEVEL_LABELS[level][language]}</option>)}
+          </select>{basic.seniorityLevel ? null : <SelectHint wide={t({ ja: "選択してください", zh: "请选择", en: "Select" })} phone={t({ ja: "選択", zh: "请选择", en: "Select" })} />}<Icon name="down" size={16} /></span>
+        </Field>
+        <Field className={styles.fPlace} id="onb-place" label={origins.homeMarket ? { ja: "所在地", zh: "所在地", en: "Location" } : { ja: "所在地（任意）", zh: "所在地（选填）", en: "Location (optional)" }} origin={origins.homeMarket} t={t}>
+          <input className={styles.input} disabled={disabled} id="onb-place" maxLength={80} onChange={text("homeMarket")} placeholder={t({ ja: "例）東京", zh: "例如：东京", en: "e.g. Tokyo" })} value={basic.homeMarket} />
         </Field>
         {showContact.email ? <Field className={styles.fEmail} id="onb-email" label={{ ja: "メール", zh: "邮箱", en: "Email" }} origin={origins.email} t={t}>
           <input className={styles.input} disabled={disabled} id="onb-email" inputMode="email" maxLength={120} onChange={text("email")} type="email" value={basic.email} />
@@ -445,7 +459,7 @@ export function ProfileAside({ basic, initial, language, t }: { basic: BasicDraf
         <div>{name || line ? <><div className={styles.personName}>{name}</div>{line ? <div className={styles.sub}>{line}</div> : null}</>
           : <GhostRow>{t({ ja: "氏名 · 会社 · 役職", zh: "姓名 · 公司 · 职位", en: "Name · Company · Title" })}</GhostRow>}</div>
       </div>
-      {industry ? <div className={styles.chips}><span className={styles.chipBlue}>{industry}</span></div> : null}
+      {industry || basic.homeMarket.trim() ? <div className={styles.chips}>{industry ? <span className={styles.chipBlue}>{industry}</span> : null}{basic.homeMarket.trim() ? <span className={styles.chipPlain}>{basic.homeMarket.trim()}</span> : null}</div> : null}
       <div className={styles.ghosts}>
         <GhostRow>{t({ ja: "提供できること · 求めていること", zh: "能提供的 · 正在寻找的", en: "What you offer · What you seek" })}</GhostRow>
         <GhostRow>{t({ ja: "自己紹介（ステップ3で作成）", zh: "自我介绍（第 3 步生成）", en: "Introduction (made in step 3)" })}</GhostRow>
