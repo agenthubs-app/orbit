@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { readableItems, tolerantEnum } from "./tolerant";
 import { hostEventContactObject } from "./host-events";
-import type { EventJoinAnswer, EventJoinCancelResult, EventJoinProfile, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../contract/event-join";
+import type { EventJoinAnswer, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../contract/event-join";
 
 // R27 参加登録 facade. Responses tolerant (unknown item keys skip the item); request bodies strict.
 const ITEM_KEYS = ["company", "purpose", "topics", "target", "offer"] as const;
@@ -60,7 +60,16 @@ export const eventJoinAnswerSchema = eventJoinAnswerObject as z.ZodType<EventJoi
 const answers = z.array(eventJoinAnswerObject).max(9);
 /** `focus`: ask this one item (the profile would fill it, the person wants to answer it). `more`: ask one more question although the interview judged it had enough (review 「追加」 / 「質問に戻る」). */
 export const eventJoinNextInputObject = z.object({ answers, focus: z.enum(ITEM_KEYS).optional(), more: z.boolean().default(false) }).strict();
-export const eventJoinProfileInputObject = z.object({ answers, draft: z.boolean().default(false) }).strict();
+/** `edit`: changing an existing registration (items the profile fills count from the start; no new draft is written). */
+export const eventJoinProfileInputObject = z.object({ answers, draft: z.boolean().default(false), edit: z.boolean().default(false) }).strict();
+export const eventJoinCurrentObject = z.object({
+  status: tolerantEnum(["none", "registered", "pending_review", "waitlisted", "rejected", "cancelled"], "none"),
+  blocked: z.enum(["JOIN_CLOSED", "JOIN_LOCKED", "JOIN_REJECTED"]).nullable().catch(null),
+  answers: readableItems(eventJoinAnswerObject.extend({ item: z.enum(ITEM_KEYS).nullable().catch(null), question: eventJoinQuestionObject }).strip()),
+  ask: readableItems(eventJoinQuestionObject.extend({ item: z.enum(ITEM_KEYS).nullable().catch(null) })),
+  selfIntro: z.string().nullable().catch(null),
+});
+export const eventJoinCurrentSchema = eventJoinCurrentObject as unknown as z.ZodType<EventJoinCurrent>;
 /** `selfIntro`: the self-introduction as edited on the review step (kept with this registration). */
 /** `edit`: changing an existing registration — a cancelled or rejected one is refused instead of being registered again. */
 export const eventJoinSubmitInputObject = z.object({ answers: answers.min(1), edit: z.boolean().default(false), idempotencyKey: z.string().min(1).max(200), selfIntro: z.string().trim().min(1).max(400).optional() }).strict();

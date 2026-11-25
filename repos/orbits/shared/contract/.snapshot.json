@@ -9849,6 +9849,36 @@
         }
       }
     },
+    "event-join.ts::EventJoinCurrent": {
+      "kind": "object",
+      "members": {
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'cancelled' | 'rejected' | 'none' | 'registered' | 'pending_review' | 'waitlisted'"
+        },
+        "blocked": {
+          "optional": false,
+          "kind": "text",
+          "type": "'JOIN_CLOSED' | 'JOIN_LOCKED' | 'JOIN_REJECTED' | null"
+        },
+        "answers": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly (EventJoinAnswer & { item: EventJoinProfileItemKey | null; question: EventJoinQuestion; })[]"
+        },
+        "ask": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly (EventJoinQuestion & { item: EventJoinProfileItemKey | null; })[]"
+        },
+        "selfIntro": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
     "event-join.ts::EventJoinResult": {
       "kind": "object",
       "members": {

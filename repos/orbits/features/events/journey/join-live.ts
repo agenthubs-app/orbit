@@ -9,6 +9,8 @@ import { AppError } from "../../../shared/errors/app-error";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import { createPostgresActorRecordStore } from "../actor-records/store";
 import { JoinRefusedError, profileFactQuestions, type JoinDerivedAnswer, type JoinPorts, type JoinRefusal } from "./join";
+import type { EventParticipantProfileField } from "../registration/contract";
+import type { EventProfileResponseSnapshot } from "../registration/interview-response-contract";
 import type { JourneyLivePorts } from "./ports";
 import type { JourneyLanguage } from "./prep-core";
 
@@ -47,9 +49,58 @@ export async function signDerivedJoinAnswers(input: { actorId: string; eventId: 
   });
 }
 
+type JoinQuestionBase = Omit<EventJoinQuestion, "multi" | "max" | "help">;
+
+async function signFixedQuestion(input: { actorId: string; eventId: string; field: string; language: JourneyLanguage; secret?: string }): Promise<JoinQuestionBase | null> {
+  const { signAdaptiveInterviewQuestion } = await import("../registration/interview-question-token.server");
+  const { FIXED_INTERVIEW_QUESTION_MODEL, FIXED_INTERVIEW_QUESTION_PROVIDER, fixedInterviewQuestionText } = await import("../registration/adaptive-interview-service");
+  const field = input.field as EventParticipantProfileField;
+  const text = fixedInterviewQuestionText(field, input.language);
+  if (!text) return null;
+  const questionToken = signAdaptiveInterviewQuestion({ actorId: input.actorId, eventId: input.eventId, language: input.language === "en" ? "en" : "zh", ...(input.secret ? { secret: input.secret } : {}), question: { acknowledgment: "", field, options: [...text.options], prompt: text.prompt,
+    provenance: { fallbackReason: "edit", generationMethod: "deterministic-fallback", model: FIXED_INTERVIEW_QUESTION_MODEL, provider: FIXED_INTERVIEW_QUESTION_PROVIDER } } });
+  return { allowCustom: true, field, options: [...text.options], prompt: text.prompt, questionToken };
+}
+
+/**
+ * 上次存的回答 → 可以原样再交的回答：同一道题（题面、选项、题号都不变）重新签名，没改的就还是同一份内容，不会多出一个资料版本。
+ * 没有题面的旧回答改用该字段的固定题；都不行的丢掉（要的话会再问）。不看存的可见级别：本人看自己的回答。
+ */
+export async function signStoredJoinAnswers(input: { actorId: string; eventId: string; language: JourneyLanguage; responses: readonly EventProfileResponseSnapshot[]; secret?: string }): Promise<{ answer: string; fixed: boolean; question: JoinQuestionBase }[]> {
+  const { signAdaptiveInterviewQuestion, verifyInterviewResponseSubmissions } = await import("../registration/interview-question-token.server");
+  const { FIXED_INTERVIEW_QUESTION_MODEL, FIXED_INTERVIEW_QUESTION_PROVIDER } = await import("../registration/adaptive-interview-service");
+  const out: { answer: string; fixed: boolean; question: JoinQuestionBase }[] = [];
+  for (const response of input.responses) {
+    const answer = response.answer?.displayText?.trim();
+    if (!answer || out.some((item) => item.question.field === response.field)) continue;
+    const options = response.question?.options.map((option) => option.label) ?? [];
+    const fixed = response.generation?.provider === FIXED_INTERVIEW_QUESTION_PROVIDER;
+    try {
+      if (!response.question || !response.generation) throw new Error("no stored question");
+      const questionToken = signAdaptiveInterviewQuestion({
+        actorId: input.actorId, eventId: input.eventId, language: response.question.language, ...(response.questionId ? { questionId: response.questionId } : {}), ...(input.secret ? { secret: input.secret } : {}),
+        question: { acknowledgment: "", field: response.field, options, prompt: response.question.prompt,
+          provenance: fixed ? { fallbackReason: "edit", generationMethod: "deterministic-fallback", model: FIXED_INTERVIEW_QUESTION_MODEL, provider: FIXED_INTERVIEW_QUESTION_PROVIDER }
+            : { fallbackReason: null, generationMethod: "orbit-agent-model-adaptive", model: response.generation.model, provider: response.generation.provider } },
+      });
+      verifyInterviewResponseSubmissions({ actorId: input.actorId, eventId: input.eventId, responses: [{ answer, questionToken }], ...(input.secret ? { secret: input.secret } : {}) });
+      out.push({ answer, fixed, question: { allowCustom: true, field: response.field, options, prompt: response.question.prompt, questionToken } });
+    } catch {
+      const question = await signFixedQuestion({ ...input, field: response.field });
+      if (question) out.push({ answer, fixed: true, question });
+    }
+  }
+  return out;
+}
+
 export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (sql: string, values?: readonly unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>; workspaceId: string }): JoinPorts {
   const store = createPostgresActorRecordStore({ query: input.query, workspaceId: input.workspaceId });
   const tentativeId = (actorId: string, eventId: string) => `ets:${createHash("sha256").update(`${actorId}\u0000${eventId}`).digest("hex").slice(0, 32)}`;
+  const hostAnswersId = (actorId: string, eventId: string) => `eha:${createHash("sha256").update(`${actorId}\u0000${eventId}`).digest("hex").slice(0, 32)}`;
+  const tokenEventId = async (eventId: string, actorId: string) => {
+    const { loadEventForRegistration } = await import("../registration/event-loader");
+    return (await loadEventForRegistration(eventId, actorId))?.id ?? eventId;
+  };
   const schedule = async () => {
     const { createConfiguredPersonalScheduleService } = await import("../../personal-schedule/service-factory");
     const service = createConfiguredPersonalScheduleService();
@@ -93,6 +144,28 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
       const event = await input.journey.event(eventId);
       return event ? { endsAt: event.endsAt, hostContact: event.hostContact ?? null, registrationClosesAt: event.registrationClosesAt, review: event.review, startsAt: event.startsAt, title: event.title } : null;
     },
+    async current(actorId, eventId, language) {
+      const row = (await input.query(`/* events:r17-join:current */ select
+          a.status as application_status, a.decided_at is not null as decided, a.profile_payload -> 'interviewResponses' as application_responses,
+          m.status as membership_status, p.profile_payload #> '{registrationProfile,interviewResponses}' as membership_responses,
+          (select r.payload -> 'answers' from orbit_records r where r.workspace_id = $1 and r.collection_name = 'eventHostAnswers' and r.record_id = $4 and r.user_id = $3 and r.lifecycle_state <> 'deleted') as host_answers,
+          (select r.payload ->> 'text' from orbit_records r where r.workspace_id = $1 and r.collection_name = 'eventJoinIntros' and r.record_id = $5 and r.user_id = $3 and r.lifecycle_state <> 'deleted') as intro
+        from (select 1) one
+        left join event_ops_admission_application_heads a on a.workspace_id = $1 and a.event_id = $2 and a.actor_id = $3
+        left join event_ops_membership_heads m on m.workspace_id = $1 and m.event_id = $2 and m.actor_id = $3
+        left join event_ops_profile_versions p on p.workspace_id = m.workspace_id and p.event_id = m.event_id and p.participant_id = m.participant_id and p.profile_version = m.profile_version`,
+      [input.workspaceId, eventId, actorId, hostAnswersId(actorId, eventId), tentativeId(actorId, eventId)])).rows[0] ?? {};
+      const application = typeof row.application_status === "string" ? row.application_status : null;
+      const status = application === "pending_review" || application === "waitlisted" || application === "rejected" ? application
+        : row.membership_status === "rsvped" ? "registered" as const
+        : application || row.membership_status ? "cancelled" as const : "none" as const;
+      const responses = (status === "registered" ? row.membership_responses : row.application_responses) as readonly EventProfileResponseSnapshot[] | null | undefined;
+      const answers = await signStoredJoinAnswers({ actorId, eventId: await tokenEventId(eventId, actorId), language, responses: Array.isArray(responses) ? responses : [] });
+      return { answers, decided: row.decided === true, hostAnswers: (row.host_answers as Record<string, string> | null) ?? {}, selfIntro: typeof row.intro === "string" ? row.intro : null, status };
+    },
+    async fixedQuestion(actorId, eventId, field, language) {
+      return signFixedQuestion({ actorId, eventId: await tokenEventId(eventId, actorId), field, language });
+    },
     async next(eventId, answers, language, _more, plan) {
       const { createRegistrationInterviewPostHandler } = await import("../../../app/api/events/[id]/registration/adaptive-handlers");
       const { data, message, status } = await callHandler(createRegistrationInterviewPostHandler(), eventId, "registration/interview", { fallback: "fixed", language, transcript: transcript(answers),
@@ -132,7 +205,7 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
       return Array.isArray(list) ? list.slice(0, 5) : [];
     },
     async saveHostAnswers(actorId, eventId, answers) {
-      await store.put("eventHostAnswers", actorId, `eha:${createHash("sha256").update(`${actorId}\u0000${eventId}`).digest("hex").slice(0, 32)}`, { answers: { ...answers }, eventId }, new Date().toISOString());
+      await store.put("eventHostAnswers", actorId, hostAnswersId(actorId, eventId), { answers: { ...answers }, eventId }, new Date().toISOString());
     },
     async submit(eventId, answers, from) {
       const { POST } = await import("../../../app/api/events/[id]/registration/route");

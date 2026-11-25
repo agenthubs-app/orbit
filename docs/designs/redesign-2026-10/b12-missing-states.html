@@ -6979,7 +6979,7 @@ function detail(s) {
     <div class="card p-meet"><div class="card-h"><h3>会えそうな人</h3><span class="lbl">${s === 'empty' ? '登壇者から推定' : '参加者 12名から'}</span></div>${meetRows(s)}</div>
     ${s === 'few' ? `<div class="card flat"><div class="row" style="gap:10px">${avsOf([C[2]], 1)}<div style="flex:1"><b style="font-size:13px">伊藤さんがキーノートに登壇</b><div class="lbl">9/24 にメールでやりとり</div></div></div></div>` : ''}`;
 }
-const ctaBar = `<div class="ctabar p-cta"><button class="lbtn" style="width:46px;height:46px;background:var(--surface)">${ic('star')}</button><button class="btn primary" style="flex:1;height:46px">参加登録 · AI が5問だけ質問</button></div>`;
+const ctaBar = `<div class="ctabar p-cta"><button class="lbtn" style="width:46px;height:46px;background:var(--surface)">${ic('star')}</button><button class="btn primary" style="flex:1;height:46px">参加登録 · AI の質問に答える</button></div>`;
 /* Web 詳細 */
 function wDetail(s) {
   const n = { empty: 0, few: 12, many: 128 }[s];
@@ -7005,7 +7005,7 @@ const wDetailRail = (s) => `<h4>${ic('sparkle', 'sm')}会えそうな人</h4>
     ${s === 'empty' ? '<div class="ghost-row"><i></i>参加者の公開待ち</div>' : ''}</div>
   ${s === 'many' ? `<div class="card flat" style="padding:14px"><div class="row" style="gap:10px">${avsOf([C[0], C[2], C[6]], 3)}<span class="sub">知り合い 3名も参加</span></div></div>` : ''}
   <div style="flex:1"></div>
-  <div class="card p-wcta" style="padding:16px"><b>参加登録</b><div class="lbl" style="margin:4px 0 12px">AI が5問だけ質問します（約3分）。会社・役職はプロフィールから入力済み</div><button class="btn primary block" style="height:46px">参加登録をはじめる</button></div>`;
+  <div class="card p-wcta" style="padding:16px"><b>参加登録</b><div class="lbl" style="margin:4px 0 12px">AI がいくつか質問します。会社・役職はプロフィールから入力済み</div><button class="btn primary block" style="height:46px">参加登録をはじめる</button></div>`;
 
 /* ============================================================
    ④ 参加登録（AI 面談式）
@@ -7424,7 +7424,7 @@ const wReg3 = () => wRegHead('申込完了') + `<div class="wgrid">
 const cancelDlg = `<div class="overlay"></div><div class="wdlg wmodal w480 k-wcancel"><div class="row" style="gap:14px;align-items:flex-start"><div class="dic"><span class="lic i-alert"></span></div><div style="min-width:0"><b style="font-size:17px">CFO Night Tokyo の参加を取り消しますか？</b><div class="lbl" style="margin-top:2px">10月7日（水）19:00 · 渋谷ストリーム</div>
     <div style="display:grid;gap:8px;margin-top:14px;font-size:12.5px"><div class="row" style="gap:8px;align-items:flex-start">${ic('bell', 'sm')}<span>主催者に取り消しが通知されます</span></div><div class="row" style="gap:8px;align-items:flex-start">${ic('ticket', 'sm')}<span>参加費 ¥5,000 の返金は主催者の規定によります</span></div><div class="row" style="gap:8px;align-items:flex-start">${ic('users', 'sm')}<span>会いたい人リスト（6名）と準備メモは残ります</span></div></div></div></div>
   <div class="macts"><span class="lbl hint"><span class="kbd">Esc</span> キャンセル</span><button class="btn">参加を続ける</button><button class="btn danger">参加を取り消す</button></div></div>`;
-const codeCard = `<div class="card span4 k-rcode" style="background:linear-gradient(160deg,var(--mac-lav),var(--surface) 65%)"><div class="lbl">参加コードで招待されています</div><div style="font-family:var(--font-num);font-size:24px;font-weight:800;letter-spacing:.04em;margin:6px 0 2px">7QKM-H4TR</div><div class="lbl">CFO Night 実行委員会 から · 10/3 まで有効</div><div style="display:grid;gap:8px;margin-top:14px"><button class="btn primary">ログインして参加登録</button><button class="btn">無料で登録して参加登録</button></div><div class="lbl" style="margin-top:8px">登録は1分 · 申込は Orbit の質問 5問から</div></div>`;
+const codeCard = `<div class="card span4 k-rcode" style="background:linear-gradient(160deg,var(--mac-lav),var(--surface) 65%)"><div class="lbl">参加コードで招待されています</div><div style="font-family:var(--font-num);font-size:24px;font-weight:800;letter-spacing:.04em;margin:6px 0 2px">7QKM-H4TR</div><div class="lbl">CFO Night 実行委員会 から · 10/3 まで有効</div><div style="display:grid;gap:8px;margin-top:14px"><button class="btn primary">ログインして参加登録</button><button class="btn">無料で登録して参加登録</button></div><div class="lbl" style="margin-top:8px">登録は1分 · 申込は Orbit の質問に答えるだけ</div></div>`;
 /* §37（2026-10-16）：着地页也是未登录——参加者区按规则 A 只给人数 + 占位卡（同 W-R26-41u） */
 const regGate = `<div class="card span12 k-wpgate"><div class="card-h"><h3>参加者</h3><span class="lbl">参加予定 12人</span></div>
     <div class="guide" style="text-align:center;padding:22px 20px;border-radius:18px;background:var(--surface-2)"><div style="font-size:34px;line-height:1">👥</div><b style="display:block;font-size:15px;margin-top:8px">参加登録すると、参加者の名前と一言が見られます</b><div class="lbl" style="margin:4px 0 12px">参加者の情報は、同じイベントに申し込んだ人どうしにだけ表示されます</div><button class="btn primary">ログインして参加登録</button></div></div>`;

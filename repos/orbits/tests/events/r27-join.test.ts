@@ -314,3 +314,107 @@ test("the line above the questions names no number of questions (it can be more 
   for (const language of ["ja", "zh", "en"] as const) assert.doesNotMatch(eventsJourneyCopy.regPrefilledLine[language], /\d|五|five/i);
   assert.match(eventsJourneyCopy.regPrefilledLine.zh, /只需回答几个问题$/);
 });
+
+// ── 改资料：带回上次的内容（2026-11-26） ─────────────────────────────────────
+
+const editQuestions = [
+  { id: "q-role", kind: "single", options: ["創業者", "投資家"], prompt: "立場は？", required: true },
+  { id: "q-changed", kind: "single", options: ["新しい A", "新しい B"], prompt: "選び直し", required: false },
+  { id: "q-new", kind: "single", options: ["はい", "いいえ"], prompt: "新しい必須", required: true },
+  { id: "q-optional", kind: "single", options: ["はい", "いいえ"], prompt: "新しい任意", required: false },
+  { id: "q-free", kind: "free", options: [], prompt: "ひとこと", required: false },
+];
+const editPorts = (overrides: Partial<JoinPorts> = {}, mine: Record<string, unknown> = {}) => {
+  let aiCalls = 0;
+  const ports = fakePorts({
+    current: async () => ({
+      answers: [
+        { answer: "製造業 · 商社", fixed: false, question: { allowCustom: true, field: "targetAttendees", options: ["製造業", "投資家"], prompt: "どんな方に会いたいですか？", questionToken: "t-target" } },
+        { answer: "紹介", fixed: true, question: { allowCustom: true, field: "valueOffered", options: ["A", "B"], prompt: "提供できることは？", questionToken: "t-offer" } },
+        { answer: "CEO @ A", fixed: true, question: { allowCustom: true, field: "positioning", options: ["CEO @ A", "不填"], prompt: "職位と会社は？", questionToken: "t-pos" } },
+      ],
+      decided: false,
+      hostAnswers: { "q-changed": "古い選択肢", "q-deleted": "消えた質問", "q-free": "よろしく", "q-role": "投資家" },
+      selfIntro: "前回の自己紹介",
+      status: "registered",
+      ...mine,
+    }) as never,
+    event: async () => ({ endsAt: "2026-10-07T12:30:00.000Z", registrationClosesAt: "2026-10-03T14:59:00.000Z", review: false, startsAt: "2026-10-07T10:00:00.000Z", title: "T" }),
+    hostQuestions: async () => editQuestions as never,
+    next: async () => { aiCalls += 1; return null; },
+    persona: async () => { aiCalls += 1; return null; },
+    profileTags: async () => ({ offering: ["紹介"], seeking: ["投資家"] }),
+    ...overrides,
+  });
+  return { ai: () => aiCalls, ports };
+};
+
+test("edit starts from the last answers: last answer before the profile's, deleted dropped, changed / new required asked again, intro kept, no AI", async () => {
+  const { ai, ports } = editPorts();
+  const service = createJoinService({ ports });
+  const current = (await service.current("actor:a", "ev", "ja"))!;
+  assert.deepEqual([current.status, current.blocked, current.selfIntro], ["registered", null, "前回の自己紹介"]);
+  assert.deepEqual(current.answers.map((item) => [item.field, item.answer, item.item]), [["host:q-role", "投資家", null], ["host:q-free", "よろしく", null], ["targetAttendees", "製造業 · 商社", "target"]], "facts and profile-filled items are filled again at submit");
+  const target = current.answers.find((item) => item.field === "targetAttendees")!.question;
+  assert.deepEqual(target.prefill, ["製造業", "商社"], "the last answer, not the profile's 投資家");
+  assert.deepEqual(target.options, ["製造業", "商社", "投資家"]);
+  assert.deepEqual(current.answers[0]!.question.prefill, ["投資家"]);
+  assert.deepEqual(current.ask.map((question) => question.field), ["host:q-changed", "host:q-new"], "rewritten options and new required questions; the optional one is not asked");
+  const given = current.answers.map(({ answer: text, field, prompt, questionToken }) => ({ answer: text, field, prompt, questionToken }));
+  const profile = (await service.profile("actor:a", "ev", given, false, "ja", true))!;
+  assert.deepEqual(profile.items.find((item) => item.key === "offer"), { done: true, fromProfile: true, key: "offer" });
+  assert.equal(profile.selfIntro, null);
+  assert.equal(ai(), 0);
+});
+
+test("edit: a core item nobody can fill any more is asked with a fixed question (no AI); an organizer question that fills it keeps it out of the answers", async () => {
+  const fixedQuestion = async (_actor: string, _event: string, field: string) => ({ allowCustom: true, field, options: ["A", "B"], prompt: "固定の質問です", questionToken: `fixed-${field}` });
+  const bare = editPorts({ fixedQuestion, hostQuestions: async () => [] as never, profileTags: async () => ({ offering: [], seeking: [] }) }, { answers: [], hostAnswers: {} });
+  assert.deepEqual((await createJoinService({ ports: bare.ports }).current("a", "ev", "ja"))!.ask.map((question) => question.field), ["targetAttendees", "valueOffered"]);
+  assert.equal(bare.ai(), 0);
+  const library = { id: "lib-meet", kind: "multiple", options: ["投資家"], prompt: "会いたい人は？", required: false };
+  const host = editPorts({ hostQuestions: async () => [library] as never }, { answers: [{ answer: "投資家", fixed: true, question: { allowCustom: true, field: "targetAttendees", options: ["A", "B"], prompt: "会いたい人？", questionToken: "t" } }], hostAnswers: { "lib-meet": "投資家" } });
+  assert.deepEqual((await createJoinService({ ports: host.ports }).current("a", "ev", "ja"))!.answers.map((item) => [item.field, item.item]), [["host:lib-meet", "target"]]);
+});
+
+test("edit: what cannot be changed says so before anything is asked; cancelled / none is a new registration", async () => {
+  const read = async (mine: Record<string, unknown>, overrides: Partial<JoinPorts> = {}) => (await createJoinService({ ports: editPorts(overrides, mine).ports }).current("a", "ev", "ja"))!;
+  const review = { event: async () => ({ endsAt: null, registrationClosesAt: "2026-10-03T14:59:00.000Z", review: true, startsAt: "2026-10-07T10:00:00.000Z", title: "T" }) };
+  assert.equal((await read({ status: "rejected" })).blocked, "JOIN_REJECTED");
+  assert.equal((await read({}, { now: () => Date.parse("2026-10-04T00:00:00.000Z") })).blocked, "JOIN_CLOSED");
+  assert.equal((await read({ decided: true, status: "waitlisted" })).blocked, "JOIN_LOCKED");
+  assert.equal((await read({}, review)).blocked, "JOIN_LOCKED", "approved in a screened event");
+  assert.equal((await read({ status: "pending_review" }, review)).blocked, null);
+  for (const status of ["cancelled", "none"]) { const fresh = await read({ status }); assert.deepEqual([fresh.status, fresh.blocked, fresh.answers.length, fresh.ask.length], [status, null, 0, 0]); }
+});
+
+test("old App (no `edit`, an unchanged intro is not sent): a registered person's submission keeps the intro; a new registration clears a stale one; edit with an emptied intro clears it", async () => {
+  const calls: string[] = [];
+  const service = (status: "registered" | "pending_review" | "none") => createJoinService({ ports: fakePorts({ registrationStatus: async () => status, removeIntro: async () => { calls.push(`remove:${status}`); } }) });
+  for (const status of ["registered", "pending_review", "none"] as const) await service(status).submit("a", "ev", [], "zh");
+  assert.deepEqual(calls, ["remove:none"]);
+  await service("registered").submit("a", "ev", [], "zh", undefined, true);
+  assert.deepEqual(calls, ["remove:none", "remove:registered"]);
+});
+
+test("stored answers are signed again as the same question: submitting them unchanged gives the same content (old matching_only ones too)", async () => {
+  const { signStoredJoinAnswers } = await import("../../features/events/journey/join-live");
+  const secret = "s".repeat(32);
+  const sign = (field: string, provider: string) => ({ answer: "A", questionToken: signAdaptiveInterviewQuestion({ actorId: "a", eventId: "e", language: "zh", secret,
+    question: { acknowledgment: "", field: field as never, options: ["A", "B"], prompt: "这次活动的一个问题？", provenance: provider === "orbit-fixed" ? { fallbackReason: "x", generationMethod: "deterministic-fallback", model: "fixed-questions-v1", provider } : { fallbackReason: null, generationMethod: "orbit-agent-model-adaptive", model: "m", provider } } }) });
+  const stored = verifyInterviewResponseSubmissions({ actorId: "a", eventId: "e", responses: [sign("targetAttendees", "deepseek"), sign("valueOffered", "orbit-fixed")], secret })
+    .map((item) => (item.field === "targetAttendees" ? { ...item, visibility: "matching_only" as const } : item));
+  const back = await signStoredJoinAnswers({ actorId: "a", eventId: "e", language: "zh", responses: stored, secret });
+  assert.deepEqual(back.map((item) => [item.question.field, item.answer, item.fixed]), [["targetAttendees", "A", false], ["valueOffered", "A", true]]);
+  const again = verifyInterviewResponseSubmissions({ actorId: "a", eventId: "e", responses: back.map((item) => ({ answer: item.answer, questionToken: item.question.questionToken })), secret });
+  const content = (list: readonly { answeredAt: string; visibility: string }[]) => list.map(({ answeredAt: _at, visibility: _visibility, ...rest }) => rest);
+  assert.deepEqual(content(again), content(stored));
+  assert.deepEqual(again.map((item) => item.visibility), ["event_attendees", "event_attendees"]);
+  // A legacy answer without its question comes back on the fixed question of that field.
+  const legacy = await signStoredJoinAnswers({ actorId: "a", eventId: "e", language: "zh", responses: [{ ...stored[0]!, generation: null, question: null, questionId: null }], secret });
+  assert.deepEqual([legacy[0]?.answer, legacy[0]?.fixed], ["A", true]);
+});
+
+test("no copy on the registration path promises five questions", () => {
+  for (const key of ["ctaSub", "ctaRegisterAi", "inviteNote", "regPrefilledLine"] as const) for (const language of ["ja", "zh", "en"] as const) assert.doesNotMatch(eventsJourneyCopy[key][language], /5|五|five/i);
+});

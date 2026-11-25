@@ -35,7 +35,7 @@ import { venueRecordView } from "./venue-core";
 import { createJourneyService, type JourneyService } from "./service";
 import { createJoinService, JoinRefusedError, type JoinService } from "./join";
 import { createJoinMockPorts } from "./join-mock";
-import { eventJoinCancelInputObject, eventJoinCancelResultSchema, eventJoinNextInputObject, eventJoinProfileInputObject, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinSubmitInputObject, eventJoinTentativeInputObject, eventJoinTentativeResultSchema } from "../../../shared/api-schema/event-join";
+import { eventJoinCancelInputObject, eventJoinCancelResultSchema, eventJoinCurrentSchema, eventJoinNextInputObject, eventJoinProfileInputObject, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinSubmitInputObject, eventJoinTentativeInputObject, eventJoinTentativeResultSchema } from "../../../shared/api-schema/event-join";
 
 type Params = Record<string, string>;
 type RouteContext = { params?: Promise<Params> };
@@ -178,6 +178,11 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       if (parsed.ok === false) return parsed.reply;
       return service.dismiss(actorId!, eventId(params), parsed.value);
     }, deps),
+    joinCurrent: journeyRoute({ auth: "required", schema: eventJoinCurrentSchema }, async ({ actorId, join, language, params }) => {
+      const service = await join();
+      if (!service) return { context: { reason: "EVENT_JOIN_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Registration is unavailable.") };
+      return service.current(actorId!, eventId(params), language);
+    }, deps),
     joinNext: journeyRoute({ auth: "required", schema: eventJoinStepSchema }, async ({ actorId, join, language, params, request }) => {
       const parsed = await body(request, eventJoinNextInputObject);
       if (parsed.ok === false) return parsed.reply;
@@ -190,7 +195,7 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       if (parsed.ok === false) return parsed.reply;
       const service = await join();
       if (!service) return { context: { reason: "EVENT_JOIN_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Registration is unavailable.") };
-      return service.profile(actorId!, eventId(params), parsed.value.answers, parsed.value.draft, language);
+      return service.profile(actorId!, eventId(params), parsed.value.answers, parsed.value.draft, language, parsed.value.edit);
     }, deps),
     joinSubmit: journeyRoute({ auth: "required", schema: eventJoinResultSchema, write: true }, async ({ actorId, join, language, params, request }) => {
       const parsed = await body(request, eventJoinSubmitInputObject);

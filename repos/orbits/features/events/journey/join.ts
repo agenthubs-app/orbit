@@ -7,7 +7,7 @@
  */
 import type { HostEventContact } from "../../../shared/contract/host-events";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
-import type { EventJoinAnswer, EventJoinCancelResult, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
+import type { EventJoinAnswer, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
 import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../../../shared/compute/profile-tag-options";
 import { PROFILE_ONBOARDING_GOALS } from "../../../shared/compute/profile-onboarding-goal";
 import { HOST_QUESTION_PROFILE_ITEM, hostQuestionOptionAliases, hostQuestionProfilePrefill, localizeQuestion } from "../../../shared/domain/host-question-library";
@@ -239,6 +239,15 @@ export function profileFactQuestions(facts: JoinProfileFacts | null, answered: r
   });
 }
 
+export interface JoinCurrentRegistration {
+  status: EventJoinCurrent["status"];
+  /** 主办方已经决定（通过 / 安排候补）。 */
+  decided: boolean;
+  answers: readonly { answer: string; fixed: boolean; question: Omit<EventJoinQuestion, "multi" | "max" | "help"> }[];
+  hostAnswers: Readonly<Record<string, string>>;
+  selfIntro: string | null;
+}
+
 export interface JoinPorts {
   event(eventId: string): Promise<{ title: string; startsAt: string; endsAt: string | null; review: boolean; registrationClosesAt: string | null; hostContact?: HostEventContact | null } | null>;
   /**
@@ -267,6 +276,10 @@ export interface JoinPorts {
   renameSchedule(actorId: string, scheduleItemId: string, title: string): Promise<void>;
   removeSchedule(actorId: string, scheduleItemId: string): Promise<void>;
   now?(): number;
+  /** 这个人这场活动现在的报名（没有 = null）；`answers` 是重新签过名的访谈回答，`fixed` = 固定题（主办方题 / 资料补的，或 AI 用不了时问的）。 */
+  current?(actorId: string, eventId: string, language: JourneyLanguage): Promise<JoinCurrentRegistration | null>;
+  /** 固定题（不调 AI）：编辑时缺的核心项用它补问。 */
+  fixedQuestion?(actorId: string, eventId: string, field: string, language: JourneyLanguage): Promise<Omit<EventJoinQuestion, "multi" | "max" | "help"> | null>;
   registrationStatus(actorId: string, eventId: string): Promise<"registered" | "pending_review" | "rejected" | "cancelled" | "none">;
   /** R17（host/DESIGN.md §2.7）：主办方公开的申込質問（先问，再由访谈补足到 5 问）。没有就不问。 */
   hostQuestions?(eventId: string): Promise<readonly HostSetupQuestion[]>;
@@ -300,6 +313,31 @@ export function validHostAnswers(questions: readonly HostSetupQuestion[], answer
     out[question.id] = picked.join(" · ");
   }
   return out;
+}
+
+/** 主办方的申込質問 → 报名页的一题（按当前语言；主办方自己改写过的保持原文）。 */
+function hostJoinQuestion(question: HostSetupQuestion, language: JourneyLanguage): EventJoinQuestion {
+  const shown = localizeQuestion(question, language);
+  const field = `${HOST_QUESTION_FIELD_PREFIX}${question.id}`;
+  return { allowCustom: shown.kind === "free", field, help: null, max: null, multi: shown.kind === "multiple", options: [...shown.options], prompt: shown.prompt, questionToken: field };
+}
+
+/** 存的主办方题回答（公开的写法）→ 当前语言的写法；有一项已经不在选项里 = 题被改过，要重新问（null）。 */
+function storedHostAnswer(question: HostSetupQuestion, stored: string, language: JourneyLanguage): string | null {
+  if (question.kind === "free") return stored;
+  const aliases = hostQuestionOptionAliases(question);
+  const shown = localizeQuestion(question, language).options;
+  const parts = aliases.has(stored) ? [stored] : stored.split(/\s*·\s*/u);
+  const picked = parts.map((part) => { const published = aliases.get(part); return published === undefined ? -1 : question.options.indexOf(published); });
+  if (picked.some((index) => index < 0 || shown[index] === undefined) || (question.kind === "single" && picked.length > 1)) return null;
+  return picked.map((index) => shown[index]!).join(" · ");
+}
+
+/** 改资料时的一题：上次的回答排在选项最前并先选上（优先于资料预选），资料里的选项和原来的选项跟在后面。 */
+function answeredQuestion(question: EventJoinQuestion, answer: string, fromProfile: readonly string[]): EventJoinQuestion {
+  const parts = question.options.includes(answer) || !question.multi ? [answer] : [...new Set(answer.split(/\s+·\s+/u).map((part) => part.trim()).filter(Boolean))];
+  const rest = [...fromProfile, ...question.options].filter((option, index, all) => all.indexOf(option) === index && !parts.some((part) => sameOption(part, option)));
+  return { ...question, options: [...parts, ...rest].slice(0, OPTIONS_MAX), prefill: parts.slice(0, question.max ?? OPTIONS_MAX) };
 }
 
 /** 自己紹介草稿用的回答：访谈回答 + 填了某一项的主办方题（按那一项的访谈字段交给 persona，其余主办方题不给）。 */
@@ -339,7 +377,8 @@ export function createJoinService(deps: { ports: JoinPorts }) {
           const picked = hostQuestionProfilePrefill(pending, tags ? { goalIds: tags.goalIds, industryId: tags.industryId, secondaryIndustryId: tags.secondaryIndustryId, seniority: tags.seniority, topicKeys: profileTopicKeys(tags.topics) } : null)
             .flatMap((index) => (shown.options[index] === undefined ? [] : [shown.options[index]!]));
           const prefill = shown.kind === "single" ? picked.slice(0, 1) : picked;
-          const step = joinStep(answers.length, { allowCustom: shown.kind === "free", field: `${HOST_QUESTION_FIELD_PREFIX}${pending.id}`, multi: shown.kind === "multiple", options: [...shown.options], prompt: shown.prompt, questionToken: `${HOST_QUESTION_FIELD_PREFIX}${pending.id}` }, language);
+          const { max: _max, help: _help, ...asked } = hostJoinQuestion(pending, language);
+          const step = joinStep(answers.length, asked, language);
           return prefill.length && step.question ? { ...step, question: { ...step.question, prefill } } : step;
         }
       }
@@ -353,7 +392,47 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       if (!step.question) return step;
       return { ...step, question: prefillQuestion(step.question, tags, language) };
     },
-    async profile(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], draft: boolean, language: JourneyLanguage): Promise<EventJoinProfile | null> {
+    /** 进报名页先读：新报名还是改资料、能不能改、上次的回答。改资料不调 AI。 */
+    async current(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventJoinCurrent | null> {
+      const event = await ports.event(eventId);
+      if (!event) return null;
+      const mine = (await ports.current?.(actorId, eventId, language)) ?? null;
+      const fresh = { answers: [], ask: [], blocked: null, selfIntro: null } as const;
+      if (!mine || mine.status === "none" || mine.status === "cancelled") return { ...fresh, status: mine?.status ?? "none" };
+      if (mine.status === "rejected") return { ...fresh, blocked: "JOIN_REJECTED", status: mine.status };
+      const closesAt = Date.parse(event.registrationClosesAt ?? event.startsAt);
+      if (Number.isFinite(closesAt) && (ports.now?.() ?? Date.now()) >= closesAt) return { ...fresh, blocked: "JOIN_CLOSED", status: mine.status };
+      if (mine.status !== "pending_review" && (mine.decided || event.review)) return { ...fresh, blocked: "JOIN_LOCKED", status: mine.status };
+      const hostQuestions = ports.hostQuestions ? await ports.hostQuestions(eventId).catch(() => []) : [];
+      const tags = await profileTags(actorId, language);
+      // 主办方题：删掉的丢弃；选项改得对不上的、新增的必答题要补问；其余按当前语言带回。
+      const ask: EventJoinCurrent["ask"][number][] = [];
+      const host: EventJoinCurrent["answers"][number][] = [];
+      for (const question of hostQuestions) {
+        const shown = hostJoinQuestion(question, language);
+        const stored = mine.hostAnswers[question.id]?.trim();
+        const answer = stored ? storedHostAnswer(question, stored, language) : null;
+        if (answer) host.push({ answer, field: shown.field, item: itemOfAnswer(shown.field), prompt: shown.prompt, question: question.kind === "free" ? shown : answeredQuestion(shown, answer, []), questionToken: shown.questionToken });
+        else if (stored || question.required) ask.push({ ...shown, item: itemOfAnswer(shown.field) });
+      }
+      const fromProfile = profileCoreAnswers(tags, language);
+      const interview = mine.answers.flatMap(({ answer, fixed, question }) => {
+        const item = itemOfAnswer(question.field);
+        // 公司・职位、行业每次按资料重新补；由主办方题或资料补成的核心项提交时会重新补，不当成本人单独答过的题。
+        if (fixed && (PROFILE_FIELDS as readonly string[]).includes(question.field)) return [];
+        if (fixed && item && (host.some((entry) => entry.item === item) || fromProfile[item] === answer)) return [];
+        return [{ answer, field: question.field, item, prompt: question.prompt, question: answeredQuestion({ ...question, ...questionShape(question.field, language) }, answer, profileOptionsFor(question.field, tags, language)), questionToken: question.questionToken }];
+      });
+      const answers = [...host, ...interview];
+      const asked = [...answers.map((entry) => entry.field), ...ask.map((question) => question.field)].map((field) => itemOfAnswer(field));
+      for (const item of CORE_ITEMS) {
+        if (asked.includes(item) || fromProfile[item]) continue;
+        const question = await ports.fixedQuestion?.(actorId, eventId, FIELD_OF_ITEM[item], language);
+        if (question) ask.push({ ...prefillQuestion({ ...question, ...questionShape(question.field, language) }, tags, language), item });
+      }
+      return { answers, ask, blocked: null, selfIntro: mine.selfIntro?.trim() || null, status: mine.status };
+    },
+    async profile(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], draft: boolean, language: JourneyLanguage, edit = false): Promise<EventJoinProfile | null> {
       const event = await ports.event(eventId);
       if (!event) return null;
       const persona = draft ? await ports.persona(eventId, personaAnswers(answers), language).catch(() => null) : null;
@@ -365,7 +444,7 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const editableUntil = Date.parse(editableUntilAt) > Date.now() ? new Date(Date.parse(editableUntilAt)).toISOString() : null;
       // 资料标签兜底的核心项只在问完（满 5 题）后才算有值：答题中预填的项要用户确认那一题才算（否则一开始就 72 %）。
       const filled = filledItems(answers);
-      const exhausted = answers.length >= JOIN_TOTAL;
+      const exhausted = edit || answers.length >= JOIN_TOTAL;
       const tags = exhausted && CORE_ITEMS.some((item) => !filled.has(item)) ? await profileTags(actorId, language) : null;
       const profileItems = resolveCoreAnswers(answers, tags, language).derived.filter((item) => item.source === "profile").map((item) => (item.field === "targetAttendees" ? "target" : "offer") as EventJoinProfileItemKey);
       return profileFromAnswers(answers, { editableUntil, profileItems, personaTopics: persona?.topics ?? [], review: event.review, reviewUntil: event.review ? event.registrationClosesAt : null, selfIntro: intro, selfIntroBasis: basis });
@@ -382,6 +461,7 @@ export function createJoinService(deps: { ports: JoinPorts }) {
         if (status === "cancelled" || status === "none") throw new JoinRefusedError("JOIN_CANCELLED", "The registration was cancelled.");
         if (status === "rejected") throw new JoinRefusedError("JOIN_REJECTED", "The application was not accepted.");
       }
+      const before = edit || selfIntro?.trim() ? null : await ports.registrationStatus(actorId, eventId).catch(() => "registered" as const);
       const hostQuestions = ports.hostQuestions ? await ports.hostQuestions(eventId).catch(() => []) : [];
       // 访谈没问到的核心项：用主办方题 / 资料标签补成签名固定题（否则报名接口与审核申请都会因缺核心项拒绝）。
       const filled = filledItems(answers.filter((answer) => !isHostAnswer(answer)));
@@ -392,7 +472,8 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       if (ports.saveHostAnswers && Object.keys(hostAnswers).length > 0) await ports.saveHostAnswers(actorId, eventId, hostAnswers);
       // 这次报名的介绍覆盖上一次的；没带介绍就清掉旧的（取消后再报名时，旧介绍不能借着新报名重新显示给别人）。
       if (selfIntro?.trim()) await ports.saveIntro(actorId, eventId, selfIntro);
-      else await ports.removeIntro?.(actorId, eventId);
+      // 改资料时清空了介绍才清掉；旧版 App 不带 edit、没改过的介绍也不发，已报名的人再次提交不能把上次确认的介绍弄没。
+      else if (edit || !["registered", "pending_review"].includes(before ?? "none")) await ports.removeIntro?.(actorId, eventId);
       const endsAt = event.endsAt ?? new Date(Date.parse(event.startsAt) + 2 * 3_600_000).toISOString();
       return {
         endsAt: event.endsAt,

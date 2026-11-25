@@ -390,7 +390,7 @@ function detail(s) {
     <div class="card p-meet"><div class="card-h"><h3>会えそうな人</h3><span class="lbl">${s === 'empty' ? '登壇者から推定' : '参加者 12名から'}</span></div>${meetRows(s)}</div>
     ${s === 'few' ? `<div class="card flat"><div class="row" style="gap:10px">${avsOf([C[2]], 1)}<div style="flex:1"><b style="font-size:13px">伊藤さんがキーノートに登壇</b><div class="lbl">9/24 にメールでやりとり</div></div></div></div>` : ''}`;
 }
-const ctaBar = `<div class="ctabar p-cta"><button class="lbtn" style="width:46px;height:46px;background:var(--surface)">${ic('star')}</button><button class="btn primary" style="flex:1;height:46px">参加登録 · AI が5問だけ質問</button></div>`;
+const ctaBar = `<div class="ctabar p-cta"><button class="lbtn" style="width:46px;height:46px;background:var(--surface)">${ic('star')}</button><button class="btn primary" style="flex:1;height:46px">参加登録 · AI の質問に答える</button></div>`;
 /* Web 詳細 */
 function wDetail(s) {
   const n = { empty: 0, few: 12, many: 128 }[s];
@@ -416,7 +416,7 @@ const wDetailRail = (s) => `<h4>${ic('sparkle', 'sm')}会えそうな人</h4>
     ${s === 'empty' ? '<div class="ghost-row"><i></i>参加者の公開待ち</div>' : ''}</div>
   ${s === 'many' ? `<div class="card flat" style="padding:14px"><div class="row" style="gap:10px">${avsOf([C[0], C[2], C[6]], 3)}<span class="sub">知り合い 3名も参加</span></div></div>` : ''}
   <div style="flex:1"></div>
-  <div class="card p-wcta" style="padding:16px"><b>参加登録</b><div class="lbl" style="margin:4px 0 12px">AI が5問だけ質問します（約3分）。会社・役職はプロフィールから入力済み</div><button class="btn primary block" style="height:46px">参加登録をはじめる</button></div>`;
+  <div class="card p-wcta" style="padding:16px"><b>参加登録</b><div class="lbl" style="margin:4px 0 12px">AI がいくつか質問します。会社・役職はプロフィールから入力済み</div><button class="btn primary block" style="height:46px">参加登録をはじめる</button></div>`;
 
 /* ============================================================
    ④ 参加登録（AI 面談式）

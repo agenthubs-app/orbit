@@ -5,7 +5,7 @@
 // 数据：/api/events/[id]/join/*（问题 = 现有 AI 访谈 ≤5 问；资料规则实时更新，只有确认时才生成自己紹介草稿）。
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { EventJoinAnswer, EventJoinProfile, EventJoinProfileItemKey, EventJoinResult, EventJoinStep } from "../../../../../shared/contract/event-join";
+import type { EventJoinAnswer, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep } from "../../../../../shared/contract/event-join";
 import type { EventOverviewResponse } from "../../../../../shared/contract/event-overview";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { ShellPage } from "../shell/slots";
@@ -17,7 +17,7 @@ import { eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
 import { contactReviewLine, HostContactCard, HostContactModal } from "./HostContact";
 import { hostContactHasId } from "../../../../../shared/compute/host-contact";
-import { eventJoinCancelResultSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
+import { eventJoinCancelResultSchema, eventJoinCurrentSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
 import type { ZodType } from "zod";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
@@ -30,8 +30,9 @@ const id = (value: string) => encodeURIComponent(value);
 export function joinApiFor(language: OrbitLanguage) {
   const headers = { "x-orbit-lang": language };
   return {
+    current: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/current`, { headers }, eventJoinCurrentSchema as ZodType<EventJoinCurrent>),
     next: (eventId: string, answers: readonly EventJoinAnswer[], more = false, focus?: EventJoinProfileItemKey) => eventsCall(`/api/events/${id(eventId)}/join/next`, { body: JSON.stringify({ answers, more, ...(focus ? { focus } : {}) }), headers, method: "POST" }, eventJoinStepSchema as ZodType<EventJoinStep>),
-    profile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean) => eventsCall(`/api/events/${id(eventId)}/join/profile`, { body: JSON.stringify({ answers, draft }), headers, method: "POST" }, eventJoinProfileSchema as ZodType<EventJoinProfile>),
+    profile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean, edit = false) => eventsCall(`/api/events/${id(eventId)}/join/profile`, { body: JSON.stringify({ answers, draft, ...(edit ? { edit } : {}) }), headers, method: "POST" }, eventJoinProfileSchema as ZodType<EventJoinProfile>),
     submit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string, edit = false) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey(), ...(edit ? { edit } : {}), ...(selfIntro ? { selfIntro } : {}) }), headers, method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
     cancel: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/cancel`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinCancelResultSchema),
     tentative: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/tentative`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinTentativeResultSchema),
@@ -61,6 +62,8 @@ function dateTimeLong(iso: string, t: JourneyT): string {
 
 const REFUSAL_KEY: Readonly<Record<string, "joinClosed" | "joinLocked" | "joinRejected" | "joinCancelled">> = { JOIN_CANCELLED: "joinCancelled", JOIN_CLOSED: "joinClosed", JOIN_LOCKED: "joinLocked", JOIN_REJECTED: "joinRejected" };
 const refusalKey = (code: string | undefined) => (code ? REFUSAL_KEY[code] : undefined);
+
+const ITEM_OF_FIELD: Readonly<Record<string, EventJoinProfileItemKey>> = { desiredOutcome: "purpose", experienceHighlight: "topics", targetAttendees: "target", valueOffered: "offer" };
 
 type ProfileMode = "live" | "review" | "applied";
 
@@ -134,20 +137,49 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
 
   const [loadFailed, setLoadFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // 先确定这一次是新报名还是改资料（null = 还没读到，什么都不能提交），之后不再变：报名成功后概要里的状态变了也不会把完成页写错。
+  const [mode, setMode] = useState<"new" | "edit" | null>(null);
+  const [blocked, setBlocked] = useState<"joinRejected" | "joinClosed" | "joinLocked" | null>(null);
+  // 改资料：上次每一答的题（按字段），点哪一项就只改哪一项；queue = 还要答的（主办方新加的必答题等，或这次点的那一项）。
+  const [asked, setAsked] = useState<Record<string, { item: EventJoinProfileItemKey | null; question: EventJoinQuestion }>>({});
+  const [queue, setQueue] = useState<readonly EventJoinQuestion[]>([]);
+  const editing = mode === "edit";
+  const showEditQuestions = (list: readonly EventJoinQuestion[], given: readonly EventJoinAnswer[]) => {
+    const [first, ...rest] = list;
+    setQueue(rest);
+    if (!first) { setStep({ done: true, index: 1, question: null, remainingMinutes: 0, total: 1 }); setSelected([]); setFree(""); return; }
+    showStep({ done: false, index: 1, question: first, remainingMinutes: 0, total: 1 });
+    setFree(first.options.length ? "" : given.find((item) => item.field === first.field)?.answer ?? "");
+  };
   useEffect(() => {
     let live = true;
     setLoadFailed(false);
+    setMode(null);
     void journeyApi.overview(eventId).then((res) => { if (live && res.ok) setEvent(res.data); });
-    void joinApi.next(eventId, []).then((res) => { if (!live) return; if (res.ok) showStep(res.data); else setLoadFailed(true); });
-    void joinApi.profile(eventId, [], false).then((res) => { if (live && res.ok) setProfile(res.data); });
+    void joinApi.current(eventId).then(async (current) => {
+      if (!live) return;
+      if (!current.ok) { setLoadFailed(true); return; }
+      if (current.data.blocked) { setBlocked(REFUSAL_KEY[current.data.blocked] as "joinRejected" | "joinClosed" | "joinLocked"); return; }
+      const edit = ["registered", "pending_review", "waitlisted"].includes(current.data.status);
+      setMode(edit ? "edit" : "new");
+      if (!edit) {
+        void joinApi.profile(eventId, [], false).then((res) => { if (live && res.ok) setProfile(res.data); });
+        const first = await joinApi.next(eventId, []);
+        if (!live) return;
+        if (first.ok) showStep(first.data); else setLoadFailed(true);
+        return;
+      }
+      const given = current.data.answers.map(({ answer, field, prompt, questionToken }) => ({ answer, field, prompt, questionToken }));
+      setAnswers(given);
+      setAsked(Object.fromEntries([...current.data.answers.map((item) => [item.field, { item: item.item, question: item.question }] as const), ...current.data.ask.map(({ item, ...question }) => [question.field, { item, question }] as const)]));
+      setIntro(current.data.selfIntro ?? "");
+      showEditQuestions(current.data.ask, given);
+      const read = await joinApi.profile(eventId, given, false, true);
+      if (live && read.ok) setProfile(read.data);
+    });
     return () => { live = false; };
   }, [eventId, attempt, joinApi]);
 
-  // 已报名 / 审核中 / 候补的人再来 = 改资料；改不了的（已截止、主办方已通过、被拒）一进来就说明，不让人白答一遍。
-  const status = event?.registration.status;
-  const editing = status === "registered" || status === "pending_review" || status === "waitlisted";
-  const closed = Boolean(event) && Date.parse(event!.registrationClosesAt ?? event!.startsAt) <= Date.now();
-  const blocked = result ? null : status === "rejected" ? "joinRejected" : editing && closed ? "joinClosed" : status === "registered" && profile?.review ? "joinLocked" : null;
   const question = step?.question ?? null;
   const reviewing = Boolean(step?.done) && !result;
   const total = step?.total ?? 5;
@@ -160,7 +192,21 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     if (!question || busy) return;
     const value = [...selected, free.trim()].filter(Boolean).join(" · ");
     if (!value) return;
-    const next = [...answers, { answer: value, field: question.field, prompt: question.prompt, questionToken: question.questionToken }];
+    const given = { answer: value, field: question.field, prompt: question.prompt, questionToken: question.questionToken };
+    if (editing) {
+      // 改资料：只换这一答，其余原样；不再往下问，也不重写介绍。
+      const changed = answers.some((item) => item.field === given.field) ? answers.map((item) => (item.field === given.field ? given : item)) : [...answers, given];
+      const picked = question.options.length ? [...selected, free.trim()].filter(Boolean) : [];
+      setAnswers(changed);
+      setAsked((list) => ({ ...list, [given.field]: { item: list[given.field]?.item ?? ITEM_OF_FIELD[given.field] ?? null, question: { ...question, options: [...new Set([...picked, ...question.options])].slice(0, 12), ...(picked.length ? { prefill: picked } : {}) } } }));
+      showEditQuestions(queue, changed);
+      setBusy(true);
+      const read = await joinApi.profile(eventId, changed, false, true);
+      if (read.ok) setProfile(read.data);
+      setBusy(false);
+      return;
+    }
+    const next = [...answers, given];
     setBusy(true);
     const [nextStep, nextProfile] = await Promise.all([joinApi.next(eventId, next), joinApi.profile(eventId, next, false)]);
     // 成功才记下这一答（失败时题目不变、选项保留，重答不会带着同一个 questionToken 重复入列）。
@@ -181,7 +227,12 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     setBusy(false);
     if (res.ok) showStep(res.data); else toast.error(at("genericError"));
   };
+  const editItem = (key: EventJoinProfileItemKey) => {
+    const list = answers.flatMap((item) => (asked[item.field]?.item === key ? [asked[item.field]!.question] : []));
+    if (list.length) showEditQuestions(list, answers); else void askMore(key);
+  };
   const apply = async () => {
+    if (!mode) return;
     setBusy(true);
     // 2026-11-26：确认页上的自我介绍（AI 草稿原样或改过的）都随报名留存——它会显示给这场活动的其他参会者。
     const confirmed = (intro ?? profile?.selfIntro?.text ?? "").trim().slice(0, 400);
@@ -208,7 +259,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const reviewUntil = profile?.reviewUntil ?? result?.reviewUntil ?? null;
   // 审核制才有「审核 / 结果通知」两段；先到先得报名即确定（结果出来前按资料里的 review 判断，提交后按结果）。
   const screened = result ? result.status === "pending_review" : profile?.review ?? true;
-  const headRight = blocked ? null : result ? t("doneTitle") : reviewing ? t("reviewStep", { i: Math.min(total, answers.length + 1), n: total }) : step ? t("regProgress", { i: step.index, m: step.remainingMinutes, n: total }) : null;
+  const headRight = blocked || editing || !mode ? null : result ? t("doneTitle") : reviewing ? t("reviewStep", { i: Math.min(total, answers.length + 1), n: total }) : step ? t("regProgress", { i: step.index, m: step.remainingMinutes, n: total }) : null;
   const shownIntro = intro ?? profile?.selfIntro?.text ?? "";
   const detailHref = `/app/events/${id(eventId)}`;
 
@@ -247,9 +298,9 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   ) : null;
   const chat = (
     <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-chat="">
-      <div className={r.progress}><div className={x.bar}><i style={{ width: `${Math.round((Math.max(0, step?.index ?? 1) / total) * 100)}%` }} /></div></div>
+      <div className={r.progress} hidden={editing}><div className={x.bar}><i style={{ width: `${Math.round((Math.max(0, step?.index ?? 1) / total) * 100)}%` }} /></div></div>
       <div className={r.chatcol}>
-        {answers.map((item, index) => (
+        {(editing ? [] : answers).map((item, index) => (
           <div key={`${item.field}-${index}`} className={r.pair}><div className={`${r.bubble} ${r.ai}`}>{item.prompt}</div><div className={`${r.bubble} ${r.me}`}>{item.answer}</div></div>
         ))}
         {question ? (
@@ -275,15 +326,15 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   // 390（b12 #356）：App 式——进度条 + 预填说明 + 对话 + 底部 composer（自由回答 · 🎙 · 次へ（n つ選択））。
   const phoneChat = (
     <div className={r.pChat} data-join-chat="" data-join-phone="">
-      {step ? (
+      {step && !editing ? (
         <div className={r.pProg}>
           <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}><b className={r.pQ}>{t("regQ", { i: step.index })}</b>{t("regOfN", { n: total })}</span><span className={styles.lbl}>{t("regRemain", { m: step.remainingMinutes })}</span></div>
           <div className={`${x.bar} ${r.pBar}`}><i style={{ width: `${Math.round((Math.max(0, step.index) / total) * 100)}%` }} /></div>
         </div>
       ) : null}
-      <div className={`${styles.mac} ${r.pPrefill}`}>{t("regPrefilledLine")}</div>
+      {editing ? null : <div className={`${styles.mac} ${r.pPrefill}`}>{t("regPrefilledLine")}</div>}
       <div className={r.chatcol}>
-        {answers.map((item, index) => (
+        {(editing ? [] : answers).map((item, index) => (
           <div key={`${item.field}-${index}`} className={r.pair}><div className={`${r.bubble} ${r.ai}`}>{item.prompt}</div><div className={`${r.bubble} ${r.me}`}>{item.answer}</div></div>
         ))}
         {question ? (
@@ -316,10 +367,18 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
             <span className={item.done ? r.ok : r.missing}>{item.done ? "✓" : "△"}</span>
             <span className={item.done ? r.grow : `${r.grow} ${styles.muted}`}>{t(ITEM_LABEL[item.key])}</span>
             {item.fromProfile ? <span className={styles.lbl} data-join-from-profile={item.key}>{t("itemFromProfile")}</span> : null}
-            {item.fromProfile ? <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} onClick={() => void askMore(item.key)}>{t("edit")}</button> : null}
-            {item.done ? null : <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} onClick={() => void askMore()}>{t("add")}</button>}
+            {item.fromProfile ? <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} onClick={() => void askMore(item.key)}>{t("edit")}</button>
+              : editing && item.done && item.key !== "company" ? <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} data-join-edit={item.key} onClick={() => editItem(item.key)}>{t("edit")}</button> : null}
+            {item.done ? null : <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} onClick={() => void askMore(editing ? item.key : undefined)}>{t("add")}</button>}
           </div>
         ))}
+        {editing ? answers.filter((item) => asked[item.field] && asked[item.field]!.item === null).map((item) => (
+          <div key={item.field} className={`${styles.row} ${r.covRow}`}>
+            <span className={r.ok}>✓</span>
+            <span className={r.grow}>{item.prompt}</span>
+            <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} data-join-edit={item.field} onClick={() => showEditQuestions([asked[item.field]!.question], answers)}>{t("edit")}</button>
+          </div>
+        )) : null}
         {missing.some((item) => item.key === "offer") ? <div className={`${styles.lbl} ${r.hint}`}>{t("offerHint")}</div> : null}
       </div>
       <div className={`${styles.card} ${r.inner} ${r.gap}`}>
@@ -344,8 +403,8 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       </div>
       <div className={`${styles.row} ${r.go}`}>
         <span className={`${styles.lbl} ${r.grow}`}>{profile?.editableUntil ? t("editableUntil", { date: monthDaySlash(profile.editableUntil) }) : null}</span>
-        <button type="button" className={`btn ${styles.btn}`} disabled={busy} onClick={() => void askMore()}>{t("backToQuestions")}</button>
-        <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.nextBtn}`} disabled={busy} onClick={() => void apply()}>{t("applyNow")}</button>
+        {editing ? null : <button type="button" className={`btn ${styles.btn}`} disabled={busy} onClick={() => void askMore()}>{t("backToQuestions")}</button>}
+        <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.nextBtn}`} disabled={busy} onClick={() => void apply()}>{t(editing ? "joinSave" : "applyNow")}</button>
       </div>
     </div>
   );
@@ -415,7 +474,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       />
       <div className={styles.wgrid} data-join={eventId}>
         {done ?? loadError ?? (reviewing ? review : chat)}
-        <ProfileCard profile={profile ? { ...profile, selfIntro: profile.selfIntro && intro ? { ...profile.selfIntro, text: intro } : profile.selfIntro } : null} t={t} mode={result ? "applied" : reviewing ? "review" : "live"} />
+        <ProfileCard profile={profile ? { ...profile, selfIntro: intro && (profile.selfIntro || editing) ? { source: profile.selfIntro?.source ?? "profile", text: intro } : profile.selfIntro } : null} t={t} mode={result ? "applied" : reviewing ? "review" : "live"} />
       </div>
       </>}
       {result ? <HostContactModal open={contactOpen} contact={result.hostContact} t={t} reviewLine={contactLine} onClose={() => setContactOpen(false)} /> : null}
