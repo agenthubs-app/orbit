@@ -251,7 +251,7 @@ export function profileEditorReadbackMatches(
   if (own(expected, "bio") && normalizedText(saved.bio) !== normalizedText(expected.bio)) {
     return false;
   }
-  if (own(expected, "seniorityLevel") && saved.seniorityLevel !== expected.seniorityLevel) {
+  if (own(expected, "seniorityLevel") && (saved.seniorityLevel ?? null) !== (expected.seniorityLevel ?? null)) {
     return false;
   }
   if (own(expected, "handles") && !sameHandles(expected.handles ?? {}, saved.handles)) {

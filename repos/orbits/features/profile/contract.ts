@@ -148,7 +148,8 @@ export interface ManualProfileUpdateInput extends IndustrySelectionContract, Pro
   preferredIntroChannels?: readonly string[];
   handles?: ContactHandlesContract;
   industry?: string;
-  seniorityLevel?: SeniorityLevel;
+  /** null = 清空（引导第①步可以选回「未选」）；省略 = 不变。 */
+  seniorityLevel?: SeniorityLevel | null;
   bio?: string;
   offering?: readonly string[];
   seeking?: readonly string[];

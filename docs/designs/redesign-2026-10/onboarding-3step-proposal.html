@@ -153,6 +153,8 @@
         <tr><td>会社 · 役職</td><td>否</td><td>名片</td><td>空，可不填</td></tr>
         <tr><td>メール · 電話</td><td>否</td><td>名片（不公开）</td><td>不显示这一行</td></tr>
         <tr><td>業界 · 詳細</td><td>是</td><td>AI 按公司和职位从行业表选</td><td>空，用户选</td></tr>
+        <tr><td>役職層（职级）</td><td>否</td><td>AI 按职位推断，六档单选</td><td>空，可不填</td></tr>
+        <tr><td>所在地</td><td>否</td><td>名片地址（公开资料里显示）</td><td>空，可不填</td></tr>
         <tr><td>提供できること ≤5</td><td>否</td><td>AI 预选，用户增减</td><td>只给候选，不预选</td></tr>
         <tr><td>話せる話題 ≤8</td><td>否</td><td>AI 预选，用户增减</td><td>只给候选，不预选</td></tr>
         <tr><td>求めていること ≤5</td><td>否</td><td>选了目标后 AI 给虚线候选</td><td>只给通用候选</td></tr>
@@ -214,7 +216,7 @@ const miss = (t) => `<span class="miss">${ic('flag', 'sm')}${t}</span>`;
 
 /* ===================== Web ===================== */
 const wstepper = (k) => `<div class="row" style="gap:0"><div class="wstp">${OBS.map((t, i) => `<div class="${i < k ? 'd' : i === k ? 'n' : ''}"><span class="n">${i < k ? ic('check', 'sm') : i + 1}</span>${t}</div>`).join('<em></em>')}</div><span class="eta">約1分</span></div>`;
-const meCard = (full) => `<div class="lbl" style="margin-bottom:10px">相手から見えるあなた</div><div class="card"><div class="row" style="gap:14px"><div class="av lg c1">${full ? '佐' : ''}</div><div>${full ? `<div style="font-size:19px;font-weight:800">佐藤 健一</div><div class="sub">株式会社ミナトリンク · 代表取締役 CEO</div>` : `<div class="ghost-row" style="width:220px;height:34px"><i></i>氏名 · 会社 · 役職</div>`}</div></div>${full ? `<div class="chips" style="margin-top:12px"><span class="chip blue">IT・ソフトウェア › SaaS</span></div>` : ''}<div class="ghost-row" style="margin-top:14px"><i></i>提供できること · 求めていること</div><div class="ghost-row"><i></i>自己紹介（ステップ3で作成）</div></div>
+const meCard = (full) => `<div class="lbl" style="margin-bottom:10px">相手から見えるあなた</div><div class="card"><div class="row" style="gap:14px"><div class="av lg c1">${full ? '佐' : ''}</div><div>${full ? `<div style="font-size:19px;font-weight:800">佐藤 健一</div><div class="sub">株式会社ミナトリンク · 代表取締役 CEO</div>` : `<div class="ghost-row" style="width:220px;height:34px"><i></i>氏名 · 会社 · 役職</div>`}</div></div>${full ? `<div class="chips" style="margin-top:12px"><span class="chip blue">IT・ソフトウェア › SaaS</span><span class="chip">日本 · 東京</span></div>` : ''}<div class="ghost-row" style="margin-top:14px"><i></i>提供できること · 求めていること</div><div class="ghost-row"><i></i>自己紹介（ステップ3で作成）</div></div>
   <div class="card flat" style="margin-top:14px"><div class="row" style="gap:10px"><span class="emo sm lav">🔒</span><div class="sub">生年月日と連絡先は相手に公開されません。</div></div></div>`;
 function obWeb(k, s, t) {
   let main, side, btn = `次へ ${ic('right', 'sm')}`, warn = '';
@@ -222,7 +224,7 @@ function obWeb(k, s, t) {
     const scanned = s === 'done', err = s === 'err';
     main = `<div class="mt">まずは、あなたのことを</div>
       ${scanned
-        ? `<div class="scanbig done"><span class="emo lav" style="background:var(--surface)">📇</span><div class="t"><b>名刺から 5 項目、AI の推定で 2 項目を入力しました</b><div class="lbl">内容を確認して、違うところだけ直してください</div></div><button class="btn sm" style="background:var(--surface)">別の画像にする</button></div>`
+        ? `<div class="scanbig done"><span class="emo lav" style="background:var(--surface)">📇</span><div class="t"><b>名刺から 6 項目、AI の推定で 3 項目を入力しました</b><div class="lbl">内容を確認して、違うところだけ直してください</div></div><button class="btn sm" style="background:var(--surface)">別の画像にする</button></div>`
         : `<div class="scanbig"><span style="font-size:40px">📇</span><div class="t"><b>名刺の画像をここにドロップ</b><div class="lbl">JPG・PNG・HEIC・PDF · 画像は保存されません</div></div><button class="btn sm">${ic('phone', 'sm')}スマホで撮る（QR）</button><button class="btn primary">ファイルを選ぶ</button></div>`}
       <div class="grid2" style="gap:0 14px">
         ${scanned ? fld('氏名', '佐藤 健一', CARD) : fld('氏名', err ? '' : '例）佐藤 健一', err ? { cls: 'err', msg: '氏名を入力してください' } : { ph: true })}
@@ -231,6 +233,7 @@ function obWeb(k, s, t) {
         ${fld('生年月日（任意）', '年 / 月 / 日', { ph: true, end: ic('calendar', 'sm') })}
         ${scanned ? fld('業界', 'IT・ソフトウェア', Object.assign({ end: down }, AI)) : fld('業界', '選択してください', Object.assign({ ph: true, end: down }, err ? { cls: 'err', msg: '業界を選んでください' } : {}))}
         ${scanned ? fld('業界の詳細', 'SaaS', Object.assign({ end: down }, AI)) : fld('業界の詳細', '先に業界を選択', { ph: true, end: down })}
+        ${scanned ? fld('役職層', '経営層（C レベル）', Object.assign({ end: down }, AI)) + fld('所在地', '日本 · 東京', CARD) : fld('役職層（任意）', '選択してください', { ph: true, end: down }) + fld('所在地（任意）', '例）東京', { ph: true })}
         ${scanned ? fld('メール', 'sato@minatolink.example', CARD) + fld('電話', '03-5555-0142', CARD) : ''}
       </div>`;
     side = meCard(scanned);
@@ -271,11 +274,12 @@ function obAppRaw(k, s, head) {
   if (k === 0) {
     const scanned = s === 'done', err = s === 'err';
     return head + (scanned
-      ? `<div class="mac lav row" style="gap:12px;margin-top:12px;padding:12px 14px"><span class="emo" style="background:var(--surface)">📇</span><div style="flex:1;min-width:0"><b style="font-size:13.5px">名刺から 5 項目、AI の推定で 2 項目</b><div class="lbl">違うところだけ直してください</div></div><button class="btn sm" style="background:var(--surface)">撮り直す</button></div>`
+      ? `<div class="mac lav row" style="gap:12px;margin-top:12px;padding:12px 14px"><span class="emo" style="background:var(--surface)">📇</span><div style="flex:1;min-width:0"><b style="font-size:13.5px">名刺から 6 項目、AI の推定で 3 項目</b><div class="lbl">違うところだけ直してください</div></div><button class="btn sm" style="background:var(--surface)">撮り直す</button></div>`
       : `<div class="scanp"><span style="font-size:34px">📇</span><b>自分の名刺を撮って自動入力</b><button class="btn primary" style="height:46px;padding:0 22px">${ic('scan', 'sm')}名刺を撮る</button><button class="btn sm ghost">写真から選ぶ</button></div>`) +
       (scanned ? fld('氏名', '佐藤 健一', CARD) : fld('氏名', err ? '' : '例）佐藤 健一', err ? { cls: 'err', msg: '氏名を入力してください' } : { ph: true })) +
       (scanned ? fld('会社', '株式会社ミナトリンク', CARD) + fld('役職', '代表取締役 CEO', CARD) : fld('会社（任意）', '例）株式会社ミナトリンク', { ph: true }) + fld('役職（任意）', '例）代表取締役', { ph: true })) +
       `<div class="grid2" style="gap:8px">${scanned ? fld('業界', 'IT・ソフトウェア', Object.assign({ end: down }, AI)) + fld('詳細', 'SaaS', Object.assign({ end: down }, AI)) : fld('業界', '選択', Object.assign({ ph: true, end: down }, err ? { cls: 'err', msg: '業界を選んでください' } : {})) + fld('詳細', '—', { ph: true, end: down })}</div>` +
+      (scanned ? fld('役職層', '経営層（C レベル）', Object.assign({ end: down }, AI)) + fld('所在地', '日本 · 東京', CARD) : fld('役職層（任意）', '選択', { ph: true, end: down }) + fld('所在地（任意）', '例）東京', { ph: true })) +
       (scanned ? fld('メール', 'sato@minatolink.example', CARD) + fld('電話', '03-5555-0142', CARD) : '') +
       fld('生年月日（任意）', '年 / 月 / 日', { ph: true, end: ic('calendar', 'sm'), msg: '相手に公開されません。' }) + `<div style="height:120px"></div>` +
       foot(`${err ? miss('あと 2 項目：氏名、業界') : ''}<button class="btn primary block xl k-next">次へ</button>`);
@@ -305,7 +309,7 @@ h += sec('① Web 桌面 1440', '顶栏：Logo · 三步进度 +「約1分」· 
 h += board('W1 · ① 名片与基本信息 · 扫描前', '提案', bare({ body: obWeb(0, 'empty'), pins: pin(1, '.once') + pin(2, '.scanbig') + pin(3, '.k-logout') }),
   ['每页固定的一行提示。第 1 屏多一句「名刺を読み取ると、ほとんどの項目が自動で入ります」，后两屏只留第一句', '名片区是这一屏最大的元素：拖入、选文件、或扫码用手机拍。图片只用于识别，不保存', '「あとで設定する」去掉，换成「ログアウト」。已填内容自动保存，下次登录回到同一步']);
 h += board('W2 · ① 扫描后', '提案', bare({ body: obWeb(0, 'done'), pins: pin(1, '.scanbig.done') + pin(2, '.fld label .chip.lav') + pin(3, '.fld label .chip.blue') }),
-  ['名片区收成一行完成态，写明名片读到几项、AI 推了几项；「別の画像にする」重新识别', '「名刺から」= 名片上印着的内容。用户改动后 chip 消失', '「AI 推定」= 名片上没有、按公司和职位推出来的（行业）。用蓝色 chip 与名片读到的区分；都可以改']);
+  ['名片区收成一行完成态，写明名片读到几项、AI 推了几项；「別の画像にする」重新识别', '「名刺から」= 名片上印着的内容。用户改动后 chip 消失', '「AI 推定」= 名片上没有、按公司和职位推出来的（行业、役職層）。用蓝色 chip 与名片读到的区分；都可以改']);
 h += board('W3 · ① 缺项时点「次へ」', '状态', bare({ body: obWeb(0, 'err'), pins: pin(1, '.fld.err') + pin(2, '.miss') + pin(3, '.k-next') }),
   ['缺的必填字段标红，字段下方写清要做什么；页面滚到第一个缺项并把焦点放进去', '按钮左侧一句汇总：还差几项、分别是什么。补齐后消失', '「次へ」始终可点、不置灰。顶部进度条的后两步不能点']);
 h += board('W4 · ② 目标与强项', '提案', bare({ body: obWeb(1, 'ok'), pins: pin(1, '.gt button.on') + pin(2, '.k-give .chip') + pin(3, '.tog.ai') }),
@@ -336,7 +340,7 @@ h += boards([
 h += sec('④ App', '顶栏右上「ログアウト」；3 段进度条；每页进度条下方一行固定提示');
 h += boards([
   ['A1 · ① 扫描前', '提案', P({ body: obApp(0, 'empty'), pins: pin(1, '.once') + pin(2, '.scanp') + pin(3, '.k-logout') }), ['固定提示，文案与 Web 相同', '「名刺を撮る」打开相机（单张）；也可以从相册选', '原「あとで」和欢迎卡的「先逛逛」去掉，换成「ログアウト」']],
-  ['A2 · ① 扫描后', '提案', P({ body: obApp(0, 'done'), pins: pin(1, '.mac.lav') + pin(2, '.fld label .chip.lav') + pin(3, '.fld label .chip.blue') }), ['完成态一行，写明各读到几项', '「名刺から」：名片上印着的', '「AI 推定」：行业两项，蓝色 chip']],
+  ['A2 · ① 扫描后', '提案', P({ body: obApp(0, 'done'), pins: pin(1, '.mac.lav') + pin(2, '.fld label .chip.lav') + pin(3, '.fld label .chip.blue') }), ['完成态一行，写明各读到几项', '「名刺から」：名片上印着的', '「AI 推定」：行业两项与役職層，蓝色 chip']],
   ['A3 · ① 缺项', '状态', P({ body: obApp(0, 'err'), pins: pin(1, '.fld.err') + pin(2, '.miss') }), ['缺项标红并滚到第一个缺的字段，键盘弹出', '按钮上方一句汇总；按钮不置灰']],
   ['A4 · ② 目标', '提案', P({ body: obApp(1, 'ok'), pins: pin(1, '.gt button.on') + pin(2, '.k-next') }), ['目标与强项放在同一屏，目标在上', '按钮里显示已选目标数']],
   ['A5 · ② 下半屏：强项', '提案', P({ body: obApp(1, 'low'), pins: pin(1, '.k-give .chip') + pin(2, '.tog.ai') }), ['AI 预选的两组带「AI 推定」', '「求めていること」的虚线候选要点一下才加入']],

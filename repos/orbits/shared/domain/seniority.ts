@@ -5,23 +5,15 @@ import type { OrbitLanguage } from "../contract/language";
 import {
   SENIORITY_GROUPS,
   SENIORITY_LEVELS,
+  SENIORITY_LEVEL_LABELS,
   isSeniorityLevelValue,
   seniorityGroup,
   type SeniorityGroup,
   type SeniorityLevelValue,
 } from "../compute/seniority-group";
 
-export { SENIORITY_GROUPS, SENIORITY_LEVELS, isSeniorityLevelValue, seniorityGroup };
+export { SENIORITY_GROUPS, SENIORITY_LEVELS, SENIORITY_LEVEL_LABELS, isSeniorityLevelValue, seniorityGroup };
 export type { SeniorityGroup, SeniorityLevelValue };
-
-export const SENIORITY_LEVEL_LABELS: Readonly<Record<SeniorityLevelValue, Record<OrbitLanguage, string>>> = {
-  individual_contributor: { zh: "一般职员", en: "Individual contributor", ja: "一般社員" },
-  manager: { zh: "经理", en: "Manager", ja: "マネージャー" },
-  director: { zh: "总监", en: "Director", ja: "ディレクター" },
-  vp: { zh: "副总裁", en: "VP", ja: "VP（副社長）" },
-  c_level: { zh: "高管（C 级）", en: "C-level", ja: "経営層（C レベル）" },
-  founder: { zh: "创始人", en: "Founder", ja: "創業者" },
-};
 
 export const SENIORITY_GROUP_LABELS: Readonly<Record<SeniorityGroup, Record<OrbitLanguage, string>>> = {
   decision: { zh: "决策层", en: "Decision maker", ja: "意思決定層" },

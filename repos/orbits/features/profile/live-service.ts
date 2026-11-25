@@ -359,7 +359,7 @@ function mergeProfile(input: {
         baseManual?.seeking ?? [],
       ),
       seniorityLevel:
-        input.update.seniorityLevel ?? baseManual?.seniorityLevel,
+        input.update.seniorityLevel === undefined ? baseManual?.seniorityLevel : input.update.seniorityLevel ?? undefined,
       topics: normalizeStringList(
         input.update.topics,
         baseManual?.topics ?? [],
