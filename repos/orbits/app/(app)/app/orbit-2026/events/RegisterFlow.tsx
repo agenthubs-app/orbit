@@ -3,7 +3,7 @@
 // R27 参加登録（Web 1440：b2 #23 ① 質問 + 実時間の参加用プロフィール；1024 / 390：b12 #354 / #356）。
 // ② 確認 / ③ 申込完了：b12 #370 / #372（§30 补画，版式照 #23：左卡换内容、右侧参加用プロフィール常驻）。
 // 数据：/api/events/[id]/join/*（问题 = 现有 AI 访谈 ≤5 问；资料规则实时更新，只有确认时才生成自己紹介草稿）。
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { EventJoinAnswer, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep } from "../../../../../shared/contract/event-join";
 import type { EventOverviewResponse } from "../../../../../shared/contract/event-overview";
@@ -144,10 +144,14 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const [asked, setAsked] = useState<Record<string, { item: EventJoinProfileItemKey | null; question: EventJoinQuestion }>>({});
   const [queue, setQueue] = useState<readonly EventJoinQuestion[]>([]);
   const editing = mode === "edit";
+  // 用户自己点开的那一题可以返回确认页（不答 = 保留原回答）；补问的必答题没有返回。
+  const [optional, setOptional] = useState(false);
+  // 有没保存的修改：离开整页时浏览器确认（同 HostSetup）。
+  const [dirty, setDirty] = useState(false);
   const showEditQuestions = (list: readonly EventJoinQuestion[], given: readonly EventJoinAnswer[]) => {
     const [first, ...rest] = list;
     setQueue(rest);
-    if (!first) { setStep({ done: true, index: 1, question: null, remainingMinutes: 0, total: 1 }); setSelected([]); setFree(""); return; }
+    if (!first) { setOptional(false); setStep({ done: true, index: 1, question: null, remainingMinutes: 0, total: 1 }); setSelected([]); setFree(""); return; }
     showStep({ done: false, index: 1, question: first, remainingMinutes: 0, total: 1 });
     setFree(first.options.length ? "" : given.find((item) => item.field === first.field)?.answer ?? "");
   };
@@ -198,6 +202,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       const changed = answers.some((item) => item.field === given.field) ? answers.map((item) => (item.field === given.field ? given : item)) : [...answers, given];
       const picked = question.options.length ? [...selected, free.trim()].filter(Boolean) : [];
       setAnswers(changed);
+      setDirty(true);
       setAsked((list) => ({ ...list, [given.field]: { item: list[given.field]?.item ?? ITEM_OF_FIELD[given.field] ?? null, question: { ...question, options: [...new Set([...picked, ...question.options])].slice(0, 12), ...(picked.length ? { prefill: picked } : {}) } } }));
       showEditQuestions(queue, changed);
       setBusy(true);
@@ -225,11 +230,12 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     setBusy(true);
     const res = await joinApi.next(eventId, answers, true, focus);
     setBusy(false);
+    if (res.ok && editing) setOptional(Boolean(res.data.question));
     if (res.ok) showStep(res.data); else toast.error(at("genericError"));
   };
   const editItem = (key: EventJoinProfileItemKey) => {
     const list = answers.flatMap((item) => (asked[item.field]?.item === key ? [asked[item.field]!.question] : []));
-    if (list.length) showEditQuestions(list, answers); else void askMore(key);
+    if (list.length) { showEditQuestions(list, answers); setOptional(true); } else void askMore(key);
   };
   const apply = async () => {
     if (!mode) return;
@@ -238,7 +244,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     const confirmed = (intro ?? profile?.selfIntro?.text ?? "").trim().slice(0, 400);
     const res = await joinApi.submit(eventId, answers, confirmed || undefined, editing);
     setBusy(false);
-    if (res.ok) { setResult(res.data); setContactOpen(!editing && hostContactHasId(res.data.hostContact)); } else toast.error(t(refusalKey("code" in res ? res.code : undefined) ?? "submitFailed"));
+    if (res.ok) { setDirty(false); setResult(res.data); setContactOpen(!editing && hostContactHasId(res.data.hostContact)); } else toast.error(t(refusalKey("code" in res ? res.code : undefined) ?? "submitFailed"));
   };
   const addTentative = async () => {
     if (busy) return;
@@ -262,6 +268,20 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const headRight = blocked || editing || !mode ? null : result ? t("doneTitle") : reviewing ? t("reviewStep", { i: Math.min(total, answers.length + 1), n: total }) : step ? t("regProgress", { i: step.index, m: step.remainingMinutes, n: total }) : null;
   const shownIntro = intro ?? profile?.selfIntro?.text ?? "";
   const detailHref = `/app/events/${id(eventId)}`;
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (leave: BeforeUnloadEvent) => { leave.preventDefault(); };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+  const toReview = useRef<() => void>(() => {});
+  toReview.current = () => { if (optional) showEditQuestions([], answers); else window.location.assign(detailHref); };
+  // 顶栏的返回：点开的那一题 → 回确认页；有没保存的修改 → 整页离开（浏览器确认）；其余 → 活动详情。
+  const stepBack = useCallback(() => toReview.current(), []);
+  const phoneBack = optional || dirty ? stepBack : detailHref;
+  const closeButton = (size: 16 | 20) => optional
+    ? <button type="button" className={`btn ${x.rbtn}`} data-join-back="" aria-label={t("backToReview")} onClick={stepBack}><Icon name="left" size={size} /></button>
+    : <a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={size} /></a>;
 
   const rail = (
     <div className={`${styles.rail} ${d.rail}`} data-join-rail="">
@@ -376,7 +396,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
           <div key={item.field} className={`${styles.row} ${r.covRow}`}>
             <span className={r.ok}>✓</span>
             <span className={r.grow}>{item.prompt}</span>
-            <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} data-join-edit={item.field} onClick={() => showEditQuestions([asked[item.field]!.question], answers)}>{t("edit")}</button>
+            <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} data-join-edit={item.field} onClick={() => { showEditQuestions([asked[item.field]!.question], answers); setOptional(true); }}>{t("edit")}</button>
           </div>
         )) : null}
         {missing.some((item) => item.key === "offer") ? <div className={`${styles.lbl} ${r.hint}`}>{t("offerHint")}</div> : null}
@@ -391,7 +411,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         </div>
         {editingIntro ? (
           <div className={r.editIntro}>
-            <textarea className={r.textarea} value={shownIntro} maxLength={400} onChange={(ev) => setIntro(ev.target.value)} aria-label={t("introLbl")} />
+            <textarea className={r.textarea} value={shownIntro} maxLength={400} onChange={(ev) => { setIntro(ev.target.value); if (editing) setDirty(true); }} aria-label={t("introLbl")} />
             <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} onClick={() => setEditingIntro(false)}>{t("saveIntro")}</button>
           </div>
         ) : <div className={r.introText}>{shownIntro}</div>}
@@ -458,16 +478,16 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     <>
       {phone && !reviewing && !result ? (
         <>
-          <ShellPage title={t("regTitle")} subtitle={event?.title ?? ""} left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={20} /></a>} rightRail={false} phoneBare phoneBack={detailHref} phoneSubtitle={headRight ?? undefined} />
+          <ShellPage title={t("regTitle")} subtitle={event?.title ?? ""} left={closeButton(20)} rightRail={false} phoneBare phoneBack={phoneBack} phoneSubtitle={headRight ?? undefined} />
           {loadError ?? phoneChat}
         </>
       ) : <>
       <ShellPage
         title={t("regTitle")}
         subtitle={event?.title ?? ""}
-        left={<a className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("close")}><Icon name="x" size={16} /></a>}
+        left={closeButton(16)}
         right={headRight ? <span className={styles.lbl}>{headRight}</span> : undefined}
-        phoneBack={detailHref}
+        phoneBack={phoneBack}
         // 2026-11-23：手机顶栏标题下的小字是答题进度（代替活动名），仍在 52 这一行之内。
         phoneSubtitle={headRight ?? undefined}
         rightRail={wide ? rail : false}

@@ -42,8 +42,8 @@ export type ShellSlots = {
   phoneActions?: readonly ShellPhoneAction[];
   /** < 768: the page's tabs, drawn by the shell as the one row under the top bar (40 + 10), sticky with it. */
   phoneTabs?: ReactNode;
-  /** < 768 sub-page: where 「‹」 goes (default: the previous page, else the parent path). `false` = no back (a first screen of a flow). */
-  phoneBack?: string | false;
+  /** < 768 sub-page: where 「‹」 goes (default: the previous page, else the parent path). `false` = no back (a first screen of a flow); a function (stable, useCallback) = a step back inside the page. */
+  phoneBack?: string | false | (() => void);
   /** < 768: the bar title when it differs from `title` (e.g. 活动详情 shows no title in the bar: the cover title is right below). */
   phoneTitle?: string | null;
   /** < 768: a sub-view opened inside a first-level route (Task › 全部待办): draw the sub-page bar (‹ · title · action). */

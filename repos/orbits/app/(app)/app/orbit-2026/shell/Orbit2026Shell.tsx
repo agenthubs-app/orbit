@@ -413,7 +413,7 @@ function ShellPhoneBar({ pathname, slots, active, dot, language, openRail }: { p
   ) : null;
   const back = slots.phoneBack === false ? null : (
     <button type="button" className={`btn ${styles.rbtn} ${styles.phoneBtn}`} aria-label={pickCopy(shellCopy.phoneBack, language)} data-orbit-phone-back=""
-      onClick={() => { if (typeof slots.phoneBack === "string") router.push(slots.phoneBack); else if (phoneHistoryDepth > 0) { phoneHistoryDepth -= 1; router.back(); } else router.push(phoneParentHref(pathname)); }}>
+      onClick={() => { if (typeof slots.phoneBack === "function") slots.phoneBack(); else if (typeof slots.phoneBack === "string") router.push(slots.phoneBack); else if (phoneHistoryDepth > 0) { phoneHistoryDepth -= 1; router.back(); } else router.push(phoneParentHref(pathname)); }}>
       <Icon name="left" size={20} />
     </button>
   );

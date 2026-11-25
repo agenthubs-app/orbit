@@ -365,7 +365,7 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       // 满 5 题后：四项都有值就结束；还有缺项（主办方题占了名额）就只针对缺的项继续问，不受 5 题限制（上限 JOIN_ANSWER_MAX）。
       // 核心项缺了报名接口会拒绝，所以不能停在这里；目的・话题也补齐，确认资料四项都有值。
       const extra = Boolean(asked) || answers.length >= JOIN_TOTAL;
-      if (extra && (missing.length === 0 || answers.length >= JOIN_ANSWER_MAX)) return joinStep(answers.length, null, language);
+      if (extra && (missing.length === 0 || (!asked && answers.length >= JOIN_ANSWER_MAX))) return joinStep(answers.length, null, language);
       if (!extra) {
         // R17：主办方的申込質問先问（按顺序），问完再由访谈补足；访谈只看访谈自己的回答。
         // 题库题按当前界面语言显示（主办方自己改写过的题保持原文）；回答在提交时换回公开的写法（validHostAnswers）。

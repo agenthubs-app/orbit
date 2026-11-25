@@ -28,8 +28,8 @@ test("questions: 会いたい人 is multi-select, 話したいテーマ at most 
   assert.deepEqual([done.done, done.question ?? null], [true, null]);
   const six = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: [...five, answer("industry", "x", 6)] }), params)).json()).data);
   assert.equal(six.done, true, "past 5 answers the flow only ends (a follow-up is asked only for a missing item, see below)");
-  const ten = Array.from({ length: 10 }, (_, n) => answer("industry", "x", n));
-  assert.equal((await routes.joinNext(post({ answers: ten }), params)).status, 400, "a tenth answer is rejected (5 + at most 4 follow-ups)");
+  const tooMany = Array.from({ length: 14 }, (_, n) => answer("industry", "x", n));
+  assert.equal((await routes.joinNext(post({ answers: tooMany }), params)).status, 400, "more than 5 organizer questions + 8 interview fields is rejected");
   const three = five.slice(0, 3);
   const enough = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: three }), params)).json()).data);
   assert.deepEqual([enough.done, enough.index], [true, 3], "the sample interview judges 3 answers enough (review shows 提供できること △)");
@@ -417,4 +417,26 @@ test("stored answers are signed again as the same question: submitting them unch
 
 test("no copy on the registration path promises five questions", () => {
   for (const key of ["ctaSub", "ctaRegisterAi", "inviteNote", "regPrefilledLine"] as const) for (const language of ["ja", "zh", "en"] as const) assert.doesNotMatch(eventsJourneyCopy[key][language], /5|五|five/i);
+});
+
+test("changing a registration: the worst case (5 organizer questions + every interview field) is accepted by every join body, and the missing item can still be asked past nine answers", async () => {
+  const { EVENT_JOIN_ANSWERS_MAX, eventJoinNextInputObject, eventJoinProfileInputObject, eventJoinSubmitInputObject } = await import("../../shared/api-schema/event-join");
+  const { EVENT_PARTICIPANT_PROFILE_FIELDS } = await import("../../features/events/registration/contract");
+  const host = Array.from({ length: 5 }, (_, index) => ({ answer: "x", field: `host:q${index}`, prompt: "質問", questionToken: `host:q${index}` }));
+  const interview = EVENT_PARTICIPANT_PROFILE_FIELDS.map((field) => ({ answer: "y", field, prompt: "質問", questionToken: "t" }));
+  const worst = [...host, ...interview];
+  assert.equal(worst.length, EVENT_JOIN_ANSWERS_MAX);
+  assert.ok(eventJoinNextInputObject.safeParse({ answers: worst }).success);
+  assert.ok(eventJoinProfileInputObject.safeParse({ answers: worst, edit: true }).success);
+  assert.ok(eventJoinSubmitInputObject.safeParse({ answers: worst, edit: true, idempotencyKey: "k" }).success);
+  assert.equal(eventJoinSubmitInputObject.safeParse({ answers: [...worst, host[0]], idempotencyKey: "k" }).success, false);
+  // The signed answers handed to the registration routes are one per field: never more than the verifier's eight.
+  const secret = "s".repeat(32);
+  const responses = EVENT_PARTICIPANT_PROFILE_FIELDS.map((field) => ({ answer: "A", questionToken: signAdaptiveInterviewQuestion({ actorId: "a", eventId: "e", language: "zh", secret, question: { acknowledgment: "", field, options: ["A", "B"], prompt: "这次活动的一个问题？", provenance: { fallbackReason: null, generationMethod: "orbit-agent-model-adaptive", model: "m", provider: "deepseek" } } }) }));
+  assert.equal(verifyInterviewResponseSubmissions({ actorId: "a", eventId: "e", responses, secret }).length, 8);
+  // Ten answers, 「会いたい人」 still missing: it can be asked.
+  const ten = [...host, ...interview.filter((item) => item.field !== "targetAttendees").slice(0, 5)];
+  const service = createJoinService({ ports: fakePorts({ hostQuestions: async () => [] as never, next: async (_event, _answers, _language, _more, plan) => ({ allowCustom: true, field: plan!.focusFields![0]!, options: ["A", "B"], prompt: "?", questionToken: "t" }) }) });
+  assert.equal(ten.length, 10);
+  assert.equal((await service.next("ev", ten, "ja", true, "actor:a", "target"))?.question?.field, "targetAttendees");
 });

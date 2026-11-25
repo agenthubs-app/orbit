@@ -354,6 +354,7 @@ export const eventsJourneyCopy = {
   introLbl: { ja: "自己紹介", zh: "自我介绍", en: "Intro", kind: "label" },
   introWhy: { ja: "作成の根拠", zh: "写作依据", en: "How this was written", kind: "label" },
   saveIntro: { ja: "保存", zh: "保存", en: "Save", kind: "button" },
+  backToReview: { ja: "確認画面に戻る", zh: "返回确认页", en: "Back to review", kind: "button" },
   backToQuestions: { ja: "質問に戻る", zh: "回到问题", en: "Back to questions", kind: "button" },
   toDetail: { ja: "イベント詳細へ", zh: "去活动详情", en: "Event details", kind: "button" },
   appliedEditable: { ja: "申込済み · {date} まで編集可", zh: "已报名 · {date}前可修改", en: "Applied · editable until {date}", kind: "label" },
