@@ -8,7 +8,7 @@ import type { EventJoinAnswer, EventJoinQuestion } from "../../../shared/contrac
 import { AppError } from "../../../shared/errors/app-error";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import { createPostgresActorRecordStore } from "../actor-records/store";
-import { profileFactQuestions, type JoinPorts } from "./join";
+import { profileFactQuestions, type JoinDerivedAnswer, type JoinPorts } from "./join";
 import type { JourneyLivePorts } from "./ports";
 import type { JourneyLanguage } from "./prep-core";
 
@@ -22,6 +22,22 @@ async function callHandler(handler: Handler, eventId: string, path: string, body
 }
 
 const transcript = (answers: readonly EventJoinAnswer[]) => answers.map((answer) => ({ answer: answer.answer, field: answer.field, prompt: answer.prompt }));
+
+/**
+ * 访谈没问到的核心项（会いたい人・提供できること）：主办方题的回答或资料标签，签成固定题（同 profileFactResponses 的做法，
+ * 报名接口与审核申请两条路都收）。题面用该字段的固定题（当前语言），回答是自由文本。
+ */
+export async function signDerivedJoinAnswers(input: { actorId: string; eventId: string; language: JourneyLanguage; derived: readonly JoinDerivedAnswer[]; secret?: string }): Promise<{ answer: string; questionToken: string }[]> {
+  const { signAdaptiveInterviewQuestion } = await import("../registration/interview-question-token.server");
+  const { FIXED_INTERVIEW_QUESTION_MODEL, FIXED_INTERVIEW_QUESTION_PROVIDER, fixedInterviewQuestionText } = await import("../registration/adaptive-interview-service");
+  const language = input.language === "en" ? "en" as const : "zh" as const;
+  return input.derived.flatMap((item) => {
+    const text = fixedInterviewQuestionText(item.field, input.language);
+    if (!text) return [];
+    return [{ answer: item.answer, questionToken: signAdaptiveInterviewQuestion({ actorId: input.actorId, eventId: input.eventId, language, ...(input.secret ? { secret: input.secret } : {}), question: { acknowledgment: "", field: item.field, options: [...text.options], prompt: text.prompt,
+      provenance: { fallbackReason: item.source === "host" ? "host_question" : "profile", generationMethod: "deterministic-fallback", model: FIXED_INTERVIEW_QUESTION_MODEL, provider: FIXED_INTERVIEW_QUESTION_PROVIDER } } }) }];
+  });
+}
 
 export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (sql: string, values?: readonly unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>; workspaceId: string }): JoinPorts {
   const store = createPostgresActorRecordStore({ query: input.query, workspaceId: input.workspaceId });
@@ -56,6 +72,13 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
       console.warn(JSON.stringify({ event: "join_profile_facts_failed" }));
       return [];
     }
+  };
+  // 签不出来（活动读不到）就让报名接口照常拒绝（不静默吞掉缺项）。
+  const derivedResponses = async (eventId: string, from: { actorId: string; language: JourneyLanguage; derived?: readonly JoinDerivedAnswer[] }) => {
+    if (!from.derived?.length) return [];
+    const { loadEventForRegistration } = await import("../registration/event-loader");
+    const event = await loadEventForRegistration(eventId, from.actorId);
+    return event ? signDerivedJoinAnswers({ actorId: from.actorId, derived: from.derived, eventId: event.id, language: from.language }) : [];
   };
   return {
     async event(eventId) {
@@ -103,6 +126,7 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     async submit(eventId, answers, from) {
       const { POST } = await import("../../../app/api/events/[id]/registration/route");
       const responses = [...answers.map((answer) => ({ answer: answer.answer, questionToken: answer.questionToken })),
+        ...(from ? await derivedResponses(eventId, from) : []),
         ...(from ? await profileFactResponses(eventId, answers.map((answer) => answer.field), from) : [])];
       // 审核制按活动设定判断（不靠 409 猜：截止 / 已开始 / 问卷变了也是 409）。
       if ((await input.journey.event(eventId))?.review) {

@@ -15,6 +15,10 @@ import { createJoinService, JOIN_ANSWER_MAX, profileFromAnswers, validHostAnswer
 import { fixedInterviewQuestion, nextAdaptiveInterviewQuestion } from "../../features/events/registration/adaptive-interview-service";
 import { requestContext } from "../../features/plans/v2/flow-handlers";
 import { anonymousMicrocache } from "../../features/events/journey/anonymous-microcache";
+import { signDerivedJoinAnswers } from "../../features/events/journey/join-live";
+import { FIXED_INTERVIEW_QUESTION_MODEL, FIXED_INTERVIEW_QUESTION_PROVIDER } from "../../features/events/registration/adaptive-interview-service";
+import { signAdaptiveInterviewQuestion, verifyInterviewResponseSubmissions } from "../../features/events/registration/interview-question-token.server";
+import { missingCoreProfileFields } from "../../features/events/registration/interview-response-contract";
 
 const answer = (field: string, value: string, n: number): EventJoinAnswer => ({ answer: value, field, prompt: `q${n}`, questionToken: `t${n}` });
 
@@ -111,7 +115,7 @@ test("profile: host purpose / topic answers fill 参会目的 / 想聊的话题 
   assert.equal(profileFromAnswers([answer("host:lib-meet", "投资人", 1), answer("host:lib-offer", "投资", 2)], { review: false }).coverage, 72);
 });
 
-test("interview plan: covered items and profile facts are skipped; past 5 answers 「追加」 asks only for the missing items", async () => {
+test("interview plan: covered items and profile facts are skipped; past 5 answers it asks only for the missing items", async () => {
   const plans: (JoinInterviewPlan | undefined)[] = [];
   const service = createJoinService({ ports: fakePorts({
     hostQuestions: async () => [libraryQuestion("lib-role", "ja")!, libraryQuestion("lib-industry", "ja")!, libraryQuestion("lib-purpose", "ja")!],
@@ -121,12 +125,11 @@ test("interview plan: covered items and profile facts are skipped; past 5 answer
   await service.next("ev", host, "zh");
   assert.deepEqual(plans.at(-1), { skipFields: ["positioning", "industry", "desiredOutcome"] });
   const five = [...host, answer("targetAttendees", "投资人", 4), answer("valueOffered", "经验", 5)];
-  assert.equal((await service.next("ev", five, "zh"))?.done, true, "5 answers end the questions as before");
-  const more = await service.next("ev", five, "zh", true);
+  const more = await service.next("ev", five, "zh");
   assert.deepEqual(plans.at(-1), { focusFields: ["experienceHighlight"] }, "only the missing 想聊的话题");
   assert.deepEqual([more?.done, more?.question?.field, more?.index, more?.total], [false, "experienceHighlight", 6, 6]);
   const six = [...five, answer("experienceHighlight", "融资", 6)];
-  assert.equal((await service.next("ev", six, "zh"))?.done, true, "after the follow-up it goes back to the review");
+  assert.equal((await service.next("ev", six, "zh"))?.done, true, "all four items answered → back to the review");
   const callsBefore = plans.length;
   assert.equal((await service.next("ev", six, "zh", true))?.done, true, "nothing missing → no more questions");
   assert.equal(plans.length, callsBefore, "the interview is not asked again");
@@ -164,4 +167,76 @@ test("interview service: with a join plan, purpose / topics come right after the
   const fixed = fixedInterviewQuestion({ language: "zh", plan: { skipFields: ["desiredOutcome"] }, reason: "AI_LIMIT", transcript: [turn("targetAttendees"), turn("valueOffered")] });
   assert.deepEqual([fixed.question?.field, fixed.question?.prompt], ["experienceHighlight", "你想和别人聊哪些话题？"]);
   assert.equal(fixedInterviewQuestion({ language: "ja", plan: { focusFields: ["experienceHighlight"] }, reason: "x", transcript: fiveTurns }).question?.prompt, "どんな話題で話したいですか？");
+});
+
+// ---- 2026-11-26 二次修正：无论主办方发布了几道、哪几道题，走完都能提交，核心项齐全，确认资料四项有值 ----
+const SECRET = "s".repeat(32);
+
+async function walkAndSubmit(hostIds: readonly string[], tags: { seeking: string[]; offering: string[] } | null, review: boolean) {
+  const signFixed = (field: string, prompt: string, options: readonly string[]) => signAdaptiveInterviewQuestion({ actorId: "actor:a", eventId: "ev", language: "zh", secret: SECRET,
+    question: { acknowledgment: "", field: field as never, options: [...options], prompt, provenance: { fallbackReason: "AI_LIMIT", generationMethod: "deterministic-fallback", model: FIXED_INTERVIEW_QUESTION_MODEL, provider: FIXED_INTERVIEW_QUESTION_PROVIDER } } });
+  let submitted: { answer: string; questionToken: string }[] = [];
+  const service = createJoinService({ ports: fakePorts({
+    event: async () => ({ endsAt: null, registrationClosesAt: "2026-12-03T14:59:00.000Z", review, startsAt: "2026-12-07T10:00:00.000Z", title: "T" }),
+    hostQuestions: async () => hostIds.map((id) => libraryQuestion(id, "ja")!),
+    // The interview as the fixed fallback (no model), honouring the plan like the live route.
+    next: async (_event, answers, language, _more, plan) => {
+      const step = fixedInterviewQuestion({ language, plan: plan as never, reason: "AI_LIMIT", transcript: answers.map((item) => ({ answer: item.answer, field: item.field as never, prompt: item.prompt })) });
+      return step.question ? { allowCustom: true, field: step.question.field, options: [...step.question.options], prompt: step.question.prompt, questionToken: signFixed(step.question.field, step.question.prompt, step.question.options) } : null;
+    },
+    profileTags: async () => tags,
+    submit: async (_event, answers, from) => {
+      submitted = [...answers.map((item) => ({ answer: item.answer, questionToken: item.questionToken })), ...(from?.derived ? await signDerivedJoinAnswers({ actorId: "actor:a", derived: from.derived, eventId: "ev", language: from.language, secret: SECRET }) : [])];
+      return { status: review ? "pending_review" : "registered", submittedAt: "2026-11-26T00:00:00.000Z" };
+    },
+  }) });
+  const answers: EventJoinAnswer[] = [];
+  for (let guard = 0; guard < 12; guard += 1) {
+    const step = await service.next("ev", answers, "zh", false, "actor:a");
+    if (!step || step.done || !step.question) break;
+    const value = step.question.prefill?.length ? step.question.prefill.join(" · ") : step.question.options[0]!;
+    answers.push({ answer: value, field: step.question.field, prompt: step.question.prompt, questionToken: step.question.questionToken });
+  }
+  const profile = await service.profile("actor:a", "ev", answers, false, "zh");
+  const result = await service.submit("actor:a", "ev", answers, "zh");
+  // Both submission paths verify the same signed responses: registration needs no missing core field, admission needs the
+  // core fields among unique verified fields (completeVerifiedProfile).
+  const verified = verifyInterviewResponseSubmissions({ actorId: "actor:a", eventId: "ev", responses: submitted, secret: SECRET });
+  return { answers, fields: verified.map((item) => item.field), missingCore: missingCoreProfileFields(verified), profile, result };
+}
+
+for (const [label, hostIds] of [
+  ["one lib-meet", ["lib-meet"]],
+  ["lib-offer", ["lib-role", "lib-offer"]],
+  ["4 host questions", ["lib-role", "lib-industry", "lib-company-stage", "lib-language"]],
+  ["5 host questions", ["lib-role", "lib-industry", "lib-company-stage", "lib-language", "lib-source"]],
+  ["5 host incl. meet / offer / purpose / topic", ["lib-role", "lib-meet", "lib-offer", "lib-purpose", "lib-topic"]],
+] as const) {
+  for (const tags of [{ offering: ["業界経験"], seeking: ["投資家"] }, null]) {
+    for (const review of [false, true]) {
+      test(`any host question set submits with the core fields (${label}; profile tags ${tags ? "yes" : "no"}; ${review ? "admission" : "registration"})`, async () => {
+        const run = await walkAndSubmit(hostIds, tags, review);
+        assert.equal(run.result?.status, review ? "pending_review" : "registered");
+        assert.deepEqual(run.missingCore, [], `core fields present: ${run.fields.join(" ")}`);
+        assert.equal(new Set(run.fields).size, run.fields.length, "no field twice");
+        assert.ok(run.fields.length <= 6, "room left for the two profile facts (≤ 8 signed responses)");
+        assert.ok(run.answers.length <= JOIN_ANSWER_MAX);
+        assert.deepEqual(run.profile?.items.filter((item) => !item.done).map((item) => item.key), [], "all four review items have a value");
+      });
+    }
+  }
+}
+
+test("the reported case: a single lib-meet no longer drops 会いたい人 from the submission", async () => {
+  const run = await walkAndSubmit(["lib-meet"], null, false);
+  assert.ok(run.fields.includes("targetAttendees"));
+  assert.ok(!run.answers.some((item) => item.field === "targetAttendees"), "not asked again — the host answer is signed instead");
+});
+
+test("profile tags fill a core item the questions never reached; without tags it is asked past 5", async () => {
+  const hosts = ["lib-role", "lib-industry", "lib-company-stage", "lib-language", "lib-source"];
+  const withTags = await walkAndSubmit(hosts, { offering: ["業界経験"], seeking: ["投資家"] }, false);
+  assert.ok(!withTags.answers.some((item) => item.field === "targetAttendees" || item.field === "valueOffered"));
+  const without = await walkAndSubmit(hosts, null, false);
+  assert.deepEqual(without.answers.slice(5).map((item) => item.field), ["targetAttendees", "valueOffered", "desiredOutcome", "experienceHighlight"]);
 });

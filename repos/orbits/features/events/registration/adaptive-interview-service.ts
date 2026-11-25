@@ -321,6 +321,11 @@ const FIXED_INTERVIEW_QUESTIONS: readonly { field: EventParticipantProfileField;
   { field: "energyStyle", zh: { prompt: "在交流活动上，你更习惯怎样和人聊？", options: ["主动搭话", "一对一深聊", "先听再说"] }, en: { prompt: "How do you usually talk with people at events?", options: ["I start conversations", "Deep one-to-one talks", "I listen first"] }, ja: { prompt: "交流の場では、どんなふうに話すことが多いですか？", options: ["自分から話しかける", "1対1でじっくり", "まず聞く"] } },
 ];
 
+/** The fixed question for one field in a language (null when there is none), e.g. to sign an answer the join page got elsewhere. */
+export function fixedInterviewQuestionText(field: EventParticipantProfileField, language: "en" | "zh" | "ja"): FixedQuestionText | null {
+  return FIXED_INTERVIEW_QUESTIONS.find((item) => item.field === field)?.[language] ?? null;
+}
+
 /**
  * A fixed next question for when the model cannot be used (daily AI limit used up, AI unavailable, invalid output),
  * so registration can always finish. Same limits as the model path; done when nothing is left to ask.
