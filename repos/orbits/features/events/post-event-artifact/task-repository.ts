@@ -101,7 +101,6 @@ export function createAttendeePostEventAiTaskRepository(input: {
       const matching = existingTasks
         .filter((task) =>
           task.evidenceHash === evidenceHash &&
-          task.attendeeDisplayName === value.attendeeDisplayName &&
           task.model === value.model &&
           task.promptVersion === value.promptVersion &&
           task.provider === value.provider

@@ -569,3 +569,18 @@ test("artifact POST distinguishes missing evidence, provider configuration, and 
   });
   assert.equal(JSON.stringify([providerUnconfigured, serviceUnavailable, evidenceRequired]).includes("summary"), false);
 });
+
+test("a changed display name alone never regenerates: stored material (also from before the profile-name rule) stays current", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const repository = createAttendeePostEventAiTaskRepository({ store, workspaceId: "workspace:test" });
+  const requested = {
+    attendeeActorId: actorA, attendeeDisplayName: "verify.qa2", eventId,
+    evidenceSnapshot: [{ commitments: [], contactId: "contact:a", evidenceId: "evidence:human-encounter:a", nextStep: "Review", noteText: "Note", observedAt: timestamp, talked: "yes" as const }],
+    evidenceWhitelist: ["evidence:human-encounter:a"], model: "gpt-5.6", promptVersion: 1, provider: "openai", requestedAt: timestamp,
+  };
+  await repository.request(requested);
+  await processAttendeePostEventAiTask({ config: { apiKey: "test", provider: "openai" }, now: () => "2026-08-04T12:01:00.000Z", repository, runModelText: async () => ({ model: "gpt-5.6", provider: "openai", source: "provider:openai-responses-api", success: true, text: JSON.stringify({ messageDraft: null, summary: "Done" }) }), workerId: "worker:name" });
+  const renamed = await repository.request({ ...requested, attendeeDisplayName: "佐藤 健一" });
+  assert.deepEqual([renamed.status, renamed.version], ["ready", 1]);
+  assert.equal((await store.listRecords({ limit: "unbounded", collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" })).length, 1);
+});
