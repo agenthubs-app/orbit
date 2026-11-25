@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { act, create, type ReactTestRenderer } from "react-test-renderer";
+import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 
 import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
 import { OnboardingFlow } from "../../app/(app)/app/orbit-2026/onboarding/onboarding-flow";
 import {
   ONBOARDING_STEPS,
+  migrateOnboardingView,
+  missingBasics,
+  missingIntro,
+  onboardingStepForProgress,
+  onboardingStepsDone,
   SEEK_OPTIONS,
   addCustomValue,
   composeRelationshipGoal,
@@ -17,8 +22,21 @@ import {
 } from "../../app/(app)/app/orbit-2026/onboarding/onboarding-model";
 import { profileOnboardingFlowPath } from "../../app/(app)/app/profile/profile-onboarding-navigation";
 
-test("onboarding has five steps with the AI introduction between persona and import", () => {
-  assert.deepEqual(ONBOARDING_STEPS, ["profile", "goals", "persona", "intro", "import"]);
+test("three steps over the server's five screens: ① = 1, ② = 2 + 3, ③ = 4 + 5", () => {
+  assert.deepEqual(ONBOARDING_STEPS, ["basics", "goals", "intro"]);
+  assert.deepEqual([0, 1, 2, 3, 4, 5].map(onboardingStepForProgress), ["basics", "goals", "goals", "intro", "intro", "intro"]);
+  assert.deepEqual([0, 1, 2, 3, 4, 5].map(onboardingStepsDone), [0, 1, 1, 2, 2, 3]);
+  assert.deepEqual(["profile", "goals", "persona", "intro", "import", "welcome", "home"].map(migrateOnboardingView), ["basics", "goals", "goals", "intro", "intro", "basics", "basics"]);
+});
+
+test("missing items: the industry detail only counts once an industry is chosen; intro reasons are exclusive", () => {
+  assert.deepEqual(missingBasics({ birthValid: true, industryValid: false, name: " ", primaryIndustryId: "" }), ["name", "industry"]);
+  assert.deepEqual(missingBasics({ birthValid: false, industryValid: false, name: "a", primaryIndustryId: "other" }), ["birthDate", "industryDetail"]);
+  assert.deepEqual(missingBasics({ birthValid: true, industryValid: true, name: "a", primaryIndustryId: "other" }), []);
+  assert.deepEqual(missingIntro({ bio: "", bioOver: false, generating: true, headlineOver: false }), ["introGenerating"]);
+  assert.deepEqual(missingIntro({ bio: " ", bioOver: false, generating: false, headlineOver: false }), ["introEmpty"]);
+  assert.deepEqual(missingIntro({ bio: "x", bioOver: true, generating: false, headlineOver: false }), ["introOver"]);
+  assert.deepEqual(missingIntro({ bio: "x", bioOver: false, generating: false, headlineOver: false }), []);
 });
 
 test("AI seek labels map back to seek options in either language", () => {
@@ -46,13 +64,13 @@ test("gate target is the onboarding route and keeps a safe next", () => {
   assert.equal(profileOnboardingFlowPath("/app/profile/onboarding"), "/app/profile/onboarding?next=%2Fapp%2Fhome");
 });
 
-test("b1 A3: the first screen is the basics form under the five-step header — no welcome page, no app nav", () => {
+test("the first screen: card scan first, the once-only notice, log out instead of 稍后设置, no skip and no app nav", () => {
   const html = renderToStaticMarkup(<OnboardingFlow actorKey="u1" cardScanAvailable next="/app/home" todayIso="2026-09-26" />);
-  assert.match(html, /先从你开始/);
-  for (const label of ["基本信息", "目标", "优势与需求", "自我介绍", "导入名片"]) assert.ok(html.includes(label), label);
-  assert.match(html, /稍后设置/);
-  assert.match(html, /对方看到的你/);
-  assert.doesNotMatch(html, /欢迎来到 Orbit|开始设置|>iOrbit<|>活动<|>人脉</);
+  for (const label of ["名片与基本信息", "目标与强项", "自我介绍", "约 1 分钟", "退出登录", "把名片图片拖到这里", "用手机拍（二维码）", "先从你开始"]) assert.ok(html.includes(label), label);
+  assert.match(html, /这份资料<b>只填一次，之后参加的每场活动都会用它<\/b>。扫一下自己的名片，大部分内容会自动填好。/u);
+  assert.doesNotMatch(html, /稍后设置|跳过|>iOrbit<|>活动<|>人脉<|导入名片/);
+  const noScan = renderToStaticMarkup(<OnboardingFlow actorKey="u1" cardScanAvailable={false} next="/app/home" todayIso="2026-09-26" />);
+  assert.doesNotMatch(noScan, /扫一下自己的名片|把名片图片拖到这里/);
 });
 
 test("saved goal text round-trips into the editor; old chip-prefixed text keeps every word", () => {
@@ -98,11 +116,13 @@ function stubWindow(t: { after: (fn: () => void) => void }, store: Map<string, s
 function stubProfileApi(t: { mock: { method: (target: object, name: string, impl: (...args: never[]) => unknown) => unknown } }, relationshipGoal: string, extra: Record<string, unknown> = {}, initialConfirmed = 0, introFailureMessage?: string, introFailureCode = "MODEL_REQUEST_FAILED", deferFailures = 0) {
   const puts: Record<string, unknown>[] = [];
   const commands: Record<string, unknown>[] = [];
+  const inferences: Record<string, unknown>[] = [];
+  const seeks: Record<string, unknown>[] = [];
   let progressReads = 0;
-  let profile: Record<string, unknown> = { displayName: "张三", relationshipGoal, offering: [], seeking: [], topics: [], bio: "", headline: "", updatedAt: "2026-09-28T00:00:00.000Z", ...extra };
+  let profile: Record<string, unknown> = { displayName: "张三", handles: { wechatId: "zhang" }, relationshipGoal, offering: [], seeking: [], topics: [], bio: "", headline: "", updatedAt: "2026-09-28T00:00:00.000Z", ...extra };
   let mutationId: string | undefined;
   let revision = 0;
-  let flow: Record<string, unknown> | null = initialConfirmed ? { version: 1, lastConfirmedScreen: initialConfirmed, currentScreen: initialConfirmed + 1, deferred: false, finishedAt: null, revision: "flow:1" } : null;
+  let flow: Record<string, unknown> | null = initialConfirmed ? { version: 1, lastConfirmedScreen: initialConfirmed, currentScreen: initialConfirmed + 1, deferred: false, finishedAt: extra.finishedAt ?? null, revision: "flow:1" } : null;
   t.mock.method(globalThis, "fetch", async (input: unknown, init?: RequestInit) => {
     const url = String(input);
     if (url === "/api/profile/onboarding-progress" && !init?.method) { progressReads += 1; return Response.json({ success: true, data: flow }); }
@@ -112,6 +132,7 @@ function stubProfileApi(t: { mock: { method: (target: object, name: string, impl
       if (command.action === "defer" && deferFailures-- > 0) return Response.json({ success: false, error: { code: "SERVICE_UNAVAILABLE", message: "down" } }, { status: 503 });
       if (command.action === "initialize") flow ??= { version: 1, lastConfirmedScreen: 0, currentScreen: 1, deferred: false, finishedAt: null, revision: "flow:1" };
       if (command.action === "confirm" && flow) flow = { ...flow, lastConfirmedScreen: command.screen, currentScreen: (command.screen ?? 0) + 1, revision: `flow:${++revision + 1}` };
+      if (command.action === "finish" && flow) flow = { ...flow, finishedAt: "2026-09-28T00:00:02.000Z", deferred: false, revision: `flow:${++revision + 1}` };
       if (command.action === "defer" && flow) flow = { ...flow, deferred: true, revision: `flow:${++revision + 1}` };
       return Response.json({ success: true, data: flow });
     }
@@ -124,19 +145,22 @@ function stubProfileApi(t: { mock: { method: (target: object, name: string, impl
       return Response.json({ success: true, data: { profile, mutationId, onboarding: { status: "complete", missingFields: [], policyVersion: 1 } } });
     }
     if (url === "/api/profile") {
-      return Response.json({ success: true, data: { profile, mutationId, onboarding: { status: "complete", missingFields: [], policyVersion: 1 } } });
+      return Response.json({ success: true, data: { profile, mutationId, onboarding: { status: profile.secondaryIndustryId || extra.assumeComplete !== false ? "complete" : "incomplete", missingFields: [], policyVersion: 2 } } });
     }
-    if (url === "/api/profile/seek-suggestions") return Response.json({ success: true, data: { suggestions: [] } });
+    if (url === "/api/profile/seek-suggestions") { seeks.push(JSON.parse(String(init?.body))); return Response.json({ success: true, data: { suggestions: ["投资人"] } }); }
+    if (url === "/api/profile/autofill-inference") { inferences.push(JSON.parse(String(init?.body))); return extra.inference ? Response.json({ success: true, data: extra.inference }) : Response.json({ success: false }, { status: 500 }); }
+    if (url === "/api/contact-drafts/business-card/scan") return extra.card ? Response.json({ success: true, data: extra.card }) : Response.json({ success: false, error: { code: "X", message: "server words" } }, { status: 503 });
+    if (url === "/api/profile/intro-draft" && !introFailureMessage) return Response.json({ success: true, data: { bio: "写好的介绍。", headline: "一句话" } });
     if (url === "/api/profile/intro-draft" && introFailureMessage) return Response.json({ success: false, error: { code: introFailureCode, message: introFailureMessage } }, { status: 503 });
     return Response.json({ success: false }, { status: 404 });
   });
-  return { puts, commands, progressReads: () => progressReads, progress: () => flow, saved: () => String(profile.relationshipGoal) };
+  return { puts, commands, inferences, seeks, progressReads: () => progressReads, progress: () => flow, saved: () => String(profile.relationshipGoal) };
 }
 
-async function mountFlow(actorKey: string) {
+async function mountFlow(actorKey: string, next = "/app/home") {
   let root!: ReactTestRenderer;
   await act(async () => {
-    root = create(<OnboardingFlow actorKey={actorKey} cardScanAvailable next="/app/home" todayIso="2026-09-28" />, {
+    root = create(<OnboardingFlow actorKey={actorKey} cardScanAvailable next={next} todayIso="2026-09-28" />, {
       createNodeMock: () => ({ focus() {}, setSelectionRange() {}, value: "" }),
     });
   });
@@ -156,7 +180,7 @@ test("goals step preserves an old local draft and presents six choices with no d
   stubProfileApi(t, "", {}, 1);
   const root = await mountFlow("u-old");
 
-  assert.equal(root.root.findAll(node => node.props["data-screen-label"] === "03 目标").length, 1);
+  assert.equal(root.root.findAll(node => node.props["data-screen-label"] === "02 目标与强项").length, 1);
   assert.equal(root.root.findAll(node => node.type === "button" && node.props["data-goal"] !== undefined).length, 6);
   assert.equal(goalInput(root).props.value, "寻找合作伙伴、开拓新市场：先找 5 家试用企业");
   assert.match(JSON.stringify(readOnboardingDraft("u-old")), /寻找合作伙伴、开拓新市场：先找 5 家试用企业/);
@@ -168,37 +192,6 @@ test("without a local goal draft the goals step reads the saved text back, inclu
   stubProfileApi(t, "寻找合作伙伴、开拓新市场：把产品推到日本市场（本季度）", {}, 1);
   const root = await mountFlow("u-saved");
   assert.equal(goalInput(root).props.value, "寻找合作伙伴、开拓新市场：把产品推到日本市场（本季度）");
-  act(() => root.unmount());
-});
-
-test("fifth-screen scan and CSV import carry the exact return to unfinished onboarding", async (t) => {
-  stubWindow(t, new Map());
-  stubProfileApi(t, "資金調達", {}, 4);
-  const root = await mountFlow("u-import-return");
-  const hrefs = root.root.findAll(node => node.type === "a").map(node => node.props.href);
-  assert.ok(hrefs.includes("/app/contacts/new/scan?returnTo=%2Fapp%2Fprofile%2Fonboarding%3Fscreen%3D5"));
-  assert.ok(hrefs.includes("/app/contacts/new/import?method=csv&returnTo=%2Fapp%2Fprofile%2Fonboarding%3Fscreen%3D5"));
-  act(() => root.unmount());
-});
-
-test("Set up later defers with CAS and readback; failure keeps the step for retry", async (t) => {
-  const assignments = stubWindow(t, new Map());
-  const api = stubProfileApi(t, "", {}, 1, undefined, "MODEL_REQUEST_FAILED", 1);
-  const root = await mountFlow("u-defer-retry");
-  const later = () => root.root.findAll(node => node.type === "button" && textOf(node) === "稍后设置")[0]!;
-  assert.equal(root.root.findAll(node => node.props["data-onboarding-view"] === "goals").length, 1);
-  await act(async () => { await later().props.onClick(); });
-  assert.equal(root.root.findAll(node => node.props["data-onboarding-view"] === "goals").length, 1);
-  assert.deepEqual(assignments, [], "failed defer does not navigate");
-  assert.equal(api.progress()?.deferred, false);
-  const readsBeforeRetry = api.progressReads();
-  await act(async () => { await later().props.onClick(); });
-  assert.deepEqual(assignments, ["/app/home"]);
-  assert.equal(api.progress()?.deferred, true);
-  assert.ok(api.progressReads() > readsBeforeRetry, "successful write is read back");
-  const defers = api.commands.filter(command => command.action === "defer");
-  assert.equal(defers.length, 2);
-  assert.deepEqual(defers[0], defers[1], "retry reuses the CAS mutation");
   act(() => root.unmount());
 });
 
@@ -224,7 +217,7 @@ test("onboarding goal choices and sentence read back after reload without a loca
     secondaryIndustryId: "technology_internet.enterprise_software",
   });
   const clickText = async (root: ReactTestRenderer, text: string) => {
-    const button = root.root.findAll(node => node.type === "button" && textOf(node) === text)[0];
+    const button = root.root.findAll(node => node.type === "button" && (text === "下一步" ? node.props["data-onboarding-next"] === "" : textOf(node) === text))[0];
     assert.ok(button, text);
     await act(async () => { await button.props.onClick(); });
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
@@ -232,7 +225,7 @@ test("onboarding goal choices and sentence read back after reload without a loca
   // 无草稿 → 基本信息（资料已齐）下一步 → 目标步
   const enterGoals = async (root: ReactTestRenderer) => {
     await clickText(root, "下一步");
-    assert.equal(root.root.findAll(node => node.props["data-screen-label"] === "03 目标").length, 1);
+    assert.equal(root.root.findAll(node => node.props["data-screen-label"] === "02 目标与强项").length, 1);
   };
 
   const first = await mountFlow("u-reload");
@@ -249,7 +242,7 @@ test("onboarding goal choices and sentence read back after reload without a loca
   // 刷新：本地草稿清空，接口返回刚保存的值
   store.clear();
   const second = await mountFlow("u-reload");
-  assert.equal(second.root.findAll(node => node.props["data-screen-label"] === "04 商务画像").length, 1);
+  assert.equal(second.root.findAll(node => node.props["data-screen-label"] === "03 自我介绍").length, 1, "② confirms screens 2 and 3");
   await clickText(second, "返回");
   assert.equal(goalInput(second).props.value, "先谈大阪的两家供应商");
   assert.equal(second.root.findAll(node => node.type === "button" && node.props["aria-pressed"] === true && node.props["data-goal"] === "partners").length, 1);
@@ -286,4 +279,195 @@ test("intro quota exhaustion offers manual writing without another retry", async
   assert.doesNotMatch(output, /Quota error from server/);
   assert.equal(root.root.findAll(node => node.type === "button" && textOf(node) === "重试").length, 0);
   act(() => root.unmount());
+});
+
+const settleFlow = () => act(async () => { await new Promise(resolve => setTimeout(resolve, 5)); });
+const nextButton = (root: ReactTestRenderer) => root.root.find(node => node.type === "button" && node.props["data-onboarding-next"] === "");
+const button = (root: ReactTestRenderer, text: string) => root.root.findAll(node => node.type === "button" && textOf(node) === text)[0]!;
+const click = async (root: ReactTestRenderer, target: ReactTestInstance) => { await act(async () => { await target.props.onClick(); }); await settleFlow(); };
+const alerts = (root: ReactTestRenderer) => root.root.findAll(node => typeof node.type === "string" && node.props.role === "alert").map(node => textOf(node).trim());
+const field = (root: ReactTestRenderer, id: string) => root.root.findAll(node => typeof node.type === "string" && node.props.id === id)[0];
+const output = (root: ReactTestRenderer) => JSON.stringify(root.toJSON());
+const CARD = {
+  draft: { displayName: "佐藤 健一", email: "sato@minatolink.example", organization: "株式会社ミナトリンク", phone: "03-5555-0142", role: "代表取締役 CEO" },
+  ocr: { structuredExtraction: { primaryIndustryId: "technology_internet", regionCity: "Tokyo", regionCountryCode: "JP", secondaryIndustryId: "technology_internet.enterprise_software", seniorityLevel: "c_level" } },
+};
+const INFERENCE = { offering: ["资本政策的经验", "起业支援"], primaryIndustryId: null, secondaryIndustryId: null, seniorityLevel: "c_level", status: "ready", topics: ["SaaS 与企业服务"] };
+const BLANK = { assumeComplete: false, displayName: "", handles: { wechatId: "keep-me" } };
+async function scanCard(root: ReactTestRenderer) {
+  const input = root.root.findAll(node => node.type === "input" && node.props.type === "file")[0]!;
+  await act(async () => { input.props.onChange({ target: { files: [new File(["x"], "card.png", { type: "image/png" })], value: "" } }); });
+  await settleFlow();
+}
+
+test("次へ is never disabled: missing items are named, marked for screen readers, and clear once filled", async (t) => {
+  stubWindow(t, new Map());
+  const api = stubProfileApi(t, "", BLANK);
+  const root = await mountFlow("u-missing");
+  assert.ok(!nextButton(root).props.disabled);
+  await click(root, nextButton(root));
+  assert.deepEqual(alerts(root), ["还差 2 项：姓名、行业"]);
+  assert.equal(field(root, "onb-name")!.props["aria-invalid"], true);
+  assert.equal(field(root, "onb-name")!.props["aria-describedby"], "onb-name-msg");
+  assert.equal(textOf(field(root, "onb-name-msg")!), "请填写姓名");
+  assert.equal(field(root, "onb-industry")!.props["aria-invalid"], true);
+  assert.equal(api.puts.length, 0, "nothing is saved while something is missing");
+  await act(async () => { field(root, "onb-name")!.props.onChange({ target: { value: "张三" } }); });
+  assert.deepEqual(alerts(root), ["还差 1 项：行业"]);
+  await act(async () => { field(root, "onb-industry")!.props.onChange({ target: { value: "technology_internet" } }); });
+  assert.deepEqual(alerts(root), ["还差 1 项：细分行业"]);
+  await act(async () => { field(root, "onb-industry-detail")!.props.onChange({ target: { value: "technology_internet.ai_data" } }); });
+  assert.deepEqual(alerts(root), []);
+  act(() => root.unmount());
+});
+
+test("scan: printed items are 来自名片, the industry is AI 推断, a user edit drops the mark, and handles merge instead of replacing", async (t) => {
+  stubWindow(t, new Map());
+  const api = stubProfileApi(t, "", { ...BLANK, card: CARD, inference: INFERENCE });
+  const root = await mountFlow("u-scan");
+  await scanCard(root);
+  assert.equal(field(root, "onb-name")!.props.value, "佐藤 健一");
+  assert.equal(field(root, "onb-email")!.props.value, "sato@minatolink.example");
+  assert.match(output(root), /名片读到 5 项，AI 推断 2 项/);
+  const count = (text: string) => root.root.findAll(node => typeof node.type === "string" && node.children.length === 1 && node.children[0] === text).length;
+  assert.equal(count("来自名片"), 5);
+  assert.equal(count("AI 推断"), 2);
+  await act(async () => { field(root, "onb-company")!.props.onChange({ target: { value: "ミナトリンク" } }); });
+  assert.equal(count("来自名片"), 4);
+  assert.deepEqual(api.inferences[0], { displayName: "佐藤 健一", language: "zh", organization: "株式会社ミナトリンク", primaryIndustryId: "technology_internet", role: "代表取締役 CEO", secondaryIndustryId: "technology_internet.enterprise_software" });
+  assert.equal(api.puts.length, 0, "a scan only fills the form");
+  await click(root, nextButton(root));
+  const saved = api.puts[0]!;
+  assert.deepEqual(saved.handles, { email: "sato@minatolink.example", phone: "03-5555-0142", wechatId: "keep-me" });
+  assert.equal(saved.seniorityLevel, "c_level");
+  assert.match(String(saved.homeMarket), /东京/);
+  assert.equal(saved.secondaryIndustryId, "technology_internet.enterprise_software");
+  assert.deepEqual(api.commands.map(command => [command.action, command.screen]), [["initialize", undefined], ["confirm", 1]]);
+  // ② carries the AI's picks, marked until the person changes that group.
+  assert.equal(root.root.findAll(node => node.props["data-onboarding-view"] === "goals").length, 1);
+  assert.match(output(root), /资本政策的经验/);
+  assert.ok(count("AI 推断") >= 2);
+  await click(root, button(root, "资本政策的经验"));
+  await click(root, button(root, "起业支援"));
+  assert.doesNotMatch(output(root), /资本政策的经验/);
+  act(() => root.unmount());
+});
+
+test("scan failure keeps the form usable and never shows the server's words", async (t) => {
+  stubWindow(t, new Map());
+  stubProfileApi(t, "", BLANK);
+  const root = await mountFlow("u-scan-fail");
+  await scanCard(root);
+  assert.match(alerts(root)[0]!, /名片没有识别出来/);
+  assert.doesNotMatch(output(root), /server words/);
+  assert.ok(!field(root, "onb-name")!.props.disabled);
+  act(() => root.unmount());
+});
+
+test("without a scan the company is asked about once on 下一步, and the industry the person picked stays", async (t) => {
+  stubWindow(t, new Map());
+  const api = stubProfileApi(t, "", { ...BLANK, displayName: "张三", inference: { ...INFERENCE, primaryIndustryId: "finance_investment", secondaryIndustryId: "finance_investment.banking" }, organization: "港联", primaryIndustryId: "other", secondaryIndustryId: "other.other" });
+  const root = await mountFlow("u-late");
+  await click(root, nextButton(root));
+  assert.equal(api.puts[0]!.secondaryIndustryId, "other.other");
+  assert.equal(api.inferences.length, 1, "without a scan the company is enough to ask once");
+  act(() => root.unmount());
+});
+
+test("② goals: no goal is named at the group; choosing one clears it, asks once for seek ideas, and those join only on click", async (t) => {
+  stubWindow(t, new Map());
+  const api = stubProfileApi(t, "", { secondaryIndustryId: "other.other" }, 1);
+  const root = await mountFlow("u-goals");
+  await click(root, nextButton(root));
+  assert.deepEqual(alerts(root), ["还差 1 项：目标"]);
+  assert.match(output(root), /请至少选 1 个目标/);
+  const goal = (id: string) => root.root.findAll(node => node.type === "button" && node.props["data-goal"] === id)[0]!;
+  await click(root, goal("funding"));
+  assert.deepEqual(alerts(root), []);
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 800)); });
+  assert.equal(api.seeks.length, 1);
+  assert.equal(api.seeks[0]!.goal, "寻找投资");
+  const candidate = root.root.findAll(node => node.type === "button" && node.props["data-ai-candidate"] === "")[0]!;
+  assert.equal(textOf(candidate), "投资人");
+  await click(root, candidate);
+  await click(root, nextButton(root));
+  assert.deepEqual(api.puts.at(-1)!.seeking, ["投资人"]);
+  assert.equal(api.puts.at(-1)!.relationshipGoal, "寻找投资");
+  assert.deepEqual(api.commands.filter(command => command.action === "confirm").map(command => command.screen), [2, 3]);
+  act(() => root.unmount());
+});
+
+test("③ intro: empty and over-long introductions say why; 就用这份开始 confirms 4 and 5, finishes and goes to next", async (t) => {
+  const assignments = stubWindow(t, new Map());
+  const api = stubProfileApi(t, "寻找投资", { bio: "介".repeat(81), headline: "一句话", secondaryIndustryId: "other.other" }, 3);
+  const root = await mountFlow("u-intro", "/app/events/ev-1/register");
+  await click(root, nextButton(root));
+  assert.deepEqual(alerts(root), ["自我介绍超过字数上限"]);
+  await click(root, button(root, "直接编辑"));
+  await act(async () => { field(root, "onb-intro")!.props.onChange({ target: { value: "" } }); });
+  assert.deepEqual(alerts(root), ["还差 1 项：自我介绍"]);
+  await act(async () => { field(root, "onb-intro")!.props.onChange({ target: { value: "做企业软件。" } }); });
+  assert.deepEqual(alerts(root), []);
+  await click(root, nextButton(root));
+  assert.deepEqual(api.commands.map(command => command.screen ?? command.action), [4, 5, "finish"]);
+  assert.deepEqual(assignments, ["/app/events/ev-1/register"]);
+  act(() => root.unmount());
+});
+
+test("a finished flow whose required fields went missing stays on step 1 and leaves after saving them", async (t) => {
+  const assignments = stubWindow(t, new Map());
+  const api = stubProfileApi(t, "寻找投资", { assumeComplete: false, finishedAt: "2026-09-01T00:00:00.000Z", secondaryIndustryId: "" }, 5);
+  const root = await mountFlow("u-finished");
+  assert.equal(root.root.findAll(node => node.props["data-onboarding-view"] === "basics").length, 1);
+  assert.deepEqual(assignments, []);
+  await act(async () => { field(root, "onb-industry")!.props.onChange({ target: { value: "other" } }); });
+  await act(async () => { field(root, "onb-industry-detail")!.props.onChange({ target: { value: "other.other" } }); });
+  await click(root, nextButton(root));
+  assert.equal(api.puts.length, 1);
+  assert.deepEqual(assignments, ["/app/home"]);
+  act(() => root.unmount());
+});
+
+test("log out stores this step's input on the server first, without moving the progress", async (t) => {
+  stubWindow(t, new Map());
+  // next-auth's signOut opens a BroadcastChannel, which would keep the test process alive.
+  const channel = Object.getOwnPropertyDescriptor(globalThis, "BroadcastChannel");
+  Object.defineProperty(globalThis, "BroadcastChannel", { configurable: true, value: class { addEventListener() {} close() {} postMessage() {} removeEventListener() {} } });
+  t.after(() => { if (channel) Object.defineProperty(globalThis, "BroadcastChannel", channel); });
+  const api = stubProfileApi(t, "", BLANK);
+  const root = await mountFlow("u-logout");
+  await act(async () => { field(root, "onb-name")!.props.onChange({ target: { value: "张三" } }); });
+  await act(async () => { field(root, "onb-company")!.props.onChange({ target: { value: "港联" } }); });
+  await act(async () => { await root.root.findAll(node => node.type === "button" && node.props["data-onboarding-logout"] === "")[0]!.props.onClick(); await new Promise(resolve => setTimeout(resolve, 5)); });
+  assert.deepEqual([api.puts[0]?.displayName, api.puts[0]?.organization, "primaryIndustryId" in (api.puts[0] ?? {})], ["张三", "港联", false]);
+  assert.equal(api.commands.length, 0);
+  act(() => root.unmount());
+});
+
+test("an old five-step draft moves over without losing what was typed; 已自动保存 only after something was saved", async (t) => {
+  const saved = (root: ReactTestRenderer) => output(root).includes("已自动保存");
+  const store = new Map([[DRAFT_KEY("u-old5"), JSON.stringify({ view: "profile", goalText: "找投资", fields: { basic: { birthDate: "", company: "港联", name: "张三", primaryIndustryId: "", secondaryIndustryId: "", title: "总经理" }, offer: ["客户引荐"], seek: [], topics: [], bio: "草稿介绍" } })]]);
+  stubWindow(t, store);
+  stubProfileApi(t, "", BLANK);
+  const root = await mountFlow("u-old5");
+  assert.equal(field(root, "onb-company")!.props.value, "港联");
+  assert.equal(saved(root), true);
+  const migrated = readOnboardingDraft("u-old5")!;
+  assert.equal(migrated.view, "basics");
+  assert.deepEqual([migrated.goalText, migrated.fields?.offer, migrated.fields?.bio, migrated.fields?.basic?.email], ["找投资", ["客户引荐"], "草稿介绍", ""]);
+  act(() => root.unmount());
+
+  stubWindow(t, new Map());
+  const fresh = await mountFlow("u-fresh");
+  assert.equal(saved(fresh), false);
+  await act(async () => { field(fresh, "onb-company")!.props.onChange({ target: { value: "港联" } }); });
+  assert.equal(saved(fresh), true);
+  act(() => fresh.unmount());
+
+  stubWindow(t, new Map());
+  Object.defineProperty(window, "localStorage", { configurable: true, value: { getItem: () => null, removeItem() {}, setItem() { throw new Error("blocked"); } } });
+  const blocked = await mountFlow("u-blocked");
+  await act(async () => { field(blocked, "onb-company")!.props.onChange({ target: { value: "港联" } }); });
+  assert.equal(saved(blocked), false, "storage refused the draft");
+  act(() => blocked.unmount());
 });

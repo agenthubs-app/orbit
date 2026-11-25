@@ -386,7 +386,7 @@ test("live gate accepts a v2 complete profile while an unknown policy stays unav
       onboarding: { policyVersion: 2, status: "complete", missingFields: [] },
     } } });
     assert.deepEqual(await access.readProfileOnboardingAccess({ userId: "profile:stub" }),
-      { actorId: "account:stub-canonical", status: "complete" });
+      { actorId: "account:stub-canonical", answered: false, status: "complete" });
   });
 });
 
@@ -429,8 +429,8 @@ test("live helper resolves a raw profile subject to the canonical account and co
         userId: accountId,
       });
       legacyQueryCount = calls.length - beforeLegacy;
-      assert.deepEqual(rawAccess, { actorId: accountId, status: "complete" });
-      assert.deepEqual(legacyAccess, { actorId: accountId, status: "complete" });
+      assert.deepEqual(rawAccess, { actorId: accountId, answered: false, status: "complete" });
+      assert.deepEqual(legacyAccess, { actorId: accountId, answered: false, status: "complete" });
     } finally {
       poolPrototype.query = originalQuery;
     }
@@ -453,7 +453,7 @@ test("live helper treats an incomplete persisted profile as incomplete", { skip 
 
   await withGateEnv({ schema, workspaceId, mode: "live" }, async () => {
     const access = await readProfileOnboardingAccess({ userId: profileId });
-    assert.deepEqual(access, { actorId: accountId, status: "incomplete" });
+    assert.deepEqual(access, { actorId: accountId, answered: false, status: "incomplete" });
   });
 });
 
@@ -479,7 +479,7 @@ test("production mode stays live when mode variables are missing", { skip }, asy
     { schema, workspaceId, nodeEnvironment: "production" },
     async () => {
       const access = await readProfileOnboardingAccess({ userId: profileId });
-      assert.deepEqual(access, { actorId: accountId, status: "complete" });
+      assert.deepEqual(access, { actorId: accountId, answered: false, status: "complete" });
     },
   );
 });

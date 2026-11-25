@@ -1,6 +1,6 @@
 "use client";
 
-// b1 A3 (Web): the five-screen stepper shared by the onboarding header (#16–#20), the
+// The three-step stepper (onboarding-3step-proposal) shared by the onboarding header, the
 // 「おかえりなさい」 resume dialog (#21) and the home rail 「はじめかたガイド」 (#21 / #24).
 import { useEffect, useState } from "react";
 
@@ -9,16 +9,15 @@ import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { Icon, MacTile, Modal } from "../ui";
 import { fetchOnboardingProgress } from "./onboarding-client";
+import { onboardingStepsDone } from "./onboarding-model";
 import styles from "./OnboardingGuide.module.css";
 
 type Copy = { ja: string; zh: string; en: string };
 
 export const ONBOARDING_STEP_LABELS: readonly Copy[] = [
-  { ja: "基本情報", zh: "基本信息", en: "Basics" },
-  { ja: "目標", zh: "目标", en: "Goals" },
-  { ja: "強み・ニーズ", zh: "优势与需求", en: "Offer & seek" },
+  { ja: "名刺・基本情報", zh: "名片与基本信息", en: "Card & basics" },
+  { ja: "目標と強み", zh: "目标与强项", en: "Goals & strengths" },
   { ja: "自己紹介", zh: "自我介绍", en: "Introduction" },
-  { ja: "名刺の取り込み", zh: "导入名片", en: "Import cards" },
 ];
 
 export const ONBOARDING_RESUME_HREF = "/app/profile/onboarding";
@@ -84,21 +83,22 @@ export function unfinishedOnboarding(state: OnboardingFlowState): ProfileOnboard
   return state.kind === "ready" && !state.flow.finishedAt ? state.flow : null;
 }
 
-function currentScreen(flow: ProfileOnboardingProgressContract): number {
-  return flow.currentScreen ?? Math.min(flow.lastConfirmedScreen + 1, 5);
+/** 服务端仍记五屏；这里按三步显示（onboardingStepsDone）。 */
+function currentStep(flow: ProfileOnboardingProgressContract): number {
+  return Math.min(onboardingStepsDone(flow.lastConfirmedScreen) + 1, 3);
 }
 
-/** b1 #21 / #24 rail: 🧭 はじめかたガイド — remaining steps, n / 5 bar, the five checks and 続きから再開. */
+/** b1 #21 / #24 rail: 🧭 はじめかたガイド — remaining steps, n / 3 bar, the three checks and 続きから再開. */
 export function OnboardingGuideRail({ flow }: { flow: ProfileOnboardingProgressContract }) {
   const { t } = useOrbitLanguage();
-  const done = flow.lastConfirmedScreen;
-  const current = currentScreen(flow);
-  const left = 5 - done;
+  const done = onboardingStepsDone(flow.lastConfirmedScreen);
+  const current = currentStep(flow);
+  const left = 3 - done;
   return <section className={styles.rail} aria-label={t({ ja: "はじめかたガイド", zh: "入门指南", en: "Getting started" })}>
     <h4 className={styles.railHead}><MacTile emoji="🧭" tone="lav" size="sm" />{t({ ja: "はじめかたガイド", zh: "入门指南", en: "Getting started" })}</h4>
     <div className={styles.railCard}>
-      <div className={styles.between}><b>{t({ ja: `あと ${left} ステップ`, zh: `还差 ${left} 步`, en: `${left} steps to go` })}</b><span className={styles.lbl}>{done} / 5</span></div>
-      <div className={styles.bar} role="progressbar" aria-valuemin={0} aria-valuemax={5} aria-valuenow={done}><i style={{ width: `${(done / 5) * 100}%` }} /></div>
+      <div className={styles.between}><b>{t({ ja: `あと ${left} ステップ`, zh: `还差 ${left} 步`, en: `${left} steps to go` })}</b><span className={styles.lbl}>{done} / 3</span></div>
+      <div className={styles.bar} role="progressbar" aria-valuemin={0} aria-valuemax={3} aria-valuenow={done}><i style={{ width: `${(done / 3) * 100}%` }} /></div>
       {ONBOARDING_STEP_LABELS.map((label, index) => {
         const step = index + 1;
         const state = step <= done && step !== current ? styles.checkDone : step === current ? styles.checkNow : styles.checkWait;
@@ -122,12 +122,12 @@ export function OnboardingResumeDialog({ flow }: { flow: ProfileOnboardingProgre
     try { window.sessionStorage.setItem(RESUME_DISMISSED_KEY, "1"); } catch { /* the dialog still closes */ }
     setOpen(false);
   };
-  const done = flow.lastConfirmedScreen;
+  const done = onboardingStepsDone(flow.lastConfirmedScreen);
   const title = t({ ja: "おかえりなさい", zh: "欢迎回来", en: "Welcome back" });
   return <Modal open={open} onClose={later} title={title} size={640} closable={false}
     header={<div className={styles.welcome}><MacTile emoji="👋" tone="lav" /><div><div className={styles.welcomeTitle}>{title}</div>
-      <div className={styles.sub}>{t({ ja: `プロフィール設定が途中です（${done} / 5 完了）`, zh: `资料设置还没完成（已完成 ${done} / 5）`, en: `Your profile setup is unfinished (${done} / 5 done)` })}</div></div></div>}>
-    <OnboardingStepper current={currentScreen(flow)} confirmed={done} className={styles.dialogStepper} />
+      <div className={styles.sub}>{t({ ja: `プロフィール設定が途中です（${done} / 3 完了）`, zh: `资料设置还没完成（已完成 ${done} / 3）`, en: `Your profile setup is unfinished (${done} / 3 done)` })}</div></div></div>}>
+    <OnboardingStepper current={currentStep(flow)} confirmed={done} className={styles.dialogStepper} />
     <div className={styles.actions}>
       <button type="button" className={`btn ${styles.secondaryXl}`} onClick={later}>{t({ ja: "あとで", zh: "稍后", en: "Later" })}</button>
       <a className={`btn ${styles.primaryXl}`} href={ONBOARDING_RESUME_HREF}>{t({ ja: "続きから再開", zh: "从上次继续", en: "Resume setup" })}</a>

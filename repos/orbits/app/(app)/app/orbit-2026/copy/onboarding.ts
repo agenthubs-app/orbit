@@ -969,12 +969,9 @@ export const ONBOARDING_COPY = {
 
 // Stable fixture labels and names used by the five-screen preview.
 export const ONBOARDING_SCREEN_LABELS = {
-  welcome: "01 欢迎",
-  basics: "02 关于你",
-  goals: "03 目标",
-  persona: "04 商务画像",
-  intro: "05 AI 介绍",
-  import: "06 带入人脉",
+  basics: "01 名片与基本信息",
+  goals: "02 目标与强项",
+  intro: "03 自我介绍",
 } as const;
 
 export const ONBOARDING_PREVIEW_PEOPLE = [

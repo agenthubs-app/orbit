@@ -13,6 +13,8 @@ export type ProfileOnboardingAccessStatus =
 
 export interface ProfileOnboardingAccessResult {
   actorId?: string;
+  /** 目标和自我介绍都填过（引导里另外两项必填；门禁不看，登录后的 continue 看）。 */
+  answered?: boolean;
   status: ProfileOnboardingAccessStatus;
 }
 
@@ -85,6 +87,7 @@ export async function readProfileOnboardingAccess(
 
   return {
     actorId: actor.id,
+    answered: Boolean(result.data.profile?.relationshipGoal?.trim() && result.data.profile.bio?.trim()),
     status:
       result.data.profile && result.data.onboarding.status === "complete"
         ? "complete"

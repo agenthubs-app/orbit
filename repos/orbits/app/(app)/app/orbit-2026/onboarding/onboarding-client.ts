@@ -1,9 +1,14 @@
 /**
  * 新用户引导的接口层：读资料、分步保存（PUT /api/profile + 回执核验 + 复读核验）、
- * 名片识别自动填写、AI 起草介绍。与个人中心编辑器同一套接口与核验口径。
+ * 名片识别自动填写、按名片推断、AI 起草介绍。与个人中心编辑器同一套接口与核验口径。
  */
 import type { ManualProfileUpdateInput, ProfilePayload } from "../../../../../features/profile/contract";
 import type { ProfileOnboardingProgressCommandContract, ProfileOnboardingProgressContract } from "../../../../../shared/contract/profile";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
+import type { OwnCardScanContract, ProfileAutofillInferenceContract, ProfileAutofillInferenceRequestContract } from "../../../../../shared/contract/profile-autofill";
+import type { SeniorityLevelCode } from "../../../../../shared/contract/profile";
+import { sanitizeIndustryPair } from "../../../../../shared/domain/industries";
+import { normalizeRegion } from "../../../../../shared/domain/regions";
 import { profileEditorReadbackMatches } from "../../profile/profile-editor-adapter";
 
 interface ApiEnvelope<TData> {
@@ -108,7 +113,13 @@ export async function saveProfileFields(fields: ProfileFields, expectedUpdatedAt
 
 export interface CardAutofill {
   company: string;
+  email: string;
   name: string;
+  phone: string;
+  /** AI 按公司和职位判断的（同一次识别顺带给出）；两项同时有或同时没有。 */
+  industry: { primaryIndustryId: IndustryIdCode; secondaryIndustryId: SecondaryIndustryIdCode } | null;
+  region: { countryCode: string; city?: string } | null;
+  seniorityLevel: SeniorityLevelCode | null;
   title: string;
 }
 
@@ -117,12 +128,43 @@ export async function scanOwnBusinessCard(file: File): Promise<CardAutofill> {
   const form = new FormData();
   form.append("image", file, file.name);
   const response = await fetch("/api/contact-drafts/business-card/scan", { body: form, method: "POST" });
-  const envelope = await readJson<{ draft?: { displayName?: string; organization?: string; role?: string } }>(response);
+  const envelope = await readJson<Partial<OwnCardScanContract>>(response);
   const draft = envelope.data?.draft;
   if (!response.ok || envelope.success !== true || !draft) {
     throw new OnboardingRequestError(envelope.error?.message ?? "Business card recognition failed", envelope.error?.code);
   }
-  return { company: draft.organization?.trim() ?? "", name: draft.displayName?.trim() ?? "", title: draft.role?.trim() ?? "" };
+  const read = envelope.data?.ocr?.structuredExtraction;
+  const { primaryIndustryId, secondaryIndustryId } = sanitizeIndustryPair(read?.primaryIndustryId, read?.secondaryIndustryId);
+  const region = normalizeRegion(read?.regionCountryCode, read?.regionCity);
+  return {
+    company: draft.organization?.trim() ?? "",
+    email: draft.email?.trim() ?? "",
+    industry: primaryIndustryId && secondaryIndustryId ? { primaryIndustryId, secondaryIndustryId } : null,
+    name: draft.displayName?.trim() ?? "",
+    phone: draft.phone?.trim() ?? "",
+    region: region ? { countryCode: region.countryCode, ...(region.city ? { city: region.city } : {}) } : null,
+    seniorityLevel: read?.seniorityLevel ?? null,
+    title: draft.role?.trim() ?? "",
+  };
+}
+
+const INFERENCE_TIMEOUT_MS = 20_000;
+export const NO_INFERENCE: ProfileAutofillInferenceContract = { status: "unavailable", primaryIndustryId: null, secondaryIndustryId: null, seniorityLevel: null, offering: [], topics: [] };
+
+/** 按名片推断资料；任何失败都读作 unavailable，不打断引导。 */
+export async function fetchAutofillInference(input: ProfileAutofillInferenceRequestContract): Promise<ProfileAutofillInferenceContract> {
+  try {
+    const response = await fetch("/api/profile/autofill-inference", {
+      body: JSON.stringify(input),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+      signal: AbortSignal.timeout(INFERENCE_TIMEOUT_MS),
+    });
+    const envelope = await readJson<ProfileAutofillInferenceContract>(response);
+    return response.ok && envelope.success === true && envelope.data?.status === "ready" ? envelope.data : NO_INFERENCE;
+  } catch {
+    return NO_INFERENCE;
+  }
 }
 
 export async function generateIntroDraft(language: "zh" | "en" | "ja", idempotencyKey: string): Promise<{ bio: string; headline: string }> {
@@ -138,10 +180,10 @@ export async function generateIntroDraft(language: "zh" | "en" | "ja", idempoten
   return { bio: envelope.data.bio, headline: envelope.data.headline };
 }
 
-/** 「我在寻找」✦ 建议：后端按已保存的资料让 AI 从候选里挑选，返回值必为候选原文。 */
-export async function fetchSeekSuggestions(candidates: readonly string[], language: "zh" | "en"): Promise<string[]> {
+/** 「我在寻找」✦ 建议：后端按已保存的资料和表单里的目标让 AI 从候选里挑选，返回值必为候选原文。 */
+export async function fetchSeekSuggestions(candidates: readonly string[], goal: string, language: "zh" | "en" | "ja"): Promise<string[]> {
   const response = await fetch("/api/profile/seek-suggestions", {
-    body: JSON.stringify({ candidates, language }),
+    body: JSON.stringify({ candidates, goal, language }),
     headers: { "content-type": "application/json" },
     method: "POST",
   });

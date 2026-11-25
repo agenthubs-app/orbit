@@ -1,0 +1,774 @@
+{
+ "_note": "三步引导 onboarding-3step-proposal W1–W6 / T1–T4 / M1–M6。设计侧用同目录的门禁副本 _onboarding-3step-gate.html（不提交）：只换示例数据文字、补上画板漏带的 .lp-logo 规则、去掉 PDF 与やわらかめ（没有对应功能）、把手机按钮条放回视口底。实现侧接口全部在浏览器里打桩，不调模型、不写库。",
+ "defaults": {
+  "app-origin": "http://localhost:3040",
+  "login": "qa@orbit.test",
+  "grid": 30,
+  "attribution": "scripts/visual/attribution-onboarding-3step.json",
+  "viewport": true,
+  "init-script": "(() => {\n  if (!location.pathname.startsWith(\"/app/profile/onboarding\")) return;\n  try { Object.keys(localStorage).filter(k => k.startsWith(\"orbit.onboarding\")).forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}\n  const real = window.fetch.bind(window);\n  const ok = (data) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  let rev = 0, flow = null, updated = 0, mutationId;\n  let profile = { displayName: \"\", organization: \"\", role: \"\", headline: \"\", bio: \"\", relationshipGoal: \"\", handles: {}, offering: [], seeking: [], topics: [], updatedAt: \"2026-11-25T00:00:00.000Z\" };\n  const payload = () => ({ state: \"success\", profile, mutationId, onboarding: { policyVersion: 2, status: profile.displayName && profile.secondaryIndustryId ? \"complete\" : \"incomplete\", missingFields: [] } });\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    const body = () => JSON.parse(String(init.body || \"{}\"));\n    if (url.includes(\"/api/profile/onboarding-progress\")) {\n      if ((init.method || \"GET\") === \"POST\") { const c = body(); rev += 1;\n        if (c.action === \"initialize\") flow = flow || { version: 1, lastConfirmedScreen: 0, currentScreen: 1, deferred: false, finishedAt: null };\n        if (c.action === \"confirm\") flow = { ...flow, lastConfirmedScreen: c.screen, currentScreen: c.screen >= 5 ? null : c.screen + 1 };\n        flow = { ...flow, revision: \"r\" + rev }; }\n      return ok(flow);\n    }\n    if (url.includes(\"/api/profile/autofill-inference\")) return ok({ status: \"ready\", primaryIndustryId: null, secondaryIndustryId: null, seniorityLevel: \"c_level\", offering: [\"資本政策の知見\", \"SaaS の営業組織づくり\", \"エンジニア採用\"], topics: [\"SaaS\", \"製造業 DX\", \"組織づくり\"] });\n    if (url.includes(\"/api/profile/seek-suggestions\")) return ok({ suggestions: [\"企業の意思決定者\"] });\n    if (url.includes(\"/api/profile/intro-draft\")) return ok({ headline: \"業務 SaaS の代表\", bio: \"株式会社ミナトリンク代表の佐藤です。製造業向けの業務 SaaS を展開しています。シリーズAの資金調達と新規顧客開拓に力を入れています。\", model: \"fixture\", provider: \"fixture\" });\n    if (url.includes(\"/api/contact-drafts/business-card/scan\")) return ok({ draft: { displayName: \"佐藤 健一\", organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", email: \"sato@minatolink.example\", phone: \"03-5555-0142\" }, ocr: { structuredExtraction: { primaryIndustryId: \"finance_investment\", secondaryIndustryId: \"finance_investment.insurance\", seniorityLevel: \"c_level\", regionCountryCode: \"JP\", regionCity: \"Tokyo\" } } });\n    if (/\\/api\\/profile(\\?|$)/.test(url)) {\n      if (init.method === \"PUT\") { const { expectedUpdatedAt, mutationId: id, ...f } = body(); mutationId = id; updated += 1; profile = { ...profile, ...f, updatedAt: \"2026-11-25T00:00:0\" + updated + \".000Z\" }; }\n      return ok(payload());\n    }\n    return real(input, init);\n  };\n})();",
+  "themes": [
+   "light",
+   "dark"
+  ]
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/onboarding/**"
+ ],
+ "views": [
+  {
+   "id": "W1",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 0,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "W2",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 1,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "W3",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 2,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "W4",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 3,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "waitFor": "[data-onboarding-view=goals]"
+    },
+    {
+     "wait": 700
+    },
+    {
+     "click": "[data-goal=funding]"
+    },
+    {
+     "click": "[data-goal=customers]"
+    },
+    {
+     "fill": [
+      "[data-goal-line]",
+      "シリーズAで3億円を調達"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 300
+    },
+    {
+     "eval": "(() => { const g = [...document.querySelectorAll('[data-tag-group=\"What you\\'re looking for\"]')].find(e => e.offsetParent); [...g.querySelectorAll('button')].filter(b => ['投資家','共同創業者'].includes(b.textContent)).forEach(b => b.click()); document.activeElement && document.activeElement.blur(); })()"
+    },
+    {
+     "wait": 400
+    },
+    {
+     "eval": "window.scrollTo(0,0)"
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "W5",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 4,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "waitFor": "[data-onboarding-view=goals]"
+    },
+    {
+     "wait": 700
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "W6",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 5,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "waitFor": "[data-onboarding-view=goals]"
+    },
+    {
+     "wait": 700
+    },
+    {
+     "click": "[data-goal=funding]"
+    },
+    {
+     "click": "[data-goal=customers]"
+    },
+    {
+     "fill": [
+      "[data-goal-line]",
+      "シリーズAで3億円を調達"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 300
+    },
+    {
+     "eval": "(() => { const g = [...document.querySelectorAll('[data-tag-group=\"What you\\'re looking for\"]')].find(e => e.offsetParent); [...g.querySelectorAll('button')].filter(b => ['投資家','共同創業者'].includes(b.textContent)).forEach(b => b.click()); document.activeElement && document.activeElement.blur(); })()"
+    },
+    {
+     "wait": 400
+    },
+    {
+     "eval": "window.scrollTo(0,0)"
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "waitFor": "[data-onboarding-view=intro]"
+    },
+    {
+     "wait": 1200
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "T1",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 6,
+   "width": 834,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "height": 1194
+  },
+  {
+   "id": "T2",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 7,
+   "width": 834,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "height": 1194
+  },
+  {
+   "id": "T3",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 8,
+   "width": 834,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "waitFor": "[data-onboarding-view=goals]"
+    },
+    {
+     "wait": 700
+    },
+    {
+     "click": "[data-goal=funding]"
+    },
+    {
+     "click": "[data-goal=customers]"
+    },
+    {
+     "fill": [
+      "[data-goal-line]",
+      "シリーズAで3億円を調達"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 300
+    },
+    {
+     "eval": "(() => { const g = [...document.querySelectorAll('[data-tag-group=\"What you\\'re looking for\"]')].find(e => e.offsetParent); [...g.querySelectorAll('button')].filter(b => ['投資家','共同創業者'].includes(b.textContent)).forEach(b => b.click()); document.activeElement && document.activeElement.blur(); })()"
+    },
+    {
+     "wait": 400
+    },
+    {
+     "eval": "window.scrollTo(0,0)"
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "height": 1194
+  },
+  {
+   "id": "T4",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 9,
+   "width": 834,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "waitFor": "[data-onboarding-view=goals]"
+    },
+    {
+     "wait": 700
+    },
+    {
+     "click": "[data-goal=funding]"
+    },
+    {
+     "click": "[data-goal=customers]"
+    },
+    {
+     "fill": [
+      "[data-goal-line]",
+      "シリーズAで3億円を調達"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 300
+    },
+    {
+     "eval": "(() => { const g = [...document.querySelectorAll('[data-tag-group=\"What you\\'re looking for\"]')].find(e => e.offsetParent); [...g.querySelectorAll('button')].filter(b => ['投資家','共同創業者'].includes(b.textContent)).forEach(b => b.click()); document.activeElement && document.activeElement.blur(); })()"
+    },
+    {
+     "wait": 400
+    },
+    {
+     "eval": "window.scrollTo(0,0)"
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "waitFor": "[data-onboarding-view=intro]"
+    },
+    {
+     "wait": 1200
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "height": 1194
+  },
+  {
+   "id": "M1",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 10,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "M2",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 11,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "M3",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 12,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "M4",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 13,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "waitFor": "[data-onboarding-view=goals]"
+    },
+    {
+     "wait": 700
+    },
+    {
+     "click": "[data-goal=funding]"
+    },
+    {
+     "click": "[data-goal=customers]"
+    },
+    {
+     "fill": [
+      "[data-goal-line]",
+      "シリーズAで3億円を調達"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 300
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "M5",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 14,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "waitFor": "[data-onboarding-view=goals]"
+    },
+    {
+     "wait": 700
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "M6",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 15,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "waitFor": "[data-onboarding-view=goals]"
+    },
+    {
+     "wait": 700
+    },
+    {
+     "click": "[data-goal=funding]"
+    },
+    {
+     "click": "[data-goal=customers]"
+    },
+    {
+     "fill": [
+      "[data-goal-line]",
+      "シリーズAで3億円を調達"
+     ]
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "wait": 300
+    },
+    {
+     "eval": "(() => { const g = [...document.querySelectorAll('[data-tag-group=\"What you\\'re looking for\"]')].find(e => e.offsetParent); [...g.querySelectorAll('button')].filter(b => ['投資家','共同創業者'].includes(b.textContent)).forEach(b => b.click()); document.activeElement && document.activeElement.blur(); })()"
+    },
+    {
+     "wait": 400
+    },
+    {
+     "eval": "window.scrollTo(0,0)"
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "waitFor": "[data-onboarding-view=intro]"
+    },
+    {
+     "wait": 1200
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  }
+ ]
+}

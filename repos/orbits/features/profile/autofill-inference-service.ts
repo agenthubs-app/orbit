@@ -86,7 +86,7 @@ export function autofillSystemInstruction(language: OrbitLanguage): string {
     "Choose from the supplied candidate labels and copy them exactly. Only when no candidate fits, you may add one very short label of your own (at most 12 characters) that follows directly from the company or title.",
     "Do not invent experience, achievements, clients, numbers or credentials. When the card gives no basis, return an empty list.",
     `Write labels in ${name}.`,
-    `seniorityLevel is one of ${SENIORITY_LEVELS.join(", ")}, or null when the title gives no basis.`,
+    `seniorityLevel is one of ${SENIORITY_LEVELS.join(", ")}, or null when the title gives no basis. Use founder only when the title itself says founder or co-founder; CEO, president, 代表取締役, 社長, 董事长 and 总经理 are c_level.`,
     "Set primaryIndustryId and secondaryIndustryId (\"<primary id>.<suffix>\"; every primary also has the suffix \"other\"), or both null when there is no reasonable basis.",
     `Industry taxonomy (primary id: suffixes): ${businessCardIndustryTaxonomyBlock()}.`,
     'Return strict JSON only: {"primaryIndustryId":null,"secondaryIndustryId":null,"seniorityLevel":null,"offering":[],"topics":[]}.',

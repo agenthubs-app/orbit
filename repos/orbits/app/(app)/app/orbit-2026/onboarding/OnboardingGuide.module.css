@@ -1,4 +1,4 @@
-/* b1 A3 kit .wstp — the five-screen stepper (header #16–#20, おかえりなさい #21). */
+/* kit .wstp — the three-step stepper (onboarding header, おかえりなさい #21). */
 .stepper { display: flex; align-items: center; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .step { display: flex; min-width: 0; flex: 0 1 auto; align-items: center; gap: 8px; color: var(--ink-3); font-size: var(--fs-control); white-space: nowrap; }
 /* The 28px rule gives way first when the row is tight (おかえりなさい at step 5). */

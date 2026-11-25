@@ -1,67 +1,78 @@
 /**
- * 新用户引导（b1 A3 Web #16–#20）。首次登录资料未完成时由门禁带到这里；没有壳、没有欢迎页。
+ * 新用户引导（三步版，docs/designs/redesign-2026-10/onboarding-3step-proposal.html）。首次登录资料未完成时由门禁带到这里；没有壳、不能跳过。
  *
- * 五屏：基本情報 → 目標 → 強み・ニーズ → 自己紹介（AI 草稿） → 名刺の取り込み。
- * 每屏点「次へ」经 PUT /api/profile 保存并复读核验，再推进 actor 级进度（/api/profile/onboarding-progress）；
- * 基本情報一存资料门禁即解除。「あとで設定する」记 deferred 后去 next，首页再以「おかえりなさい」（#21）请回。
- * 左卡填写、右栏是「相手から見えるあなた」等说明；未提交的输入写本地草稿（「自動保存済み」）。
+ * ① 名刺・基本情報 → ② 目標と強み → ③ 自己紹介。扫自己的名片填大部分（名刺から / AI 推定 分开标，用户一改就去掉标记）。
+ * 「次へ」始终可点：缺项时滚到第一个缺项、标红、写清缺什么。每步经 PUT /api/profile 保存并复读核验，再推进 actor 级进度
+ * （/api/profile/onboarding-progress，仍是五屏：①=1，②=2、3，③=4、5 后 finish）。未提交的输入写本地草稿（「自動保存済み」）；
+ * 「ログアウト」先把这一步能存的存到服务端，下次登录回到同一步。
  */
 "use client";
 
-import { useEffect, useId, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import type { ProfilePayload } from "../../../../../features/profile/contract";
-import type { ProfileOnboardingProgressCommandContract, ProfileOnboardingProgressContract } from "../../../../../shared/contract/profile";
-import { PROFILE_ONBOARDING_GOALS, composeProfileOnboardingGoal, parseProfileOnboardingGoal } from "../../../../../shared/compute/profile-onboarding-goal";
+import type { ContactHandlesContract, ProfileOnboardingProgressCommandContract, ProfileOnboardingProgressContract, SeniorityLevelCode } from "../../../../../shared/contract/profile";
+import { composeProfileOnboardingGoal, parseProfileOnboardingGoal } from "../../../../../shared/compute/profile-onboarding-goal";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
-import {
-  INDUSTRY_CATALOG,
-  industryLabel,
-  isIndustryIdCode,
-  listSecondaryIndustries,
-  secondaryIndustryLabel,
-  validateIndustrySelection,
-} from "../../../../../shared/domain/industries";
+import { isIndustryIdCode, validateIndustrySelection } from "../../../../../shared/domain/industries";
+import { regionDisplayName } from "../../../../../shared/domain/regions";
+import { isSeniorityLevelValue } from "../../../../../shared/domain/seniority";
 import { isValidProfileBirthDate } from "../../../../../features/profile/onboarding";
-import { appendWebGuideReturnTo } from "../../../../../features/guide/return-to";
-import { forgetBatchReturnTo } from "../../contacts/card-batch-return";
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { signOutAndForget } from "../../orbit-sign-out";
 import { visibleCharacterCount } from "../../profile/profile-save-model";
-import { Icon, MacTile, Orbit2026Scope, SampleTag, WhyBody, WhyButton } from "../ui";
-import type { AvatarTone } from "../ui/Basics";
+import { InviteQr } from "../add/invite/InviteQr";
+import { Icon, Modal, Orbit2026Scope } from "../ui";
 import {
-  fetchProfile,
+  fetchAutofillInference,
   fetchOnboardingProgress,
+  fetchProfile,
+  fetchSeekSuggestions,
   generateIntroDraft,
   saveProfileFields,
-  updateOnboardingProgress,
   scanOwnBusinessCard,
+  updateOnboardingProgress,
   type ProfileFields,
 } from "./onboarding-client";
 import {
   bioCounter,
   HEADLINE_LIMIT,
   INTRO_REGENERATE_LIMIT,
-  OFFER_LIMIT,
-  OFFER_OPTIONS,
   ONBOARDING_STEPS,
-  SEEK_LIMIT,
+  ONBOARDING_STEP_SCREENS,
   SEEK_OPTIONS,
-  TOPIC_LIMIT,
-  TOPIC_OPTIONS,
-  addCustomValue,
   clearOnboardingDraft,
+  hasDraftInput,
+  missingBasics,
+  missingIntro,
+  onboardingStepForProgress,
   optionMatches,
   readOnboardingDraft,
-  toggleValue,
   writeOnboardingDraft,
+  type BasicField,
   type Copy,
-  type OnboardingStep,
+  type FieldOrigin,
+  type OnboardingMissing,
   type OnboardingView,
+  type ProfileScreenNumber,
 } from "./onboarding-model";
-import { OnboardingStepper, rememberOnboardingFlow, rememberedOnboardingFlow } from "./OnboardingGuide";
-import { ONBOARDING_COPY, ONBOARDING_SCREEN_LABELS } from "../copy/onboarding";
+import { ONBOARDING_STEP_LABELS, OnboardingStepper, rememberOnboardingFlow, rememberedOnboardingFlow } from "./OnboardingGuide";
+import {
+  GoalsStep,
+  IntroAside,
+  IntroStep,
+  MISSING_TARGETS,
+  OnceNote,
+  ProfileAside,
+  ProfileStep,
+  StrengthGroups,
+  missingSummary,
+  type BasicDraft,
+  type IntroStatus,
+  type IntroTone,
+  type T,
+} from "./onboarding-steps";
+import { ONBOARDING_COPY } from "../copy/onboarding";
 import styles from "./OnboardingFlow.module.css";
 
 export interface OnboardingFlowProps {
@@ -71,31 +82,8 @@ export interface OnboardingFlowProps {
   todayIso: string;
 }
 
-type IntroStatus = "idle" | "generating" | "ready" | "error";
-type IntroTone = "native" | "en";
-type T = (copy: Copy) => string;
-
-interface BasicDraft {
-  birthDate: string;
-  company: string;
-  name: string;
-  primaryIndustryId: IndustryIdCode | "";
-  secondaryIndustryId: SecondaryIndustryIdCode | "";
-  title: string;
-}
-
-const EMPTY_BASIC: BasicDraft = { birthDate: "", company: "", name: "", primaryIndustryId: "", secondaryIndustryId: "", title: "" };
-const IMPORT_RETURN = "/app/profile/onboarding?screen=5";
-
-// b1 #17: the six goal tiles (emoji tile + who it is about).
-const GOAL_TILES: Record<string, { emoji: string; tone: AvatarTone; sub: Copy }> = {
-  funding: { emoji: "💰", tone: "pink", sub: { ja: "投資家・金融機関", zh: "投资人、金融机构", en: "Investors · lenders" } },
-  customers: { emoji: "🏭", tone: "blue", sub: { ja: "決裁者・購買担当", zh: "决策者、采购负责人", en: "Decision makers · buyers" } },
-  hiring: { emoji: "🧑‍💼", tone: "teal", sub: { ja: "候補者・紹介者", zh: "候选人、推荐人", en: "Candidates · referrers" } },
-  partners: { emoji: "🤝", tone: "apricot", sub: { ja: "協業・販路", zh: "合作、渠道", en: "Alliances · channels" } },
-  awareness: { emoji: "📣", tone: "lav", sub: { ja: "登壇・メディア", zh: "演讲、媒体", en: "Talks · media" } },
-  research: { emoji: "📚", tone: "blue", sub: { ja: "業界の知見", zh: "行业见解", en: "Industry insight" } },
-};
+const EMPTY_BASIC: BasicDraft = { birthDate: "", company: "", email: "", name: "", phone: "", primaryIndustryId: "", secondaryIndustryId: "", title: "" };
+const SEEK_DEBOUNCE_MS = 700;
 
 function basicFromPayload(payload: ProfilePayload): BasicDraft {
   const profile = payload.profile;
@@ -103,7 +91,9 @@ function basicFromPayload(payload: ProfilePayload): BasicDraft {
   return {
     birthDate: profile.birthDate ?? "",
     company: profile.organization ?? "",
+    email: profile.handles?.email ?? "",
     name: profile.displayName ?? "",
+    phone: profile.handles?.phone ?? "",
     primaryIndustryId: isIndustryIdCode(profile.primaryIndustryId) ? profile.primaryIndustryId : "",
     secondaryIndustryId: (profile.secondaryIndustryId as SecondaryIndustryIdCode | undefined) ?? "",
     title: profile.role ?? "",
@@ -119,29 +109,34 @@ function basicFromDraft(draft: NonNullable<NonNullable<ReturnType<typeof readOnb
   };
 }
 
+type Origins = Partial<Record<BasicField, FieldOrigin>>;
+
 export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: OnboardingFlowProps) {
   const { language, t: siteText } = useOrbitLanguage();
-  const t: T = (copy) => siteText(copy as { ja: string; zh: string; en: string });
-  // Start on the screen the link names (`?screen=5` back from card import) or the flow this tab last read,
-  // so the header and stepper do not show step 1 and then jump once the read lands.
-  const screenParam = Number(useSearchParams()?.get("screen") ?? "");
+  const t: T = (copy: Copy) => siteText(copy as { ja: string; zh: string; en: string });
+  // Start on the step this tab last read, so the header and stepper do not show step 1 and then jump once the read lands.
   const [start] = useState(() => {
-    const remembered = rememberedOnboardingFlow();
-    const screen = screenParam >= 1 && screenParam <= ONBOARDING_STEPS.length ? screenParam : remembered?.currentScreen ?? 1;
-    return { view: ONBOARDING_STEPS[screen - 1]!, confirmed: remembered?.lastConfirmedScreen ?? Math.max(0, screen - 1) };
+    const confirmed = rememberedOnboardingFlow()?.lastConfirmedScreen ?? 0;
+    return { confirmed, view: onboardingStepForProgress(confirmed) };
   });
   const [view, setView] = useState<OnboardingView>(start.view);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState(start.confirmed);
+  const [confirmed, setConfirmed] = useState<number>(start.confirmed);
   const [basic, setBasic] = useState<BasicDraft>(EMPTY_BASIC);
-  const [fromCard, setFromCard] = useState<ReadonlySet<keyof BasicDraft>>(new Set());
+  const [origins, setOrigins] = useState<Origins>({});
+  const [scan, setScan] = useState<{ ai: number; card: number } | null>(null);
+  const [region, setRegion] = useState("");
+  const [seniority, setSeniority] = useState<SeniorityLevelCode | null>(null);
   const [goalText, setGoalText] = useState("");
   const [goalChoices, setGoalChoices] = useState<string[]>([]);
   const [offer, setOffer] = useState<string[]>([]);
   const [seek, setSeek] = useState<string[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
+  const [offerFromAi, setOfferFromAi] = useState(false);
+  const [topicsFromAi, setTopicsFromAi] = useState(false);
+  const [seekAi, setSeekAi] = useState<readonly string[]>([]);
   const [bio, setBio] = useState("");
   const [headline, setHeadline] = useState("");
   const [introStatus, setIntroStatus] = useState<IntroStatus>("idle");
@@ -152,16 +147,29 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   // 每个语气只生成一次：切回已生成过的语气直接复用，不再调用模型（R28 §2.11）。
   const introDrafts = useRef<Partial<Record<IntroTone, { bio: string; headline: string }>>>({});
   const [saving, setSaving] = useState(false);
+  // 点过「次へ」但有缺项的那一步：标红与汇总只在这之后出现，补齐即消失。
+  const [attempted, setAttempted] = useState<OnboardingView | null>(null);
+  // 「自動保存済み」只在真的存过之后出现：某屏已经服务端确认，或这次改动已写进本地草稿（读取后的第一次写入不算改动）。
+  const [draftSaved, setDraftSaved] = useState(false);
+  const draftBaselineRef = useRef<string | null>(null);
+  const handlesRef = useRef<ContactHandlesContract>({});
+  const savedPlaceRef = useRef({ homeMarket: "", seniority: false });
   const progressRef = useRef<ProfileOnboardingProgressContract | null>(null);
   const initMutationRef = useRef<string | null>(null);
   const pendingConfirmRef = useRef<ProfileOnboardingProgressCommandContract | null>(null);
-  const pendingFieldsRef = useRef<string | null>(null);
+  const savedFieldsRef = useRef<string | null>(null);
   const finishMutationRef = useRef<string | null>(null);
-  const deferCommandRef = useRef<ProfileOnboardingProgressCommandContract | null>(null);
   const introActionKeyRef = useRef<string | null>(null);
+  const inferredForRef = useRef<string | null>(null);
+  // 用户动过的字段：后到的 AI 结果不覆盖。
+  const touchedRef = useRef({ industry: false, offer: false, topics: false });
+  const basicRef = useRef(basic);
+  basicRef.current = basic;
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const cameraRef = useRef<HTMLInputElement | null>(null);
 
   const stepIndex = ONBOARDING_STEPS.indexOf(view);
   const name = basic.name.trim();
@@ -179,9 +187,13 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         const done = flow?.lastConfirmedScreen ?? 0;
         setConfirmed(done);
         const profile = payload.profile;
+        handlesRef.current = { ...(profile?.handles ?? {}) };
+        savedPlaceRef.current = { homeMarket: profile?.homeMarket?.trim() ?? "", seniority: Boolean(profile?.seniorityLevel) };
+        const complete = payload.onboarding?.status === "complete";
         const draft = readOnboardingDraft(actorKey);
         const fields = draft?.fields;
-        setBasic((done < 1 && basicFromDraft(fields?.basic)) || basicFromPayload(payload));
+        const draftBasic = done < 1 || !complete ? basicFromDraft(fields?.basic) : null;
+        setBasic(draftBasic ?? basicFromPayload(payload));
         setExpectedUpdatedAt(profile?.updatedAt ?? null);
         setOffer(done < 3 && fields?.offer ? fields.offer : [...(profile?.offering ?? [])]);
         setSeek(done < 3 && fields?.seek ? fields.seek : [...(profile?.seeking ?? [])]);
@@ -189,18 +201,28 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         setBio(done < 4 && fields?.bio !== undefined ? fields.bio : profile?.bio ?? "");
         setHeadline(profile?.headline ?? "");
         if (draft) {
+          setDraftSaved(hasDraftInput(draft));
           setGoalText(draft.goalText);
           setGoalChoices(draft.goalChoices ?? []);
           setIntroRegenerations(draft.introRegenerations);
-          if (!flow) setView(draft.view);
+          if (draft.scan) {
+            if (draftBasic) { setOrigins(draft.scan.origins); setScan({ ai: draft.scan.ai, card: draft.scan.card }); }
+            if (done < 3) { setOfferFromAi(draft.scan.offerFromAi); setTopicsFromAi(draft.scan.topicsFromAi); }
+            setRegion(draft.scan.region ?? "");
+            if (isSeniorityLevelValue(draft.scan.seniorityLevel)) setSeniority(draft.scan.seniorityLevel);
+          }
         }
         if (done >= 2 || !draft?.goalText.trim()) {
           const restored = parseProfileOnboardingGoal(profile?.relationshipGoal ?? "");
-          setGoalText(restored.focus);
-          setGoalChoices(restored.choices);
+          if (done >= 2 || restored.raw || !draft?.goalChoices?.length) {
+            setGoalText(restored.focus);
+            setGoalChoices(restored.choices);
+          }
         }
-        if (flow?.currentScreen) setView(ONBOARDING_STEPS[flow.currentScreen - 1]!);
-        if (flow?.finishedAt) window.location.assign(next);
+        // 必填项缺了（包括走完后又被清空的老账号）：回到第一步补，不跳去会把人送回来的页面。
+        if (!complete) setView("basics");
+        else if (flow?.finishedAt) { window.location.assign(next); return; }
+        else setView(flow ? onboardingStepForProgress(done) : draft?.view ?? "basics");
         setLoaded(true);
       } catch {
         if (!active) return;
@@ -216,70 +238,45 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
 
   useEffect(() => {
     if (!loaded) return;
-    writeOnboardingDraft(actorKey, { goalText, goalChoices, horizon: "", introRegenerations, view, fields: { basic, offer, seek, topics, bio } });
-  }, [actorKey, goalText, goalChoices, introRegenerations, loaded, view, basic, offer, seek, topics, bio]);
+    const fields = { basic, offer, seek, topics, bio };
+    const written = writeOnboardingDraft(actorKey, {
+      view, goalText, goalChoices, horizon: "", introRegenerations, fields,
+      ...(scan || offerFromAi || topicsFromAi ? { scan: { ai: scan?.ai ?? 0, card: scan?.card ?? 0, offerFromAi, origins, region, topicsFromAi, ...(seniority ? { seniorityLevel: seniority } : {}) } } : {}),
+    });
+    const input = JSON.stringify([goalText, goalChoices, fields]);
+    if (draftBaselineRef.current === null) draftBaselineRef.current = input;
+    else if (written && input !== draftBaselineRef.current) setDraftSaved(true);
+  }, [actorKey, goalText, goalChoices, introRegenerations, loaded, view, basic, offer, seek, topics, bio, scan, origins, offerFromAi, topicsFromAi, region, seniority]);
 
   function go(nextView: OnboardingView) {
     setError("");
+    setAttempted(null);
     setView(nextView);
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
-  }
-
-  async function deferAndLeave() {
-    if (saving || !loaded) return;
-    setSaving(true);
-    setLoadError("");
-    try {
-      const flow = await ensureProgress();
-      if (!flow.deferred) {
-        deferCommandRef.current ??= { action: "defer", expectedRevision: flow.revision, mutationId: crypto.randomUUID() };
-        const updated = await updateOnboardingProgress(deferCommandRef.current);
-        if (!updated.deferred) throw new Error("Onboarding defer was not confirmed.");
-        progressRef.current = updated;
-        deferCommandRef.current = null;
-      } else {
-        const readback = await fetchOnboardingProgress();
-        if (!readback?.deferred) throw new Error("Onboarding defer was not confirmed.");
-        progressRef.current = readback;
-      }
-      window.location.assign(next);
-    } catch {
-      setLoadError(t({ zh: "暂时无法保存进度，请重试。", en: "Could not save your progress. Please retry.", ja: "進捗を保存できませんでした。もう一度お試しください。" }));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function finish() {
-    if (saving) return;
-    setSaving(true);
-    setError("");
-    try {
-      await ensureProgress();
-      if ((progressRef.current?.lastConfirmedScreen ?? 0) < 5) await confirmScreen(5);
-      const flow = progressRef.current!;
-      if (!flow.finishedAt) {
-        finishMutationRef.current ??= crypto.randomUUID();
-        progressRef.current = await updateOnboardingProgress({ action: "finish", expectedRevision: flow.revision, mutationId: finishMutationRef.current });
-      }
-      clearOnboardingDraft(actorKey);
-      forgetBatchReturnTo("/app/profile/onboarding?screen=5");
-      window.location.assign(next);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t({ zh: "无法完成设置，请重试。", en: "Could not finish onboarding. Please retry.", ja: "設定を完了できませんでした。再試行してください。" }));
-    } finally {
-      setSaving(false);
-    }
   }
 
   // ── 校验 ──
   const industryValid = Boolean(basic.primaryIndustryId && basic.secondaryIndustryId)
     && validateIndustrySelection({ primaryIndustryId: basic.primaryIndustryId, secondaryIndustryId: basic.secondaryIndustryId }).valid;
   const birthValid = !basic.birthDate || isValidProfileBirthDate(basic.birthDate, todayIso);
-  const profileValid = Boolean(name) && industryValid && birthValid;
   const bioCount = bioCounter(bio);
-  const introValid = !bioCount.over && visibleCharacterCount(headline.trim()) <= HEADLINE_LIMIT;
+  const missing: OnboardingMissing[] = view === "basics"
+    ? missingBasics({ birthValid, industryValid, name: basic.name, primaryIndustryId: basic.primaryIndustryId })
+    : view === "goals" ? (goalChoices.length ? [] : ["goal"])
+      : missingIntro({ bio, bioOver: bioCount.over, generating: introStatus === "generating", headlineOver: visibleCharacterCount(headline.trim()) > HEADLINE_LIMIT });
+  const shown = attempted === view ? missing : [];
 
+  function focusMissing(first: OnboardingMissing) {
+    if (first === "introEmpty") setEditingIntro(true);
+    if (typeof document === "undefined") return;
+    requestAnimationFrame(() => {
+      const target = document.getElementById(MISSING_TARGETS[first]);
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      target?.focus({ preventScroll: true });
+    });
+  }
+
+  // ── 保存与进度 ──
   async function ensureProgress(): Promise<ProfileOnboardingProgressContract> {
     if (progressRef.current) return progressRef.current;
     initMutationRef.current ??= crypto.randomUUID();
@@ -288,99 +285,218 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     return flow;
   }
 
-  async function confirmScreen(screen: 1 | 2 | 3 | 4 | 5): Promise<void> {
+  async function confirmScreen(screen: ProfileScreenNumber): Promise<void> {
     const flow = await ensureProgress();
-    if (flow.lastConfirmedScreen >= screen) { pendingConfirmRef.current = null; pendingFieldsRef.current = null; return; }
+    if (flow.lastConfirmedScreen >= screen) { pendingConfirmRef.current = null; return; }
     if (!pendingConfirmRef.current || pendingConfirmRef.current.action !== "confirm" || pendingConfirmRef.current.screen !== screen) {
       pendingConfirmRef.current = { action: "confirm", screen, expectedRevision: flow.revision, mutationId: crypto.randomUUID() };
     }
     try {
       progressRef.current = await updateOnboardingProgress(pendingConfirmRef.current);
       pendingConfirmRef.current = null;
-      pendingFieldsRef.current = null;
-    } catch (error) {
+    } catch (caught) {
       const latest = await fetchOnboardingProgress().catch(() => null);
-      if (latest && latest.lastConfirmedScreen >= screen) {
-        progressRef.current = latest;
-        pendingConfirmRef.current = null;
-        pendingFieldsRef.current = null;
-        return;
-      }
-      throw error;
+      if (!latest || latest.lastConfirmedScreen < screen) throw caught;
+      progressRef.current = latest;
+      pendingConfirmRef.current = null;
     } finally {
       setConfirmed(progressRef.current?.lastConfirmedScreen ?? 0);
       rememberOnboardingFlow(progressRef.current);
     }
   }
 
-  async function save(screen: 1 | 2 | 3 | 4, fields: ProfileFields): Promise<boolean> {
+  function saveError(caught: unknown): string {
+    const conflict = caught instanceof Error && "code" in caught && caught.code === "PROFILE_VERSION_CONFLICT";
+    return conflict
+      ? t({ zh: "资料已在另一处更新。请刷新并核对后再保存。", en: "Your profile changed elsewhere. Refresh and review it before saving.", ja: "別の画面でプロフィールが更新されました。再読み込みして内容を確認してください。" })
+      : t(ONBOARDING_COPY.flow020);
+  }
+
+  /** 存字段（同一份内容重试时不再 PUT），再依次确认这一步对应的服务端屏。 */
+  async function save(step: OnboardingView, fields: ProfileFields): Promise<boolean> {
     setSaving(true);
     setError("");
     try {
       await ensureProgress(); // Must persist the flow before the first profile PUT.
-      const fingerprint = JSON.stringify(fields);
-      const pendingScreen = pendingConfirmRef.current?.action === "confirm" ? pendingConfirmRef.current.screen : null;
-      if (pendingScreen && (pendingScreen !== screen || pendingFieldsRef.current !== fingerprint)) await confirmScreen(pendingScreen);
-      const samePending = pendingConfirmRef.current?.action === "confirm" && pendingConfirmRef.current.screen === screen && pendingFieldsRef.current === fingerprint;
-      if (!samePending) {
+      const fingerprint = JSON.stringify([step, fields]);
+      if (savedFieldsRef.current !== fingerprint) {
         const payload = await saveProfileFields(fields, expectedUpdatedAt);
         setExpectedUpdatedAt(payload.profile?.updatedAt ?? null);
-        pendingFieldsRef.current = fingerprint;
+        handlesRef.current = { ...(payload.profile?.handles ?? {}) };
+        savedFieldsRef.current = fingerprint;
       }
-      await confirmScreen(screen);
+      for (const screen of ONBOARDING_STEP_SCREENS[step]) await confirmScreen(screen);
+      savedFieldsRef.current = null;
       return true;
     } catch (caught) {
-      const conflict = caught instanceof Error && "code" in caught && caught.code === "PROFILE_VERSION_CONFLICT";
-      setError(conflict
-        ? t({ zh: "资料已在另一处更新。请刷新并核对后再保存。", en: "Your profile changed elsewhere. Refresh and review it before saving.", ja: "別の画面でプロフィールが更新されました。再読み込みして内容を確認してください。" })
-        : caught instanceof Error && caught.message
-          ? t({ zh: `保存失败：${caught.message}`, en: `Save failed: ${caught.message}`, ja: `保存できませんでした：${caught.message}` })
-          : t(ONBOARDING_COPY.flow020));
+      setError(saveError(caught));
       return false;
     } finally {
       setSaving(false);
     }
   }
 
+  function basicsFields(): ProfileFields {
+    const handles: ContactHandlesContract = { ...handlesRef.current };
+    const email = basic.email.trim();
+    const phone = basic.phone.trim();
+    if (email) handles.email = email; else delete handles.email;
+    if (phone) handles.phone = phone; else delete handles.phone;
+    return {
+      birthDate: basic.birthDate || null,
+      displayName: name,
+      handles,
+      organization: basic.company.trim(),
+      primaryIndustryId: basic.primaryIndustryId as IndustryIdCode,
+      role: basic.title.trim(),
+      secondaryIndustryId: basic.secondaryIndustryId as SecondaryIndustryIdCode,
+      // 名片地址与职位给出的所在地、职级：只在资料里还没有时补上，之后可在账户里改。
+      ...(region && !savedPlaceRef.current.homeMarket ? { homeMarket: region } : {}),
+      ...(seniority && !savedPlaceRef.current.seniority ? { seniorityLevel: seniority } : {}),
+    };
+  }
+
+  const goalsFields = (): ProfileFields => ({ offering: offer, relationshipGoal: composeProfileOnboardingGoal(goalChoices, goalText, language), seeking: seek, topics });
+  const introFields = (): ProfileFields => ({ bio: bio.trim(), headline: headline.trim() });
+
+  async function finish(): Promise<void> {
+    setSaving(true);
+    try {
+      const flow = progressRef.current!;
+      if (!flow.finishedAt) {
+        finishMutationRef.current ??= crypto.randomUUID();
+        progressRef.current = await updateOnboardingProgress({ action: "finish", expectedRevision: flow.revision, mutationId: finishMutationRef.current });
+      }
+      rememberOnboardingFlow(progressRef.current);
+      clearOnboardingDraft(actorKey);
+      window.location.assign(next);
+    } catch {
+      setError(t({ zh: "无法完成设置，请重试。", en: "Could not finish onboarding. Please retry.", ja: "設定を完了できませんでした。再試行してください。" }));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function onNext() {
-    if (saving) return;
-    if (view === "profile") {
-      if (!profileValid) return;
-      const ok = await save(1, {
-        birthDate: basic.birthDate || null,
-        displayName: name,
-        organization: basic.company.trim(),
-        primaryIndustryId: basic.primaryIndustryId as IndustryIdCode,
-        role: basic.title.trim(),
-        secondaryIndustryId: basic.secondaryIndustryId as SecondaryIndustryIdCode,
-      });
-      if (ok) go("goals");
+    if (saving || !loaded || scanning) return;
+    if (missing.length) {
+      setAttempted(view);
+      focusMissing(missing[0]!);
+      return;
+    }
+    setAttempted(null);
+    if (view === "basics") {
+      // 没扫名片（或扫完又改了公司、职位）：用这一步填的内容在后台补推断，不等它。
+      void infer(basic);
+      if (!await save("basics", basicsFields())) return;
+      // 走完过的老账号只是回来补必填项。
+      if (progressRef.current?.finishedAt) { clearOnboardingDraft(actorKey); window.location.assign(next); return; }
+      go("goals");
       return;
     }
     if (view === "goals") {
-      if (!goalText.trim() && !goalChoices.length) return;
-      const ok = await save(2, { relationshipGoal: composeProfileOnboardingGoal(goalChoices, goalText, language) });
-      if (ok) go("persona");
+      if (await save("goals", goalsFields())) go("intro");
       return;
     }
-    if (view === "persona") {
-      const ok = await save(3, { offering: offer, seeking: seek, topics });
-      if (ok) go("intro");
-      return;
-    }
-    if (view === "intro") {
-      if (!introValid || introStatus === "generating") return;
-      const ok = await save(4, { bio: bio.trim(), headline: headline.trim() });
-      if (ok) {
-        setEditingIntro(false);
-        go("import");
-      }
-    }
+    if (await save("intro", introFields())) await finish();
   }
 
   function onBack() {
     if (stepIndex > 0) go(ONBOARDING_STEPS[stepIndex - 1]!);
   }
+
+  /** 退出登录会清掉本机草稿：先把这一步能存的存到服务端（不推进进度），下次登录回到同一步。 */
+  async function logout() {
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (loaded) {
+        if (view === "basics" && name) {
+          const { birthDate, primaryIndustryId, secondaryIndustryId, ...rest } = basicsFields();
+          await saveProfileFields({ ...rest, ...(birthValid ? { birthDate } : {}), ...(industryValid ? { primaryIndustryId, secondaryIndustryId } : {}) }, expectedUpdatedAt);
+        } else if (view === "goals") await saveProfileFields(goalsFields(), expectedUpdatedAt);
+        else if (view === "intro" && bio.trim() && !bioCount.over) await saveProfileFields(introFields(), expectedUpdatedAt);
+      }
+    } catch {
+      // 存不上也照样退出：人要离开这台设备。
+    }
+    await signOutAndForget(`/app/account/login?next=${encodeURIComponent(next)}`);
+  }
+
+  // ── 扫名片与推断 ──
+  function editBasic(patch: Partial<BasicDraft>) {
+    setBasic(current => ({ ...current, ...patch }));
+    if ("primaryIndustryId" in patch || "secondaryIndustryId" in patch) touchedRef.current.industry = true;
+    setOrigins(current => {
+      const kept = { ...current };
+      for (const key of Object.keys(patch)) delete kept[key as BasicField];
+      return kept;
+    });
+  }
+
+  async function infer(from: BasicDraft): Promise<void> {
+    const company = from.company.trim();
+    const title = from.title.trim();
+    const key = `${company}\u0000${title}`;
+    if ((!company && !title) || inferredForRef.current === key) return;
+    inferredForRef.current = key;
+    const result = await fetchAutofillInference({
+      displayName: from.name.trim(), language, organization: company, role: title,
+      ...(from.primaryIndustryId && from.secondaryIndustryId ? { primaryIndustryId: from.primaryIndustryId, secondaryIndustryId: from.secondaryIndustryId } : {}),
+    });
+    if (result.status !== "ready") return;
+    if (result.primaryIndustryId && result.secondaryIndustryId && !touchedRef.current.industry && !basicRef.current.primaryIndustryId) {
+      const pair = { primaryIndustryId: result.primaryIndustryId, secondaryIndustryId: result.secondaryIndustryId };
+      setBasic(current => (current.primaryIndustryId ? current : { ...current, ...pair }));
+      setOrigins(current => ({ ...current, primaryIndustryId: "ai", secondaryIndustryId: "ai" }));
+      setScan(current => (current ? { ...current, ai: 2 } : current));
+    }
+    if (result.seniorityLevel) setSeniority(current => current ?? result.seniorityLevel);
+    if (!touchedRef.current.offer && result.offering.length) setOffer(current => { if (current.length) return current; setOfferFromAi(true); return [...result.offering]; });
+    if (!touchedRef.current.topics && result.topics.length) setTopics(current => { if (current.length) return current; setTopicsFromAi(true); return [...result.topics]; });
+  }
+
+  async function scanCard(file: File | undefined) {
+    if (!file || scanning) return;
+    setScanning(true);
+    setError("");
+    try {
+      const card = await scanOwnBusinessCard(file);
+      const printed = ([["name", card.name], ["company", card.company], ["title", card.title], ["email", card.email], ["phone", card.phone]] as const).filter(([, value]) => value);
+      if (!printed.length) throw new Error("empty card");
+      const filled: BasicDraft = { ...basicRef.current, ...Object.fromEntries(printed), ...(card.industry ?? {}) };
+      const nextOrigins: Origins = { ...origins };
+      for (const [key] of printed) nextOrigins[key] = "card";
+      if (card.industry) { nextOrigins.primaryIndustryId = "ai"; nextOrigins.secondaryIndustryId = "ai"; touchedRef.current.industry = false; }
+      setBasic(filled);
+      setOrigins(nextOrigins);
+      setScan({ ai: card.industry ? 2 : 0, card: printed.length });
+      if (card.region) setRegion(regionDisplayName({ city: card.region.city ?? null, countryCode: card.region.countryCode }, language));
+      if (card.seniorityLevel) setSeniority(card.seniorityLevel);
+      void infer(filled);
+    } catch {
+      setError(t(ONBOARDING_COPY.flow023));
+    } finally {
+      setScanning(false);
+    }
+  }
+
+  const chooseOffer = (update: (current: string[]) => string[]) => { touchedRef.current.offer = true; setOfferFromAi(false); setOffer(update); };
+  const chooseTopics = (update: (current: string[]) => string[]) => { touchedRef.current.topics = true; setTopicsFromAi(false); setTopics(update); };
+
+  // 选了目标之后给「求めていること」虚线候选；同一组目标只问一次，点了才加入。
+  const goalKey = goalChoices.join("\u0000");
+  useEffect(() => {
+    if (view !== "goals" || !loaded || !goalKey) { setSeekAi([]); return; }
+    let active = true;
+    const timer = setTimeout(() => {
+      fetchSeekSuggestions(SEEK_OPTIONS.map(option => t(option)), composeProfileOnboardingGoal(goalChoices, goalText, language), language)
+        .then(labels => { if (active) setSeekAi(labels.map(label => { const option = SEEK_OPTIONS.find(item => optionMatches(item, label)); return option ? t(option) : label; })); }, () => undefined);
+    }, SEEK_DEBOUNCE_MS);
+    return () => { active = false; clearTimeout(timer); };
+    // 只随目标选择变化；一句话的改动不重问。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, loaded, goalKey]);
 
   // ── AI 介绍：进入这一步且还没有介绍时自动起草；用户可「別の案」、切换语气、直接改 ──
   // kind: auto = 进入本步自动生成；retry = 失败后重试；这两种不计次。regenerate = 新草稿（別の案 / 第一次切到 English），成功才计次，上限 2 次。
@@ -438,449 +554,74 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, loaded]);
 
-  async function scanCard(file: File | undefined) {
-    if (!file || scanning) return;
-    setScanning(true);
-    setError("");
-    try {
-      const card = await scanOwnBusinessCard(file);
-      setBasic(current => ({
-        ...current,
-        company: card.company || current.company,
-        name: card.name || current.name,
-        title: card.title || current.title,
-      }));
-      setFromCard(new Set([card.name ? "name" : null, card.company ? "company" : null, card.title ? "title" : null].filter(Boolean) as (keyof BasicDraft)[]));
-    } catch {
-      setError(t(ONBOARDING_COPY.flow023));
-    } finally {
-      setScanning(false);
-    }
-  }
-
   // ── 渲染 ──
-  const nextDisabled = saving || !loaded
-    || (view === "profile" && !profileValid)
-    || (view === "goals" && !goalText.trim() && !goalChoices.length)
-    || (view === "intro" && (!introValid || introStatus === "generating"));
-  const later = t({ zh: "稍后设置", en: "Set up later", ja: "あとで設定する" });
+  const groups = { goals: goalChoices.length, offer, offerFromAi, seek, seekAi, setOffer: chooseOffer, setSeek, setTopics: chooseTopics, t, topics, topicsFromAi };
+  const logoutButton = <button className={`btn ${styles.logout}`} data-onboarding-logout="" disabled={saving} onClick={() => void logout()} type="button">{t({ ja: "ログアウト", zh: "退出登录", en: "Log out" })}</button>;
+  const back = t({ zh: "返回", en: "Back", ja: "戻る" });
+  const eta = t({ ja: "約1分", zh: "约 1 分钟", en: "About 1 min" });
+  const nextLabel = saving ? t(ONBOARDING_COPY.flow024) : view === "intro" ? t({ ja: "この内容ではじめる", zh: "就用这份开始", en: "Start with this" }) : t({ zh: "下一步", en: "Next", ja: "次へ" });
+  const stepLabel = t(ONBOARDING_STEP_LABELS[stepIndex]!);
 
   return (
     <Orbit2026Scope language={language} as="main" className={styles.page}>
       <header className={styles.head}>
         <span className={styles.brand}><span className={styles.logo} aria-hidden>O</span><b>Orbit</b></span>
-        <OnboardingStepper current={stepIndex + 1} confirmed={confirmed} className={styles.stepper} />
-        <button className={`btn ${styles.later}`} disabled={saving} onClick={() => void deferAndLeave()} type="button">{later}</button>
+        <div className={styles.steps}><OnboardingStepper current={stepIndex + 1} confirmed={stepIndex} /><span className={styles.eta}>{eta}</span></div>
+        {logoutButton}
       </header>
 
       <div className={styles.body} data-onboarding-view={view}>
+        <div className={styles.phoneHead}>
+          <div className={styles.phoneTop}>
+            {stepIndex > 0 ? <button aria-label={back} className={`btn ${styles.round}`} disabled={saving} onClick={onBack} type="button"><Icon name="left" size={20} /></button> : <span className={styles.logo} aria-hidden>O</span>}
+            <b>Orbit</b>
+            {logoutButton}
+          </div>
+          <div className={styles.bar} aria-hidden>{ONBOARDING_STEPS.map((step, index) => <i className={index < stepIndex ? styles.barDone : index === stepIndex ? styles.barNow : ""} key={step} />)}</div>
+          <div className={styles.barLabel}><span>{t({ ja: `ステップ ${stepIndex + 1} / 3 · ${stepLabel}`, zh: `第 ${stepIndex + 1} / 3 步 · ${stepLabel}`, en: `Step ${stepIndex + 1} / 3 · ${stepLabel}` })}</span><span>{eta}</span></div>
+        </div>
         {loadError ? <div className={styles.notice} role="alert">{loadError}</div> : null}
+        <OnceNote t={t} withScan={view === "basics" && cardScanAvailable} />
         <div className={styles.grid}>
           <section className={styles.card} aria-busy={!loaded || undefined}>
-            {view === "profile" ? <ProfileStep basic={basic} cardScanAvailable={cardScanAvailable} disabled={!loaded || saving} fileRef={fileRef} fromCard={fromCard}
-              language={language} onCardFile={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void scanCard(file); }} onCardDrop={(file) => void scanCard(file)}
-              scanning={scanning} setBasic={setBasic} showBirthError={Boolean(basic.birthDate) && !birthValid} t={t} todayIso={todayIso} /> : null}
-            {view === "goals" ? <GoalsStep goals={goalChoices} setGoals={setGoalChoices} setGoalText={setGoalText} t={t} text={goalText} /> : null}
-            {view === "persona" ? <PersonaStep offer={offer} seek={seek} setOffer={setOffer} setSeek={setSeek} setTopics={setTopics} t={t} topics={topics} /> : null}
-            {view === "intro" ? <IntroStep bio={bio} bioCount={bioCount} editing={editingIntro} errorCode={introErrorCode} goals={goalChoices.length || (goalText.trim() ? 1 : 0)}
+            {view === "basics" ? <ProfileStep basic={basic} cameraRef={cameraRef} cardScanAvailable={cardScanAvailable} disabled={!loaded || saving} fileRef={fileRef} language={language} missing={shown}
+              onCardDrop={(file) => void scanCard(file)} onCardFile={(event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; event.target.value = ""; void scanCard(file); }} onQr={() => setQrOpen(true)}
+              onUserEdit={editBasic} origins={origins} scan={scan} scanning={scanning} showContact={{ email: Boolean(basic.email) || Boolean(origins.email) || scan !== null && Boolean(handlesRef.current.email), phone: Boolean(basic.phone) || Boolean(origins.phone) || scan !== null && Boolean(handlesRef.current.phone) }} t={t} todayIso={todayIso} /> : null}
+            {view === "goals" ? <>
+              <GoalsStep error={shown.includes("goal")} goals={goalChoices} setGoals={setGoalChoices} setGoalText={setGoalText} t={t} text={goalText} />
+              <div className={styles.inline}><StrengthGroups {...groups} /></div>
+            </> : null}
+            {view === "intro" ? <IntroStep bio={bio} bioCount={bioCount} editing={editingIntro} errorCode={introErrorCode} goals={goalChoices.length || (goalText.trim() ? 1 : 0)} missing={shown}
               offer={offer.length} topics={topics.length} onEdit={() => setEditingIntro(value => !value)}
               onRegenerate={() => void generateIntro(introStatus === "error" ? "retry" : "regenerate")} onTone={switchTone}
               regenerationsLeft={INTRO_REGENERATE_LIMIT - introRegenerations} setBio={setBio} status={introStatus} t={t} tone={introTone} /> : null}
-            {view === "import" ? <ImportStep cardScanAvailable={cardScanAvailable} t={t} /> : null}
 
             {error ? <div className={styles.notice} role="alert">{error}</div> : null}
 
             <div className={styles.foot}>
-              {stepIndex > 0 ? <button className={`btn ${styles.back}`} disabled={saving} onClick={onBack} type="button"><Icon name="left" size={16} />{t({ zh: "返回", en: "Back", ja: "戻る" })}</button> : null}
-              <span className={styles.saved}><Icon name="check" size={16} />{t({ zh: "已自动保存", en: "Saved automatically", ja: "自動保存済み" })}</span>
+              {stepIndex > 0 ? <button className={`btn ${styles.back}`} disabled={saving} onClick={onBack} type="button"><Icon name="left" size={16} />{back}</button> : null}
+              {shown.length === 0 && (confirmed > 0 || draftSaved) ? <span className={styles.saved}><Icon name="check" size={16} /> {t({ zh: "已自动保存", en: "Saved automatically", ja: "自動保存済み" })}</span> : null}
               <span className={styles.spacer} />
-              {view === "import" ? <>
-                <button className={`btn ${styles.ghost}`} disabled={saving} onClick={() => void finish()} type="button">{t({ zh: "跳过，先看示例", en: "Skip and explore the sample", ja: "スキップしてサンプルで見る" })}</button>
-                <button className={`btn ${styles.primary}`} disabled={saving} onClick={() => void finish()} type="button">{t({ zh: "导入后继续", en: "Import and continue", ja: "取り込んで次へ" })}</button>
-              </> : <button aria-busy={saving || undefined} className={`btn ${styles.primary}`} disabled={nextDisabled} onClick={() => void onNext()} type="button">
-                {saving ? t(ONBOARDING_COPY.flow024) : view === "intro" ? t({ zh: "保存这段介绍", en: "Save this introduction", ja: "この内容で保存" }) : t({ zh: "下一步", en: "Next", ja: "次へ" })}<Icon name="right" size={16} />
-              </button>}
+              {shown.length ? <span className={styles.miss} role="alert"><Icon name="flag" size={16} />{missingSummary(shown, t, language)}</span> : null}
+              <button aria-busy={saving || undefined} className={`btn ${styles.primary}`} data-onboarding-next="" onClick={() => void onNext()} type="button">
+                {nextLabel}{view === "goals" && goalChoices.length ? <span className={styles.goalCount}>{t({ ja: ` · 目標 ${goalChoices.length} / 2`, zh: ` · 目标 ${goalChoices.length} / 2`, en: ` · Goals ${goalChoices.length} / 2` })}</span> : null}<Icon name="right" size={16} />
+              </button>
             </div>
           </section>
 
           <aside className={styles.aside}>
-            {view === "profile" ? <ProfileAside basic={basic} initial={initial} language={language} offer={offer} seek={seek} bio={bio} t={t} /> : null}
-            {view === "goals" ? <GoalsAside choices={goalChoices} text={goalText} t={t} /> : null}
-            {view === "persona" ? <PersonaAside initial={initial} offer={offer} t={t} /> : null}
+            {view === "basics" ? <ProfileAside basic={basic} initial={initial} language={language} t={t} /> : null}
+            {view === "goals" ? <div className={styles.sideCard}><StrengthGroups {...groups} /></div> : null}
             {view === "intro" ? <IntroAside bio={bio} t={t} /> : null}
-            {view === "import" ? <ImportAside t={t} /> : null}
           </aside>
         </div>
       </div>
+      <Modal open={qrOpen} onClose={() => setQrOpen(false)} title={t({ ja: "スマホで撮る", zh: "用手机拍", en: "Use your phone" })} size={380}>
+        <div className={styles.qrBody}>
+          {qrOpen ? <InviteQr label={t({ ja: "スマホで開く QR コード", zh: "用手机打开的二维码", en: "QR code to open on your phone" })} text={`${window.location.origin}/app/profile/onboarding?next=${encodeURIComponent(next)}`} /> : null}
+          <div className={styles.sub}>{t({ ja: "スマホで読み取り、同じアカウントでログインすると、そこで名刺を撮れます。", zh: "用手机扫码，登录同一个账号后就能在手机上拍名片。", en: "Scan this with your phone and sign in to the same account to photograph your card there." })}</div>
+        </div>
+      </Modal>
     </Orbit2026Scope>
   );
-}
-
-function StepHead({ sub, title, side }: { sub: string; title: string; side?: ReactNode }) {
-  const head = <div><h2 className={styles.title}>{title}</h2><p className={styles.sub}>{sub}</p></div>;
-  return side ? <div className={styles.headRow}>{head}{side}</div> : head;
-}
-
-function Field({ children, label, card, t }: { children: ReactNode; label: Copy; card?: boolean; t: T }) {
-  return (
-    <label className={styles.field}>
-      <span className={styles.fieldLabel}>{t(label)}{card ? <span className={styles.chipLav}>{t({ ja: "名刺から", zh: "来自名片", en: "From card" })}</span> : null}</span>
-      {children}
-    </label>
-  );
-}
-
-function ProfileStep({
-  basic, cardScanAvailable, disabled, fileRef, fromCard, language, onCardDrop, onCardFile, scanning, setBasic, showBirthError, t, todayIso,
-}: {
-  basic: BasicDraft;
-  cardScanAvailable: boolean;
-  disabled: boolean;
-  fileRef: { current: HTMLInputElement | null };
-  fromCard: ReadonlySet<keyof BasicDraft>;
-  language: "zh" | "en" | "ja";
-  onCardDrop: (file: File | undefined) => void;
-  onCardFile: (event: ChangeEvent<HTMLInputElement>) => void;
-  scanning: boolean;
-  setBasic: (update: (current: BasicDraft) => BasicDraft) => void;
-  showBirthError: boolean;
-  t: T;
-  todayIso: string;
-}) {
-  const set = (key: keyof BasicDraft) => (event: ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    setBasic(current => ({ ...current, [key]: value }));
-  };
-  const drop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    if (!disabled && !scanning) onCardDrop(event.dataTransfer.files?.[0]);
-  };
-  return (
-    <div data-screen-label={ONBOARDING_SCREEN_LABELS.basics}>
-      <StepHead title={t({ ja: "まずは、あなたのことを", zh: "先从你开始", en: "Let's start with you" })}
-        sub={t({ ja: "相手のプロフィールにも表示される、基本の情報です。", zh: "这些基本信息也会显示在对方看到的资料里。", en: "The basics others see on your profile." })} />
-      {cardScanAvailable ? (
-        <div className={styles.autofill} onDragOver={event => event.preventDefault()} onDrop={drop}>
-          <span className={styles.autofillTile} aria-hidden>📇</span>
-          <div className={styles.grow}>
-            <b>{scanning ? t(ONBOARDING_COPY.flow061) : t({ ja: "自分の名刺の画像をドロップして自動入力", zh: "拖入自己的名片图片，自动填写", en: "Drop your own business card to fill this in" })}</b>
-            <div className={styles.lbl}>{t({ ja: "氏名・会社・役職・連絡先を読み取ります", zh: "读取姓名、公司、职位和联系方式", en: "Reads your name, company, title and contact details" })}</div>
-          </div>
-          <button className={`btn ${styles.sm}`} disabled={disabled || scanning} onClick={() => fileRef.current?.click()} type="button"><Icon name="image" size={16} />{t({ ja: "画像を選ぶ", zh: "选择图片", en: "Choose image" })}</button>
-          <input accept="image/*,.heic,.heif" className={styles.srOnly} onChange={onCardFile} ref={fileRef} tabIndex={-1} type="file" aria-hidden />
-        </div>
-      ) : null}
-      <div className={styles.grid2}>
-        <Field card={fromCard.has("name")} label={{ ja: "氏名", zh: "姓名", en: "Name" }} t={t}>
-          <input className={styles.input} disabled={disabled} maxLength={60} onChange={set("name")} placeholder={t(ONBOARDING_COPY.flow064)} value={basic.name} />
-        </Field>
-        <Field card={fromCard.has("company")} label={{ ja: "会社", zh: "公司", en: "Company" }} t={t}>
-          <input className={styles.input} disabled={disabled} maxLength={80} onChange={set("company")} placeholder={t(ONBOARDING_COPY.flow066)} value={basic.company} />
-        </Field>
-        <Field card={fromCard.has("title")} label={{ ja: "役職", zh: "职位", en: "Title" }} t={t}>
-          <input className={styles.input} disabled={disabled} maxLength={80} onChange={set("title")} placeholder={t(ONBOARDING_COPY.flow068)} value={basic.title} />
-        </Field>
-        <Field label={{ zh: "生日（可选）", en: "Birthday (optional)", ja: "生年月日（任意）" }} t={t}>
-          <input className={styles.input} disabled={disabled} max={todayIso} onChange={set("birthDate")} type="date" value={basic.birthDate} />
-        </Field>
-        <Field label={{ ja: "業界", zh: "行业", en: "Industry" }} t={t}>
-          <span className={styles.selectWrap}><select className={styles.input} disabled={disabled} value={basic.primaryIndustryId}
-            onChange={event => { const value = event.target.value; setBasic(current => ({ ...current, primaryIndustryId: (value || "") as IndustryIdCode | "", secondaryIndustryId: "" })); }}>
-            <option value="">{t(ONBOARDING_COPY.flow070)}</option>
-            {INDUSTRY_CATALOG.map(item => <option key={item.id} value={item.id}>{industryLabel(item.id, language)}</option>)}
-          </select><Icon name="down" size={16} /></span>
-        </Field>
-        <Field label={{ ja: "業界の詳細", zh: "细分行业", en: "Industry detail" }} t={t}>
-          <span className={styles.selectWrap}><select className={styles.input} disabled={disabled || !basic.primaryIndustryId} value={basic.secondaryIndustryId}
-            onChange={event => { const value = event.target.value; setBasic(current => ({ ...current, secondaryIndustryId: (value || "") as SecondaryIndustryIdCode | "" })); }}>
-            <option value="">{basic.primaryIndustryId ? t(ONBOARDING_COPY.flow072) : t(ONBOARDING_COPY.flow073)}</option>
-            {(basic.primaryIndustryId ? listSecondaryIndustries(basic.primaryIndustryId) : []).map(item => <option key={item.id} value={item.id}>{secondaryIndustryLabel(item.id, language)}</option>)}
-          </select><Icon name="down" size={16} /></span>
-        </Field>
-      </div>
-      {showBirthError ? <div className={styles.notice}>{t(ONBOARDING_COPY.flow074)}</div> : null}
-    </div>
-  );
-}
-
-function GoalsStep({ goals, setGoals, setGoalText, t, text }: {
-  goals: string[];
-  setGoals: (value: string[]) => void;
-  setGoalText: (value: string) => void;
-  t: T;
-  text: string;
-}) {
-  return (
-    <div data-screen-label={ONBOARDING_SCREEN_LABELS.goals}>
-      <StepHead title={t({ ja: "いちばん達成したいことは？", zh: "你最想达成什么？", en: "What do you most want to achieve?" })}
-        sub={t({ ja: "2個まで。選んだ順に優先します。", zh: "最多 2 个，按选择顺序排优先级。", en: "Pick up to 2, in order of priority." })} />
-      <div className={styles.goals}>{PROFILE_ONBOARDING_GOALS.map((option) => {
-        const selected = goals.find((value) => value === option.zh || value === option.en || value === option.ja);
-        const tile = GOAL_TILES[option.id]!;
-        return <button aria-pressed={Boolean(selected)} className={`btn ${styles.goal} ${selected ? styles.on : ""}`} data-goal={option.id} disabled={!selected && goals.length >= 2} key={option.id}
-          onClick={() => setGoals(selected ? goals.filter((value) => value !== selected) : [...goals, t(option)])} type="button">
-          {selected ? <span className={styles.ord}>{goals.indexOf(selected) + 1}</span> : null}
-          <MacTile emoji={tile.emoji} tone={tile.tone} size="sm" />{t(option)}<small>{t(tile.sub)}</small>
-        </button>;
-      })}</div>
-      <label className={`${styles.field} ${styles.goalLine}`}>
-        <span className={styles.fieldLabel}>{t({ ja: "ひとことで（任意）", zh: "一句话说明（可选）", en: "In one line (optional)" })}</span>
-        <input className={styles.input} data-goal-line="" maxLength={80} onChange={(event) => setGoalText(event.target.value)} value={text}
-          placeholder={t({ ja: "例：シリーズAで3億円を調達", zh: "例：完成 A 轮融资", en: "e.g. Close a Series A" })} />
-        <span className={styles.msg}>{t({ ja: "期限は決めません。目標から「誰と話すとよいか」を分析します。", zh: "不设期限。我们会根据目标分析「该和谁聊」。", en: "No deadline. We use your goal to work out who to talk to." })}</span>
-      </label>
-    </div>
-  );
-}
-
-/** kit .togs: selected first, then the remaining options up to the board's count, then ＋ 追加 (an inline field with the full list). */
-function TagGroup({ emoji, tone, title, why, limit, options, shown, setValues, t, values }: {
-  emoji: string;
-  tone: AvatarTone;
-  title: Copy;
-  why?: Copy;
-  limit: number;
-  options: readonly Copy[];
-  shown: number;
-  setValues: (update: (current: string[]) => string[]) => void;
-  t: T;
-  values: readonly string[];
-}) {
-  const [adding, setAdding] = useState(false);
-  const [custom, setCustom] = useState("");
-  const [whyOpen, setWhyOpen] = useState(false);
-  const id = useId();
-  const full = values.length >= limit;
-  const rest = options.filter(option => !values.some(value => optionMatches(option, value))).slice(0, Math.max(0, shown - values.length));
-  const add = () => {
-    const option = options.find(item => optionMatches(item, custom.trim()));
-    setValues(current => addCustomValue(current, option ? t(option) : custom, limit));
-    setCustom("");
-    setAdding(false);
-  };
-  return (
-    <div className={styles.group} data-tag-group={title.en}>
-      <div className={styles.groupHead}><MacTile emoji={emoji} tone={tone} size="sm" />{t(title)}{why ? <WhyButton open={whyOpen} onToggle={() => setWhyOpen(open => !open)} controls={`${id}-why`} /> : null}</div>
-      <div className={styles.togs}>
-        {values.map(value => <button aria-pressed className={`btn ${styles.tog} ${styles.on}`} key={value} onClick={() => setValues(current => current.filter(item => item !== value))} type="button"><Icon name="check" size={16} />{value}</button>)}
-        {rest.map(option => <button aria-pressed={false} className={`btn ${styles.tog}`} disabled={full} key={option.en} onClick={() => setValues(current => toggleValue(current, t(option), limit))} type="button">{t(option)}</button>)}
-        {adding ? <span className={`${styles.tog} ${styles.adding}`}>
-          <input aria-label={t(title)} autoFocus list={`${id}-options`} maxLength={24} onBlur={() => { if (!custom.trim()) setAdding(false); }} onChange={event => setCustom(event.target.value)}
-            onKeyDown={event => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); add(); } if (event.key === "Escape") setAdding(false); }} value={custom} />
-          <datalist id={`${id}-options`}>{options.filter(option => !values.some(value => optionMatches(option, value))).map(option => <option key={option.en} value={t(option)} />)}</datalist>
-        </span> : <button className={`btn ${styles.tog} ${styles.add}`} disabled={full} onClick={() => setAdding(true)} type="button"><Icon name="plus" size={16} />{t({ ja: "追加", zh: "添加", en: "Add" })}</button>}
-      </div>
-      {why ? <WhyBody id={`${id}-why`} open={whyOpen}>{t(why)}</WhyBody> : null}
-    </div>
-  );
-}
-
-function PersonaStep({ offer, seek, setOffer, setSeek, setTopics, t, topics }: {
-  offer: string[];
-  seek: string[];
-  setOffer: (update: (current: string[]) => string[]) => void;
-  setSeek: (update: (current: string[]) => string[]) => void;
-  setTopics: (update: (current: string[]) => string[]) => void;
-  t: T;
-  topics: string[];
-}) {
-  return (
-    <div data-screen-label={ONBOARDING_SCREEN_LABELS.persona}>
-      <StepHead title={t({ ja: "あなたの「強み」と「求めていること」", zh: "你的「优势」与「需求」", en: "Your strengths and what you're looking for" })}
-        sub={t({ ja: "人と人を結ぶ手がかりになります。", zh: "这是把人和人连起来的线索。", en: "These are the clues that connect people." })} />
-      <div className={styles.groups}>
-        <TagGroup emoji="🎁" tone="teal" title={{ ja: "提供できること", zh: "能提供的", en: "What you offer" }} limit={OFFER_LIMIT} options={OFFER_OPTIONS} shown={5} setValues={setOffer} t={t} values={offer} />
-        <TagGroup emoji="🔎" tone="pink" title={{ ja: "求めていること", zh: "正在寻找的", en: "What you're looking for" }} limit={SEEK_LIMIT} options={SEEK_OPTIONS} shown={5} setValues={setSeek} t={t} values={seek}
-          why={{ ja: "選んだ内容は、イベント前に「強みとニーズが重なる人」を探すのに使います。", zh: "你选的内容会在活动前用来找「优势与需求重合的人」。", en: "We use these before events to find people whose needs and strengths match yours." }} />
-        <TagGroup emoji="☕" tone="apricot" title={{ ja: "話せる話題", zh: "能聊的话题", en: "Topics you enjoy" }} limit={TOPIC_LIMIT} options={TOPIC_OPTIONS} shown={6} setValues={setTopics} t={t} values={topics} />
-      </div>
-    </div>
-  );
-}
-
-function IntroStep({
-  bio, bioCount, editing, errorCode, goals, offer, onEdit, onRegenerate, onTone, regenerationsLeft, setBio, status, t, tone, topics,
-}: {
-  bio: string;
-  bioCount: { count: number; limit: number; over: boolean };
-  editing: boolean;
-  errorCode: "INTRO_LIMIT_REACHED" | "SAMPLE_READ_ONLY" | null;
-  goals: number;
-  offer: number;
-  onEdit: () => void;
-  onRegenerate: () => void;
-  onTone: (tone: IntroTone) => void;
-  regenerationsLeft: number;
-  setBio: (value: string) => void;
-  status: IntroStatus;
-  t: T;
-  tone: IntroTone;
-  topics: number;
-}) {
-  const [whyOpen, setWhyOpen] = useState(false);
-  const id = useId();
-  const generating = status === "generating";
-  const seg = <div className={styles.seg} role="radiogroup" aria-label={t({ ja: "文体", zh: "语气", en: "Style" })}>
-    {([["native", t({ ja: "ビジネス", zh: "商务", en: "Business" })], ["en", "English"]] as const).map(([key, label]) =>
-      <button aria-checked={tone === key} className={`btn ${tone === key ? styles.on : ""}`} disabled={generating || (tone !== key && status === "error")} key={key} onClick={() => onTone(key)} role="radio" type="button">{label}</button>)}
-  </div>;
-  return (
-    <div data-screen-label={ONBOARDING_SCREEN_LABELS.intro}>
-      <StepHead side={seg}
-        title={generating ? t({ ja: "自己紹介文をつくっています…", zh: "正在写自我介绍…", en: "Drafting your introduction…" }) : t({ ja: "自己紹介文をつくりました", zh: "已为你写好自我介绍", en: "We drafted your introduction" })}
-        sub={t({ ja: "イベントのプロフィールや、メール下書きの冒頭に使います。", zh: "用于活动资料和邮件草稿的开头。", en: "Used on your event profile and at the top of email drafts." })} />
-      {status === "error" ? <div className={styles.notice} role="alert">
-        {errorCode === "INTRO_LIMIT_REACHED"
-          ? t({ zh: "介绍草稿的 3 次生成额度已用完。请直接在下面写几句。", en: "All three introduction drafts have been used. Write a few lines below instead.", ja: "自己紹介の生成は3回までです。下に直接入力してください。" })
-          : errorCode === "SAMPLE_READ_ONLY"
-            ? t({ zh: "示例资料不能生成介绍。请在真实资料中填写。", en: "Sample data is read only. Write your introduction in your own profile.", ja: "サンプルデータは編集できません。自分のプロフィールで入力してください。" })
-            : t({ zh: "可以点「重试」再生成一次，或直接在下面写几句。", en: "Retry, or write a couple of lines below.", ja: "再試行するか、下に直接入力してください。" })}
-      </div> : null}
-      <div className={styles.introBox} aria-live="polite">
-        {generating ? <div className={styles.bones} aria-hidden><i style={{ width: "92%" }} /><i style={{ width: "86%" }} /><i style={{ width: "64%" }} /></div>
-          : editing || status === "error" ? <textarea aria-label={t(ONBOARDING_COPY.flow102)} className={styles.introEdit} onChange={event => setBio(event.target.value)} rows={5} value={bio} />
-            : <p className={styles.introText}>{bio}</p>}
-        {generating ? null : <div className={styles.introMeta}>
-          <span className={`${styles.lbl} ${bioCount.over ? styles.over : ""}`}>{bioCount.over
-            ? t({ ja: `${bioCount.count} / ${bioCount.limit}文字`, zh: `${bioCount.count} / ${bioCount.limit} 字`, en: `${bioCount.count} / ${bioCount.limit} characters` })
-            : t({ ja: `${bioCount.count}文字`, zh: `${bioCount.count} 字`, en: `${bioCount.count} characters` })}</span>
-          <span className={styles.whyEnd}><WhyButton open={whyOpen} onToggle={() => setWhyOpen(open => !open)} controls={`${id}-why`} /></span>
-        </div>}
-        <WhyBody id={`${id}-why`} open={whyOpen && !generating} onSurface>{t({
-          ja: `使った情報：基本情報 · 目標${goals}つ · 提供できること${offer}つ · 話題${topics}つ。`,
-          zh: `用到的信息：基本信息 · 目标 ${goals} 个 · 能提供的 ${offer} 项 · 话题 ${topics} 个。`,
-          en: `Based on: your basics · ${goals} goals · ${offer} offers · ${topics} topics.`,
-        })}</WhyBody>
-      </div>
-      <div className={styles.introActions}>
-        {status === "error" && errorCode ? null : <button className={`btn ${styles.btn}`} disabled={generating || (status !== "error" && regenerationsLeft <= 0)} onClick={onRegenerate} type="button">
-          <Icon name="refresh" size={16} />{status === "error" ? t({ zh: "重试", en: "Retry", ja: "再試行" }) : t({ ja: "別の案をつくる", zh: "换一版", en: "Try another" })}
-          {status === "error" ? null : <span className={styles.left}>{t({ ja: `残り ${regenerationsLeft}回`, zh: `还剩 ${regenerationsLeft} 次`, en: `${regenerationsLeft} left` })}</span>}
-        </button>}
-        {status === "error" ? null : <button aria-pressed={editing} className={`btn ${styles.btn}`} disabled={generating} onClick={onEdit} type="button"><Icon name="pen" size={16} />{editing ? t({ ja: "編集を終える", zh: "完成编辑", en: "Done editing" }) : t({ ja: "直接編集", zh: "直接编辑", en: "Edit" })}</button>}
-        <span className={`${styles.lbl} ${styles.pushEnd}`}>{t({ ja: "自動で公開・送信されることはありません", zh: "不会自动公开或发送", en: "Nothing is published or sent automatically" })}</span>
-      </div>
-    </div>
-  );
-}
-
-function ImportStep({ cardScanAvailable, t }: { cardScanAvailable: boolean; t: T }) {
-  const scan = appendWebGuideReturnTo("/app/contacts/new/scan", IMPORT_RETURN);
-  const csv = appendWebGuideReturnTo("/app/contacts/new/import?method=csv", IMPORT_RETURN);
-  const vcard = appendWebGuideReturnTo("/app/contacts/new/import?method=contacts", IMPORT_RETURN);
-  return (
-    <div data-screen-label={ONBOARDING_SCREEN_LABELS.import}>
-      <StepHead title={t({ ja: "手元の名刺を取り込みましょう", zh: "导入手头的名片", en: "Bring in the cards you have" })}
-        sub={t({ ja: "10枚以上あると、最初のプランがぐっと具体的になります。", zh: "有 10 张以上，第一份计划会具体很多。", en: "With 10 or more, your first plan gets much more specific." })} />
-      {cardScanAvailable ? <div className={styles.drop}>
-        <span className={styles.dropEmoji} aria-hidden>📇</span>
-        <b>{t({ ja: "名刺の画像をここから取り込む", zh: "从这里导入名片图片", en: "Bring in card photos here" })}</b>
-        <div className={styles.lbl}>{t({ ja: "JPG・PNG・HEIC · 最大100枚 · 表と裏はペアにできます", zh: "JPG / PNG / HEIC · 最多 100 张 · 正反面可以配对", en: "JPG · PNG · HEIC · up to 100 · pair fronts and backs" })}</div>
-        <a className={`btn ${styles.pick}`} href={scan}>{t({ ja: "ファイルを選ぶ", zh: "选择文件", en: "Choose files" })}</a>
-      </div> : null}
-      <div className={styles.grid3}>
-        <div className={styles.method}><MacTile emoji="📱" tone="blue" size="sm" /><div><b>{t({ ja: "スマホで連続撮影", zh: "用手机连拍", en: "Shoot on your phone" })}</b><div className={styles.lbl}>{t({ ja: "アプリから自動で同期", zh: "从 App 自动同步", en: "Synced from the app" })}</div></div></div>
-        <a className={styles.method} href={csv}><MacTile emoji="🗂️" tone="pink" size="sm" /><div><b>CSV · Eight</b><div className={styles.lbl}>{t({ ja: "列の対応づけを自動で", zh: "自动匹配列", en: "Columns matched automatically" })}</div></div></a>
-        <a className={styles.method} href={vcard}><MacTile emoji="👤" tone="teal" size="sm" /><div><b>vCard</b><div className={styles.lbl}>{t({ ja: "iPhone・Google 連絡先", zh: "iPhone、Google 通讯录", en: "iPhone · Google contacts" })}</div></div></a>
-      </div>
-    </div>
-  );
-}
-
-function AsideLabel({ children }: { children: ReactNode }) {
-  return <div className={styles.asideLabel}>{children}</div>;
-}
-
-function GhostRow({ children }: { children: ReactNode }) {
-  return <div className={styles.ghostRow}><i aria-hidden />{children}</div>;
-}
-
-function ProfileAside({ basic, bio, initial, language, offer, seek, t }: { basic: BasicDraft; bio: string; initial: string; language: "zh" | "en" | "ja"; offer: string[]; seek: string[]; t: T }) {
-  const name = basic.name.trim();
-  const line = [basic.company.trim(), basic.title.trim()].filter(Boolean).join(" · ");
-  const industry = basic.primaryIndustryId
-    ? [industryLabel(basic.primaryIndustryId, language), basic.secondaryIndustryId ? secondaryIndustryLabel(basic.secondaryIndustryId, language) : ""].filter(Boolean).join(" › ")
-    : "";
-  return <>
-    <AsideLabel>{t({ ja: "相手から見えるあなた", zh: "对方看到的你", en: "How others see you" })}</AsideLabel>
-    <div className={styles.asideCard}>
-      <div className={styles.person}>
-        <span className={styles.avatarLg} aria-hidden>{initial}</span>
-        <div><div className={`${styles.personName} ${name ? "" : styles.muted}`}>{name || t({ ja: "あなたの名前", zh: "你的名字", en: "Your name" })}</div>{line ? <div className={styles.sub}>{line}</div> : null}</div>
-      </div>
-      {industry ? <div className={styles.chips}><span className={styles.chipBlue}>{industry}</span></div> : null}
-      {bio.trim() ? <p className={styles.previewText}>{bio.trim()}</p> : <GhostRow>{t({ ja: "自己紹介（ステップ4で作成）", zh: "自我介绍（第 4 步生成）", en: "Introduction (made in step 4)" })}</GhostRow>}
-      {offer.length || seek.length ? <p className={styles.previewText}>{[...offer, ...seek].join(" · ")}</p> : <GhostRow>{t({ ja: "提供できること · 求めていること", zh: "能提供的 · 正在寻找的", en: "What you offer · What you seek" })}</GhostRow>}
-    </div>
-    <div className={`${styles.asideCard} ${styles.flat}`}>
-      <div className={styles.row}><MacTile emoji="🔒" tone="lav" size="sm" /><div className={styles.sub}>{t({ ja: "生年月日と連絡先は相手に公開されません。", zh: "生日和联系方式不会公开给对方。", en: "Your birthday and contact details stay private." })}</div></div>
-    </div>
-  </>;
-}
-
-function GoalsAside({ choices, text, t }: { choices: string[]; text: string; t: T }) {
-  const first = text.trim() || choices[0] || "";
-  const second = text.trim() ? choices[0] && choices[1] ? choices[1] : "" : choices[1] ?? "";
-  return <>
-    <AsideLabel>{t({ ja: "この目標から作られるもの", zh: "这个目标会生成", en: "What this goal builds" })} <SampleTag /></AsideLabel>
-    <div className={`${styles.asideCard} ${styles.faded}`}>
-      <div className={styles.row}>
-        <span className={styles.ring} aria-hidden><svg viewBox="0 0 90 90" width="90" height="90"><circle cx="45" cy="45" r="40" /><circle className={styles.ringArc} cx="45" cy="45" r="40" /></svg><b>0</b></span>
-        <div>
-          <div className={styles.lbl}>{t({ ja: "プラン スコア", zh: "计划得分", en: "Plan score" })}</div>
-          <b>{first || t({ ja: "目標を選ぶと表示されます", zh: "选好目标后显示", en: "Shown once you pick a goal" })}</b>
-          {second ? <div className={`${styles.lbl} ${styles.plus}`}>＋ {second}</div> : null}
-        </div>
-      </div>
-      <GhostRow>{t({ ja: "話すべき人のタイプ（ステップ別）", zh: "该聊的人的类型（按步骤）", en: "People to talk to (by step)" })}</GhostRow>
-      <GhostRow>{t({ ja: "行くべきイベント", zh: "该去的活动", en: "Events worth attending" })}</GhostRow>
-      <GhostRow>{t({ ja: "今日 +10 のチャンス", zh: "今日 +10 的机会", en: "Today's +10 chances" })}</GhostRow>
-    </div>
-  </>;
-}
-
-function PersonaAside({ initial, offer, t }: { initial: string; offer: string[]; t: T }) {
-  const strength = offer[0] ?? t(OFFER_OPTIONS[0]!);
-  return <>
-    <AsideLabel>{t({ ja: "こうして結びつきます", zh: "这样把人连起来", en: "How people connect" })} <SampleTag /></AsideLabel>
-    <div className={`${styles.asideCard} ${styles.faded}`}>
-      <div className={styles.row}><span className={styles.avatarSm} aria-hidden>{initial}</span><span className={styles.chipTeal}>{strength}</span></div>
-      <div className={styles.link} aria-hidden />
-      <div className={styles.row}><span className={`${styles.avatarSm} ${styles.avatarApricot}`} aria-hidden>{t({ ja: "渡", zh: "渡", en: "W" })}</span>
-        <span className={styles.chipPink}>{t({ ja: `${strength}を相談したい`, zh: `想请教${strength}`, en: `Wants advice: ${strength}` })}</span></div>
-      <div className={`${styles.sub} ${styles.linkNote}`}>{t({ ja: "相手のニーズとあなたの強みが重なる人を、イベント前に教えます。", zh: "活动前，告诉你需求与你的优势重合的人。", en: "Before events, we point out people whose needs match your strengths." })}</div>
-    </div>
-  </>;
-}
-
-function IntroAside({ bio, t }: { bio: string; t: T }) {
-  const text = bio.trim();
-  const opening = text.split(/(?<=[。．.!?！？])/u)[0]?.trim() ?? "";
-  return <>
-    <AsideLabel>{t({ ja: "使われる場所", zh: "用在哪里", en: "Where it's used" })}</AsideLabel>
-    <div className={styles.asideCard}>
-      <div className={styles.row}><MacTile emoji="🎟️" tone="blue" size="sm" /><b className={styles.small}>{t({ ja: "イベントのプロフィール", zh: "活动资料", en: "Event profile" })}</b></div>
-      <div className={`${styles.sub} ${styles.clamp}`}>{text || "—"}</div>
-    </div>
-    <div className={styles.asideCard}>
-      <div className={styles.row}><MacTile emoji="✉️" tone="pink" size="sm" /><b className={styles.small}>{t({ ja: "メール下書きの冒頭", zh: "邮件草稿开头", en: "Email draft opening" })}</b></div>
-      <div className={`${styles.sub} ${styles.useText}`}>{opening ? t({ ja: `「突然のご連絡失礼いたします。${opening}…」`, zh: `「冒昧打扰。${opening}…」`, en: `“Sorry to reach out out of the blue. ${opening}…”` }) : "—"}</div>
-      <div className={`${styles.lbl} ${styles.useText}`}>{t({ ja: "メール・メッセージは下書きまで。送信はあなたが行います。", zh: "邮件和消息只到草稿，由你来发送。", en: "Emails and messages stop at drafts; you send them." })}</div>
-    </div>
-  </>;
-}
-
-function ImportAside({ t }: { t: T }) {
-  return <>
-    <AsideLabel>{t({ ja: "取り込むと見えるもの", zh: "导入后能看到", en: "What importing unlocks" })} <SampleTag /></AsideLabel>
-    <div className={`${styles.asideCard} ${styles.faded}`}>
-      <div className={styles.lbl}>{t({ ja: "つながり", zh: "人脉", en: "Connections" })}</div>
-      <div className={styles.big}>24<small>{t({ ja: "人", zh: "人", en: "people" })}</small></div>
-      <GhostRow>{t({ ja: "プランに合いそうな人 3名", zh: "符合计划的人 3 位", en: "3 people who fit your plan" })}</GhostRow>
-      <GhostRow>{t({ ja: "重複の統合 1件", zh: "合并重复 1 处", en: "1 duplicate merged" })}</GhostRow>
-    </div>
-    <div className={`${styles.asideCard} ${styles.flat}`}>
-      <div className={styles.sub}>{t({ ja: "今は取り込まずに進むと、サンプルの人脈で使い方を確認できます。あとからいつでも追加できます。", zh: "现在不导入也可以继续，先用示例人脉看看怎么用，之后随时可以添加。", en: "Skip for now to try Orbit with a sample network; add your own cards any time." })}</div>
-    </div>
-  </>;
 }

@@ -353,10 +353,16 @@ test("a complete profile with an unfinished flow resumes onboarding; progress re
   }, "live");
 });
 
-test("b1 #21: a complete profile whose flow was deferred continues to next, where home offers おかえりなさい", async (t) => {
+test("onboarding can't be skipped: an old deferred flow passes only when the goal and the introduction are there too", async (t) => {
   const { accountId, store } = profileMembershipFixture();
   const service = createLiveProfileService({ provider: createStorageProfileProvider({ store, workspaceId: profileFixtureWorkspace }) });
   assert.equal((await service.updateProfile({ displayName: "Alice", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.enterprise_software" }, { actorId: accountId })).success, true);
+  await withProfileEnvironment(async () => {
+    const { page, calls, redirected } = loadProfileContinuePage(t, { profileService: service, progress: { finishedAt: null, deferred: true } });
+    await assert.rejects(page(), (error) => error === redirected);
+    assert.equal(calls.at(-1)?.input, "/app/profile/onboarding?next=%2Fapp%2Fhome");
+  }, "live");
+  assert.equal((await service.updateProfile({ bio: "企业软件创业者", relationshipGoal: "寻找投资" }, { actorId: accountId })).success, true);
   await withProfileEnvironment(async () => {
     const { page, calls, redirected } = loadProfileContinuePage(t, { profileService: service, progress: { finishedAt: null, deferred: true } });
     await assert.rejects(page(), (error) => error === redirected);

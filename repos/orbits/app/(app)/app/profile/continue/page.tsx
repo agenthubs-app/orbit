@@ -71,8 +71,8 @@ export default async function AppProfileContinuePage({
     const language = await getOrbitServerLanguage();
     return <main role="alert">{RETRY_COPY.progress[language]}</main>;
   }
-  // b1 #21: a flow left with 「あとで設定する」 resumes from home (おかえりなさい), not by forcing the form again.
-  if (access.status === "complete" && (!flow || flow.finishedAt || flow.deferred)) redirect(next);
+  // 引导不能跳过（两端同一规则）：没走完的流程接着走。以前点过「あとで設定する」且目标、自我介绍都填过的，不再拦；没有流程记录的老账号不拦。
+  if (access.status === "complete" && (!flow || flow.finishedAt || (flow.deferred && access.answered))) redirect(next);
 
   redirect(profileOnboardingFlowPath(next));
 }
