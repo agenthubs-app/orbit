@@ -2036,6 +2036,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["eventsJourney.joinLocked", "label"],
   ["eventsJourney.joinRejected", "label"],
   ["eventsJourney.joinCancelled", "label"],
+  ["eventsJourney.joinSave", "fullButton"],
   ["eventsJourney.joinUpdated", "pageTitle"],
   ["eventsJourney.hostRosterHint", "label"],
   ["eventsJourney.hostRosterOpen", "button"],

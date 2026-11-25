@@ -861,6 +861,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/events/v2/journey-api.ts","DELETE","/api/organizers/:id/follow"],
   ["src/screens/events/v2/journey-api.ts","GET","/api/events/:id/after"],
   ["src/screens/events/v2/journey-api.ts","GET","/api/events/:id/attendees/profile"],
+  ["src/screens/events/v2/journey-api.ts","GET","/api/events/:id/join/current"],
   ["src/screens/events/v2/journey-api.ts","GET","/api/events/:id/overview"],
   ["src/screens/events/v2/journey-api.ts","GET","/api/events/:id/prep"],
   ["src/screens/events/v2/journey-api.ts","GET","/api/events/:id/summary"],

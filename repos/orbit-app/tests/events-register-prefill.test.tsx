@@ -15,7 +15,7 @@ const overview = { ...journeyOverview("many", "app"), priceYen: 3000 };
 const base = `/api/events/${encodeURIComponent(overview.eventId)}`;
 const question = { allowCustom: false, field: "target", help: null, max: null, multi: true, options: ["投资人", "客户", "工程师"], prompt: "想见谁？", questionToken: "token-1" };
 const profile = { coverage: 80, items: [{ done: true, key: "company" }], review: false, selfIntro: null, topics: [] };
-const responses = (extra: object) => ({ [`${base}/overview`]: overview, [`${base}/join/next`]: { done: false, index: 1, question: { ...question, ...extra }, remainingMinutes: 1, total: 3 }, [`${base}/join/profile`]: profile });
+const responses = (extra: object) => ({ [`${base}/overview`]: overview, [`${base}/join/current`]: { answers: [], ask: [], blocked: null, selfIntro: null, status: "none" }, [`${base}/join/next`]: { done: false, index: 1, question: { ...question, ...extra }, remainingMinutes: 1, total: 3 }, [`${base}/join/profile`]: profile });
 
 test("options from the profile start selected, and one tap takes each away", async (t) => {
   const page = await harness.open(t, { screen: "register", params: { id: overview.eventId }, responses: responses({ prefill: ["投资人", "客户"] }) });
@@ -34,7 +34,7 @@ test("without any in the profile nothing is selected", async (t) => {
 
 test("past five answers the interview goes on for what is missing; the counter and the review follow the server", async (t) => {
   const answered = (index: number, total: number, field: string, prompt: string) => ({ done: false, index, question: { ...question, field, prompt, questionToken: `token-${index}` }, remainingMinutes: 1, total });
-  const page = await harness.open(t, { screen: "register", params: { id: overview.eventId }, responses: { [`${base}/overview`]: overview, [`${base}/join/next`]: answered(1, 5, "host:lib-purpose", "第1题"), [`${base}/join/profile`]: profile } });
+  const page = await harness.open(t, { screen: "register", params: { id: overview.eventId }, responses: { [`${base}/overview`]: overview, [`${base}/join/current`]: { answers: [], ask: [], blocked: null, selfIntro: null, status: "none" }, [`${base}/join/next`]: answered(1, 5, "host:lib-purpose", "第1题"), [`${base}/join/profile`]: profile } });
   for (let index = 1; index <= 6; index += 1) {
     await page.getByText(`第${index}题`, { exact: true }).waitFor();
     assert.ok(await page.getByText(` / ${Math.max(5, index)}`, { exact: false }).count() > 0, `question ${index}`);

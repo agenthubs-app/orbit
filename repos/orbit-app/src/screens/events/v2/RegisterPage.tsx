@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, TextInput, View } from "react-native";
 
-import type { EventJoinAnswer, EventJoinProfile, EventJoinProfileItemKey, EventJoinResult, EventJoinStep } from "../../../api/contract/event-join";
+import type { EventJoinAnswer, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep } from "../../../api/contract/event-join";
 import type { EventOverviewResponse } from "../../../api/contract/event-overview";
 import { designIcons } from "../../../api/design/icons";
 import { Icon, UiPressable, UiText, useToast } from "../../../components/ui";
@@ -26,8 +26,9 @@ const ITEM_LABEL: Record<EventJoinProfileItemKey, string> = { company: "itemComp
 /** Why a registration cannot be sent or changed (409 context.reason). */
 const REFUSAL: Readonly<Record<string, "joinCancelled" | "joinClosed" | "joinLocked" | "joinRejected">> = { JOIN_CANCELLED: "joinCancelled", JOIN_CLOSED: "joinClosed", JOIN_LOCKED: "joinLocked", JOIN_REJECTED: "joinRejected" };
 
-/** Already has a registration, so sending it again changes that one. */
-const holds = (status: string | undefined) => status === "registered" || status === "pending_review" || status === "waitlisted";
+const ITEM_OF_FIELD: Readonly<Record<string, EventJoinProfileItemKey>> = { desiredOutcome: "purpose", experienceHighlight: "topics", targetAttendees: "target", valueOffered: "offer" };
+/** A question of an existing registration, and the review item its answer fills (null = its own row). */
+type AskedQuestion = { item: EventJoinProfileItemKey | null; question: EventJoinQuestion };
 
 /** kit .bar：surface-3 底 + plum-300→plum-700 渐变 + 14px 圆钮（plum-700 3px 边）。 */
 function ProgressBar({ share }: { share: number }) {
@@ -72,8 +73,16 @@ function RegisterFlow() {
   const [free, setFree] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<EventJoinResult | null>(null);
-  // Decided when it is sent: the overview read afterwards says 「registered」 for a new registration too.
-  const [edited, setEdited] = useState(false);
+  // 新报名还是改资料：进页先读 join/current 确定（null = 还没读到，不提问、不能提交），之后不再变（同 Web）。
+  const [mode, setMode] = useState<"new" | "edit" | null>(null);
+  const editing = mode === "edit";
+  const [blocked, setBlocked] = useState<"joinCancelled" | "joinClosed" | "joinLocked" | "joinRejected" | null>(null);
+  // 改资料：上次每一答的题（按字段）；queue = 这之后还要答的（主办方新加的必答题等）；optional = 自己点「编辑」打开的，可以不答就回去。
+  const [asked, setAsked] = useState<Record<string, AskedQuestion>>({});
+  const [queue, setQueue] = useState<readonly EventJoinQuestion[]>([]);
+  const [optional, setOptional] = useState(false);
+  /** Fields answered again on this page: a re-read (the language changed) keeps them. */
+  const touched = useRef(new Set<string>());
   // 申込完了直後：主催者の連絡先（ID がある時だけ）を自動で開く。閉じても完了ページのカードに残る。
   const [contactOpen, setContactOpen] = useState(false);
   const [calendar, setCalendar] = useState<"asked" | "added" | "declined">("asked");
@@ -82,12 +91,33 @@ function RegisterFlow() {
   const [why, setWhy] = useState(false);
   const freeRef = useRef<TextInput | null>(null);
   // The API speaks the screen language: changing it asks the current question again in the new one and keeps the answers given.
-  const given = useRef({ answers, submitted: false });
-  given.current = { answers, submitted: Boolean(result) };
+  const given = useRef({ answers, asked, mode, submitted: false });
+  given.current = { answers, asked, mode, submitted: Boolean(result) };
   const [loadFailed, setLoadFailed] = useState(false);
   // What the profile already says is selected from the start (2026-11-25, as Web); it can be unselected like any option.
   const showStep = useCallback((next: EventJoinStep) => { setStep(next); setSelected([...(next.question?.prefill ?? [])]); }, []);
   const [attempt, setAttempt] = useState(0);
+  const showEdit = useCallback((list: readonly EventJoinQuestion[], answered: readonly EventJoinAnswer[], byChoice: boolean) => {
+    const [first, ...rest] = list;
+    setQueue(rest);
+    setOptional(byChoice && Boolean(first));
+    showStep({ done: !first, index: 1, question: first ?? null, remainingMinutes: 0, total: 1 });
+    setFree(first && !first.options.length ? answered.find((item) => item.field === first.field)?.answer ?? "" : "");
+  }, [showStep]);
+  const openEdit = useCallback(async (mine: EventJoinCurrent, live: () => boolean) => {
+    const kept = given.current.answers.filter((item) => touched.current.has(item.field));
+    const stored = mine.answers.map(({ answer, field, prompt, questionToken }) => kept.find((item) => item.field === field) ?? { answer, field, prompt, questionToken });
+    const answered = [...stored, ...kept.filter((item) => !stored.some((other) => other.field === item.field))];
+    const keptQuestions = Object.entries(given.current.asked).filter(([field]) => touched.current.has(field));
+    const read = await api.joinProfile(eventId, answered, false, true);
+    // Answered on meanwhile: that answer stays, and its own read follows.
+    if (!live() || kept.length !== given.current.answers.filter((item) => touched.current.has(item.field)).length) return;
+    setAnswers(answered);
+    setAsked(Object.fromEntries([...mine.answers.map((item) => [item.field, { item: item.item, question: item.question }] as const), ...mine.ask.map(({ item, ...question }) => [question.field, { item, question }] as const), ...keptQuestions]));
+    setIntro((current) => current ?? mine.selfIntro ?? "");
+    if (read.ok) setProfile(read.data);
+    showEdit(mine.ask.filter((item) => !touched.current.has(item.field)).map(({ item: _item, ...question }) => question), answered, false);
+  }, [api, eventId, showEdit]);
 
   useEffect(() => {
     let live = true;
@@ -97,6 +127,19 @@ function RegisterFlow() {
     const replay = addDesignMock("open-path") && params.replay ? params.replay.split("|").map((group) => group.split(",").filter(Boolean)) : null;
     void (async () => {
       setLoadFailed(false);
+      let mode = before.mode;
+      if (mode !== "new") {
+        const mine = await api.joinCurrent(eventId);
+        if (!live) return;
+        if (!mine.ok) { if (!mode) setLoadFailed(true); return; }
+        if (mine.data.blocked) { setBlocked(REFUSAL[mine.data.blocked] ?? "joinClosed"); return; }
+        const held = mine.data.status === "registered" || mine.data.status === "pending_review" || mine.data.status === "waitlisted";
+        // Settled once: what it is now is told on sending.
+        if (mode && !held) return;
+        mode = held ? "edit" : "new";
+        setMode(mode);
+        if (held) { await openEdit(mine.data, () => live); return; }
+      }
       const first = await api.joinNext(eventId, before.answers);
       if (!live) return;
       if (!first.ok) { setLoadFailed(true); return; }
@@ -129,16 +172,11 @@ function RegisterFlow() {
       }
     })();
     return () => { live = false; };
-  }, [api, eventId, params.replay, params.to, attempt, showStep]);
+  }, [api, eventId, params.replay, params.to, attempt, showStep, openEdit]);
 
   const question = step?.question ?? null;
   const reviewing = Boolean(step?.done) && !result;
   const total = step?.total ?? 5;
-  // 已报名 / 审核中 / 候补的人再来 = 改资料；改不了的（被拒、已截止、主办方已通过）一进来就说明，不让人白答一遍（同 Web）。
-  const status = event?.registration.status;
-  const editing = holds(status);
-  const closed = Boolean(event && Date.parse(event.registrationClosesAt ?? event.startsAt) <= Date.now());
-  const blocked = result ? null : status === "rejected" ? "joinRejected" : editing && closed ? "joinClosed" : status === "registered" && profile?.review ? "joinLocked" : null;
   const toggle = (option: string) => {
     if (!question) return;
     if (!question.multi) { setSelected([option]); return; }
@@ -148,7 +186,22 @@ function RegisterFlow() {
     if (!question || busy) return;
     const value = [...selected, free.trim()].filter(Boolean).join(" · ");
     if (!value) return;
-    const next = [...answers, { answer: value, field: question.field, prompt: question.prompt, questionToken: question.questionToken }];
+    const answer = { answer: value, field: question.field, prompt: question.prompt, questionToken: question.questionToken };
+    if (editing) {
+      // 改资料：只换这一答，其余原样；不再往下问，也不重写介绍。
+      const changed = answers.some((item) => item.field === answer.field) ? answers.map((item) => (item.field === answer.field ? answer : item)) : [...answers, answer];
+      const picked = question.options.length ? [...selected, free.trim()].filter(Boolean) : [];
+      touched.current.add(answer.field);
+      setAnswers(changed);
+      setAsked((list) => ({ ...list, [answer.field]: { item: list[answer.field]?.item ?? ITEM_OF_FIELD[answer.field] ?? null, question: { ...question, options: [...new Set([...picked, ...question.options])].slice(0, 12), ...(picked.length ? { prefill: picked } : {}) } } }));
+      showEdit(queue, changed, optional);
+      setBusy(true);
+      const read = await api.joinProfile(eventId, changed, false, true);
+      if (read.ok) setProfile(read.data);
+      setBusy(false);
+      return;
+    }
+    const next = [...answers, answer];
     setBusy(true);
     const [nextStep, nextProfile] = await Promise.all([api.joinNext(eventId, next), api.joinProfile(eventId, next, false)]);
     // 成功才记下这一答（失败时题目不变、选项保留，重答不会带着同一个 questionToken 重复入列）。
@@ -167,24 +220,30 @@ function RegisterFlow() {
     setBusy(true);
     const res = await api.joinNext(eventId, answers, true, focus);
     setBusy(false);
-    if (res.ok) showStep(res.data); else toast.error(t("submitFailed"));
+    if (res.ok) { showStep(res.data); setOptional(editing); } else toast.error(t("submitFailed"));
+  };
+  const editItem = (key: EventJoinProfileItemKey) => {
+    const list = answers.flatMap((item) => (asked[item.field]?.item === key ? [asked[item.field]!.question] : []));
+    if (list.length) showEdit(list, answers, true); else void askMore(key);
   };
   const apply = async () => {
+    if (!mode || busy) return;
     setBusy(true);
     // The introduction on the review page goes with the registration, edited or not: the event's other attendees see it, and
     // one that is not sent is cleared on the server.
     const confirmed = (intro ?? profile?.selfIntro?.text ?? "").trim().slice(0, 400);
-    // The overview may still be on its way: whether this changes a registration has to be known before sending.
-    let current = event;
-    if (!current) { const now = await api.overview(eventId); if (now.ok) { current = now.data; setEvent(now.data); } }
-    const edit = holds(current?.registration.status);
-    const res = await api.joinSubmit(eventId, answers, confirmed || undefined, edit);
+    const res = await api.joinSubmit(eventId, answers, confirmed || undefined, editing);
     setBusy(false);
-    if (res.ok) { setEdited(edit); setResult(res.data); setContactOpen(!edit && shouldOpenHostContact(res.data.hostContact)); announceEventChanged(eventId); return; }
+    if (res.ok) { setResult(res.data); setContactOpen(!editing && shouldOpenHostContact(res.data.hostContact)); announceEventChanged(eventId); return; }
     const refusal = res.code ? REFUSAL[res.code] : undefined;
+    if (refusal && refusal !== "joinCancelled") { setBlocked(refusal); return; }
     toast.error(t(refusal ?? "submitFailed"));
-    // It changed meanwhile (cancelled, decided, closed): the page follows, so applying again after a cancellation is a new registration.
-    if (refusal) { const now = await api.overview(eventId); if (now.ok) setEvent(now.data); }
+    // Cancelled meanwhile (another device): start over as a new registration.
+    if (refusal && editing) {
+      touched.current.clear();
+      setMode(null); setAnswers([]); setAsked({}); setQueue([]); setOptional(false); setStep(null); setProfile(null); setIntro(null); setEditingIntro(false); setSelected([]); setFree("");
+      setAttempt((value) => value + 1);
+    }
   };
   const addTentative = async () => {
     if (busy) return;
@@ -209,7 +268,7 @@ function RegisterFlow() {
               {designIcons.check.map((shape, index) => (shape.tag === "path" ? <Path key={index} d={shape.d} /> : null))}
             </Svg>
           </View>
-          <UiText style={styles.doneTitle}>{t(edited ? "joinUpdated" : "received")}</UiText>
+          <UiText style={styles.doneTitle}>{t(editing ? "joinUpdated" : "received")}</UiText>
           <UiText style={[styles.lbl, { textAlign: "center" }]}>{`${event?.title ?? ""} · ${submitted ? t("dateTimeLong", { d: submitted.day, hm: `${submitted.hh}:${String(submitted.mm).padStart(2, "0")}`, m: submitted.month }) : ""}`}</UiText>
         </View>
         <View style={[styles.card, styles.gap]}>
@@ -237,7 +296,7 @@ function RegisterFlow() {
           {pending ? <UiText style={[styles.sub, { marginTop: 12 }]}>{contactLine ?? t("reviewWait")}</UiText> : null}
         </View>
         {result.hostContact !== undefined ? <HostContactCard contact={result.hostContact} t={t} style={styles.gap} /> : null}
-        {result.tentative && calendar === "asked" && !edited ? (
+        {result.tentative && calendar === "asked" && !editing ? (
           <View style={[styles.card, styles.gap, styles.confirm]} testID="events-join-calendar">
             <View style={[styles.row, { gap: 8 }]}>
               <View style={[styles.emoSm, { backgroundColor: colors.macLav }]}><UiText style={styles.emoSmText}>📅</UiText></View>
@@ -272,7 +331,7 @@ function RegisterFlow() {
     const coverage = profile?.coverage ?? 0;
     const shownIntro = intro ?? profile?.selfIntro?.text ?? "";
     return (
-      <JourneyPage key="review" title={t("profileTitle")} subtitle={t("draftedByAi")} leftLabel={t("backToQuestions")} fallback={detail} onLeft={() => void askMore()} testID="events-join-review">
+      <JourneyPage key="review" title={t("profileTitle")} subtitle={editing ? event?.title ?? "" : t("draftedByAi")} leftIcon={editing ? "x" : "left"} leftLabel={t(editing ? "close" : "backToQuestions")} fallback={detail} onLeft={editing ? close : () => void askMore()} testID="events-join-review">
         <View style={styles.card}>
           <View style={[styles.row, { gap: 16 }]}>
             <ScoreRing size={96} stroke={9} value={coverage} color={colors.plum700} label={`${coverage}%`} fontSize={22}>
@@ -289,10 +348,22 @@ function RegisterFlow() {
                     <UiText style={[styles.itemText, item.done ? null : { color: colors.ink3 }]}>{t(ITEM_LABEL[item.key])}</UiText>
                     {item.fromProfile ? <UiText style={styles.lbl} testID={`events-join-from-profile-${item.key}`}>{t("itemFromProfile")}</UiText> : null}
                   </View>
-                  {item.fromProfile ? <UiPressable accessibilityRole="button" accessibilityLabel={`${t("edit")} ${t(ITEM_LABEL[item.key])}`} disabled={busy} onPress={() => void askMore(item.key)} style={styles.btnXs}><UiText style={styles.btnXsText}>{t("edit")}</UiText></UiPressable> : null}
-                  {item.done ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("add")} disabled={busy} onPress={() => void askMore()} style={styles.btnXs}><UiText style={styles.btnXsText}>{t("add")}</UiText></UiPressable>}
+                  {item.fromProfile ? <UiPressable accessibilityRole="button" accessibilityLabel={`${t("edit")} ${t(ITEM_LABEL[item.key])}`} disabled={busy} onPress={() => void askMore(item.key)} style={styles.btnXs}><UiText style={styles.btnXsText}>{t("edit")}</UiText></UiPressable>
+                    : editing && item.done && item.key !== "company" ? <UiPressable accessibilityRole="button" accessibilityLabel={`${t("edit")} ${t(ITEM_LABEL[item.key])}`} disabled={busy} onPress={() => editItem(item.key)} style={styles.btnXs}><UiText style={styles.btnXsText}>{t("edit")}</UiText></UiPressable> : null}
+                  {item.done ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("add")} disabled={busy} onPress={() => void askMore(editing ? item.key : undefined)} style={styles.btnXs}><UiText style={styles.btnXsText}>{t("add")}</UiText></UiPressable>}
                 </View>
               ))}
+              {/* 改资料：主办方的其他问题（不属于任何一项）各占一行。 */}
+              {(editing ? answers : []).flatMap((item) => {
+                const own = asked[item.field];
+                return own && own.item === null ? [
+                  <View key={item.field} style={[styles.row, { gap: 6 }]} testID={`events-join-edit-${item.field}`}>
+                    <UiText style={[styles.mark, { color: colors.ok }]}>✓</UiText>
+                    <View style={styles.fill}><UiText style={styles.itemText}>{own.question.prompt}</UiText></View>
+                    <UiPressable accessibilityRole="button" accessibilityLabel={`${t("edit")} ${own.question.prompt}`} disabled={busy} onPress={() => showEdit([own.question], answers, true)} style={styles.btnXs}><UiText style={styles.btnXsText}>{t("edit")}</UiText></UiPressable>
+                  </View>,
+                ] : [];
+              })}
             </View>
           </View>
           {offerMissing ? <UiText style={[styles.lbl, { marginTop: 10 }]}>{t("offerHint")}</UiText> : null}
@@ -321,7 +392,7 @@ function RegisterFlow() {
           <UiText style={[styles.lbl, { marginBottom: 8 }]}>{t("visibilityTitle")}</UiText>
           <View style={[styles.row, { gap: 8 }]}><View style={[styles.chip, { backgroundColor: colors.macTeal }]}><UiText style={[styles.chipText, { color: colors.macTealInk }]}>{t("visAll")}</UiText></View><UiText style={[styles.sub, styles.fill]}>{t("visAllFields")}</UiText></View>
         </View>
-        <UiPressable accessibilityRole="button" accessibilityLabel={t("applyNow")} disabled={busy} onPress={() => void apply()} style={styles.block48} testID="events-join-apply"><UiText style={styles.primaryText}>{t("applyNow")}</UiText></UiPressable>
+        <UiPressable accessibilityRole="button" accessibilityLabel={t(editing ? "joinSave" : "applyNow")} disabled={busy} onPress={() => void apply()} style={styles.block48} testID="events-join-apply"><UiText style={styles.primaryText}>{t(editing ? "joinSave" : "applyNow")}</UiText></UiPressable>
         {profile?.editableUntil ? <UiText style={[styles.lbl, { marginTop: 8, textAlign: "center" }]}>{t("editableUntil", { date: monthDaySlash(profile.editableUntil) })}</UiText> : null}
       </JourneyPage>
     );
@@ -329,7 +400,7 @@ function RegisterFlow() {
 
   const nextLabel = selected.length > 1 ? t("nextChosen", { n: selected.length }) : t("next");
   return (
-    <JourneyPage key="chat" title={t("regTitle")} subtitle={event?.title ?? ""} leftIcon="x" leftLabel={t("close")} fallback={detail} onLeft={close} footerRadius={26} followEnd testID="events-join-chat"
+    <JourneyPage key="chat" title={t(editing ? "profileTitle" : "regTitle")} subtitle={event?.title ?? ""} leftIcon={optional ? "left" : "x"} leftLabel={t(optional ? "back" : "close")} fallback={detail} onLeft={optional ? () => showEdit([], answers, false) : close} footerRadius={26} followEnd testID="events-join-chat"
       footer={question ? (
         <>
           <TextInput ref={freeRef} value={free} onChangeText={setFree} placeholder={t("freeAnswer")} placeholderTextColor={colors.ink3} accessibilityLabel={t("freeAnswer")} showSoftInputOnFocus={!noKeyboard} onSubmitEditing={() => void submitAnswer()} style={styles.composerIn} />
@@ -346,7 +417,7 @@ function RegisterFlow() {
           <UiPressable accessibilityRole="button" accessibilityLabel={t("retryLoad")} onPress={() => setAttempt((value) => value + 1)} style={[styles.btnSm, { alignSelf: "flex-start", marginTop: 12 }]}><UiText style={styles.btnSmText}>{t("retryLoad")}</UiText></UiPressable>
         </View>
       ) : null}
-      {step ? (
+      {step && !editing ? (
         <View>
           <View style={[styles.row, styles.between]}>
             <UiText style={styles.lbl}><UiText style={[styles.lbl, { color: colors.ink, fontWeight: "700" }]}>{t("regQ", { i: step.index })}</UiText>{t("regOfN", { n: total })}</UiText>
@@ -355,9 +426,9 @@ function RegisterFlow() {
           <ProgressBar share={Math.max(0, step.index) / total} />
         </View>
       ) : null}
-      {step ? <View style={styles.prefill}><UiText style={styles.prefillText}>{t("regPrefilledLine")}</UiText></View> : null}
+      {step && !editing ? <View style={styles.prefill}><UiText style={styles.prefillText}>{t("regPrefilledLine")}</UiText></View> : null}
       <View style={styles.chatcol}>
-        {answers.map((item, index) => (
+        {(editing ? [] : answers).map((item, index) => (
           <View key={`${item.field}-${index}`} style={styles.chatcol}>
             <View style={[styles.bubble, styles.ai]}><UiText style={styles.bubbleText}>{item.prompt}</UiText></View>
             <View style={[styles.bubble, styles.me]}><UiText style={[styles.bubbleText, { color: colors.bg }]}>{item.answer}</UiText></View>

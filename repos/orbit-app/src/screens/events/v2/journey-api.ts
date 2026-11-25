@@ -9,7 +9,7 @@ import type { EventCodeResolveResponse } from "../../../api/contract/event-code"
 import type { EventAttendeeProfile } from "../../../api/contract/event-attendee-profile";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../../api/contract/event-after";
 import type { EventDiscoverQuery, EventDiscoverResponse } from "../../../api/contract/event-discover";
-import type { EventJoinAnswer, EventJoinCancelResult, EventJoinProfile, EventJoinProfileItemKey, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../api/contract/event-join";
+import type { EventJoinAnswer, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../api/contract/event-join";
 import type { EventOverviewResponse } from "../../../api/contract/event-overview";
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../api/contract/event-prep";
 import type { EventRecommendationDismissReason } from "../../../api/contract/event-recommendation-feedback";
@@ -21,7 +21,7 @@ import { eventAfterConfirmResultSchema, eventAfterResponseSchema } from "../../.
 import { eventAttendeeProfileSchema } from "../../../api/schema/event-attendee-profile";
 import { eventCodeResolveResponseSchema } from "../../../api/schema/event-code";
 import { eventDiscoverResponseSchema } from "../../../api/schema/event-discover";
-import { eventJoinCancelResultSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../api/schema/event-join";
+import { eventJoinCancelResultSchema, eventJoinCurrentSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../api/schema/event-join";
 import { eventOverviewResponseSchema } from "../../../api/schema/event-overview";
 import { eventPrepResponseSchema } from "../../../api/schema/event-prep";
 import { eventRecommendationDismissResultSchema } from "../../../api/schema/event-recommendation-feedback";
@@ -73,8 +73,9 @@ export function createJourneyApi(client: OrbitApiClient, read: Read) {
     confirmAfter: (eventId: string, items: EventAfterConfirmInput["items"]) => read(client.post<unknown>(`/api/events/${id(eventId)}/after/confirm`, { body: { idempotencyKey: newIdempotencyKey(), items } }), eventAfterConfirmResultSchema as ZodType<EventAfterConfirmResult>),
     dismiss: (eventId: string, reason: EventRecommendationDismissReason) => read(client.post<unknown>(`/api/recommendations/events/${id(eventId)}/dismiss`, { body: { idempotencyKey: newIdempotencyKey(), reason } }), eventRecommendationDismissResultSchema as ZodType<unknown>),
     follow: (organizerId: string, following: boolean) => read(following ? client.post<unknown>(`/api/organizers/${id(organizerId)}/follow`, { body: {} }) : client.delete<unknown>(`/api/organizers/${id(organizerId)}/follow`), organizerFollowResultSchema as ZodType<OrganizerFollowResult>),
+    joinCurrent: (eventId: string) => read(client.get<unknown>(`/api/events/${id(eventId)}/join/current`), eventJoinCurrentSchema as ZodType<EventJoinCurrent>),
     joinNext: (eventId: string, answers: readonly EventJoinAnswer[], more = false, focus?: EventJoinProfileItemKey) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/next`, { body: { answers, more, ...(focus ? { focus } : {}) } }), eventJoinStepSchema as ZodType<EventJoinStep>),
-    joinProfile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/profile`, { body: { answers, draft } }), eventJoinProfileSchema as ZodType<EventJoinProfile>),
+    joinProfile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean, edit = false) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/profile`, { body: { answers, draft, ...(edit ? { edit } : {}) } }), eventJoinProfileSchema as ZodType<EventJoinProfile>),
     // edit: changing a registration they already have (a cancelled or rejected one is refused instead of registered again).
     joinSubmit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string, edit = false) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/submit`, { body: { answers, idempotencyKey: newIdempotencyKey(), ...(edit ? { edit } : {}), ...(selfIntro ? { selfIntro } : {}) } }), eventJoinResultSchema as ZodType<EventJoinResult>),
     joinTentative: (eventId: string) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/tentative`, { body: { idempotencyKey: newIdempotencyKey() } }), eventJoinTentativeResultSchema as ZodType<EventJoinTentativeResult>),

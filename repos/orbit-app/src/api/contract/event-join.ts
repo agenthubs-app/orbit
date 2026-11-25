@@ -57,6 +57,23 @@ export interface EventJoinProfile {
 }
 
 /**
+ * `GET /api/events/[id]/join/current` — read before anything is asked: am I already registered, may I still change it, and what
+ * I answered last time. Registered / in review / waitlisted people start on the review with these answers (nothing is asked
+ * again, no AI); each answer carries its question so it can be changed alone, and a fresh `questionToken`.
+ */
+export interface EventJoinCurrent {
+  status: "none" | "registered" | "pending_review" | "waitlisted" | "rejected" | "cancelled";
+  /** Why it cannot be changed (same codes as `join/submit`); null = it can, or this is a new registration. */
+  blocked: "JOIN_CLOSED" | "JOIN_LOCKED" | "JOIN_REJECTED" | null;
+  /** Last answers, in asking order. `item` = which review item it fills (null = another question, shown as its own row). */
+  answers: readonly (EventJoinAnswer & { item: EventJoinProfileItemKey | null; question: EventJoinQuestion })[];
+  /** Must be answered before submitting: required organizer questions added since, questions whose options changed, a missing core item. */
+  ask: readonly (EventJoinQuestion & { item: EventJoinProfileItemKey | null })[];
+  /** The self-introduction confirmed for this event last time; kept unless it is changed. */
+  selfIntro: string | null;
+}
+
+/**
  * `POST /api/events/[id]/join/submit` — submitting again before registration closes updates the same registration (answers and
  * self-introduction; place, waitlist order and registration time stay). Body `edit: true` = changing an existing registration.
  * Refused with 409 and `context.reason`: JOIN_CLOSED (closed), JOIN_LOCKED (the organizer already decided), JOIN_REJECTED,

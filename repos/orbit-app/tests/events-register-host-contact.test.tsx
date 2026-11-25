@@ -17,7 +17,8 @@ const base = `/api/events/${encodeURIComponent(eventId)}`;
 const step = { done: true, index: 3, question: null, remainingMinutes: 0, total: 3 };
 const profile = { coverage: 80, items: [{ done: true, key: "company" }], review: true, selfIntro: { source: "profile", text: "做 B2B SaaS。" }, topics: ["SaaS"] };
 const result = (hostContact: unknown) => ({ eventId, hostContact, startsAt: overview.startsAt, status: "pending_review", submittedAt: "2026-11-14T03:00:00.000Z" });
-const responses = (hostContact: unknown) => ({ [`${base}/overview`]: overview, [`${base}/join/next`]: step, [`${base}/join/profile`]: profile, [`${base}/join/submit`]: result(hostContact) });
+const current = (status: string, patch: object = {}) => ({ answers: [], ask: [], blocked: null, selfIntro: null, status, ...patch });
+const responses = (hostContact: unknown) => ({ [`${base}/overview`]: overview, [`${base}/join/current`]: current("none"), [`${base}/join/next`]: step, [`${base}/join/profile`]: profile, [`${base}/join/submit`]: result(hostContact) });
 
 test("with a WeChat / LINE ID the contact opens right after applying; closing it leaves the same card on the done page", async (t) => {
   const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: responses({ lineId: "orbit_line", note: "加好友时请备注姓名", wechatId: "orbit_wx" }) });
@@ -128,77 +129,151 @@ test("without fromProfile (an older server) the list is as before, with the same
   assert.deepEqual(asked, { answers: [], more: true });
 });
 
-// 改资料（2026-11-26）：已报名 / 审核中 / 候补再次提交 = 更新同一份；改不了的先说明。
-const open = { ...overview, endsAt: "2099-12-10T21:30:00+09:00", registrationClosesAt: "2099-12-03T23:59:00+09:00", startsAt: "2099-12-10T19:00:00+09:00" };
-const registered = (status: string, patch: object = {}) => ({ ...open, registration: { ...overview.registration, status }, ...patch });
-const submits = (page: { evaluate<T>(fn: () => T): Promise<T> }) => page.evaluate(() => ((window as any).fixture.postBodies ?? []).filter((call: any) => call.path.endsWith("/join/submit")).map((call: any) => call.body));
+// 改资料（2026-11-26）：进页先读 join/current；已报名 / 审核中 / 候补从上次的回答和介绍开始，逐项改；改不了的先说明。
+const q = (field: string, prompt: string, options: string[], patch: object = {}) => ({ allowCustom: true, field, help: null, max: null, multi: true, options, prompt, questionToken: `token-${field}`, ...patch });
+const stored = (field: string, answer: string, item: string | null, question: object) => ({ answer, field, item, prompt: `旧：${field}`, question, questionToken: `token-${field}` });
+const target = q("targetAttendees", "想见谁？", ["投资人", "创业者", "客户"], { prefill: ["投资人"] });
+const diet = q("host:lib-diet", "有饮食限制吗", ["无", "素食"], { allowCustom: false, multi: false, prefill: ["无"], questionToken: "host:lib-diet" });
+const mine = (status: string, patch: object = {}) => current(status, { answers: [stored("host:lib-diet", "无", null, diet), stored("targetAttendees", "投资人", "target", target)], selfIntro: "第一版介绍。", ...patch });
+const editItems = [{ done: true, key: "company" }, { done: true, key: "target" }, { done: true, fromProfile: true, key: "offer" }, { done: false, key: "topics" }];
+const tentative = { endsAt: "2099-12-10T21:30:00+09:00", startsAt: "2099-12-10T19:00:00+09:00", title: overview.title };
+const editing = (status: string, patch: object = {}) => ({ ...responses({ lineId: "orbit_line", note: null, wechatId: null }), [`${base}/join/current`]: mine(status, patch), [`${base}/join/profile`]: { ...profile, items: editItems, selfIntro: { source: "profile", text: "资料里的介绍。" } },
+  [`${base}/join/submit`]: { ...result({ lineId: "orbit_line", note: null, wechatId: null }), status: status === "registered" ? "registered" : "pending_review", tentative } });
+type Harnessed = Awaited<ReturnType<typeof harness.open>>;
+const posts = (page: Harnessed, end: string) => page.evaluate((suffix) => ((window as any).fixture.postBodies ?? []).filter((call: any) => call.path.endsWith(suffix)).map((call: any) => call.body), end);
+const answer = (page: Harnessed, key: string, value: unknown) => page.evaluate(([path, body]) => { (window as any).fixture.responses[path as string] = body; }, [key, value] as const);
+const save = (page: Harnessed) => page.getByRole("button", { name: "保存修改", exact: true });
 
-test("someone already registered, in review or waitlisted changes the same registration: edit is sent and the done page says it was saved, without the calendar or the host contact popup", async (t) => {
-  const tentative = { endsAt: open.endsAt, startsAt: open.startsAt, title: open.title };
+test("someone registered, in review or waitlisted starts on the review with the last answers and introduction; nothing is asked or drafted again", async (t) => {
   for (const status of ["pending_review", "waitlisted", "registered"]) {
-    const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/overview`]: registered(status), [`${base}/join/profile`]: { ...profile, review: status !== "registered" },
-      [`${base}/join/submit`]: { ...result({ lineId: "orbit_line", note: null, wechatId: null }), status: status === "registered" ? "registered" : "pending_review", tentative } } });
-    await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
+    const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: editing(status) });
+    await save(page).waitFor();
+    await page.getByText("第一版介绍。", { exact: true }).waitFor();
+    assert.equal(await page.getByText("资料里的介绍。", { exact: true }).count(), 0);
+    assert.equal(await page.getByRole("button", { name: "按这个内容报名", exact: true }).count(), 0);
+    assert.equal(await page.getByRole("button", { name: "回到问题", exact: true }).count(), 0);
+    assert.equal(await page.getByText("AI 根据回答写好了草稿", { exact: true }).count(), 0);
+    assert.deepEqual(await posts(page, "/join/next"), []);
+    const given = [{ answer: "无", field: "host:lib-diet", prompt: "旧：host:lib-diet", questionToken: "host:lib-diet" }, { answer: "投资人", field: "targetAttendees", prompt: "旧：targetAttendees", questionToken: "token-targetAttendees" }].map((item) => ({ ...item, questionToken: `token-${item.field}` }));
+    assert.deepEqual(await posts(page, "/join/profile"), [{ answers: given, draft: false, edit: true }]);
+    await save(page).click();
     await page.getByText("修改已保存", { exact: true }).waitFor();
-    assert.equal((await submits(page))[0].edit, true, status);
-    assert.equal(await page.getByText("已收到报名", { exact: true }).count(), 0);
+    const [body] = await posts(page, "/join/submit");
+    assert.deepEqual([body.answers, body.edit, body.selfIntro], [given, true, "第一版介绍。"], "unchanged, sent back as it was");
     assert.equal(await page.getByTestId("events-join-calendar").count(), 0);
     assert.equal(await page.getByTestId("host-contact-sheet").count(), 0);
   }
-  for (const status of ["none", "cancelled"]) {
-    const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/overview`]: registered(status), [`${base}/join/submit`]: { ...result(null), tentative } } });
-    await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
-    await page.getByText("已收到报名", { exact: true }).waitFor();
-    assert.ok(!("edit" in (await submits(page))[0]), `${status} registers anew`);
-    assert.equal(await page.getByTestId("events-join-calendar").count(), 1);
-  }
 });
 
-test("what cannot be changed is said on arrival, with the way to the event page", async (t) => {
-  const past = { registrationClosesAt: "2026-10-03T23:59:00+09:00" };
-  for (const [event, review, text] of [
-    [registered("rejected"), true, "报名未通过，不能再次提交"],
-    [registered("registered", past), false, "报名已截止"],
-    [registered("pending_review", past), true, "报名已截止"],
-    [registered("registered"), true, "报名已通过审核，不能再修改"],
-  ] as const) {
-    const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/overview`]: event, [`${base}/join/profile`]: { ...profile, review } } });
+test("编辑 shows that one question with the last answer selected, replaces that answer and comes back; ‹ comes back without changing it", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: editing("pending_review") });
+  await page.getByRole("button", { name: "编辑 想见的人", exact: true }).click();
+  await page.getByText("想见谁？", { exact: true }).waitFor();
+  assert.equal(await page.getByTestId("events-join-next").isDisabled(), false, "the last answer is selected");
+  for (const text of ["旧：targetAttendees", "✓ 公司、职位、行业已从资料填好，只需回答几个问题"]) assert.equal(await page.getByText(text, { exact: true }).count(), 0, text);
+  assert.equal(await page.getByText("约剩", { exact: false }).count(), 0, "no progress");
+  await page.getByRole("button", { name: "返回", exact: true }).click();
+  await save(page).waitFor();
+  // A host question of its own: its prompt as a row.
+  assert.match(await page.getByTestId("events-join-edit-host:lib-diet").innerText(), /有饮食限制吗/u);
+  await page.getByRole("button", { name: "编辑 有饮食限制吗", exact: true }).click();
+  await page.getByRole("button", { name: "素食", exact: true }).click();
+  await page.getByTestId("events-join-next").click();
+  await save(page).waitFor();
+  await page.getByRole("button", { name: "编辑 想见的人", exact: true }).click();
+  await page.getByRole("button", { name: "创业者", exact: true }).click();
+  await page.getByPlaceholder("自由回答或补充").fill("高校");
+  await page.getByTestId("events-join-next").click();
+  // Opened again it starts from what was just answered, the written one included.
+  await page.getByRole("button", { name: "编辑 想见的人", exact: true }).click();
+  await page.getByRole("button", { name: "高校", exact: true }).waitFor();
+  await page.getByRole("button", { name: "下一步（已选3个）", exact: true }).waitFor();
+  await page.getByRole("button", { name: "返回", exact: true }).click();
+  await save(page).click();
+  await page.getByText("修改已保存", { exact: true }).waitFor();
+  const [body] = await posts(page, "/join/submit");
+  assert.deepEqual(body.answers.map((item: any) => [item.field, item.answer]), [["host:lib-diet", "素食"], ["targetAttendees", "投资人 · 创业者 · 高校"]]);
+  assert.deepEqual(await posts(page, "/join/next"), [], "no interview");
+  assert.ok((await posts(page, "/join/profile")).every((item: any) => item.edit === true && item.draft === false));
+});
+
+test("what the host added since is asked first and cannot be skipped; then the review", async (t) => {
+  const added = { ...q("host:new", "想喝什么？", ["茶", "咖啡"], { allowCustom: false, multi: false, questionToken: "host:new" }), item: null };
+  const free = { ...q("host:note", "想说的话", [], { allowCustom: true, questionToken: "host:note" }), item: null };
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: editing("registered", { ask: [added, free] }) });
+  await page.getByText("想喝什么？", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "返回", exact: true }).count(), 0);
+  assert.equal(await save(page).count(), 0);
+  await page.getByRole("button", { name: "茶", exact: true }).click();
+  await page.getByTestId("events-join-next").click();
+  await page.getByText("想说的话", { exact: true }).waitFor();
+  await page.getByPlaceholder("自由回答或补充").fill("请多关照");
+  await page.getByTestId("events-join-next").click();
+  await save(page).click();
+  await page.getByText("修改已保存", { exact: true }).waitFor();
+  const [body] = await posts(page, "/join/submit");
+  assert.deepEqual(body.answers.slice(-2).map((item: any) => [item.field, item.answer]), [["host:new", "茶"], ["host:note", "请多关照"]]);
+});
+
+test("in an edit, an item filled from the profile or missing still asks through next with its focus", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...editing("pending_review"), [`${base}/join/next`]: { ...step, done: false, index: 3, question: q("experienceHighlight", "想聊什么？", ["AI"]), total: 5 } } });
+  await page.getByRole("button", { name: "添加", exact: true }).click();
+  await page.getByText("想聊什么？", { exact: true }).waitFor();
+  assert.deepEqual((await posts(page, "/join/next")).map((body: any) => [body.focus, body.more]), [["topics", true]]);
+  await page.getByRole("button", { name: "AI", exact: true }).click();
+  await page.getByTestId("events-join-next").click();
+  await save(page).click();
+  await page.getByText("修改已保存", { exact: true }).waitFor();
+  const [body] = await posts(page, "/join/submit");
+  assert.deepEqual(body.answers.at(-1), { answer: "AI", field: "experienceHighlight", prompt: "想聊什么？", questionToken: "token-experienceHighlight" });
+});
+
+test("what cannot be changed is said on arrival, with the way to the event page; nothing is asked", async (t) => {
+  for (const [status, blocked, text] of [["rejected", "JOIN_REJECTED", "报名未通过，不能再次提交"], ["registered", "JOIN_CLOSED", "报名已截止"], ["registered", "JOIN_LOCKED", "报名已通过审核，不能再修改"]] as const) {
+    const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/join/current`]: current(status, { blocked }) } });
     const card = page.getByTestId("events-join-blocked");
     await card.getByText(text, { exact: true }).waitFor();
-    assert.equal(await page.getByRole("button", { name: "按这个内容报名", exact: true }).count(), 0);
+    assert.deepEqual(await posts(page, "/join/next"), []);
     await card.getByRole("button", { name: "去活动详情", exact: true }).click();
     assert.ok((await page.evaluate(() => JSON.stringify((window as any).fixture.navigation))).includes(`/events/${encodeURIComponent(eventId)}`));
   }
 });
 
-test("a refusal says why and the page follows what changed: after a cancellation the next one registers anew", async (t) => {
-  const page = await harness.open(t, { screen: "register", toasts: true, params: { id: eventId }, responses: { ...responses(null), [`${base}/overview`]: registered("pending_review"), [`${base}/join/submit`]: { __code: "CONFLICT", __reason: "JOIN_CANCELLED", __status: 409 } } });
-  const apply = page.getByRole("button", { name: "按这个内容报名", exact: true });
-  await apply.waitFor();
-  await page.evaluate(([key, value]) => { (window as any).fixture.responses[key as string] = value; }, [`${base}/overview`, registered("cancelled")] as const);
-  await apply.click();
-  await page.getByText("报名已取消，请重新报名", { exact: true }).waitFor();
-  await page.evaluate(([key, value]) => { (window as any).fixture.responses[key as string] = value; }, [`${base}/join/submit`, result(null)] as const);
-  await page.waitForTimeout(200);
-  await apply.click();
-  await page.getByText("已收到报名", { exact: true }).waitFor();
-  assert.deepEqual((await submits(page)).map((body: any) => body.edit), [true, undefined]);
-  const reasons = [["JOIN_CLOSED", "报名已截止"], ["JOIN_LOCKED", "报名已通过审核，不能再修改"], ["JOIN_REJECTED", "报名未通过，不能再次提交"], [undefined, "没能报名"]] as const;
-  for (const [reason, text] of reasons) {
-    const refused = await harness.open(t, { screen: "register", toasts: true, params: { id: eventId }, responses: { ...responses(null), [`${base}/overview`]: registered("none"), [`${base}/join/submit`]: { __code: "CONFLICT", __reason: reason, __status: 409 } } });
-    await refused.getByRole("button", { name: "按这个内容报名", exact: true }).click();
-    await refused.getByText(text, { exact: true }).waitFor();
-  }
+test("nothing is asked or sent until it is known whether this is new; when that cannot be read there is a retry", async (t) => {
+  const slow = await harness.open(t, { screen: "register", params: { id: eventId }, slowPrefix: `${base}/join/current`, slowMs: 900, responses: responses(null) });
+  await slow.waitForTimeout(300);
+  assert.deepEqual([await posts(slow, "/join/next"), await slow.getByTestId("events-join-apply").count()], [[], 0]);
+  await slow.getByRole("button", { name: "按这个内容报名", exact: true }).click();
+  await slow.getByText("已收到报名", { exact: true }).waitFor();
+  assert.ok(!("edit" in (await posts(slow, "/join/submit"))[0]));
+  const failed = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/overview`]: { ...overview, endsAt: tentative.endsAt, registrationClosesAt: tentative.startsAt, startsAt: tentative.startsAt }, [`${base}/join/current`]: { __status: 503 } } });
+  await failed.getByTestId("events-join-error").waitFor();
+  assert.deepEqual(await posts(failed, "/join/next"), []);
+  await answer(failed, `${base}/join/current`, current("cancelled"));
+  await failed.getByRole("button", { name: "再试一次", exact: true }).click();
+  await failed.getByRole("button", { name: "按这个内容报名", exact: true }).waitFor();
 });
 
-test("sent before the event overview arrived: whether it changes a registration is still known", async (t) => {
-  for (const [status, edit, title] of [["registered", true, "修改已保存"], ["none", undefined, "已收到报名"]] as const) {
-    const page = await harness.open(t, { screen: "register", params: { id: eventId }, slowPrefix: `${base}/overview`, slowMs: 2500, responses: { ...responses(null), [`${base}/overview`]: registered(status), [`${base}/join/profile`]: { ...profile, review: false }, [`${base}/join/submit`]: { ...result(null), status: "registered" } } });
-    await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
-    await page.getByText(title, { exact: true }).waitFor();
-    assert.equal((await submits(page))[0].edit, edit, status);
-    // A new registration reads as 「registered」 from now on; the page keeps what was sent.
-    await page.waitForTimeout(400);
-    assert.equal(await page.getByText(title, { exact: true }).count(), 1);
+test("a refusal on sending: closed, decided or turned down takes the place of the page; cancelled starts over as a new registration", async (t) => {
+  for (const [reason, text] of [["JOIN_CLOSED", "报名已截止"], ["JOIN_LOCKED", "报名已通过审核，不能再修改"], ["JOIN_REJECTED", "报名未通过，不能再次提交"]] as const) {
+    const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...editing("pending_review"), [`${base}/join/submit`]: { __code: "CONFLICT", __reason: reason, __status: 409 } } });
+    await save(page).click();
+    await page.getByTestId("events-join-blocked").getByText(text, { exact: true }).waitFor();
   }
+  const other = await harness.open(t, { screen: "register", toasts: true, params: { id: eventId }, responses: { ...editing("pending_review"), [`${base}/join/submit`]: { __code: "CONFLICT", __status: 409 } } });
+  await save(other).click();
+  await other.getByText("没能报名", { exact: true }).waitFor();
+  const page = await harness.open(t, { screen: "register", toasts: true, params: { id: eventId }, responses: { ...editing("pending_review"), [`${base}/join/submit`]: { __code: "CONFLICT", __reason: "JOIN_CANCELLED", __status: 409 } } });
+  await save(page).waitFor();
+  await answer(page, `${base}/join/current`, current("cancelled"));
+  await answer(page, `${base}/join/profile`, profile);
+  await save(page).click();
+  await page.getByText("报名已取消，请重新报名", { exact: true }).waitFor();
+  const apply = page.getByRole("button", { name: "按这个内容报名", exact: true });
+  await apply.waitFor();
+  await answer(page, `${base}/join/submit`, result(null));
+  await apply.click();
+  await page.getByText("已收到报名", { exact: true }).waitFor();
+  const bodies = await posts(page, "/join/submit");
+  assert.deepEqual(bodies.map((body: any) => [body.edit, body.answers.length]), [[true, 2], [undefined, 0]]);
 });
