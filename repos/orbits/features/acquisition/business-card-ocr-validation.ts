@@ -279,7 +279,7 @@ export function parseBusinessCardStructuredExtraction(
     // 行业是推断值：缺失、分类外或一二级不匹配只清空行业，绝不让整张名片失败。
     ...sanitizeIndustryPair(value.primaryIndustryId, value.secondaryIndustryId),
     // W0045：职级与地区同样是推断值，规则同行业：不合法清成 null，不让整张名片失败。
-    ...sanitizeCardEnrichment(value.seniorityLevel, value.regionCountryCode, value.regionCity),
+    ...sanitizeCardEnrichment(value.seniorityLevel, value.regionCountryCode, value.regionCity, value.title),
   };
   // Sprint 0150：otherText 是补充信息，格式不对只丢掉这一栏，不让整张名片失败。
   const otherText = filterBusinessCardOtherText(stringArray(value.otherText) ?? [], extraction);

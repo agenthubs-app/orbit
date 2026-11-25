@@ -91,3 +91,15 @@ test("seek suggestions can use the goal still in the form", async () => {
   assert.equal(result.success, true);
   assert.equal(goal, "資金調達：シリーズA");
 });
+
+test("an advisor title shows no level: no 一般職員, no 「チーム・マネジメント」; a manager keeps both", () => {
+  const output = (seniorityLevel: string) => JSON.stringify({ offering: [], primaryIndustryId: null, secondaryIndustryId: null, seniorityLevel, topics: ["チーム・マネジメント", "日本市場"] });
+  for (const role of ["顧問", "高级顾问", "Senior Advisor", "相談役"]) {
+    const parsed = parseAutofillInference(output("individual_contributor"), { ...input, role })!;
+    assert.deepEqual([parsed.seniorityLevel, parsed.topics], [null, ["日本市場"]], role);
+  }
+  const manager = parseAutofillInference(output("manager"), { ...input, role: "課長" })!;
+  assert.deepEqual([manager.seniorityLevel, manager.topics], ["manager", ["チーム・マネジメント", "日本市場"]]);
+  assert.equal(parseAutofillInference(output("individual_contributor"), { ...input, role: "営業担当" })!.seniorityLevel, "individual_contributor");
+  assert.equal(parseAutofillInference(output("c_level"), { ...input, role: "CEO・顧問" })!.seniorityLevel, "c_level");
+});

@@ -186,3 +186,10 @@ test("the cross-client extraction schema keeps v2 JSON unchanged and clears inva
   const invalid = businessCardStructuredExtractionSchema.parse({ ...v2, seniorityLevel: "boss", regionCountryCode: "jp", regionCity: "Osaka" });
   assert.deepEqual([invalid.seniorityLevel, invalid.regionCountryCode, invalid.regionCity], [null, null, null]);
 });
+
+test("a card whose title is only an advisor does not become individual_contributor", async () => {
+  const { sanitizeCardEnrichment } = await import("../../features/acquisition/business-card-enrichment-prompt");
+  assert.equal(sanitizeCardEnrichment("individual_contributor", null, null, "顧問").seniorityLevel, null);
+  assert.equal(sanitizeCardEnrichment("individual_contributor", null, null, "営業").seniorityLevel, "individual_contributor");
+  assert.equal(sanitizeCardEnrichment("individual_contributor", null, null).seniorityLevel, "individual_contributor");
+});

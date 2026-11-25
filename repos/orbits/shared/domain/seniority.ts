@@ -15,6 +15,14 @@ import {
 export { SENIORITY_GROUPS, SENIORITY_LEVELS, SENIORITY_LEVEL_LABELS, isSeniorityLevelValue, seniorityGroup };
 export type { SeniorityGroup, SeniorityLevelValue };
 
+/** 顧問・顾问・advisor：职称看不出层级（可能是高管，也可能是外聘）。 */
+const ADVISOR_TITLE = /顧問|顾问|相談役|\badvis[eo]r\b/iu;
+
+/** 推断出的职级与名片职称核对：只凭「顾问」类职称落到「一般职员」没有依据 → 留空让本人选。 */
+export function seniorityFromTitle(level: SeniorityLevelValue | null, title: unknown): SeniorityLevelValue | null {
+  return level === "individual_contributor" && typeof title === "string" && ADVISOR_TITLE.test(title) ? null : level;
+}
+
 export const SENIORITY_GROUP_LABELS: Readonly<Record<SeniorityGroup, Record<OrbitLanguage, string>>> = {
   decision: { zh: "决策层", en: "Decision maker", ja: "意思決定層" },
   manager: { zh: "管理层", en: "Management", ja: "管理職" },

@@ -25395,6 +25395,31 @@
                   "optional": true,
                   "kind": "text",
                   "type": "string | null"
+                },
+                "contactPoints": {
+                  "optional": true,
+                  "kind": "array",
+                  "readonly": true,
+                  "element": {
+                    "kind": "object",
+                    "members": {
+                      "type": {
+                        "optional": false,
+                        "kind": "text",
+                        "type": "string"
+                      },
+                      "value": {
+                        "optional": false,
+                        "kind": "text",
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "website": {
+                  "optional": true,
+                  "kind": "text",
+                  "type": "string | null"
                 }
               }
             }

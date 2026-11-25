@@ -150,6 +150,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const [draftSaved, setDraftSaved] = useState(false);
   const draftBaselineRef = useRef<string | null>(null);
   const handlesRef = useRef<ContactHandlesContract>({});
+  const cardHandlesRef = useRef<ContactHandlesContract>({});
   const progressRef = useRef<ProfileOnboardingProgressContract | null>(null);
   const initMutationRef = useRef<string | null>(null);
   const pendingConfirmRef = useRef<ProfileOnboardingProgressCommandContract | null>(null);
@@ -330,7 +331,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   }
 
   function basicsFields(): ProfileFields {
-    const handles: ContactHandlesContract = { ...handlesRef.current };
+    // 名片上的微信号、LINE、网址只补空的，不改本人已有的值。
+    const handles: ContactHandlesContract = { ...cardHandlesRef.current, ...Object.fromEntries(Object.entries(handlesRef.current).filter(([, value]) => value)) };
     const email = basic.email.trim();
     const phone = basic.phone.trim();
     if (email) handles.email = email; else delete handles.email;
@@ -462,6 +464,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       const card = await scanOwnBusinessCard(file);
       const printed = ([["name", card.name], ["company", card.company], ["title", card.title], ["email", card.email], ["phone", card.phone], ["homeMarket", card.region ? regionDisplayName({ city: card.region.city ?? null, countryCode: card.region.countryCode }, language) : ""]] as const).filter(([, value]) => value);
       if (!printed.length) throw new Error("empty card");
+      cardHandlesRef.current = card.handles;
       const filled: BasicDraft = { ...basicRef.current, ...Object.fromEntries(printed), ...(card.industry ?? {}), ...(card.seniorityLevel ? { seniorityLevel: card.seniorityLevel } : {}) };
       const nextOrigins: Origins = { ...origins };
       for (const [key] of printed) nextOrigins[key] = "card";

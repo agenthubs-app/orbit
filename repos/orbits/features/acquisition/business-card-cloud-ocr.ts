@@ -181,7 +181,7 @@ export function normalizeBusinessCardExtraction(
     certifications: textList(extraction.certifications),
     detectedLanguages: textList(extraction.detectedLanguages),
     ...sanitizeIndustryPair(extraction.primaryIndustryId, extraction.secondaryIndustryId),
-    ...sanitizeCardEnrichment(extraction.seniorityLevel, extraction.regionCountryCode, extraction.regionCity),
+    ...sanitizeCardEnrichment(extraction.seniorityLevel, extraction.regionCountryCode, extraction.regionCity, extraction.title),
   };
   const otherText = filterBusinessCardOtherText(extraction.otherText ?? [], normalized);
 

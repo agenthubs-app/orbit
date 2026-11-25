@@ -120,7 +120,17 @@ export interface CardAutofill {
   industry: { primaryIndustryId: IndustryIdCode; secondaryIndustryId: SecondaryIndustryIdCode } | null;
   region: { countryCode: string; city?: string } | null;
   seniorityLevel: SeniorityLevelCode | null;
+  /** 名片上印的微信号、LINE、网址；第 ① 步没有输入框，只补进资料里还空着的 handles。 */
+  handles: { lineId?: string; website?: string; wechatId?: string };
   title: string;
+}
+
+function printedHandles(read: OwnCardScanContract["ocr"]["structuredExtraction"]): CardAutofill["handles"] {
+  const point = (type: string) => read?.contactPoints?.find(item => item.type === type && item.value.trim())?.value.trim();
+  const wechatId = point("wechat");
+  const lineId = point("line");
+  const website = read?.website?.trim() || point("website");
+  return { ...(lineId ? { lineId } : {}), ...(website ? { website } : {}), ...(wechatId ? { wechatId } : {}) };
 }
 
 /** 名片识别只产出待复核草稿，不建联系人、不存图片（live-business-card-scan-service）。 */
@@ -139,6 +149,7 @@ export async function scanOwnBusinessCard(file: File): Promise<CardAutofill> {
   return {
     company: draft.organization?.trim() ?? "",
     email: draft.email?.trim() ?? "",
+    handles: printedHandles(read),
     industry: primaryIndustryId && secondaryIndustryId ? { primaryIndustryId, secondaryIndustryId } : null,
     name: draft.displayName?.trim() ?? "",
     phone: draft.phone?.trim() ?? "",
