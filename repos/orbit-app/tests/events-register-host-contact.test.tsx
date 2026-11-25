@@ -277,3 +277,13 @@ test("a refusal on sending: closed, decided or turned down takes the place of th
   const bodies = await posts(page, "/join/submit");
   assert.deepEqual(bodies.map((body: any) => [body.edit, body.answers.length]), [[true, 2], [undefined, 0]]);
 });
+
+test("eleven last answers (five of the host's and six of the interview) are all sent back", async (t) => {
+  const fields = [...Array.from({ length: 5 }, (_, index) => `host:q${index}`), ...Array.from({ length: 6 }, (_, index) => `field${index}`)];
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: editing("pending_review", { answers: fields.map((field) => stored(field, "A", null, q(field, `题 ${field}`, ["A", "B"], { prefill: ["A"] }))) }) });
+  await page.getByRole("button", { name: "编辑 题 field5", exact: true }).waitFor();
+  await save(page).click();
+  await page.getByText("修改已保存", { exact: true }).waitFor();
+  const [body] = await posts(page, "/join/submit");
+  assert.deepEqual(body.answers.map((item: any) => item.field), fields);
+});
