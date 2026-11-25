@@ -145,8 +145,8 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
     setView("loading");
     const [result, progress] = await Promise.all([readOnboardingProfile(client), readProfileOnboardingProgress(client)]);
     if (!mounted.current) return;
-    if (progress.ok) flowRef.current = progress.progress;
     if (!result.ok || !progress.ok) { setView("loadError"); return; }
+    flowRef.current = progress.progress;
     // A complete profile whose setup was put off (「稍后」) is set up: do not bring the 继续设置 card back on every sign-in.
     if (progress.progress?.finishedAt || (result.detail.onboarding?.status === "complete" && (!progress.progress || progress.progress.deferred))) {
       leaveOnboarding(routerRef.current, destinationRef.current); return;
@@ -209,30 +209,18 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
     return true;
   }
 
-  async function defer() {
-    const flow = await ensureFlow();
-    return flow && await updateProfileOnboardingProgress(client, {
-      action: "defer", expectedRevision: flow.revision, mutationId: `ios:onboarding:defer:${Crypto.randomUUID()}`,
-    });
-  }
-
   async function leave() {
     if (saving) return;
     setSaving(true);
-    const result = await defer();
+    const flow = await ensureFlow();
+    const result = flow && await updateProfileOnboardingProgress(client, {
+      action: "defer", expectedRevision: flow.revision, mutationId: `ios:onboarding:defer:${Crypto.randomUUID()}`,
+    });
     if (result && result.ok && result.progress) {
       flowRef.current = result.progress;
       leaveOnboarding(router, destination);
     } else setNotice({ kind: "failed" });
     if (mounted.current) setSaving(false);
-  }
-
-  // The load failed, so the deferral may fail too: it is sent, never waited for, and the next sign-in asks again if it is lost.
-  function leaveAfterLoadError() {
-    if (saving) return;
-    setSaving(true);
-    void defer().catch(() => undefined);
-    leaveOnboarding(router, destination);
   }
 
   async function finish() {
@@ -402,7 +390,7 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
       <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
         <View style={styles.center}>
           <Banner actionLabel={t("onboarding.retry")} kind="failed" message={t("onboarding.loadFailed")} onAction={() => void load()} />
-          <SecondaryButton grow={false} label={t("onboarding.later")} onPress={leaveAfterLoadError} />
+          <SecondaryButton grow={false} label={t("onboarding.later")} onPress={() => void load()} />
         </View>
       </SafeAreaView>
     );
