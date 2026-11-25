@@ -44,6 +44,11 @@ function ProgressBar({ share }: { share: number }) {
 }
 
 export function RegisterPage() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  return <RegisterFlow key={String(id ?? "")} />;
+}
+
+function RegisterFlow() {
   const { styles, colors } = useStyles();
   const { t, language } = useJourneyT();
   const router = useRouter();
@@ -68,6 +73,9 @@ export function RegisterPage() {
   const [editingIntro, setEditingIntro] = useState(false);
   const [why, setWhy] = useState(false);
   const freeRef = useRef<TextInput | null>(null);
+  // The API speaks the screen language: changing it asks the current question again in the new one and keeps the answers given.
+  const given = useRef({ answers, submitted: false });
+  given.current = { answers, submitted: Boolean(result) };
   const [loadFailed, setLoadFailed] = useState(false);
   // What the profile already says is selected from the start (2026-11-25, as Web); it can be unselected like any option.
   const showStep = useCallback((next: EventJoinStep) => { setStep(next); setSelected([...(next.question?.prefill ?? [])]); }, []);
@@ -75,15 +83,17 @@ export function RegisterPage() {
 
   useEffect(() => {
     let live = true;
+    const before = given.current;
+    if (before.submitted) return;
     void api.overview(eventId).then((res) => { if (live && res.ok) setEvent(res.data); });
     const replay = addDesignMock("open-path") && params.replay ? params.replay.split("|").map((group) => group.split(",").filter(Boolean)) : null;
     void (async () => {
       setLoadFailed(false);
-      const first = await api.joinNext(eventId, []);
+      const first = await api.joinNext(eventId, before.answers);
       if (!live) return;
       if (!first.ok) { setLoadFailed(true); return; }
       let current = first.data;
-      let given: EventJoinAnswer[] = [];
+      let answered: EventJoinAnswer[] = [...before.answers];
       let picked: string[] | null = null;
       // 开发回放：依次回答，最后一组按 `to` 决定只选中（select）还是也提交。
       if (replay) {
@@ -92,20 +102,21 @@ export function RegisterPage() {
           const question = current.question;
           if (!question) break;
           if (index === replay.length - 1 && !submitAll) { picked = group; break; }
-          given = [...given, { answer: group.join(" · "), field: question.field, prompt: question.prompt, questionToken: question.questionToken }];
-          const next = await api.joinNext(eventId, given);
+          answered = [...answered, { answer: group.join(" · "), field: question.field, prompt: question.prompt, questionToken: question.questionToken }];
+          const next = await api.joinNext(eventId, answered);
           if (!next.ok) break;
           current = next.data;
         }
       }
-      const shown = await api.joinProfile(eventId, given, Boolean(current.done));
-      if (!live) return;
-      setAnswers(given);
+      const shown = await api.joinProfile(eventId, answered, Boolean(current.done));
+      // Answered on meanwhile: this answer is about an earlier question.
+      if (!live || given.current.answers !== before.answers) return;
+      setAnswers(answered);
       showStep(current);
       if (picked) setSelected(picked);
-      if (shown.ok) { setProfile(shown.data); setIntro(shown.data.selfIntro?.text ?? null); }
+      if (shown.ok) { setProfile(shown.data); setIntro((current) => current ?? shown.data.selfIntro?.text ?? null); }
       if (replay && params.to === "done" && current.done) {
-        const res = await api.joinSubmit(eventId, given);
+        const res = await api.joinSubmit(eventId, answered);
         if (live && res.ok) { setResult(res.data); setContactOpen(shouldOpenHostContact(res.data.hostContact)); }
       }
     })();
@@ -361,7 +372,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   opt: { backgroundColor: colors.surface, borderColor: "transparent", borderRadius: radius.pill, borderWidth: 1.5, paddingHorizontal: 13, paddingVertical: 8 },
   optOn: { backgroundColor: colors.accentSoft, borderColor: colors.plum500 },
   optText: { color: colors.ink2, fontSize: 15, fontWeight: "700", lineHeight: 23 },
-  composerIn: { color: colors.ink, flex: 1, fontSize: 15, minWidth: 0, padding: 0, paddingLeft: 6 },
+  composerIn: { color: colors.ink, flex: 1, fontSize: 15, height: 34, minWidth: 0, padding: 0, paddingLeft: 6 },
   lbtn: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 34, justifyContent: "center", width: 34 },
   btnSm: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 32, justifyContent: "center", paddingHorizontal: 12 },
   btnSmText: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
