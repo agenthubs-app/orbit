@@ -54,12 +54,14 @@ export function LoginAssessCard({ t, language }: { t: JourneyT; language: OrbitL
 }
 
 /** 公开活动页（未登录落地）：照旧「公開イベント · {month}月」= 今月 · 東京（DISCOVER-RULES 只改登录后的探す）。 */
-const PUBLIC_LIST_QUERY = { ...DEFAULT_DISCOVER_QUERY, areas: ["tokyo"] as const, period: "this_month" as const };
+// 用到时才算：PublicEvents 与 DiscoverTab 在循环引用里（外壳的路由骨架 → PublicEvents → DiscoverTab → 外壳），模块求值时
+// DEFAULT_DISCOVER_QUERY 可能还没初始化——生产构建里活动详情页偶发「Cannot access … before initialization」。
+const publicListQuery = () => ({ ...DEFAULT_DISCOVER_QUERY, areas: ["tokyo"] as const, period: "this_month" as const });
 
 function ListInner({ language, nowIso, frame = false }: { language: OrbitLanguage; nowIso: string; frame?: boolean }) {
   const t = useMemo(() => journeyTranslator(language), [language]);
   const [data, setData] = useState<EventDiscoverResponse | null>(null);
-  useEffect(() => { if (!frame) void journeyApi.discover(PUBLIC_LIST_QUERY).then((result) => setData(result.ok ? result.data : null)); }, [frame]);
+  useEffect(() => { if (!frame) void journeyApi.discover(publicListQuery()).then((result) => setData(result.ok ? result.data : null)); }, [frame]);
   const month = new Date(Date.parse(nowIso) + 9 * 3_600_000).getUTCMonth() + 1;
   return (
     <div className={p.page}>
