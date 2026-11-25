@@ -1913,6 +1913,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["eventsJourney.flowReviewSub", "label"],
   ["eventsJourney.flowResult", "label"],
   ["eventsJourney.flowResultSub", "label"],
+  ["eventsJourney.flowConfirmed", "label"],
   ["eventsJourney.flowDay", "label"],
   ["eventsJourney.flowDaySub", "label"],
   ["eventsJourney.prefilledNote", "label"],

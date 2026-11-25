@@ -116,7 +116,7 @@ function RegisterFlow() {
       if (picked) setSelected(picked);
       if (shown.ok) { setProfile(shown.data); setIntro((current) => current ?? shown.data.selfIntro?.text ?? null); }
       if (replay && params.to === "done" && current.done) {
-        const res = await api.joinSubmit(eventId, answered);
+        const res = await api.joinSubmit(eventId, answered, (shown.ok ? shown.data.selfIntro?.text ?? "" : "").trim().slice(0, 400) || undefined);
         if (live && res.ok) { setResult(res.data); setContactOpen(shouldOpenHostContact(res.data.hostContact)); }
       }
     })();
@@ -158,8 +158,10 @@ function RegisterFlow() {
   };
   const apply = async () => {
     setBusy(true);
-    const edited = intro && intro !== profile?.selfIntro?.text ? intro : undefined;
-    const res = await api.joinSubmit(eventId, answers, edited);
+    // The introduction on the review page goes with the registration, edited or not: the event's other attendees see it, and
+    // one that is not sent is cleared on the server.
+    const confirmed = (intro ?? profile?.selfIntro?.text ?? "").trim().slice(0, 400);
+    const res = await api.joinSubmit(eventId, answers, confirmed || undefined);
     setBusy(false);
     if (res.ok) { setResult(res.data); setContactOpen(shouldOpenHostContact(res.data.hostContact)); announceEventChanged(eventId); } else toast.error(t("submitFailed"));
   };
@@ -195,12 +197,17 @@ function RegisterFlow() {
             <View style={[styles.chip, { backgroundColor: pending ? colors.macLav : colors.macTeal }]}><UiText style={[styles.chipText, { color: pending ? colors.macLavInk : colors.macTealInk }]}>{pending ? t("statusReview") : t("statusConfirmed")}</UiText></View>
           </View>
           <View style={styles.steps4}>
-            {[
+            {(pending ? [
               { lines: [t("flowApply"), monthDaySlash(result.submittedAt)], state: "done" },
-              { lines: [t("flowReview"), pending && reviewUntil ? t("reviewBy", { date: monthDaySlash(reviewUntil) }) : null], state: pending ? "now" : "done" },
-              { lines: [t("flowResult")], state: pending ? "" : "done" },
-              { lines: [t("flowDay"), monthDaySlash(result.startsAt)], state: pending ? "" : "now" },
-            ].map((item) => (
+              { lines: [t("flowReview"), reviewUntil ? t("reviewBy", { date: monthDaySlash(reviewUntil) }) : null], state: "now" },
+              { lines: [t("flowResult")], state: "" },
+              { lines: [t("flowDay"), monthDaySlash(result.startsAt)], state: "" },
+            ] : [
+              // First come, first served: confirmed on applying, so no review and no result to wait for.
+              { lines: [t("flowApply"), monthDaySlash(result.submittedAt)], state: "done" },
+              { lines: [t("flowConfirmed")], state: "now" },
+              { lines: [t("flowDay"), monthDaySlash(result.startsAt)], state: "" },
+            ]).map((item) => (
               <View key={item.lines[0]} style={[styles.stepCell, item.state === "done" ? { borderTopColor: colors.plum500 } : item.state === "now" ? { borderTopColor: colors.plum700 } : null]}>
                 <UiText style={[styles.stepText, item.state === "done" ? { color: colors.ink2 } : item.state === "now" ? { color: colors.ink, fontWeight: "800" } : null]}>{item.lines.filter(Boolean).join("\n")}</UiText>
               </View>
@@ -276,8 +283,8 @@ function RegisterFlow() {
         </View>
         <View style={[styles.card, styles.gap, styles.flat]}>
           <UiText style={[styles.lbl, { marginBottom: 8 }]}>{t("visibilityTitle")}</UiText>
-          <View style={[styles.row, { gap: 8 }]}><View style={[styles.chip, { backgroundColor: colors.macTeal }]}><UiText style={[styles.chipText, { color: colors.macTealInk }]}>{t("visAll")}</UiText></View><UiText style={styles.sub}>{t("visAllFields")}</UiText></View>
-          <View style={[styles.row, { gap: 8, marginTop: 6 }]}><View style={styles.chip}><UiText style={styles.chipText}>{t("visOrg")}</UiText></View><UiText style={styles.sub}>{t("visOrgFields")}</UiText></View>
+          <View style={[styles.row, { gap: 8 }]}><View style={[styles.chip, { backgroundColor: colors.macTeal }]}><UiText style={[styles.chipText, { color: colors.macTealInk }]}>{t("visAll")}</UiText></View><UiText style={[styles.sub, styles.fill]}>{t("visAllFields")}</UiText></View>
+          <View style={[styles.row, { gap: 8, marginTop: 6 }]}><View style={styles.chip}><UiText style={styles.chipText}>{t("visOrg")}</UiText></View><UiText style={[styles.sub, styles.fill]}>{t("visOrgFields")}</UiText></View>
         </View>
         <UiPressable accessibilityRole="button" accessibilityLabel={t("applyNow")} disabled={busy} onPress={() => void apply()} style={styles.block48} testID="events-join-apply"><UiText style={styles.primaryText}>{t("applyNow")}</UiText></UiPressable>
         {profile?.editableUntil ? <UiText style={[styles.lbl, { marginTop: 8, textAlign: "center" }]}>{t("editableUntil", { date: monthDaySlash(profile.editableUntil) })}</UiText> : null}
@@ -345,6 +352,7 @@ function RegisterFlow() {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   row: { alignItems: "center", flexDirection: "row", gap: 10 },
   between: { justifyContent: "space-between" },
+  fill: { flex: 1 },
   gap: { marginTop: 14 },
   card: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 18 },
   flat: { backgroundColor: colors.surface2 },
