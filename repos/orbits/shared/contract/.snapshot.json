@@ -34,6 +34,86 @@
       "kind": "alias",
       "type": "AccountLanguagePreferenceSaveReceiptContract"
     },
+    "account-register.ts::AccountRegisterConsent": {
+      "kind": "object",
+      "members": {
+        "accepted": {
+          "optional": false,
+          "kind": "text",
+          "type": "true"
+        },
+        "termsVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "privacyVersion": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "account-register.ts::AccountRegisterRequest": {
+      "kind": "object",
+      "members": {
+        "email": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "password": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "displayName": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "consent": {
+          "optional": false,
+          "kind": "text",
+          "type": "AccountRegisterConsent"
+        },
+        "client": {
+          "optional": false,
+          "kind": "text",
+          "type": "SignupFunnelClient"
+        },
+        "language": {
+          "optional": true,
+          "kind": "text",
+          "type": "'zh' | 'en' | 'ja'"
+        },
+        "visitorId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "source": {
+          "optional": true,
+          "kind": "text",
+          "type": "SignupFunnelSource"
+        }
+      }
+    },
+    "account-register.ts::AccountRegisterEmailVerification": {
+      "kind": "object",
+      "members": {
+        "email": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sending": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
     "account.ts::AccountExportScope": {
       "kind": "enum",
       "values": [
@@ -719,7 +799,7 @@
         "type": {
           "optional": false,
           "kind": "text",
-          "type": "'contact' | 'event' | 'memo' | 'todo' | 'schedule'"
+          "type": "'event' | 'contact' | 'memo' | 'todo' | 'schedule'"
         },
         "id": {
           "optional": false,
@@ -2482,7 +2562,7 @@
               "kind": {
                 "optional": false,
                 "kind": "text",
-                "type": "'contact' | 'event' | 'todo'"
+                "type": "'event' | 'contact' | 'todo'"
               },
               "id": {
                 "optional": false,
@@ -2691,7 +2771,7 @@
         "domain": {
           "optional": false,
           "kind": "text",
-          "type": "'contact' | 'event' | 'todo'"
+          "type": "'event' | 'contact' | 'todo'"
         },
         "window": {
           "optional": true,
@@ -2822,7 +2902,7 @@
         "domain": {
           "optional": true,
           "kind": "text",
-          "type": "'contact' | 'event' | 'todo' | null | undefined"
+          "type": "'event' | 'contact' | 'todo' | null | undefined"
         },
         "summary": {
           "optional": true,
@@ -7716,6 +7796,80 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        }
+      }
+    },
+    "email-verification.ts::EmailVerificationStatusContract": {
+      "kind": "object",
+      "members": {
+        "email": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "verified": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "email-verification.ts::EmailVerificationSendInput": {
+      "kind": "object",
+      "members": {
+        "language": {
+          "optional": true,
+          "kind": "text",
+          "type": "'zh' | 'en' | 'ja'"
+        }
+      }
+    },
+    "email-verification.ts::EmailVerificationSendResult": {
+      "kind": "object",
+      "members": {
+        "email": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "verified": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "sentAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "email-verification.ts::EmailVerificationSendFailureReason": {
+      "kind": "enum",
+      "values": [
+        "'EMAIL_SEND_DAILY_LIMIT'",
+        "'EMAIL_SEND_FAILED'",
+        "'EMAIL_SEND_TOO_SOON'",
+        "'EMAIL_SEND_UNAVAILABLE'"
+      ]
+    },
+    "email-verification.ts::EmailVerificationConfirmInput": {
+      "kind": "object",
+      "members": {
+        "token": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "email-verification.ts::EmailVerificationConfirmResult": {
+      "kind": "object",
+      "members": {
+        "outcome": {
+          "optional": false,
+          "kind": "text",
+          "type": "'expired' | 'verified' | 'already'"
         }
       }
     },
@@ -16863,6 +17017,9 @@
         "AccountExportScope",
         "AccountLanguagePreferenceSaveContract",
         "AccountLanguagePreferenceSaveReceiptContract",
+        "AccountRegisterConsent",
+        "AccountRegisterEmailVerification",
+        "AccountRegisterRequest",
         "AgentAnswerContract",
         "AgentCancelResultContract",
         "AgentPartResult",
@@ -17003,6 +17160,12 @@
         "DomainManifest",
         "DomainManifestEntry",
         "DomainPage",
+        "EmailVerificationConfirmInput",
+        "EmailVerificationConfirmResult",
+        "EmailVerificationSendFailureReason",
+        "EmailVerificationSendInput",
+        "EmailVerificationSendResult",
+        "EmailVerificationStatusContract",
         "EventAfterConfirmInput",
         "EventAfterConfirmResult",
         "EventAfterHighlight",
@@ -17573,6 +17736,10 @@
         "SecretaryPreviewDTO",
         "SecretaryPreviewItemDTO",
         "SeniorityLevelCode",
+        "SignupFunnelClient",
+        "SignupFunnelEventName",
+        "SignupFunnelOpenedInput",
+        "SignupFunnelSource",
         "SourceReferenceContract",
         "SourceTypeCode",
         "StoredAiSessionOriginContract",
@@ -19018,7 +19185,7 @@
         "entityType": {
           "optional": true,
           "kind": "text",
-          "type": "'contact' | 'event'"
+          "type": "'event' | 'contact'"
         },
         "eventId": {
           "optional": true,
@@ -20208,7 +20375,7 @@
         "kind": {
           "optional": false,
           "kind": "text",
-          "type": "'contact' | 'event' | 'note' | 'schedule' | 'task'"
+          "type": "'event' | 'contact' | 'note' | 'schedule' | 'task'"
         },
         "id": {
           "optional": false,
@@ -24964,7 +25131,7 @@
         "kind": {
           "optional": false,
           "kind": "text",
-          "type": "'contact' | 'event'"
+          "type": "'event' | 'contact'"
         },
         "contactId": {
           "optional": false,
@@ -27597,6 +27764,58 @@
         }
       }
     },
+    "signup-funnel.ts::SignupFunnelClient": {
+      "kind": "enum",
+      "values": [
+        "'app'",
+        "'web'"
+      ]
+    },
+    "signup-funnel.ts::SignupFunnelSource": {
+      "kind": "enum",
+      "values": [
+        "'direct'",
+        "'event'",
+        "'invite'"
+      ]
+    },
+    "signup-funnel.ts::SignupFunnelEventName": {
+      "kind": "enum",
+      "values": [
+        "'account_created'",
+        "'email_verified'",
+        "'onboarding_finished'",
+        "'onboarding_step1'",
+        "'onboarding_step2'",
+        "'onboarding_step3'",
+        "'register_opened'"
+      ]
+    },
+    "signup-funnel.ts::SignupFunnelOpenedInput": {
+      "kind": "object",
+      "members": {
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "'register_opened'"
+        },
+        "client": {
+          "optional": false,
+          "kind": "text",
+          "type": "SignupFunnelClient"
+        },
+        "source": {
+          "optional": false,
+          "kind": "text",
+          "type": "SignupFunnelSource"
+        },
+        "visitorId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
     "source.ts::SourceTypeCode": {
       "kind": "enum",
       "values": [
@@ -28155,7 +28374,7 @@
         "source": {
           "optional": false,
           "kind": "text",
-          "type": "'manual' | 'contact' | 'event' | 'inbox' | 'ai_confirmed'"
+          "type": "'manual' | 'event' | 'contact' | 'inbox' | 'ai_confirmed'"
         },
         "relatedContactId": {
           "optional": true,
@@ -29720,7 +29939,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'partial' | 'not-downloaded' | 'failure' | 'verified'"
+          "type": "'partial' | 'verified' | 'not-downloaded' | 'failure'"
         }
       }
     }

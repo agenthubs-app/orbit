@@ -611,3 +611,7 @@ export type { ProfileCardCompletenessContract, ProfilePublicFieldsContract } fro
 // contact-reach R40 可约时间（GET/PUT /api/scheduling/availability；计算在 shared/compute/meeting-slots.ts）
 export type { SchedulingAvailabilityContract, SchedulingAvailabilitySettings, SchedulingAvailabilityUpdateInput, SchedulingBufferMinutes, SchedulingDurationMinutes, SchedulingMinimumNotice, SchedulingTimeRange, SchedulingTimeZoneMode, SchedulingWeekday } from "./scheduling-availability";
 export type { OwnCardScanContract, ProfileAutofillInferenceContract, ProfileAutofillInferenceRequestContract } from "./profile-autofill";
+// 邮箱验证、注册同意、注册漏斗（2026-11-25）
+export type { EmailVerificationConfirmInput, EmailVerificationConfirmResult, EmailVerificationSendFailureReason, EmailVerificationSendInput, EmailVerificationSendResult, EmailVerificationStatusContract } from "./email-verification";
+export type { AccountRegisterConsent, AccountRegisterEmailVerification, AccountRegisterRequest } from "./account-register";
+export type { SignupFunnelClient, SignupFunnelEventName, SignupFunnelOpenedInput, SignupFunnelSource } from "./signup-funnel";
