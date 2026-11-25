@@ -169,7 +169,7 @@ function TodayCard({ guide, guideLoading, controls }: { guide: GuideProgress | n
     {resource.kind === "ready" && view ? <>
       {(showGuide ? view.rows.filter((row) => row.chip?.label === t("question")) : view.rows).map(({ key, ...row }) => <Row key={key} {...row} />)}
       {!showGuide && !view.rows.length ? <p className={styles.empty}>{t("empty")}</p> : null}
-      {Object.values(resource.data.sources).some((source) => source === "unavailable" || source === "not_implemented") ? <p className={styles.empty}>{t("unavailable")}</p> : null}
+      {Object.values(resource.data.sources).includes("unavailable") ? <p className={styles.empty}>{t("unavailable")}</p> : null}
       {!showGuide && view.total > view.rows.length ? <Foot href="/app/tasks?tab=todo" label={t("more", { count: view.total - view.rows.length })} /> : null}
     </> : resource.kind === "error" ? <Failure retry={resource.retry} /> : null}
     {schedule.kind === "error" ? <Failure retry={schedule.retry} /> : null}
