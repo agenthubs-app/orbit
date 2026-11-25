@@ -485,10 +485,9 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   // ── Introduction: drafted once on entry when there is none; 「別の案」 counts only on success ──
   async function generateIntro(kind: "auto" | "retry" | "regenerate", target: IntroTone = tone) {
     if (generating.current || (kind === "regenerate" && regenerations >= INTRO_REGENERATE_LIMIT)) return;
-    const hadDraft = Boolean(bio.trim());
-    const previous = introStatus;
+    const previous = { status: introStatus, tone, hadDraft: Boolean(bio.trim() || headline.trim()) };
     generating.current = true;
-    setIntroStatus("generating"); setMessage(null); setEditing(false); setTone(target);
+    setIntroStatus("generating"); setMessage(null); setTone(target);
     try {
       if (kind === "regenerate" || (kind === "retry" && !introActionKeyRef.current)) introActionKeyRef.current = `ios:onboarding:intro:${Crypto.randomUUID()}`;
       introActionKeyRef.current ??= `ios:onboarding:intro:first:${detail?.profile?.updatedAt ?? "new"}`;
@@ -497,16 +496,16 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
       if (result.ok) {
         introActionKeyRef.current = null;
         introDrafts.current[target] = { bio: result.bio, headline: result.headline };
-        setBio(result.bio); setHeadline(result.headline); setIntroStatus("ready");
+        setBio(result.bio); setHeadline(result.headline); setIntroStatus("ready"); setEditing(false);
         if (kind === "regenerate") setRegenerations(count => count + 1);
         return;
       }
       if (result.kind !== "offline") introActionKeyRef.current = null;
-      if (result.kind === "limit") { setIntroStatus("limit"); return; }
-      if (kind === "regenerate" && hadDraft) {
-        setIntroStatus(previous === "error" ? "ready" : previous);
-        setMessage(t("onboarding.v3.introFailed"));
-      } else setIntroStatus("error");
+      if (kind === "regenerate" && previous.hadDraft) {
+        // The earlier draft and its tone stay, and the attempt is not counted.
+        setIntroStatus(previous.status === "error" ? "ready" : previous.status); setTone(previous.tone);
+        setMessage(t("onboarding.v3.regenerateFailed"));
+      } else setIntroStatus(result.kind === "limit" ? "limit" : "error");
     } finally {
       generating.current = false;
     }
@@ -519,11 +518,12 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     // Entering the step triggers the draft; later edits never do.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
+  /** As on Web: a tone already drafted (edits included) comes back as it was; a new one is drafted and counts as one attempt. */
   function onTone(target: IntroTone) {
-    if (target === tone) return;
+    if (target === tone || introStatus === "generating") return;
+    introDrafts.current[tone] = { bio, headline };
     const known = introDrafts.current[target];
-    if (bio.trim()) introDrafts.current[tone] = { bio, headline };
-    if (known) { setTone(target); setBio(known.bio); setHeadline(known.headline); setEditing(false); return; }
+    if (known) { setTone(target); setBio(known.bio); setHeadline(known.headline); return; }
     void generateIntro("regenerate", target);
   }
 
@@ -581,8 +581,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
             onGoalsLayout={event => onFieldLayout("goals", event)} onGroup={(group, values) => { (group === "offer" ? setOffer : group === "seek" ? setSeek : setTopics)(values); if (group !== "seek") unmark(group); }} revision={fillRevision} seek={seek} seekSuggestions={goals.length ? seekSuggestions : []} topics={topics} />
         ) : (
           <IntroStep bio={bio} bioCount={bioCount} disabled={saving} editing={editing} error={errors.has("intro") ? fieldError("intro") : null} goals={goals.length} input={bioInput} message={message} offer={offer.length} onBio={setBio} onCardLayout={event => onFieldLayout("intro", event)}
-            onEdit={() => setEditing(open => !open)} onRegenerate={() => void generateIntro(introStatus === "error" ? "retry" : "regenerate")} onTone={onTone} regenerationsLeft={INTRO_REGENERATE_LIMIT - regenerations} status={introStatus} tone={tone}
-            tones={locale.language === "en" ? [{ key: "native", label: t("onboarding.v3.toneEnglish") }] : [{ key: "native", label: t("onboarding.v3.toneNative") }, { key: "en", label: t("onboarding.v3.toneEnglish") }]} topics={topics.length} />
+            onEdit={() => setEditing(open => !open)} onRegenerate={() => void generateIntro(introStatus === "error" ? "retry" : "regenerate")} onTone={onTone} regenerationsLeft={INTRO_REGENERATE_LIMIT - regenerations} status={introStatus} tone={tone} topics={topics.length} />
         )}
       </OnboardingFrame>
       <BottomSheet accessibilityLabel={pickerTitle} header={<UiText accessibilityRole="header" style={styles.sheetTitle}>{pickerTitle}</UiText>} onClose={() => setPicker(null)} visible={picker !== null}>

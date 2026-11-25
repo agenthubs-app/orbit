@@ -14,8 +14,8 @@ export const isOnboardingBoard = (value: unknown): value is Board => BOARDS.incl
 
 const nothing = () => undefined;
 const CARD: Marks = { name: "card", company: "card", title: "card", email: "card", phone: "card", primaryIndustryId: "ai", secondaryIndustryId: "ai" };
-/** A5 is A4 scrolled until the second heading sits 250 under the top of the page (`data-off`): 456 on the board. */
-const A5_SCROLL = 456;
+/** A5 is A4 scrolled until the second heading sits 250 under the top of the page (`data-off`): 534.09375 on the board at UX-1 sizes. */
+const A5_SCROLL = 534.09375;
 
 export function OnboardingDesignBoard({ board }: { board: Board }) {
   const { t } = useOrbitLocale();
@@ -52,7 +52,7 @@ export function OnboardingDesignBoard({ board }: { board: Board }) {
           rest={{ offer: samples.offer.rest, seek: error ? samples.seek.none : samples.seek.rest, topics: samples.topics.rest }} seek={error ? [] : samples.seek.values} seekSuggestions={error ? [] : samples.seek.ai} topics={samples.topics.values} />
       ) : (
         <IntroStep bio={samples.intro} bioCount={{ count: samples.intro.length, limit: 200, over: false }} disabled={false} editing={false} error={null} goals={2} input={bio} message={null} offer={3} onBio={nothing} onCardLayout={nothing} onEdit={nothing} onRegenerate={nothing} onTone={nothing}
-          regenerationsLeft={2} status="ready" tone="native" tones={[{ key: "native", label: t("onboarding.v3.toneNative") }, { key: "soft", label: t("onboarding.v3.toneSoft") }, { key: "en", label: t("onboarding.v3.toneEnglish") }]} topics={3} />
+          regenerationsLeft={2} status="ready" tone="native" topics={3} />
       )}
     </OnboardingFrame>
   );

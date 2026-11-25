@@ -252,7 +252,8 @@ export function SheetRow({ disabled = false, label, on, onPress }: { disabled?: 
 }
 
 export type IntroStatus = "idle" | "generating" | "ready" | "error" | "limit";
-export type IntroTone = "native" | "soft" | "en";
+/** Same two as Web: the interface language's business tone, and English. */
+export type IntroTone = "native" | "en";
 
 export interface IntroStepProps {
   bio: string;
@@ -272,17 +273,17 @@ export interface IntroStepProps {
   regenerationsLeft: number;
   status: IntroStatus;
   tone: IntroTone;
-  tones: readonly { key: IntroTone; label: string }[];
   topics: number;
 }
 
-export function IntroStep({ bio, bioCount, disabled, editing, error, goals, input, message, offer, onBio, onCardLayout, onEdit, onRegenerate, onTone, regenerationsLeft, status, tone, tones, topics }: IntroStepProps) {
+export function IntroStep({ bio, bioCount, disabled, editing, error, goals, input, message, offer, onBio, onCardLayout, onEdit, onRegenerate, onTone, regenerationsLeft, status, tone, topics }: IntroStepProps) {
   const { styles } = useOnboardingStyles();
   const { t } = useOrbitLocale();
   const [why, setWhy] = useState(false);
   const generating = status === "generating";
   const failed = status === "error" || status === "limit";
   const writing = editing || failed;
+  const tones = [{ key: "native", label: t("onboarding.v3.toneNative") }, { key: "en", label: t("onboarding.v3.toneEnglish") }] as const;
   return (
     <>
       <UiText accessibilityRole="header" style={styles.h1}>{generating ? t("onboarding.v3.introGenerating") : t("onboarding.v3.introTitle")}</UiText>

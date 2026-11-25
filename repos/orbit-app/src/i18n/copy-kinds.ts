@@ -2856,6 +2856,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["onboarding.v3.introWhy", "sentence"],
   ["onboarding.v3.introFailed", "sentence"],
   ["onboarding.v3.introLimit", "sentence"],
+  ["onboarding.v3.regenerateFailed", "sentence"],
   ["onboarding.v3.saveFailed", "sentence"],
   ["onboarding.v3.offline", "sentence"],
   ["onboarding.v3.conflict", "sentence"],

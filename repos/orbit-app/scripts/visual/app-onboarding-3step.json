@@ -1,7 +1,7 @@
 {
- "_note": "新用户引导三步版 App A1–A7（onboarding-3step-proposal.html ④）。实现侧 = /profile/onboarding?design=A1…A7（开发包、已登录、界面语言日语），Metro 带 EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=open-path,onboarding,no-keyboard。在 repos/orbits 下跑：node scripts/visual/compare-redesign-app.mjs --suite ../orbit-app/scripts/visual/app-onboarding-3step.json --simulator <udid> --out <dir>。A5 的设计侧靠脚本滚动（scrollTop 456），门禁脚本搬动画框会把它复位：用一份把 scrollTop 换成等值负 margin 的副本（另起端口）跑 A5。",
+ "_note": "新用户引导三步版 App A1–A7（onboarding-3step-proposal.html ④）。画板字号是 kit 原值，实现按 UX-1（src/design/type-scale.ts）放大，所以设计侧用换算副本：node scripts/visual/onboarding-ux1-board.mjs <输出目录> 生成（字号按同一张表换、行高同比；A5 的 scrollTop 换成等值负 margin，门禁搬动画框会复位滚动；第③屏两段语气按已知偏离去掉「やわらかめ」），在输出目录起 python3 -m http.server 3321。实现侧 = /profile/onboarding?design=A1…A7（开发包、已登录、界面日语），Metro 带 EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=open-path,onboarding,no-keyboard。在 repos/orbits 下跑：node scripts/visual/compare-redesign-app.mjs --suite ../orbit-app/scripts/visual/app-onboarding-3step.json --simulator <udid> --out <dir>",
  "defaults": {
-  "design": "onboarding-3step-proposal.html",
+  "design": "http://localhost:3321/redesign-2026-10/onboarding-3step-proposal.html",
   "grid": 30,
   "wait": 12000,
   "themes": [

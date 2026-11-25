@@ -191,7 +191,7 @@ export function mobileAuthReturnHref(
 
 /**
  * Event and invite links are usually opened by people without an account: signed out they land on signup.
- * Every other private page goes to login. Same rule as Web.
+ * Every other private page goes to login. (Web has public event pages instead: their register buttons open signup, its proxy stays on login.)
  */
 export function isSignupFirstRoute(
   pathname: string,

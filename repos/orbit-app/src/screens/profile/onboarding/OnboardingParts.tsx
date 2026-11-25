@@ -1,6 +1,7 @@
 /**
  * Layout pieces of the three-step onboarding (docs/designs/redesign-2026-10/onboarding-3step-proposal.html ④ App
- * A1–A7). Numbers are the board's CSS values, copied as they are; every font size goes through `type()`.
+ * A1–A7). Spacing, colours and structure are the board's CSS values; every font size is the board's put through the
+ * App type scale (UX-1) by `type()`, line heights in proportion.
  */
 import { useState, type ReactNode, type Ref, type RefObject } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type LayoutChangeEvent, type TextInputProps, type TextStyle } from "react-native";
@@ -13,12 +14,12 @@ import Svg, { Defs, Rect, Stop } from "../../../components/ui/svg";
 import { faceFor } from "../../../components/ui/Text";
 import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
 import { shadows } from "../../../design/tokens";
+import { appTypeSize } from "../../../design/type-scale";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import type { GoalTone } from "../../../view-models/profile-onboarding";
 import { LinearGradient } from "../../plan/plan-svg";
 
-/** The one place a board font size becomes an App font size (today: as drawn). */
-const size = (board: number): number => board;
+const size = appTypeSize;
 export function type(board: number, weight: TextStyle["fontWeight"] = "400", lineHeight = 1.5, letterSpacingEm = 0): TextStyle {
   const fontSize = size(board);
   return { fontSize, fontWeight: weight, lineHeight: Math.round(fontSize * lineHeight * 100) / 100, ...(letterSpacingEm ? { letterSpacing: Math.round(fontSize * letterSpacingEm * 100) / 100 } : {}) };
@@ -27,12 +28,12 @@ export function type(board: number, weight: TextStyle["fontWeight"] = "400", lin
 // Measured on the gate (see ui/cjk-lift): in the same line box iOS sets these sizes 1pt lower than the browser, and
 // draws an emoji about 1.18× wider.
 const LIFT = Platform.OS === "ios" ? { transform: [{ translateY: -1 }] } : {};
-// The board's 1.5px borders lay out and draw as 1 (measured: .tog 36.75 = 18.75 + 16 + 2).
+// The board's 1.5px borders lay out and draw as 1 (measured: .tog = line + 16 + 2).
 const LINE = 1;
 /** Kana / kanji take the Japanese face; an all-Latin value (a phone number, an address) stays in the system font, as drawn. */
 const CJK = /[\u3040-\u30ff\u3400-\u9fff]/u;
 const HALF_LIFT = Platform.OS === "ios" ? { transform: [{ translateY: -0.5 }] } : {};
-const emoji = (board: number): TextStyle => ({ ...type(board), ...(Platform.OS === "ios" ? { fontSize: Math.round(board * 8.5) / 10 } : {}) });
+const emoji = (board: number): TextStyle => ({ ...type(board), ...(Platform.OS === "ios" ? { fontSize: Math.round(appTypeSize(board) * 8.5) / 10 } : {}) });
 
 /** .phone .scroll (0 18) under the status band; the top bar scrolls with the page, the foot stays at the bottom. */
 export function OnboardingFrame({ children, footer, scrollRef }: { children: ReactNode; footer: ReactNode; scrollRef?: RefObject<ScrollView | null> }) {
@@ -260,8 +261,8 @@ export const useOnboardingStyles = createThemedStyles(colors => StyleSheet.creat
 
   h1: { color: colors.ink, marginTop: 14, ...type(24, "900", 1.35, -0.01) },
   h1Second: { color: colors.ink, marginTop: 22, marginBottom: 4, ...type(19, "900", 1.35, -0.01), ...LIFT },
-  sub: { color: colors.ink2, marginTop: 4, marginBottom: 13.4, ...type(12.5), ...LIFT },
-  subSecond: { color: colors.ink2, marginBottom: 13.5, ...type(12.5), ...LIFT },
+  sub: { color: colors.ink2, marginTop: 4, marginBottom: 14, ...type(12.5), ...LIFT },
+  subSecond: { color: colors.ink2, marginBottom: 14, ...type(12.5), ...LIFT },
 
   scan: { borderWidth: 2, borderStyle: "dashed", borderColor: colors.plum300, borderRadius: 22, paddingVertical: 18, paddingHorizontal: 16, marginTop: 12, gap: 10, alignItems: "center", overflow: "hidden" },
   // color-mix(accent-soft 55%, transparent)
@@ -271,7 +272,7 @@ export const useOnboardingStyles = createThemedStyles(colors => StyleSheet.creat
   scanDone: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, backgroundColor: colors.macLav },
   scanDoneText: { flex: 1, minWidth: 0 },
   // The board's <b> sits in a 14/1.5 line box.
-  scanDoneTitle: { color: colors.ink, ...type(13.5, "700"), lineHeight: 21, ...LIFT },
+  scanDoneTitle: { color: colors.ink, ...type(13.5, "700"), lineHeight: size(14) * 1.5, ...LIFT },
 
   btn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 40, paddingHorizontal: 16, borderRadius: 999, alignSelf: "center" },
   btnSm: { height: 32, paddingHorizontal: 12 },
@@ -331,7 +332,7 @@ export const useOnboardingStyles = createThemedStyles(colors => StyleSheet.creat
   groupTitle: { color: colors.ink, ...type(13, "800"), ...LIFT },
   groupChip: { marginLeft: 6 },
   togs: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
-  tog: { flexDirection: "row", alignItems: "center", gap: 5, minHeight: 36.75, paddingVertical: 7.5, paddingHorizontal: 13, borderRadius: 999, borderWidth: LINE, borderColor: "transparent", backgroundColor: colors.surface },
+  tog: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 8, paddingHorizontal: 13, borderRadius: 999, borderWidth: LINE, borderColor: "transparent", backgroundColor: colors.surface },
   togOn: { backgroundColor: colors.accentSoft, borderColor: colors.plum500 },
   togAi: { backgroundColor: "transparent", borderStyle: "dashed", borderColor: colors.plum300 },
   togAdd: { backgroundColor: "transparent", borderStyle: "dashed", borderColor: colors.ink4 },

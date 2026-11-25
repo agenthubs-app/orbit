@@ -412,7 +412,7 @@ test("intro: drafted once on entry; failure can be retried or written by hand; �
   await page.getByText("还剩1次", { exact: true }).waitFor();
   await set(page, { ai: "fail" });
   await page.getByRole("button", { name: "换一版" }).click();
-  await page.getByText("这次没写出来。可以重试，或直接在下面写几句。", { exact: true }).waitFor();
+  await page.getByText("这次没换成功，保留了上一版。", { exact: true }).waitFor();
   await page.getByText("第3版：做 AI 会议纪要的产品负责人。", { exact: true }).waitFor();
   await page.getByText("还剩1次", { exact: true }).waitFor();
   await page.getByRole("button", { name: "编辑", exact: true }).click();
@@ -428,6 +428,33 @@ test("intro: drafted once on entry; failure can be retried or written by hand; �
   assert.equal(aiCalls, 4);
   assert.deepEqual(requests.filter((r: any) => r.path === "/api/profile/intro-draft").map((r: any) => r.body.language), Array(4).fill("zh"));
   assert.equal(profile.bio, "自己写的介绍");
+});
+
+test("intro tones are Web's two: a new one is drafted and counted, one already drafted comes back with its edits, a failure keeps the old", async t => {
+  const page = await open(t, { ...withProfile({ ...complete, ...blank, relationshipGoal: "获取客户" }), ...flowAt(3) });
+  await page.getByText("第1版：做 AI 会议纪要的产品负责人。", { exact: true }).waitFor();
+  assert.deepEqual(await page.getByRole("radio").evaluateAll(nodes => nodes.map(node => node.getAttribute("aria-label"))), ["商务", "English"]);
+  await page.getByRole("button", { name: "编辑", exact: true }).click();
+  await page.getByRole("textbox", { name: "自我介绍" }).fill("改过的商务版");
+  await page.getByRole("button", { name: "完成编辑", exact: true }).click();
+  await set(page, { ai: "fail" });
+  await page.getByRole("radio", { name: "English" }).click();
+  await page.getByText("这次没换成功，保留了上一版。", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("radio", { name: "商务" }).getAttribute("aria-checked"), "true", "back on the tone that has a draft");
+  await page.getByText("改过的商务版", { exact: true }).waitFor();
+  await page.getByText("还剩2次", { exact: true }).waitFor();
+  await set(page, { ai: "ok" });
+  await page.getByRole("radio", { name: "English" }).click();
+  await page.getByText("第3版：做 AI 会议纪要的产品负责人。", { exact: true }).waitFor();
+  await page.getByText("还剩1次", { exact: true }).waitFor();
+  await page.getByRole("radio", { name: "商务" }).click();
+  await page.getByText("改过的商务版", { exact: true }).waitFor();
+  await page.getByRole("radio", { name: "English" }).click();
+  await page.getByText("第3版：做 AI 会议纪要的产品负责人。", { exact: true }).waitFor();
+  await page.getByText("还剩1次", { exact: true }).waitFor();
+  const { aiCalls, requests } = await fx(page);
+  assert.equal(aiCalls, 3, "switching between drafted tones asks nothing");
+  assert.deepEqual(requests.filter((r: any) => r.path === "/api/profile/intro-draft").map((r: any) => r.body.language), ["zh", "en", "en"]);
 });
 
 test("every visible word is translated; the fixed notice and the button speak each language", async t => {
