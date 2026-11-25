@@ -1,7 +1,5 @@
 export const publicInfo = {
-  "publicInfo.signupLegalPrefix": "登録すると、以下に同意したものとみなされます",
   "publicInfo.signupTerms": "利用規約",
-  "publicInfo.signupLegalAnd": "と",
   "publicInfo.signupPrivacy": "プライバシーポリシー",
   "publicInfo.page": "公開ページ",
   "publicInfo.helpNav": "ヘルプ",

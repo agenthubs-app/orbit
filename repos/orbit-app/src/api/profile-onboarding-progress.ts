@@ -30,7 +30,7 @@ export async function updateProfileOnboardingProgress(
   client: OrbitApiClient,
   command: ProfileOnboardingProgressCommandContract,
 ): Promise<ProgressResult> {
-  const response = await client.post<unknown>(PROFILE_ONBOARDING_PROGRESS_PATH, { body: command });
+  const response = await client.post<unknown>(PROFILE_ONBOARDING_PROGRESS_PATH, { body: command, headers: { "x-orbit-platform": "app" } });
   if (!response.success || response.status < 200 || response.status >= 300) {
     return { ok: false, kind: !response.success && response.error.code === "ORBIT_APP_NETWORK_ERROR" ? "offline" : "failed" };
   }

@@ -20,7 +20,7 @@ const state = window.fixture = { mode: "login", width: 390, fontScale: 1, next: 
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
 async function action(name, payload) { state.requests.push({ name, payload }); if (state.hold) await new Promise(resolve => state.release = resolve); return state.cancel ? { success: false, message: "已取消 Google 登录。" } : state.failure ? { success: false, message: "登录未完成，请重试。", error: { message: "登录未完成，请重试。" } } : { success: true, status: 202, data: { message: "申请已受理，请查看邮箱。" } }; }
-export const useOrbitAuthSession = () => { useFixture(); return { ready: state.ready, signedIn: false, user: null, cookieHeader: "", googleEnabled: state.googleEnabled, signIn: payload => action("signIn", payload), register: payload => action("register", payload), startGoogleSignIn: payload => action("google", payload) }; };
+export const useOrbitAuthSession = () => { useFixture(); return { ready: state.ready, signedIn: false, user: null, cookieHeader: "", googleEnabled: state.googleEnabled, signIn: payload => action("signIn", payload), register: payload => action("register", payload).then(result => result.success && state.mailSentTo ? { ...result, mailSentTo: state.mailSentTo } : result), startGoogleSignIn: payload => action("google", payload) }; };
 const client = { post: (path, options) => action(path, options.body) };
 export const useOrbitApiClient = () => client;
 export const useOrbitApiBaseUrl = () => ({ baseUrl: "https://orbit.test", ready: true });
@@ -52,12 +52,22 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   await page.route("**/*", r => r.abort());
   await page.setContent('<style>@font-face{font-family:OrbitTestIonicons;src:url(data:font/ttf;base64,' + iconFont + ')}html,body,#root{margin:0;height:100%}#root{display:flex;flex-direction:column}</style><div id="root"></div>');
   await page.evaluate(patch => { (window as any).initialFixture = patch; }, patch);
+  await page.evaluate(() => { const real = window.fetch; (window as any).funnel = []; window.fetch = (input, init) => { if (String(input).endsWith("/api/auth/signup-funnel")) (window as any).funnel.push(init!.body); return real(input, init); }; });
   await page.addScriptTag({ content: script }); await page.getByRole("heading").first().waitFor(); await page.evaluate(() => document.fonts.ready);
   return page;
 }
 async function requests(page: Page) { return page.evaluate(() => (window as any).fixture.requests); }
 async function navigation(page: Page) { return page.evaluate(() => (window as any).fixture.navigation); }
 async function shot(page: Page, name: string) { if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-ink-signal-auth-${name}.png`, fullPage: true }); }
+/** 同意勾选：注册必须先勾。 */
+async function agree(page: Page) { await page.getByRole("checkbox", { name: "同意使用条款和隐私政策", exact: true }).click(); }
+/** The visitor id of the sign-up funnel is random per device: checked to be there, then left out. */
+async function payloads(page: Page) {
+  return page.evaluate(() => (window as any).fixture.requests.map((request: any) => {
+    const { visitorId, signup, ...payload } = request.payload;
+    return { ...request, payload: { ...payload, ...(signup ? { signup: { source: signup.source } } : {}) } };
+  }));
+}
 async function fill(page: Page) { await page.getByRole("textbox", { name: "邮箱", exact: true }).fill("cheng.chuan@example.test"); await page.locator("input[type=password]").fill("fixture8"); }
 
 test("login presents labelled credentials, recovery and reachable actions", async t => {
@@ -94,8 +104,10 @@ for (const canGoBack of [false, true]) test(`back uses ${canGoBack ? "history" :
 
 for (const mode of ["login", "signup"] as const) test(`${mode} keeps real payload, busy/failure draft and safe success navigation`, async t => {
   const page = await open(t, { mode, hold: true, failure: true }); await fill(page);
+  if (mode === "signup") await agree(page);
   const primary = page.getByRole("button", { name: mode === "login" ? "登录" : "创建账号", exact: true });
   await primary.click(); assert.equal(await primary.isDisabled(), true);
+  await page.waitForFunction(() => Boolean((window as any).fixture.release));
   assert.equal(await page.getByRole("button", { name: "使用 Google 登录", exact: true }).isDisabled(), true);
   await page.evaluate(() => { (window as any).fixture.update({ hold: false }); (window as any).fixture.release(); });
   await page.getByRole("alert").waitFor();
@@ -104,9 +116,9 @@ for (const mode of ["login", "signup"] as const) test(`${mode} keeps real payloa
   assert.deepEqual(await navigation(page), []); await shot(page, `${mode}-error`);
   await page.getByRole("button", { name: "显示密码", exact: true }).click(); assert.equal(await page.locator("input[type=password]").count(), 0);
   await page.evaluate(() => (window as any).fixture.update({ failure: false })); await primary.click();
-  assert.deepEqual((await requests(page))[0], { name: mode === "login" ? "signIn" : "register", payload: { email: "cheng.chuan@example.test", password: "fixture8", ...(mode === "login" ? { redirectTo: "/profile" } : {}) } });
+  assert.deepEqual((await payloads(page))[0], { name: mode === "login" ? "signIn" : "register", payload: { email: "cheng.chuan@example.test", password: "fixture8", ...(mode === "login" ? { redirectTo: "/profile" } : { language: "zh", source: "direct" }) } });
   // Login now reads /api/auth/password/status first (aborted here → never blocks sign-in), so the move is async.
-  if (mode === "login") await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
+  await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
   assert.deepEqual(await navigation(page), ["/profile/onboarding?next=%2Fprofile"]);
 });
 
@@ -144,6 +156,7 @@ test("Google login does not read the password status", async t => {
   const page = await open(t);
   const seen = await answerPasswordStatus(page, { mustChangePassword: true });
   await page.getByRole("button", { name: "使用 Google 登录", exact: true }).click();
+  await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
   assert.deepEqual(await navigation(page), ["/profile/onboarding?next=%2Fprofile"]);
   assert.deepEqual(seen, []);
 });
@@ -161,14 +174,16 @@ test("a pasted login password loses surrounding spaces; typed spaces stay", asyn
 test("Google login enters profile completion while preserving the safe return target", async t => {
   const page = await open(t, { next: "/events/event-1?tab=details" });
   await page.getByRole("button", { name: "使用 Google 登录", exact: true }).click();
-  assert.deepEqual(await requests(page), [{ name: "google", payload: { redirectTo: "/events/event-1?tab=details" } }]);
+  await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
+  assert.deepEqual(await payloads(page), [{ name: "google", payload: { redirectTo: "/events/event-1?tab=details", signup: { source: "event" } } }]);
   assert.deepEqual(await navigation(page), ["/profile/onboarding?next=%2Fevents%2Fevent-1%3Ftab%3Ddetails"]);
 });
 
 test("Google signup enters profile completion instead of returning an authenticated user to login", async t => {
   const page = await open(t, { mode: "signup", next: "/events/event-1?tab=details" });
   await page.getByRole("button", { name: "使用 Google 登录", exact: true }).click();
-  assert.deepEqual(await requests(page), [{ name: "google", payload: { redirectTo: "/events/event-1?tab=details" } }]);
+  await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
+  assert.deepEqual(await payloads(page), [{ name: "google", payload: { redirectTo: "/events/event-1?tab=details", signup: { source: "event" } } }]);
   assert.deepEqual(await navigation(page), ["/profile/onboarding?next=%2Fevents%2Fevent-1%3Ftab%3Ddetails"]);
 });
 
@@ -195,6 +210,7 @@ test("signup always offers sign-in for an existing account, keeping next and the
 
 test("signup shows each problem on its own field, sends nothing, and clears it on typing", async t => {
   const page = await open(t, { mode: "signup" });
+  await agree(page);
   const email = page.getByRole("textbox", { name: "邮箱", exact: true }), password = page.locator("input[type=password]");
   const submit = page.getByRole("button", { name: "创建账号", exact: true });
   await email.fill("name@host"); await password.fill("short7!"); await submit.click();
@@ -212,7 +228,8 @@ test("signup shows each problem on its own field, sends nothing, and clears it o
   assert.deepEqual(await page.getByRole("alert").allTextContents(), ["密码不能超过72个UTF-8字节。"]);
   assert.deepEqual(await requests(page), []);
   await password.fill("fixture8"); await submit.click();
-  assert.deepEqual((await requests(page))[0], { name: "register", payload: { email: "name@host.test", password: "fixture8" } });
+  await page.waitForFunction(() => (window as any).fixture.requests.length > 0);
+  assert.deepEqual((await payloads(page))[0], { name: "register", payload: { email: "name@host.test", password: "fixture8", language: "zh", source: "direct" } });
 });
 
 test("login keeps the server's word on the email and shows a short password on its field", async t => {
@@ -242,12 +259,13 @@ test("Enter on the email moves to the password, Enter on the password submits; a
   assert.equal(await email.getAttribute("enterkeyhint"), "next");
   assert.equal(await password.getAttribute("enterkeyhint"), "go");
   assert.equal(await password.getAttribute("autocomplete"), "new-password");
+  await agree(page);
   await email.fill("name@host.test"); await email.press("Enter");
   assert.equal(await password.evaluate(el => el === document.activeElement), true);
   assert.deepEqual(await requests(page), []);
   await password.fill("fixture8"); await password.press("Enter");
   await page.waitForFunction(() => (window as any).fixture.requests.length > 0);
-  assert.deepEqual((await requests(page))[0], { name: "register", payload: { email: "name@host.test", password: "fixture8" } });
+  assert.deepEqual((await payloads(page))[0], { name: "register", payload: { email: "name@host.test", password: "fixture8", language: "zh", source: "direct" } });
   const login = await open(t);
   assert.equal(await login.locator("input[type=password]").getAttribute("autocomplete"), "password");
 });
@@ -260,6 +278,7 @@ for (const action of ["password", "google"] as const) test(`obsolete ${action} l
   } else {
     await page.getByRole("button", { name: "使用 Google 登录", exact: true }).click();
   }
+  await page.waitForFunction(() => Boolean((window as any).fixture.release));
   await page.evaluate(() => (window as any).fixture.update({ mode: "signup" }));
   await page.getByRole("heading", { name: "创建账号", exact: true }).waitFor();
   await page.evaluate(() => { const s = (window as any).fixture; s.update({ hold: false }); s.release(); });
@@ -277,7 +296,7 @@ test("provider availability, cancellation and unsafe next remain truthful", asyn
   await page.evaluate(() => (window as any).fixture.update({ ready: true })); await google.click();
   await page.getByText("已取消 Google 登录。", { exact: true }).waitFor();
   assert.equal(await page.getByRole("alert").count(), 0); assert.deepEqual(await navigation(page), []);
-  assert.deepEqual(await requests(page), [{ name: "google", payload: { redirectTo: "/home" } }]);
+  assert.deepEqual(await payloads(page), [{ name: "google", payload: { redirectTo: "/home", signup: { source: "direct" } } }]);
 });
 
 test("recovery and registration links preserve next without implicit writes", async t => {
@@ -298,15 +317,67 @@ test("recovery and registration links preserve next without implicit writes", as
 test("signup opens public legal pages without submitting or clearing the draft", async t => {
   const page = await open(t, { mode: "signup", next: "/i/invite-123" });
   await fill(page);
-  await page.getByRole("link", { name: "使用条款", exact: true }).click();
-  await page.getByRole("link", { name: "隐私政策", exact: true }).click();
-  assert.deepEqual(await navigation(page), ["/legal/terms", "/legal/privacy"]);
+  // The same two links twice: under the Google button and in the checkbox's sentence. A link never ticks the box.
+  for (const index of [0, 1]) for (const name of ["使用条款", "隐私政策"]) await page.getByRole("link", { name, exact: true }).nth(index).click();
+  assert.deepEqual(await navigation(page), ["/legal/terms", "/legal/privacy", "/legal/terms", "/legal/privacy"]);
+  assert.equal(await page.getByRole("checkbox").locator("svg").count(), 0);
   assert.deepEqual(await requests(page), []);
   assert.equal(await page.getByRole("textbox", { name: "邮箱", exact: true }).inputValue(), "cheng.chuan@example.test");
   assert.equal(await page.locator("input[type=password]").inputValue(), "fixture8");
+  // Login: only Google can create an account there, so only its line.
   const login = await open(t);
-  assert.equal(await login.getByRole("link", { name: "使用条款", exact: true }).count(), 0);
-  assert.equal(await login.getByRole("link", { name: "隐私政策", exact: true }).count(), 0);
+  assert.equal(await login.getByRole("link", { name: "使用条款", exact: true }).count(), 1);
+  assert.equal(await login.getByRole("checkbox").count(), 0);
+  const plain = await open(t, { googleEnabled: false });
+  assert.equal(await plain.getByRole("link", { name: "使用条款", exact: true }).count(), 0);
+});
+
+test("signup without the tick sends nothing and says why; the words tick it; no tick once ticked complains again", async t => {
+  const page = await open(t, { mode: "signup" }); await fill(page);
+  const submit = page.getByRole("button", { name: "创建账号", exact: true }), box = page.getByRole("checkbox");
+  await submit.click();
+  assert.deepEqual(await page.getByRole("alert").allTextContents(), ["请先勾选同意使用条款和隐私政策。"]);
+  assert.deepEqual(await requests(page), []);
+  await page.getByText(/^同意/u).last().click({ position: { x: 4, y: 10 } });
+  assert.equal(await box.locator("svg").count(), 1);
+  assert.equal(await page.getByRole("alert").count(), 0);
+  await submit.click();
+  await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
+  assert.equal((await payloads(page))[0].name, "register");
+});
+
+test("signup with a mail on its way: one popup that only its button closes, then the same next page", async t => {
+  const page = await open(t, { mode: "signup", next: "/i/ABCD-EFGH", mailSentTo: "cheng.chuan@example.test" }); await fill(page); await agree(page);
+  await page.getByRole("button", { name: "创建账号", exact: true }).click();
+  const dialog = page.getByTestId("mail-sent-dialog");
+  await dialog.waitFor();
+  assert.match((await dialog.textContent())!, /确认邮件已发送.*cheng\.chuan@example\.test.*请打开邮件，点里面的链接完成认证。.*知道了/su);
+  await page.mouse.click(10, 10);
+  await page.keyboard.press("Escape");
+  assert.equal(await dialog.count(), 1);
+  assert.deepEqual(await navigation(page), []);
+  await shot(page, "signup-mail-sent");
+  await page.getByRole("button", { name: "知道了", exact: true }).click();
+  assert.deepEqual(await navigation(page), ["/profile/onboarding?next=%2Fi%2FABCD-EFGH"]);
+  const seen = (await requests(page))[0].payload;
+  assert.equal(seen.source, "invite");
+});
+
+test("the sign-up page reports that it was opened, once, with no personal data; the login page reports nothing", async t => {
+  const sent: string[] = [];
+  const opened = async (patch: Record<string, unknown>) => {
+    const page = await open(t, { ...patch, hold: true });
+    await page.waitForTimeout(150);
+    return page;
+  };
+  for (const mode of ["signup", "login"]) {
+    const page = await opened({ mode, next: "/events/event-1?tab=details" });
+    sent.push(...await page.evaluate(() => (window as any).funnel ?? []));
+  }
+  assert.equal(sent.length, 1);
+  const { visitorId, ...body } = JSON.parse(sent[0]!);
+  assert.deepEqual(body, { name: "register_opened", client: "app", source: "event" });
+  assert.ok(visitorId === undefined || /^[0-9a-f-]{36}$/u.test(visitorId));
 });
 
 test("double-size signup has a short complete action title", async t => {
@@ -339,8 +410,10 @@ for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { n
       assert.deepEqual(await page.locator('[dir="auto"]').evaluateAll(nodes => nodes.filter(n => n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1).map(n => n.textContent)), []);
       for (const control of [...await page.getByRole("button").all(), ...await page.getByRole("link").all()]) {
         await control.scrollIntoViewIfNeeded(); const b = (await control.boundingBox())!;
+        // Links inside a sentence (WCAG 2.5.8's inline exception): the words around them are not targets.
+        if (["使用条款", "隐私政策"].includes((await control.textContent())!)) continue;
         assert.ok(b.height >= 44 && b.width >= 44 && b.x >= 0 && b.x + b.width <= variant.width + 0.5, `${mode}: ${await control.getAttribute("aria-label") ?? await control.textContent()} ${JSON.stringify(b)}`);
-        assert.ok(b.y >= 48 && b.y + b.height <= 820.1, "controls remain in the safe scroll viewport");
+        assert.ok(b.y >= 48 && b.y + b.height <= 820.5, `controls remain in the safe scroll viewport: ${mode} ${await control.textContent()} ${JSON.stringify(b)}`);
       }
       await shot(page, `${variant.name}-${mode}-bottom`);
       await page.evaluate(() => document.querySelectorAll("*").forEach(el => {

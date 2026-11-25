@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import type { ScrollView, TextInput, View } from "react-native";
 
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
+import { EmailVerificationContext } from "../../../email-verification/EmailVerificationContext";
 import { EMPTY_BASIC, GOAL_LIMIT, GOAL_OPTIONS, ONBOARDING_STEPS, type OnboardingMissingField } from "../../../view-models/profile-onboarding";
 import { KitButton, MissLine, OnboardingFrame, OnboardingProgress, OnboardingTopBar, OnceNotice } from "./OnboardingParts";
 import { GoalsStep, IntroStep, ProfileStep, type Marks } from "./OnboardingSteps";
@@ -19,7 +20,12 @@ const CARD: Marks = { name: "card", company: "card", title: "card", email: "card
 const SECOND_SCREEN = 400;
 const A5_SCROLL = 534.09375;
 
-export function OnboardingDesignBoard({ board }: { board: Board }) {
+export function OnboardingDesignBoard({ board, notice = false }: { board: Board; notice?: boolean }) {
+  // The signed-in account's own reminder stays off the A boards.
+  return notice ? <OnboardingBoard board={board} /> : <EmailVerificationContext.Provider value={null}><OnboardingBoard board={board} /></EmailVerificationContext.Provider>;
+}
+
+function OnboardingBoard({ board }: { board: Board }) {
   const { t } = useOrbitLocale();
   const scroll = useRef<ScrollView | null>(null);
   const inputs = { name: useRef<TextInput | null>(null), primary: useRef<View | null>(null), secondary: useRef<View | null>(null) };

@@ -4,6 +4,7 @@ import { Platform, RefreshControl, StyleSheet, View } from "react-native";
 
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { publishEmailVerification } from "../../api/email-verification";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { resetStackTo } from "../../components/shell-navigation";
@@ -13,6 +14,7 @@ import { Card } from "../../components/ui/Card";
 import { Icon } from "../../components/ui/Icon";
 import { ListRow } from "../../components/ui/ListRow";
 import { UiText } from "../../components/ui/Text";
+import { EmailVerificationRow } from "../../email-verification/EmailVerificationRow";
 import { clearProfileEditSession } from "../../data/profile-edit-session";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -37,6 +39,8 @@ export function AccountScreen() {
   }, [auth.signedIn, auth.offline, rights, router]);
   const state = useApiResource<unknown>(ORBIT_API_ENDPOINTS.accountMe,
     data => accountSessionToView(data, { authenticated: auth.signedIn, authUser: auth.user, t: locale.t }).statusLabel !== locale.t("account.signedIn"));
+  const me = state.kind === "success" ? state.data : null;
+  useEffect(() => { if (me) publishEmailVerification(server.baseUrl, me); }, [me, server.baseUrl]);
   const view = accountSessionToView(state.kind === "success" || state.kind === "empty" ? state.data : null,
     { authenticated: auth.signedIn, authUser: auth.user, t: locale.t });
   return <AppScreen inset="kit" title={locale.t("account.overviewTitle")}
@@ -113,6 +117,7 @@ function AccountOverview({ view, onRefresh }: { view: AccountSessionView; onRefr
         <ListRow title={locale.t("account.goal")} subtitle={view.goal} leading={<Icon color={colors.ink2} name="flag" size={20} />} />
         <View style={styles.rule} />
         <ListRow title={locale.t("account.timeZone")} subtitle={view.timezoneLabel} leading={<Icon color={colors.ink2} name="clock" size={20} />} />
+        <EmailVerificationRow style={styles.emailRow} />
       </Card>
       <UiText style={styles.heading}>{locale.t("account.dataSection")}</UiText>
       <Card style={styles.group}>
@@ -153,5 +158,6 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   heading: { color: colors.ink3Text, fontSize: 14, marginTop: 9, marginLeft: 6 },
   group: { paddingVertical: 2, paddingHorizontal: 16 },
   rule: { height: 1, backgroundColor: colors.line, marginLeft: 30 },
+  emailRow: { marginTop: 0, paddingBottom: 14 },
   feedback: { color: colors.coralText, backgroundColor: colors.coralSoft, borderRadius: 24, fontSize: 15, padding: 12 },
 }));

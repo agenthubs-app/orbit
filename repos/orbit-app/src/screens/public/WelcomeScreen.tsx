@@ -4,6 +4,8 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, typ
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { signupVisitorId } from "../../api/signup-funnel";
+import { LinkedTerms } from "../../email-verification/LinkedTerms";
 import { resetStackTo } from "../../components/shell-navigation";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -52,7 +54,7 @@ export function WelcomeScreen({ onSigningIn }: { onSigningIn?: (active: boolean)
     onSigningIn?.(true);
     let leaving = false;
     try {
-      const result = await auth.startGoogleSignIn({ redirectTo: "/home" });
+      const result = await auth.startGoogleSignIn({ redirectTo: "/home", signup: { source: "direct", visitorId: await signupVisitorId() } });
       if (result.success) {
         leaving = true;
         resetStackTo(router, signedInHref({ next: "/home", pendingDeletion: result.pendingDeletion }));
@@ -84,6 +86,7 @@ export function WelcomeScreen({ onSigningIn }: { onSigningIn?: (active: boolean)
     <View style={styles.footer}>
       <Pressable accessibilityRole="button" onPress={() => router.push("/account/signup")} style={styles.primary}><Text style={styles.primaryText}>{t("auth.welcomeStart")}</Text></Pressable>
       {auth.googleEnabled ? <Pressable accessibilityRole="button" disabled={googlePending} onPress={continueWithGoogle} style={styles.secondary}><Text style={styles.secondaryText}>{t("auth.welcomeGoogle")}</Text></Pressable> : null}
+      {auth.googleEnabled ? <LinkedTerms textKey="auth.googleTerms" style={styles.googleTerms} /> : null}
       {googleError ? <Text accessibilityRole="alert" style={styles.error}>{googleError}</Text> : null}
       <Pressable accessibilityRole="link" onPress={() => router.push("/account/login")} style={styles.login}><Text style={styles.loginText}>{t("auth.welcomeLogin")}</Text></Pressable>
     </View>
@@ -116,6 +119,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   primaryText: { color: colors.surface, fontSize: 17, fontWeight: "700" },
   secondary: { minHeight: 50, borderRadius: 24, marginHorizontal: 18, marginTop: 10, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
   secondaryText: { color: colors.ink, fontSize: 17, fontWeight: "700" },
+  googleTerms: { color: colors.ink3Text, fontSize: 13, lineHeight: 22.1, fontWeight: "500", marginTop: 8, marginHorizontal: 18, textAlign: "center" },
   error: { color: colors.coralText, marginTop: 10, marginHorizontal: 18 },
   login: { minHeight: 44, marginTop: 6, marginHorizontal: 18, justifyContent: "center", alignItems: "center" },
   loginText: { color: colors.ink, fontSize: 16, fontWeight: "600" }

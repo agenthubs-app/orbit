@@ -14,9 +14,11 @@ const replace = (text, from, to) => { if (text.split(from).length !== 2) throw n
 let html = readFileSync(join(boards, "onboarding-3step-proposal.html"), "utf8");
 html = replace(html, "document.querySelectorAll('.scrollto').forEach(m => {", `const UX1 = {${table}};
 { const todo = [];
-  document.querySelectorAll('.phone:not(.mweb) .scroll *, .phone:not(.mweb) .foot *').forEach(e => { if (e.closest('svg')) return; const c = getComputedStyle(e); const f = parseFloat(c.fontSize); const m = UX1[f] ?? f; const l = parseFloat(c.lineHeight); todo.push([e, m, Number.isNaN(l) ? null : l / f * m]); });
+  document.querySelectorAll('.phone:not(.mweb) .scroll *, .phone:not(.mweb) .foot *, .phone:not(.mweb) .wmodal *').forEach(e => { if (e.closest('svg')) return; const c = getComputedStyle(e); const f = parseFloat(c.fontSize); const m = UX1[f] ?? f; const l = parseFloat(c.lineHeight); todo.push([e, m, Number.isNaN(l) ? null : l / f * m]); });
   // Line breaks as iOS makes them: headings by phrase; the notice's first line is 285 wide in a 284 box and stays on one line there.
   document.querySelectorAll('.phone:not(.mweb) .h1').forEach(e => { e.lang = 'ja'; e.style.wordBreak = 'auto-phrase'; });
+  // VA1 borrows the Web modal; the App's own scrim token (--scrim, "App 弹层遮罩") is what App dialogs use.
+  document.querySelectorAll('.phone:not(.mweb) > .overlay').forEach(e => { e.style.background = 'var(--scrim)'; });
   document.querySelectorAll('.phone:not(.mweb) .once > div').forEach(e => { e.style.letterSpacing = '-0.06px'; });
   todo.forEach(([e, m, l]) => { e.style.fontSize = m + 'px'; if (l) e.style.lineHeight = l + 'px'; }); }
 document.querySelectorAll('.scrollto').forEach(m => {`);

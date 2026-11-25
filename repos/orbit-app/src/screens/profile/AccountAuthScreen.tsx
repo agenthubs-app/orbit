@@ -14,8 +14,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { reportRegisterOpened, signupSourceOf, signupVisitorId } from "../../api/signup-funnel";
+import { LinkedTerms } from "../../email-verification/LinkedTerms";
+import { MailSentDialog } from "../../email-verification/MailSentDialog";
 import type { PasswordResetResponse } from "../../api/contract/password-reset";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { Checkbox } from "../../components/ui/Checks";
 import { Icon } from "../../components/ui/Icon";
 import { resetStackTo } from "../../components/shell-navigation";
 import { layout, radius, spacing, textStyles, typography } from "../../design/tokens";
@@ -71,6 +75,10 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const emailInput = useRef<TextInput>(null);
   const passwordInput = useRef<TextInput>(null);
   const inputs = { email: emailInput, password: passwordInput };
+  const [agreed, setAgreed] = useState(false);
+  const [consentMissing, setConsentMissing] = useState(false);
+  // Signed up and signed in: the verification mail's popup (VA1), and where its button goes on to.
+  const [mailSent, setMailSent] = useState<{ email: string; href: string } | null>(null);
   // Login / forgot-password links only help when the server refused the sign-up (e.g. the address is taken), not for a short password.
   const [signupRefused, setSignupRefused] = useState(false);
   const [devicePendingWrites, setDevicePendingWrites] = useState<{
@@ -140,6 +148,11 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     const fallbackEmail = takeSignupFallbackEmail(next);
     if (fallbackEmail) setValues((current) => current.email ? current : { ...current, email: fallbackEmail });
   }, [mode, next]);
+  useEffect(() => {
+    if (mode === "signup" && server.ready) void reportRegisterOpened(server.baseUrl, signupSourceOf(next));
+  // Once per opening of the page, not per change of `next`.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, server.baseUrl, server.ready]);
   const accepted = mode === "forgot" && notice !== null;
 
   if (authScopeRef.current !== authScopeKey) {
@@ -170,6 +183,11 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       // Login: a pasted password loses its surrounding spaces (as Web); typing is untouched.
       [field.name]: mode === "login" && field.name === "password" ? trimPastedPassword(current.password, value) : value
     }));
+  }
+
+  function changeConsent(value: boolean) {
+    setAgreed(value);
+    if (value) setConsentMissing(false);
   }
 
   function navigateTo(href: string) {
@@ -215,11 +233,13 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     const passwordError = accountAuthPasswordError(values.password);
     if (passwordError) problems.password = locale.t(passwordError === "too-long" ? "auth.err.passwordTooLong" : "auth.err.passwordTooShort");
     setFieldErrors(problems);
+    const consentProblem = mode === "signup" && !agreed;
+    setConsentMissing(consentProblem);
     const firstProblem = problems.email ? "email" : problems.password ? "password" : null;
-    if (firstProblem) {
+    if (firstProblem || consentProblem) {
       setNotice(null);
       setError(null);
-      inputs[firstProblem].current?.focus();
+      if (firstProblem) inputs[firstProblem].current?.focus();
       return;
     }
     authPending.current = true;
@@ -231,9 +251,14 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
     try {
       if (mode === "signup") {
+        const visitorId = await signupVisitorId();
+        if (!isCurrent()) return;
         const result = await auth.register({
           email: values.email,
-          password: values.password
+          language: locale.language,
+          password: values.password,
+          source: signupSourceOf(next),
+          ...(visitorId ? { visitorId } : {})
         });
 
         if (!isCurrent()) return;
@@ -247,7 +272,9 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         if (!isCurrent()) return;
         if (!signedIn.success) rememberSignupFallbackEmail(values.email, next);
         // Signed in now: nothing from before (welcome, login, signup) stays to go back to.
-        resetStackTo(router, signedIn.success ? signedInHref({ next, pendingDeletion: signedIn.pendingDeletion }) : nextHrefForAccountAuthSubmit({ mode: "signup", next }));
+        const href = signedIn.success ? signedInHref({ next, pendingDeletion: signedIn.pendingDeletion }) : nextHrefForAccountAuthSubmit({ mode: "signup", next });
+        if (result.mailSentTo) setMailSent({ email: result.mailSentTo, href });
+        else resetStackTo(router, href);
         return;
       }
 
@@ -287,7 +314,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     setError(null);
 
     try {
-      const result = await auth.startGoogleSignIn({ redirectTo: next });
+      const result = await auth.startGoogleSignIn({ redirectTo: next, signup: { source: signupSourceOf(next), visitorId: await signupVisitorId() } });
 
       if (!isCurrent()) return;
       if (!result.success) {
@@ -378,6 +405,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
                   <Text style={styles.oauthButtonText}>{fontScale > 1.3 ? locale.t("auth.googleShort") : action.label}</Text>
                 </Pressable>
               ))}
+              <LinkedTerms textKey="auth.googleTerms" style={styles.googleTerms} />
               <View style={styles.dividerRow}>
                 <View style={styles.dividerLine} />
                 <Text style={styles.dividerText}>{locale.t("auth.or")}</Text>
@@ -411,6 +439,13 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
             <Pressable accessibilityRole="link" onPress={() => switchMode("/account/login")} style={styles.errorLink}><Text style={styles.errorLinkText}>{locale.t("auth.loginPrimary")}</Text></Pressable>
             <Pressable accessibilityRole="link" onPress={() => navigateTo(`/account/forgot-password?next=${encodeURIComponent(next)}`)} style={styles.errorLink}><Text style={styles.errorLinkText}>{locale.t("auth.forgotPassword")}</Text></Pressable>
           </View> : null}
+          {mode === "signup" ? <View style={styles.consent}>
+            <View style={styles.consentRow}>
+              <Checkbox accessibilityLabel={locale.t("auth.consentLabel")} checked={agreed} onChange={changeConsent} />
+              <LinkedTerms textKey="auth.consent" onPress={() => changeConsent(!agreed)} style={styles.consentText} />
+            </View>
+            {consentMissing ? <Text accessibilityRole="alert" style={styles.fieldError}>{locale.t("auth.err.consentRequired")}</Text> : null}
+          </View> : null}
           {accepted ? <Pressable
             accessibilityRole="button"
             accessibilityLabel={locale.t("auth.loginPrimary")}
@@ -429,18 +464,6 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           >
             <Text style={styles.primaryButtonText}>{submitting || landing !== null ? view.busyLabel : mode === "forgot" ? locale.t("auth.forgotRequest") : view.primaryLabel}</Text>
           </Pressable>}
-          {mode === "signup" ? <View style={styles.signupLegal}>
-            <Text style={styles.signupLegalText}>{locale.t("publicInfo.signupLegalPrefix")}</Text>
-            <View style={styles.signupLegalLinks}>
-              <Pressable accessibilityRole="link" accessibilityLabel={locale.t("publicInfo.signupTerms")} onPress={() => navigateTo("/legal/terms")} style={({ pressed }) => [styles.signupLegalLink, pressed ? styles.pressed : null]}>
-                <Text style={styles.signupLegalLinkText}>{locale.t("publicInfo.signupTerms")}</Text>
-              </Pressable>
-              <Text style={styles.signupLegalText}>{locale.t("publicInfo.signupLegalAnd")}</Text>
-              <Pressable accessibilityRole="link" accessibilityLabel={locale.t("publicInfo.signupPrivacy")} onPress={() => navigateTo("/legal/privacy")} style={({ pressed }) => [styles.signupLegalLink, pressed ? styles.pressed : null]}>
-                <Text style={styles.signupLegalLinkText}>{locale.t("publicInfo.signupPrivacy")}</Text>
-              </Pressable>
-            </View>
-          </View> : null}
           </View>
           </View>
         )}
@@ -480,6 +503,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           </View>
         ) : null}
       </ScrollView>
+      <MailSentDialog email={mailSent?.email ?? null} onProceed={() => { if (mailSent) resetStackTo(router, mailSent.href); }} />
     </SafeAreaView>
   );
 }
@@ -732,11 +756,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   primaryButtonText: {
     ...createControlStyles(colors).primaryButtonText
   },
-  signupLegal: { alignItems: "center", marginTop: 4 },
-  signupLegalText: { color: colors.ink3Text, fontSize: 14, lineHeight: 21, textAlign: "center" },
-  signupLegalLinks: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 4 },
-  signupLegalLink: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44, paddingHorizontal: 4 },
-  signupLegalLinkText: { color: colors.accentText, fontSize: 14, lineHeight: 21, textDecorationLine: "underline" },
+  // VA6 .gterms: 8 under the Google button.
+  googleTerms: { color: colors.ink3Text, fontSize: 13, lineHeight: 22.1, fontWeight: "500", marginTop: -4, textAlign: "center" },
+  consent: { gap: 6 },
+  consentRow: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8 },
+  consentText: { flex: 1, color: colors.ink2, fontSize: 15, lineHeight: 23, fontWeight: "600" },
   // QA-D: stacked and centred; side by side the Japanese 「…登録」 ran past the right edge.
   footer: { minHeight: 40, paddingTop: 4, paddingBottom: 4, alignItems: "center" },
   switchButton: { minHeight: 44, alignItems: "center", justifyContent: "center" },

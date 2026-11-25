@@ -6,7 +6,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/device/note-drafts')) return 'notes';
   if (path === '/api/dev/network-design-fixture') return 'network-design-fixture';
   if (path.startsWith('/api/auth/') || path === '/api/account/session/sign-out') return 'account';
-  if (path === '/api/account/me' || path === '/api/account/status') return 'account';
+  if (path === '/api/account/me' || path === '/api/account/status' || path === '/api/account/email-verification/send') return 'account';
   if (path.startsWith('/api/account/exports') || path.startsWith('/api/account/deletion-request')) return 'account';
   if (path.startsWith('/api/account/language-preference') || path.startsWith('/api/notification-preferences')) return 'preferences';
   if (path.startsWith('/api/profile/update-suggestions')) return 'profile';
@@ -687,6 +687,9 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/api/auth-session.ts","POST","/api/auth/mobile/credentials"],
   ["src/api/auth-session.ts","POST","/api/auth/mobile/google/exchange"],
   ["src/api/AuthSessionProvider.tsx","GET","/api/account/me"],
+  ["src/email-verification/EmailVerificationProvider.tsx","GET","/api/account/me"],
+  ["src/api/email-verification.ts","POST","/api/account/email-verification/send"],
+  ["src/api/signup-funnel.ts","POST","/api/auth/signup-funnel"],
   ["src/api/mobile-auth.ts","GET","/api/account/status"],
   ["src/api/AuthSessionProvider.tsx","POST","/api/auth/mobile/credentials"],
   ["src/api/AuthSessionProvider.tsx","POST","/api/auth/mobile/google/exchange"],

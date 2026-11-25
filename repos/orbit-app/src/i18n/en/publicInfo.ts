@@ -1,7 +1,5 @@
 export const publicInfo = {
-  "publicInfo.signupLegalPrefix": "By creating an account, you agree to the",
-  "publicInfo.signupTerms": "Terms of Service",
-  "publicInfo.signupLegalAnd": "and",
+  "publicInfo.signupTerms": "Terms of Use",
   "publicInfo.signupPrivacy": "Privacy Policy",
   "publicInfo.page": "Public page",
   "publicInfo.helpNav": "Help",

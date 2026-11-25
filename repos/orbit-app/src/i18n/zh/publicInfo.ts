@@ -1,7 +1,5 @@
 export const publicInfo = {
-  "publicInfo.signupLegalPrefix": "创建账号即表示同意",
   "publicInfo.signupTerms": "使用条款",
-  "publicInfo.signupLegalAnd": "与",
   "publicInfo.signupPrivacy": "隐私政策",
   "publicInfo.page": "公开页面",
   "publicInfo.helpNav": "帮助",

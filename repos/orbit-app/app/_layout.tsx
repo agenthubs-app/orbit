@@ -20,6 +20,7 @@ import {
   AppErrorScreen
 } from "../src/components/AppErrorBoundary";
 import { OrbitRouteAccessBoundary } from "../src/components/OrbitRouteAccessBoundary";
+import { EmailVerificationProvider } from "../src/email-verification/EmailVerificationProvider";
 import { OnboardingGateProvider } from "../src/onboarding/OnboardingGateProvider";
 import { OnboardingGateRedirect } from "../src/onboarding/OnboardingGateRedirect";
 import { OrbitNotificationsCoordinator } from "../src/components/OrbitNotificationsCoordinator";
@@ -212,6 +213,7 @@ export default function RootLayout() {
             <OrbitLocaleProvider>
               <OrbitTimeZoneProvider>
                 <OnboardingGateProvider>
+                <EmailVerificationProvider>
                 <RootVersionBoundary>{allowed => <UiRoot blocked={!allowed}>
                   <OrbitNotificationsCoordinator />
                   <OrbitNotificationLifecycle />
@@ -220,6 +222,7 @@ export default function RootLayout() {
                   <DevOpenPath />
                   <StatusBar style={scheme === "dark" ? "light" : "dark"} />
                 </UiRoot>}</RootVersionBoundary>
+                </EmailVerificationProvider>
                 </OnboardingGateProvider>
               </OrbitTimeZoneProvider>
             </OrbitLocaleProvider>

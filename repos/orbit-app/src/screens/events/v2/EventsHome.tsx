@@ -13,6 +13,7 @@ import { eventEmoji } from "../../../api/compute/event-emoji";
 import type { EventAssessmentContract } from "../../../api/contract/event-assessment";
 import type { MyEventItem } from "../../../api/contract/events-mine";
 import { ShellBackground } from "../../../components/ShellBackground";
+import { EmailNotice } from "../../../email-verification/EmailNotice";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../../components/ShellTopBar";
 import { TabPageBar } from "../../../components/TabPageBar";
 import { BottomSheet, ConfirmDialog, Icon, IconButton, Segmented, SwipeRow, UiPressable, UiText, useToast } from "../../../components/ui";
@@ -140,6 +141,7 @@ function AssessPage({ items, upcoming, empty, now, language, onDelete }: { items
   const rt = useRelevanceT();
   return (
     <ScrollView contentContainerStyle={styles.scroll} testID="events-assess">
+      <EmailNotice />
       <View style={[styles.card, empty ? styles.cardBig : null]}>
         <View style={[styles.row, { gap: 10, marginBottom: 12 }]}>
           <View style={[styles.emo, { backgroundColor: colors.macLav }]}><UiText style={styles.emoText}>🔍</UiText></View>
@@ -375,7 +377,7 @@ function GoingPage({ upcoming, past, now, language, onDiscover, openPrivateId }:
       <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.tabDiscover")} onPress={onDiscover} style={styles.btnPrimary} testID="events-going-discover"><Icon name="search" size={16} color={colors.bg} /><UiText style={styles.btnPrimaryText}>{t("eventsV2.tabDiscover")}</UiText></UiPressable>
     </View>
   );
-  if (coming.length === 0 && past.length === 0) return <ScrollView contentContainerStyle={styles.scroll} testID="events-going-empty">{emptyCard}</ScrollView>;
+  if (coming.length === 0 && past.length === 0) return <ScrollView contentContainerStyle={styles.scroll} testID="events-going-empty"><EmailNotice />{emptyCard}</ScrollView>;
   // Past: what happened, as a fact — checked in / cancelled / registered but never checked in.
   // AG13 (D1/D2): a private event shows only its 私人 chip; a self-recorded «我去过» (its own line) drops 未受付.
   const pastChip = (item: MyEventItem) => item.privateEvent ? <Chip label={copy.myEvents.privateChip} tone="lav" icon="lock" />
@@ -385,6 +387,7 @@ function GoingPage({ upcoming, past, now, language, onDiscover, openPrivateId }:
     : item.status === "registered" || item.status === "pending_review" ? <Chip label={t("eventsV2.pastNoCheckIn")} tone="neutral" /> : null;
   return (
     <ScrollView contentContainerStyle={styles.scroll} testID="events-going">
+      <EmailNotice />
       <Segmented<"upcoming" | "past"> accessibilityLabel={t("eventsV2.tabMyEvents")} value={side} onChange={setSide}
         segments={[{ key: "upcoming", label: t("eventsV2.segUpcomingN", { n: coming.length }) }, { key: "past", label: t("eventsV2.segPastN", { n: past.length }) }]} />
       <View style={{ height: 14 }} />

@@ -67,7 +67,7 @@ test("Google from the welcome page opens onboarding, as on signup; Home is never
   await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
   await page.waitForTimeout(50);
   assert.deepEqual(await navigation(page), ["replace:/profile/onboarding?next=%2Fhome"]);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ redirectTo: "/home" }]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.map((request: any) => ({ redirectTo: request.redirectTo, source: request.signup.source }))), [{ redirectTo: "/home", source: "direct" }]);
 });
 
 test("Google into an account being deleted opens its own page", async t => {

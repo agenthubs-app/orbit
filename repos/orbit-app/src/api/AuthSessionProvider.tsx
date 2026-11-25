@@ -27,6 +27,7 @@ import { serverReachability } from "./server-reachability";
 import { createLocalSyncRepository } from "../data/sync/local-sync-repository";
 import { syncLifecycle } from "../data/sync/sync-lifecycle";
 import {
+  type GoogleSignupContext,
   createGoogleOAuthAttempt,
   exchangeGoogleOAuthCode,
   fetchMobileAccountStatus,
@@ -57,6 +58,8 @@ import {
   type CanonicalAccountIdentity
 } from "./canonical-account-identity";
 import { cancelOrbitManagedNotifications } from "../notifications/native-notifications";
+import type { AccountRegisterRequest } from "./contract/account-register";
+import { publishEmailVerification } from "./email-verification";
 import { revokeRegisteredPushDevice } from "../notifications/push-device-session";
 import { revokePushDeviceRegistrations } from "../notifications/push-registration-queue";
 import { clearKioskDevice } from "../screens/host/kiosk-store";
@@ -71,6 +74,8 @@ interface AuthActionResult {
   pendingDeletion?: boolean;
   /** The caller's own confirm was declined; nothing changed and there is nothing to report. */
   cancelled?: boolean;
+  /** register: the address the verification mail went to (absent when the server sends none). */
+  mailSentTo?: string;
 }
 
 interface SignOutOptions {
@@ -80,11 +85,7 @@ interface SignOutOptions {
   syncFirst?: () => Promise<void>;
 }
 
-interface RegisterInput {
-  displayName?: string;
-  email: string;
-  password: string;
-}
+type RegisterInput = Omit<AccountRegisterRequest, "client" | "consent">;
 
 interface SignInInput {
   email: string;
@@ -119,7 +120,7 @@ interface AuthSessionContextValue {
    */
   withCredentialRotation: <T>(task: () => Promise<T>) => Promise<T>;
   signedIn: boolean;
-  startGoogleSignIn: (input?: { redirectTo?: string }) => Promise<AuthActionResult>;
+  startGoogleSignIn: (input?: { redirectTo?: string; signup?: GoogleSignupContext }) => Promise<AuthActionResult>;
   user: MobileAuthUser | null;
 }
 
@@ -182,6 +183,7 @@ async function checkCanonicalAccountIdentity(input: {
     baseUrl: input.baseUrl
   });
   const result = await client.get<unknown>(ORBIT_API_ENDPOINTS.accountMe);
+  if (result.success) publishEmailVerification(input.baseUrl, result.data);
   const identity = result.success ? canonicalAccountIdentityFromPayload(result.data) : null;
   if (identity) return { check: "valid", identity };
   // A 2xx without a usable owner proves nothing about the session: unreachable.
@@ -598,7 +600,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
   );
 
   const signInWithGoogle = useCallback(
-    async (next = "/profile", purpose?: "deletion-request"): Promise<AuthActionResult> => {
+    async (next = "/profile", purpose?: "deletion-request", signup?: GoogleSignupContext): Promise<AuthActionResult> => {
       const requestRevision = ++authEnvironment.current.revision;
       try {
         const attempt = await createGoogleOAuthAttempt({
@@ -606,6 +608,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
           digest: sha256,
           next,
           ...(purpose ? { purpose } : {}),
+          ...(signup ? { signup } : {}),
           randomBytes: Crypto.getRandomBytesAsync
         });
         const browserResult = await WebBrowser.openAuthSessionAsync(
@@ -664,6 +667,9 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         baseUrl,
         email: input.email,
         ...(input.displayName ? { displayName: input.displayName } : {}),
+        ...(input.language ? { language: input.language } : {}),
+        ...(input.source ? { source: input.source } : {}),
+        ...(input.visitorId ? { visitorId: input.visitorId } : {}),
         password: input.password
       });
 
@@ -674,7 +680,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       if (authEnvironment.current.revision !== requestRevision) {
         return obsoleteAuthActionResult();
       }
-      return { success: true };
+      return { success: true, ...(result.mailSentTo ? { mailSentTo: result.mailSentTo } : {}) };
     },
     [baseUrl]
   );
@@ -1008,8 +1014,8 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       signOut,
       withCredentialRotation,
       signedIn: user !== null,
-      startGoogleSignIn: (input?: { redirectTo?: string }) =>
-        signInWithGoogle(input?.redirectTo),
+      startGoogleSignIn: (input?: { redirectTo?: string; signup?: GoogleSignupContext }) =>
+        signInWithGoogle(input?.redirectTo, undefined, input?.signup),
       user
     }),
     [

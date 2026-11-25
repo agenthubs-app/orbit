@@ -19,6 +19,7 @@ import { EventsOfflineNotice } from "./EventsOfflineNotice";
 import { RetryCard } from "../../../components/ui/States";
 import { useKeyedPageCopy } from "../../../hooks/useKeyedPageCopy";
 import { ShellBackground } from "../../../components/ShellBackground";
+import { EmailNotice } from "../../../email-verification/EmailNotice";
 import { SHELL_GUTTER, useShellTopGap } from "../../../components/ShellTopBar";
 import { BottomSheet, GlassSurface, Icon, IconButton, TabBar, UiPressable, UiText, usePageBottomBar, useToast, type IconName } from "../../../components/ui";
 import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
@@ -235,6 +236,7 @@ export function VenuePage() {
       <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-venue-loading">
         <ShellBackground />
         <ScrollView contentContainerStyle={styles.pad} scrollEnabled={false}>
+          <EmailNotice />
           <View style={styles.bar}>
             <IconButton icon="left" accessibilityLabel={t("back")} onPress={() => (router.canGoBack() ? router.back() : router.replace(base as Href))} />
             <Bones style={styles.center}><Bone w="62%" h={19} style={{ marginVertical: 5 }} /><Bone w="44%" h={12} style={{ marginBottom: 4, marginTop: 5 }} /></Bones>
@@ -271,6 +273,7 @@ export function VenuePage() {
       <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-venue-record">
         <ShellBackground />
         <ScrollView contentContainerStyle={styles.pad} keyboardShouldPersistTaps="handled">
+          <EmailNotice />
           {notice}
           <RecordTopBar title={shortTitle(data.title)} line={eventRange(data.startsAt, data.endsAt, language)} onBack={goBack} t={t} />
           {recordTab === "groups" ? <RoundsTab data={data} t={t} toneOf={toneOf} onOpen={openSheet} /> : null}
@@ -322,6 +325,7 @@ export function VenuePage() {
     <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-venue">
       <ShellBackground />
       <ScrollView contentContainerStyle={styles.pad} keyboardShouldPersistTaps="handled">
+        <EmailNotice />
         {notice}
         <LiveTopBar title={shortTitle(data.title)} line={line} started={started} onClose={toAfter} onQr={() => toast.info(data.checkIn?.receptionNumber ? t("vReception", { n: data.checkIn.receptionNumber }) : t("checkInQr"))} t={t} />
         {liveTab === "now" ? <NowTab data={shown} t={t} toneOf={toneOf} onRecap={toAfter} onMoreOpeners={() => setOpenerShift((value) => value + 1)} /> : null}

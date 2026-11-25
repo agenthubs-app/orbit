@@ -4,6 +4,8 @@ import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { EmailNotice } from "../../email-verification/EmailNotice";
+
 import { Button, IconButton, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { radius } from "../../design/tokens";
@@ -62,6 +64,7 @@ export function PlanFrame({ title, subtitle, stage, progress, onClose, right, fo
       {/* 模拟器走查（2026-10-11）：固定 footer 里的输入框（見直し栏、AI 修正栏）会被键盘挡住；iOS 上让正文 + footer 随键盘上移。 */}
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
         <ScrollView ref={scrollRef} contentContainerStyle={styles.body} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled">
+          <EmailNotice gap={14} gutter={16} top={4} />
           {children}
         </ScrollView>
         {footer ? <View style={styles.footer}>{footer}</View> : null}

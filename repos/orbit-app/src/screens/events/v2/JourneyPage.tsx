@@ -6,6 +6,7 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ShellBackground } from "../../../components/ShellBackground";
+import { EmailNotice } from "../../../email-verification/EmailNotice";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../../components/ShellTopBar";
 import { GlassSurface, IconButton, type IconName } from "../../../components/ui";
 import { useOrbitTheme } from "../../../design/theme";
@@ -41,6 +42,7 @@ export function JourneyPage({ title, subtitle, leftIcon = "left", leftLabel, fal
       {followEnd ? <View style={styles.fixedTop}>{topBar}</View> : null}
       <ScrollView ref={scroller} contentContainerStyle={styles.pad} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
         onContentSizeChange={followEnd ? () => scroller.current?.scrollToEnd({ animated: true }) : undefined}>
+        <EmailNotice />
         {followEnd ? null : topBar}
         {children}
       </ScrollView>

@@ -14,6 +14,7 @@ import { createThemedStyles } from "../design/theme";
 import { useMobileViewport } from "../platform/use-mobile-viewport";
 import { mainTabForPath, parentForPath } from "../view-models/app-navigation";
 import { rememberScroll, rememberedScroll, shellScrollKey } from "../view-models/shell-state";
+import { EmailNotice } from "../email-verification/EmailNotice";
 import { useAppScreenEmbedding } from "./AppScreenEmbedding";
 import { TabPageBar } from "./TabPageBar";
 import { ShellBackground } from "./ShellBackground";
@@ -99,6 +100,7 @@ export function AppScreen({
         keyboardShouldPersistTaps="handled"
         refreshControl={pullRefresh}
       >
+        <EmailNotice gap={spacing.lg} gutter={inset === "kit" ? SHELL_GUTTER : layout.pageInset} top={inset === "kit" ? 0 : spacing.md} />
         <View style={styles.body}>{children}</View>
       </ScrollView>
     );
@@ -136,6 +138,7 @@ export function AppScreen({
         keyboardShouldPersistTaps="handled"
         refreshControl={pullRefresh}
       >
+        <EmailNotice gap={spacing.lg} gutter={inset === "kit" ? SHELL_GUTTER : layout.pageInset} top={inset === "kit" ? 0 : spacing.md} />
         {header ?? (!navVisible ? <View style={styles.header}>
           {eyebrow && eyebrow.trim().toLowerCase() !== "orbit" ? (
             <Text style={styles.eyebrow}>{eyebrow}</Text>

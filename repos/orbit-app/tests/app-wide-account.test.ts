@@ -136,6 +136,7 @@ for (const theme of ["light", "dark"] as const) {
       const email = page.getByPlaceholder("输入邮箱地址");
       await email.fill("lin@example.com");
       const password = page.locator("input[type=password]"); await password.fill("safe-fixture-password");
+      if (mode === "signup") await page.getByRole("checkbox").click();
       const submit = page.getByRole("button", { name: mode === "login" ? "登录" : "创建账号", exact: true });
       await fits(submit, 44);
       await page.evaluate(() => (window as any).fixture.update({ ready: false }));
@@ -149,15 +150,18 @@ for (const theme of ["light", "dark"] as const) {
       await page.evaluate(() => (window as any).fixture.update({ pending: true }));
       await submit.click(); assert.equal(await submit.isDisabled(), true);
       assert.equal(await submit.innerText(), mode === "login" ? "登录中..." : "创建中...");
+      await page.waitForFunction(() => (window as any).fixture.requests.length > 0);
       await page.evaluate(() => (window as any).fixture.resolve());
       await page.getByText("暂时无法完成，请重试", { exact: true }).waitFor();
       assert.equal(await email.inputValue(), "lin@example.com"); assert.equal(await password.inputValue(), "safe-fixture-password");
-      assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ action: mode === "login" ? "signIn" : "register", payload: { email: "lin@example.com", password: "safe-fixture-password", ...(mode === "login" ? { redirectTo: "/profile" } : {}) } }]);
+      const sent = await page.evaluate(() => (window as any).fixture.requests.map(({ payload: { visitorId: _random, ...payload }, ...request }: any) => ({ ...request, payload })));
+      assert.deepEqual(sent, [{ action: mode === "login" ? "signIn" : "register", payload: { email: "lin@example.com", password: "safe-fixture-password", ...(mode === "login" ? { redirectTo: "/profile" } : { language: "zh", source: "direct" }) } }]);
       await fits(page.getByRole("button", { name: "显示密码", exact: true }));
       await page.getByRole("button", { name: "显示密码", exact: true }).click();
       assert.equal(await page.locator("input[type=password]").count(), 0);
       await inflate(page); await fits(submit, 44);
-      for (const link of await page.getByRole("link").all()) await fits(link);
+      // The two legal links are words inside a sentence (WCAG 2.5.8's inline exception).
+      for (const link of await page.getByRole("link").all()) if (!["使用条款", "隐私政策"].includes((await link.textContent())!)) await fits(link);
       if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-auth-${mode}-${theme}.png`, fullPage: true });
     });
   }

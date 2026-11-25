@@ -8,6 +8,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ShellBackground } from "../../../components/ShellBackground";
+import { EmailNotice } from "../../../email-verification/EmailNotice";
 import { useShellTopGap } from "../../../components/ShellTopBar";
 import { Icon, IconButton, UiPressable, UiText, type IconName } from "../../../components/ui";
 import Svg, { Defs, Rect, Stop } from "../../../components/ui/svg";
@@ -48,6 +49,7 @@ export function OnboardingFrame({ children, footer, scrollRef }: { children: Rea
         {/* The foot is absolute: it needs a box that the keyboard padding really shortens. */}
         <View style={styles.fill}>
         <ScrollView ref={scrollRef} contentContainerStyle={[styles.content, { paddingBottom: Platform.OS === "ios" ? 24 : footHeight + 24 }]} contentInset={{ bottom: Platform.OS === "ios" ? footHeight : 0 }} scrollIndicatorInsets={{ bottom: footHeight }} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" style={styles.fill} testID="onboarding-scroll">
+          <EmailNotice />
           {children}
         </ScrollView>
         <View onLayout={event => setFootHeight(event.nativeEvent.layout.height)} pointerEvents="box-none" style={styles.foot}>

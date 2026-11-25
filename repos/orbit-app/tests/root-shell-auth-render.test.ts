@@ -48,6 +48,7 @@ test("the root shell omits tab navigation and tab-height toast placement until s
     export function UiFeedbackHost() { return null; }
     export function AppErrorScreen() { return null; }
     export const OnboardingGateProvider = Wrapper;
+    export const EmailVerificationProvider = Wrapper;
     export function OnboardingGateRedirect() { return null; }
     export function OrbitRouteAccessBoundary() { return null; }
     export function DevOpenPath() { return null; }

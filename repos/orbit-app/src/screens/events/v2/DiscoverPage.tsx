@@ -10,6 +10,7 @@ import { Image, ScrollView, StyleSheet, TextInput, View } from "react-native";
 
 import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, EventDiscoverQuery, EventDiscoverResponse, EventDiscoverRow, EventDiscoverTheme } from "../../../api/contract/event-discover";
 import type { EventSearchResponse } from "../../../api/contract/event-search";
+import { EmailNotice } from "../../../email-verification/EmailNotice";
 import { SHELL_GUTTER } from "../../../components/ShellTopBar";
 import { openMainTab } from "../../../components/shell-navigation";
 import { planNewGoalHref } from "../../../api/compute/plan-href";
@@ -156,6 +157,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
 
   return (
     <ScrollView contentContainerStyle={styles.scroll} testID="events-discover">
+      <EmailNotice />
       <View style={styles.searchRow}>
         <View style={styles.search}>
           <Icon name="search" size={16} color={colors.ink3Text} />

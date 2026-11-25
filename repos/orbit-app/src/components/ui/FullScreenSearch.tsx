@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { createThemedStyles } from "../../design/theme";
 import { radius } from "../../design/tokens";
+import { EmailNotice } from "../../email-verification/EmailNotice";
 import { ShellBackground } from "../ShellBackground";
 import { SHELL_GUTTER } from "../ShellTopBar";
 import { Icon } from "./Icon";
@@ -67,6 +68,7 @@ export function FullScreenSearch({
     <View style={[styles.page, { paddingTop: insets.top + topGap }]} testID={testID}>
       <ShellBackground />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {overlay ? null : <EmailNotice />}
         <View style={[styles.sbar, events && styles.sbarEvents]}>
           <View style={styles.search}>
             {events ? <View pointerEvents="none" style={styles.searchRing} /> : null}

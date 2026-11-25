@@ -1,0 +1,33 @@
+{
+ "_note": "邮箱验证 App 画板（onboarding-3step-proposal.html ⑥ VA1 / VA2 / VA4）。设计侧、Metro、模拟器口径同 app-onboarding-3step.json；画板按标题取（设计稿只往末尾追加，序号会变）。VA5 只画登录信息卡里新增的那一行，App 账号页的卡片形状不同，用 design=VA5 截图人工看。VA3（首页）、VA6（登录三页）在真页面上看。",
+ "defaults": {
+  "design": "http://localhost:3321/redesign-2026-10/onboarding-3step-proposal.html",
+  "grid": 30,
+  "wait": 12000,
+  "themes": [
+   "light"
+  ],
+  "attribution": "../orbit-app/scripts/visual/attribution-email-verification.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/email-verification/**",
+  "repos/orbit-app/src/screens/profile/onboarding/**"
+ ],
+ "views": [
+  {
+   "id": "A-EV-VA1",
+   "path": "/profile/onboarding?design=VA1",
+   "board": "VA1 ·"
+  },
+  {
+   "id": "A-EV-VA2",
+   "path": "/profile/onboarding?design=VA2",
+   "board": "VA2 ·"
+  },
+  {
+   "id": "A-EV-VA4",
+   "path": "/profile/onboarding?design=VA4",
+   "board": "VA4 ·"
+  }
+ ]
+}

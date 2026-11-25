@@ -15,6 +15,7 @@ import { EventsOfflineNotice } from "./EventsOfflineNotice";
 import { RetryCard } from "../../../components/ui/States";
 import { useKeyedPageCopy } from "../../../hooks/useKeyedPageCopy";
 import { ShellBackground } from "../../../components/ShellBackground";
+import { EmailNotice } from "../../../email-verification/EmailNotice";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../../components/ShellTopBar";
 import { ActionSheet, GlassSurface, Icon, IconButton, UiPressable, UiText, useToast, type IconName } from "../../../components/ui";
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
@@ -199,7 +200,7 @@ export function EventDetailPage() {
     return (
       <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]}>
         <ShellBackground />
-        <View style={styles.pad}>{header}{missing === "network"
+        <View style={styles.pad}><EmailNotice />{header}{missing === "network"
           ? <RetryCard title={locale.t("sync.needsNetwork")} message={locale.t("sync.needsNetworkBody")} onRetry={() => { setMissing(null); setReload((value) => value + 1); }} />
           : missing ? <View style={styles.card}><UiText style={styles.sub}>{t("notFound")}</UiText></View> : (
             // First open, no saved copy: the cover card's and the description's shapes, so the page does not jump when it fills.
@@ -278,6 +279,7 @@ export function EventDetailPage() {
     <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-detail">
       <ShellBackground />
       <ScrollView ref={scroller} contentContainerStyle={styles.pad} onContentSizeChange={tryJump} onScrollBeginDrag={() => { userScrolled.current = true; }}>
+        <EmailNotice />
         {header}
         {offlineAt ? <EventsOfflineNotice lastSyncedAt={offlineAt} /> : null}
         <View style={[styles.card, styles.coverCard]}>

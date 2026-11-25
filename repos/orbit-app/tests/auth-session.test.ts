@@ -1,3 +1,5 @@
+import { LEGAL_VERSIONS } from "../src/api/compute/legal-version";
+import { currentTranslator } from "../src/i18n/messages";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -230,6 +232,11 @@ test("registerOrbitAccount posts to the web register API envelope", async () => 
       init.body,
       JSON.stringify({
         displayName: "小雨",
+        language: "ja",
+        source: "event",
+        visitorId: "3f0f2a3e-6a42-4c6b-9a0e-0b8d4a6f1c11",
+        client: "app",
+        consent: { accepted: true, privacyVersion: LEGAL_VERSIONS.privacy, termsVersion: LEGAL_VERSIONS.terms },
         email: "xiaoyu@example.com",
         password: "correct-password"
       })
@@ -239,6 +246,7 @@ test("registerOrbitAccount posts to the web register API envelope", async () => 
       {
         success: true,
         data: {
+          emailVerification: { email: "xiaoyu@example.com", sending: true },
           user: {
             displayName: "小雨",
             email: "xiaoyu@example.com",
@@ -255,10 +263,24 @@ test("registerOrbitAccount posts to the web register API envelope", async () => 
     displayName: "小雨",
     email: "xiaoyu@example.com",
     fetchImpl,
-    password: "correct-password"
+    language: "ja",
+    password: "correct-password",
+    source: "event",
+    visitorId: "3f0f2a3e-6a42-4c6b-9a0e-0b8d4a6f1c11"
   });
 
-  assert.equal(result.success, true);
+  assert.deepEqual(result, { mailSentTo: "xiaoyu@example.com", success: true });
+});
+
+test("registerOrbitAccount names no mail when none is sent, and says what a missing agreement is", async () => {
+  const answer = async (body: unknown, status: number) => registerOrbitAccount({
+    baseUrl: "http://localhost:3000", email: "xiaoyu@example.com", password: "correct-password",
+    fetchImpl: async () => jsonResponse(body, { status })
+  });
+  assert.deepEqual(await answer({ success: true, data: { emailVerification: { email: "xiaoyu@example.com", sending: false } } }, 201), { mailSentTo: null, success: true });
+  assert.deepEqual(await answer({ success: true, data: {} }, 201), { mailSentTo: null, success: true });
+  const refused = await answer({ success: false, error: { code: "VALIDATION_ERROR", message: "x", context: { authErrorCode: "AUTH_CONSENT_REQUIRED" } } }, 400);
+  assert.equal(refused.success === false && refused.error.message, currentTranslator()("auth.err.consentRequired"));
 });
 
 test("signOutOrbitSession clears the stored session through the account sign-out bridge", async () => {

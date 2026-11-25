@@ -19,6 +19,7 @@ import {
   useWindowDimensions
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useEmailNoticeSpace } from "../../email-verification/EmailNotice";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { ActionSheet, Button as UiButton, Card as UiCard, EmptyState as UiEmptyState, Icon as UiIcon, IconButton as UiIconButton, RetryCard, Skeleton, UiText } from "../../components/ui";
@@ -1130,6 +1131,7 @@ function ConversationThread({
   // the composer was pushed below the screen. Shrink the history by what the composer gained.
   const [composerExtra, setComposerExtra] = useState(0);
   const historyScroll = useRef<ScrollView>(null);
+  const noticeSpace = useEmailNoticeSpace();
   const followNewMessages = useRef(false);
   useEffect(() => {
     if (!focusDraftId || entityDraftOverride?.draftId !== focusDraftId) return;
@@ -1181,7 +1183,7 @@ function ConversationThread({
     <AppScreen inset="kit" title="iOrbit" subtitle={shortTitle(thread.title)} showBack backIcon="menu" backAccessibilityLabel={copy.conversations} onBack={() => onOpenHref("/ai?drawer=1")}
       headerActions={<UiIconButton icon="x" accessibilityLabel={copy.close} onPress={() => { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else onBack(); }} />}>
       {offline ? <UiText accessibilityRole="alert" style={styles.r21Muted}>{copy.offline} · {offlineAt && !Number.isNaN(new Date(offlineAt).getTime()) ? `${new Intl.DateTimeFormat(locale.language, { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(offlineAt))} ${copy.conversationAt}` : copy.savedConversation}</UiText> : null}
-      <ScrollView ref={historyScroll} testID="conversation-history" style={{ height: Math.max(180, windowHeight - safeInsets.top - safeInsets.bottom - (offline ? 220 : 190) - composerExtra) }} contentContainerStyle={styles.r21Thread}
+      <ScrollView ref={historyScroll} testID="conversation-history" style={{ height: Math.max(180, windowHeight - safeInsets.top - safeInsets.bottom - (offline ? 220 : 190) - composerExtra - noticeSpace) }} contentContainerStyle={styles.r21Thread}
         keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" scrollEventThrottle={100}
         refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.accentText} />}
         onScrollBeginDrag={() => { userDragged.current = true; settlingAnchor.current = null; }}

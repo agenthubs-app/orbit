@@ -7,6 +7,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type Styl
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ShellBackground } from "../../components/ShellBackground";
+import { EmailNotice } from "../../email-verification/EmailNotice";
 import { ShellTopBar, SHELL_GUTTER, useShellTopGap } from "../../components/ShellTopBar";
 import { Icon, IconButton, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
@@ -64,6 +65,7 @@ export function PlanChatFrame({ title = "iOrbit", subtitle, stage, stageKeys, on
           </View>
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.fill}>
             <ScrollView ref={ref} style={stage === null ? null : styles.scrollTop} contentContainerStyle={styles.scroll} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled">
+              <EmailNotice />
               <View style={styles.chat}>{children}</View>
             </ScrollView>
             {foot ? <View pointerEvents="box-none" style={styles.foot}>{foot}</View> : null}

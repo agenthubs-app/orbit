@@ -317,8 +317,9 @@ test("existing login, signup and Google still navigate after intentional auth id
     const page = await open(t, mode === "google" ? "login" : mode);
     await fill(page, "邮箱", "account@example.test");
     await fill(page, mode === "signup" ? "设置密码" : "密码", "password");
+    if (mode === "signup") await page.getByRole("checkbox").click();
     await page.getByRole("button", { name: mode === "google" ? "使用 Google 登录" : mode === "signup" ? "创建账号" : "登录", exact: true }).click();
-    await settle(page);
+    await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
     assert.ok(await page.evaluate(() => { const s = (window as any).fixture; return s.actor === "authenticated" && s.navigation.length === 1 && s.navigation[0].startsWith("/profile/onboarding?next=%2Fhome"); }));
   }
 });

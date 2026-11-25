@@ -1,3 +1,4 @@
+import type { SignupFunnelSource } from "./contract/signup-funnel";
 import { normalizeOrbitApiBaseUrl } from "./base-url";
 import { ORBIT_API_ENDPOINTS } from "./endpoints";
 import { currentTranslator, type MessageKey } from "../i18n/messages";
@@ -320,18 +321,26 @@ function asciiBytes(value: string): Uint8Array {
   return Uint8Array.from(value, (character) => character.charCodeAt(0));
 }
 
+/** For the sign-up funnel, in case this sign-in creates the account. */
+export interface GoogleSignupContext {
+  source: SignupFunnelSource;
+  visitorId?: string | undefined;
+}
+
 export async function createGoogleOAuthAttempt({
   baseUrl,
   digest,
   next = "/profile",
   purpose,
-  randomBytes
+  randomBytes,
+  signup
 }: {
   baseUrl: string;
   digest: (value: Uint8Array) => Promise<Uint8Array>;
   next?: string;
   purpose?: "deletion-request";
   randomBytes: (length: number) => Promise<Uint8Array>;
+  signup?: GoogleSignupContext;
 }): Promise<GoogleOAuthAttempt> {
   const codeVerifier = base64Url(await randomBytes(32));
   const state = base64Url(await randomBytes(24));
@@ -348,6 +357,8 @@ export async function createGoogleOAuthAttempt({
   startUrl.searchParams.set("redirect_uri", MOBILE_AUTH_CALLBACK_URI);
   startUrl.searchParams.set("state", state);
   if (purpose) startUrl.searchParams.set("purpose", purpose);
+  if (signup) startUrl.searchParams.set("signup_source", signup.source);
+  if (signup?.visitorId) startUrl.searchParams.set("signup_visitor", signup.visitorId);
 
   return {
     codeVerifier,

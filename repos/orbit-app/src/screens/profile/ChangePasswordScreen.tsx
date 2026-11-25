@@ -7,6 +7,8 @@ import { useRef, useState } from "react";
 import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { EmailNotice } from "../../email-verification/EmailNotice";
+
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { UiPressable, UiText } from "../../components/ui";
@@ -73,6 +75,7 @@ export function ChangePasswordScreen() {
         <UiPressable accessibilityRole="button" accessibilityLabel={locale.t("auth.backLabel")} disabled={pending} onPress={() => resetStackTo(router, onward)} style={styles.back}><UiText style={styles.backText}>{locale.t("auth.backLabel")}</UiText></UiPressable>
       </View>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+        <EmailNotice gutter={36} />
         <View style={styles.hero}>
           <UiText accessibilityRole="header" style={styles.title}>{locale.t("auth.changeTitle")}</UiText>
           <UiText style={styles.description}>{locale.t(first ? "auth.changeFirstDescription" : "auth.changeDescription")}</UiText>

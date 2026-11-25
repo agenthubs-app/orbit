@@ -1,4 +1,5 @@
 export const ORBIT_API_ENDPOINTS = {
+  accountEmailVerificationSend: "/api/account/email-verification/send",
   accountMe: "/api/account/me",
   accountStatus: "/api/account/status",
   accountSessionSignOut: "/api/account/session/sign-out",
@@ -11,6 +12,7 @@ export const ORBIT_API_ENDPOINTS = {
   authMobileGoogleStart: "/api/auth/mobile/google/start",
   authMobileProviders: "/api/auth/mobile/providers",
   authRegister: "/api/auth/register",
+  authSignupFunnel: "/api/auth/signup-funnel",
   authSession: "/api/auth/session",
   authSignOut: "/api/auth/signout",
   externalActionSandboxAudit: "/api/sandbox/external-actions/audit",

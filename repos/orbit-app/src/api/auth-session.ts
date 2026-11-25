@@ -1,4 +1,6 @@
 import { normalizeOrbitApiBaseUrl } from "./base-url";
+import { LEGAL_VERSIONS } from "./compute/legal-version";
+import type { AccountRegisterRequest } from "./contract/account-register";
 import { ORBIT_API_ENDPOINTS } from "./endpoints";
 import {
   exchangeGoogleOAuthCode,
@@ -37,6 +39,8 @@ export interface AuthSessionFailure {
 export type AuthSessionResult = AuthSessionSuccess | AuthSessionFailure;
 
 export interface RegisterAccountSuccess {
+  /** The address a verification mail went to; null when this server sends none. */
+  mailSentTo: string | null;
   success: true;
 }
 
@@ -358,7 +362,8 @@ export async function signInWithCredentials({
 
 // The server's own sentence is English developer text or fixed Chinese; the screen
 // shows the wording for its reason in the screen language instead.
-function registerFailureKey(code: string, status: number): MessageKey {
+function registerFailureKey(code: string, status: number, authErrorCode: string): MessageKey {
+  if (authErrorCode === "AUTH_CONSENT_REQUIRED") return "auth.err.consentRequired";
   if (status === 409 || code === "CONFLICT") return "auth.err.emailTaken";
   if (status === 429 || code === "RATE_LIMITED") return "auth.err.rateLimited";
   if (status === 400 || code === "VALIDATION_ERROR") return "auth.err.signupInvalid";
@@ -370,14 +375,17 @@ export async function registerOrbitAccount({
   displayName,
   email,
   fetchImpl = fetch,
-  password
+  language,
+  password,
+  source,
+  visitorId
 }: {
   baseUrl: string;
   displayName?: string;
   email: string;
   fetchImpl?: AuthFetchLike;
   password: string;
-}): Promise<RegisterAccountResult> {
+} & Pick<AccountRegisterRequest, "language" | "source" | "visitorId">): Promise<RegisterAccountResult> {
   const normalizedEmail = email.trim().toLowerCase();
 
   if (!normalizedEmail || password.length < 8) {
@@ -393,9 +401,15 @@ export async function registerOrbitAccount({
     response = await fetchImpl(authUrl(baseUrl, ORBIT_API_ENDPOINTS.authRegister), {
       body: JSON.stringify({
         ...(displayName?.trim() ? { displayName: displayName.trim() } : {}),
+        ...(language ? { language } : {}),
+        ...(source ? { source } : {}),
+        ...(visitorId ? { visitorId } : {}),
+        client: "app",
+        // The sign-up screen asks for agreement to exactly these two texts before it calls this.
+        consent: { accepted: true, privacyVersion: LEGAL_VERSIONS.privacy!, termsVersion: LEGAL_VERSIONS.terms! },
         email: normalizedEmail,
         password
-      }),
+      } satisfies AccountRegisterRequest),
       credentials: "include",
       headers: {
         Accept: "application/json",
@@ -419,15 +433,24 @@ export async function registerOrbitAccount({
         ? (payload.error as JsonBody)
         : {};
     const code = stringField(errorBody, "code");
+    const authErrorCode = typeof errorBody.context === "object" && errorBody.context !== null
+      ? stringField(errorBody.context as JsonBody, "authErrorCode")
+      : "";
 
     return registerFailure(
       code === "CONFLICT" ? "ORBIT_APP_AUTH_EMAIL_TAKEN" : code || "ORBIT_APP_AUTH_REGISTER_FAILED",
-      authText(registerFailureKey(code, response.status)),
+      authText(registerFailureKey(code, response.status, authErrorCode)),
       response.status
     );
   }
 
-  return { success: true };
+  const data = typeof payload?.data === "object" && payload.data !== null ? (payload.data as JsonBody) : {};
+  const mail = typeof data.emailVerification === "object" && data.emailVerification !== null
+    ? (data.emailVerification as JsonBody)
+    : {};
+  const mailEmail = stringField(mail, "email");
+
+  return { mailSentTo: mail.sending === true && mailEmail ? mailEmail : null, success: true };
 }
 
 export async function signOutOrbitSession({
