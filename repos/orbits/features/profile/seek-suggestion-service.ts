@@ -12,6 +12,7 @@ import {
 export const SEEK_SUGGESTION_MAX = 4;
 const CANDIDATE_LIMIT = 60;
 const CANDIDATE_LENGTH = 32;
+const GOAL_LENGTH = 200;
 
 export type SeekSuggestionErrorCode =
   | "ACTOR_REQUIRED"
@@ -78,14 +79,17 @@ export function createSeekSuggestionService(options: SeekSuggestionServiceOption
   const readProfile = options.readProfile ?? ((actorId: string) => createProfileService().getProfile({ actorId }));
 
   return {
-    async suggest(input: { actorId: string; candidates: unknown; language?: string | null }): Promise<SeekSuggestionResult> {
+    async suggest(input: { actorId: string; candidates: unknown; goal?: string | null; language?: string | null }): Promise<SeekSuggestionResult> {
       const actorId = input.actorId.trim();
       if (!actorId) return { success: false, error: { code: "ACTOR_REQUIRED", message: "Sign in before requesting suggestions." } };
       const candidates = normalizeSeekCandidates(input.candidates);
       if (!candidates.length) return { success: false, error: { code: "CANDIDATES_REQUIRED", message: "No candidate labels were supplied." } };
       const profileResult = await readProfile(actorId);
-      const profile = profileResult.success ? profileResult.data.profile : null;
-      if (!profile || !profile.relationshipGoal?.trim()) {
+      const saved = profileResult.success ? profileResult.data.profile : null;
+      // 三步引导：目标还在表单里（点「次へ」才保存），用请求带来的这一句；没带就用已保存的。
+      const goal = input.goal?.replace(/\s+/gu, " ").trim().slice(0, GOAL_LENGTH) || saved?.relationshipGoal?.trim();
+      const profile = saved && goal ? { ...saved, relationshipGoal: goal } : null;
+      if (!profile) {
         return { success: false, error: { code: "PROFILE_REQUIRED", message: "Save a current goal before requesting suggestions." } };
       }
       const language = input.language === "en" ? "en" : "zh";

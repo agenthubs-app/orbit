@@ -22,6 +22,9 @@
 //      - 只读：不写库。结果只进表单草稿，用户点「次へ」才保存。
 //    调用时机：扫描成功后在后台调一次；没扫描时在第 ① 步点「次へ」、公司或职位有值时调一次。
 //    结果回来时用户已经动过的字段不要覆盖。
+//
+// 三、「求めていること」的虚线候选：POST /api/profile/seek-suggestions（原接口）。请求可另带 goal（还没保存的目标原文，
+//    即 composeProfileOnboardingGoal 的结果）；带了就用它，不必先保存目标。资料要已保存过（第 ① 步之后）。
 
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "./industries";
 import type { OrbitLanguage } from "./language";

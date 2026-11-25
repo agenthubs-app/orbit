@@ -15,7 +15,7 @@ export async function POST(request: Request): Promise<Response> {
       { status: 401 },
     );
   }
-  let body: { candidates?: unknown; language?: unknown } = {};
+  let body: { candidates?: unknown; goal?: unknown; language?: unknown } = {};
   try {
     const parsed = (await request.json()) as unknown;
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) body = parsed as typeof body;
@@ -25,6 +25,7 @@ export async function POST(request: Request): Promise<Response> {
   const result = await createSeekSuggestionService().suggest({
     actorId: actor.id,
     candidates: body.candidates,
+    goal: typeof body.goal === "string" ? body.goal : null,
     language: typeof body.language === "string" ? body.language : null,
   });
   const status = result.success === true
