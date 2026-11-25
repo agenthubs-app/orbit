@@ -7036,7 +7036,7 @@ function regPersona() {
     <div style="font-size:13.5px;line-height:1.75">製造業向け IoT SaaS「ミナトリンク」の代表です。来春のシリーズAに向けて、資本政策と CFO 採用について、経験のある方のお話を伺いたいです。工場 DX の現場事情ならお話しできます。</div>
     <div class="why-body" hidden>回答（目的・テーマ・会いたい人）とプロフィール（ミナトリンク 代表取締役 CEO）から作成。売上などの数値は入れていません。</div></div>
   <div class="card flat p-scope"><div class="lbl" style="margin-bottom:8px">公開範囲</div>
-    <div class="row" style="gap:8px;font-size:12.5px"><span class="chip teal">参加者全員</span><span class="sub">名前 · 会社 · 業界 · 自己紹介 · 話題 · 提供できること</span></div>
+    <div class="row" style="gap:8px;font-size:12.5px"><span class="chip teal">参加者全員</span><span class="sub">名前 · 会社 · 業界 · 自己紹介 · 話題 · 提供できること · 交流スタイル · 会後の連絡方法</span></div>
     <div class="row" style="gap:8px;font-size:12.5px;margin-top:6px"><span class="chip">主催者のみ</span><span class="sub">参加目的 · 会いたい人</span></div></div>
   <button class="btn primary block" style="height:48px;margin-top:14px">この内容で申し込む</button><div class="lbl" style="text-align:center;margin-top:8px">申込後も 10/6 まで編集できます</div>`;
 }
@@ -7412,7 +7412,7 @@ const wReg2 = () => wRegHead('プロフィールを確認 · 4 / 5') + `<div cla
     <div class="card span7 p-wreview" style="background:var(--surface-2)">
       <div class="card k-wrcover" style="margin:0"><div class="card-h"><h3>カバー率 ${num(86)}%</h3><span class="lbl">足りない項目を追加できます</span></div>${coverList.map(([t, ok]) => `<div class="row" style="gap:8px;font-size:13px;padding:5px 0"><span style="color:${ok ? 'var(--ok)' : 'var(--coral)'};font-weight:800;width:12px">${ok ? '✓' : '△'}</span><span class="${ok ? '' : 'muted'}" style="flex:1">${t}</span>${ok ? '' : '<button class="btn sm">追加</button>'}</div>`).join('')}<div class="lbl" style="margin-top:8px">「提供できること」を足すと、相手からも声をかけられやすくなります</div></div>
       <div class="card k-wrintro" style="margin:12px 0 0" data-why-box><div class="card-h"><h3>自己紹介 <span class="lbl" style="font-weight:500">参加者に表示</span></h3><div class="row" style="gap:6px"><span class="why">?</span><button class="lbtn">${ic('pen', 'sm')}</button></div></div><div style="font-size:13.5px;line-height:1.75">製造業向け IoT SaaS「ミナトリンク」の代表です。来春のシリーズAに向けて、資本政策と CFO 採用について、経験のある方のお話を伺いたいです。工場 DX の現場事情ならお話しできます。</div><div class="why-body" hidden>回答（目的・テーマ・会いたい人）とプロフィール（ミナトリンク 代表取締役 CEO）から作成。売上などの数値は入れていません。</div></div>
-      <div class="card flat k-wrscope" style="margin:12px 0 0;background:var(--surface)"><div class="lbl" style="margin-bottom:8px">公開範囲</div><div class="row" style="gap:8px;font-size:12.5px"><span class="chip teal">参加者全員</span><span class="sub">名前 · 会社 · 業界 · 自己紹介 · 話題 · 提供できること</span></div><div class="row" style="gap:8px;font-size:12.5px;margin-top:6px"><span class="chip">主催者のみ</span><span class="sub">参加目的 · 会いたい人</span></div></div>
+      <div class="card flat k-wrscope" style="margin:12px 0 0;background:var(--surface)"><div class="lbl" style="margin-bottom:8px">公開範囲</div><div class="row" style="gap:8px;font-size:12.5px"><span class="chip teal">参加者全員</span><span class="sub">名前 · 会社 · 業界 · 自己紹介 · 話題 · 提供できること · 交流スタイル · 会後の連絡方法</span></div><div class="row" style="gap:8px;font-size:12.5px;margin-top:6px"><span class="chip">主催者のみ</span><span class="sub">参加目的 · 会いたい人</span></div></div>
       <div class="row push k-wrgo" style="gap:10px;margin-top:16px;align-items:center"><span class="lbl" style="flex:1">申込後も 10/6 まで編集できます</span><button class="btn">質問に戻る</button><button class="btn primary" style="height:44px">この内容で申し込む</button></div></div>
     ${personaR(86, true)}</div>`;
 const wReg3 = () => wRegHead('申込完了') + `<div class="wgrid">

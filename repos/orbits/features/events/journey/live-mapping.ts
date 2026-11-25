@@ -159,9 +159,11 @@ export const ATTENDEE_PROFILE_ANSWERS_LIMIT = 6;
 
 /**
  * 参加者の詳細：一位报名者对参加者公开的资料（与 `publicAttendeesFromRegistrations` 同一边界：只用 `event_attendees` / `public`
- * 的回答，一个都没有 = 不公开 → null）。intro = 公开回答里的「話せるトピック」（与名单上的一句话同源）。
+ * 的回答，一个都没有 = 不公开 → null）。
+ * 2026-11-26 用户定：intro = 这个人报名这场活动时确认的自我介绍（`joinIntro`，eventJoinIntros）；没有就不显示（缺位，不退到别的字段）。
+ * 话题（experienceHighlight）作为一条问答显示（画板「自己紹介（参加用プロフィール）」：介绍一段 + 今日話したいこと / 提供できること）。
  */
-export function attendeeProfileFromRegistration(registration: EventRegistration): JourneyAttendeeProfileFacts | null {
+export function attendeeProfileFromRegistration(registration: EventRegistration, joinIntro: string | null = null): JourneyAttendeeProfileFacts | null {
   if (registration.status !== "rsvped") return null;
   const visible = profileResponsesForParticipantDetail(registration.participantProfile.interviewResponses ?? [], { viewerOwnsTarget: false });
   if (!visible.length) return null;
@@ -171,12 +173,12 @@ export function attendeeProfileFromRegistration(registration: EventRegistration)
   );
   const answers = visible.flatMap((response) => {
     const a = text(response.answer?.displayText);
-    // 会社・役職 在名字下、話せるトピック 就是 intro：不在问答里重复。
-    if (!a || response.field === "positioning" || response.field === "experienceHighlight") return [];
+    // 会社・役職 在名字下：不在问答里重复。
+    if (!a || response.field === "positioning") return [];
     const q = text(response.question?.prompt) ?? FIELD_LABEL_JA[response.field] ?? null;
     return q ? [{ a, field: response.field, q }] : [];
   }).slice(0, ATTENDEE_PROFILE_ANSWERS_LIMIT);
-  return { answers, attendeeId: participant.participantId, intro: participant.experienceHighlight, name: participant.displayName, org: participant.company, role: participant.role };
+  return { answers, attendeeId: participant.participantId, intro: joinIntro?.trim() || null, name: participant.displayName, org: participant.company, role: participant.role };
 }
 
 type JudgeOut = Awaited<ReturnType<JourneyLivePorts["judge"]>>["results"][string];

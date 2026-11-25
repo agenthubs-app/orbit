@@ -82,6 +82,18 @@ function warned<T>(event: string, fallback: T, extra: Record<string, unknown> = 
 const iso = (value: unknown): string | null => (value === null || value === undefined ? null : value instanceof Date ? value.toISOString() : String(value));
 const str = (value: unknown): string | null => (typeof value === "string" && value.trim() ? value.trim() : null);
 
+/**
+ * 参加者の詳細的报名者：只认这场活动的有效报名（rsvped；取消 / 审核中 / 被拒都不算），同一条查询带出他为这场活动确认的自我介绍
+ * （eventJoinIntros，报名提交时写；再次报名时覆盖），不多一次往返。
+ */
+export async function readAttendeeOwner(query: Query, workspaceId: string, eventId: string, attendeeId: string): Promise<{ actorId: string; intro: string | null } | null> {
+  const owner = await query(`/* events:r27-journey:attendee-owner */ select h.actor_id,
+      (select r.payload ->> 'text' from orbit_records r where r.workspace_id = h.workspace_id and r.collection_name = 'eventJoinIntros' and r.user_id = h.actor_id and r.lifecycle_state <> 'deleted' and r.payload ->> 'eventId' = h.event_id order by r.updated_at desc limit 1) as join_intro
+    from event_ops_membership_heads h where h.workspace_id = $1 and h.event_id = $2 and h.participant_id = $3 and h.status = 'rsvped' limit 1`, [workspaceId, eventId, attendeeId]);
+  const actorId = str(owner.rows[0]?.actor_id);
+  return actorId ? { actorId, intro: str(owner.rows[0]?.join_intro) } : null;
+}
+
 export function createJourneyLivePorts(): JourneyLivePorts | null {
   const runtime = getConfiguredEventAssessmentRuntime();
   if (!runtime) return null;
@@ -286,12 +298,11 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
 
     async attendeeProfile(eventId, attendeeId) {
       // 按需单条读：participant id → 报名者（只认有效报名），再读这一个人的报名资料；名单不整份读。
-      const owner = await query(`/* events:r27-journey:attendee-owner */ select actor_id from event_ops_membership_heads where workspace_id = $1 and event_id = $2 and participant_id = $3 and status = 'rsvped' limit 1`, [workspaceId, eventId, attendeeId]);
-      const actorId = str(owner.rows[0]?.actor_id);
-      if (!actorId) return null;
-      const registration = await operations.getCanonicalRegistration(eventId, actorId);
+      const owner = await readAttendeeOwner(query, workspaceId, eventId, attendeeId);
+      if (!owner) return null;
+      const registration = await operations.getCanonicalRegistration(eventId, owner.actorId);
       if (!registration || registration.eventId !== eventId || registration.participantProfileId !== attendeeId) return null;
-      return attendeeProfileFromRegistration(registration);
+      return attendeeProfileFromRegistration(registration, owner.intro);
     },
 
     async hosting(actorId, eventId) {

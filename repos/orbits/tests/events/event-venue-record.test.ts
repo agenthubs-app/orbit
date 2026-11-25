@@ -173,7 +173,7 @@ test("attendee profile: 404 for non-registrants, private profiles, unknown ids a
   assert.equal((await anonymous.attendeeProfile(get(), params({ attendeeId: "vr-wang", id: VENUE_RECORD_EVENT_ID }))).status, 401);
 });
 
-test("attendee profile mapping: only attendee-visible answers, ≤ 6, no positioning duplicate; none visible → null", () => {
+test("attendee profile mapping: only attendee-visible answers, ≤ 6, no positioning duplicate; none visible → null; intro only from the registration's self-introduction", () => {
   const response = (field: string, visibility: string, displayText: string, prompt: string | null = null) => ({ answer: { customText: null, displayText, selectedOptionIds: [] }, answerSource: "participant", answeredAt: "2026-10-01T00:00:00.000Z", field, generation: null, question: prompt ? { fieldLabel: { en: "", zh: "" }, inputKind: "single_choice_with_custom", language: "zh", options: [], prompt } : null, questionId: null, questionSource: "legacy_unknown", visibility });
   const registration = (responses: unknown[]) => ({ cancelledAt: null, eventId: "e", id: "r1", participantProfile: { answers: {}, createdAt: "", displayName: "王 磊", eventId: "e", id: "pp1", interviewResponses: responses, updatedAt: "", userId: "u1" }, participantProfileId: "pp1", reactivatedAt: null, registeredAt: "2026-09-01T00:00:00.000Z", status: "rsvped" }) as unknown as EventRegistration;
   const profile = attendeeProfileFromRegistration(registration([
@@ -185,10 +185,12 @@ test("attendee profile mapping: only attendee-visible answers, ≤ 6, no positio
   ]));
   assert.ok(profile);
   assert.equal(profile.attendeeId, "pp1");
-  assert.deepEqual([profile.name, profile.org, profile.role, profile.intro], ["王 磊", "華東キャピタル", "パートナー", "クロスボーダー投資"]);
+  // 2026-11-26: intro = the self-introduction confirmed at registration (none → no intro); the topic is a Q&A row.
+  assert.deepEqual([profile.name, profile.org, profile.role, profile.intro], ["王 磊", "華東キャピタル", "パートナー", null]);
   assert.equal(profile.answers.length, 6);
-  assert.deepEqual(profile.answers[0], { a: "製造業 DX", field: "targetAttendees", q: "どんな人に会いたい？" });
-  assert.equal(profile.answers[1]!.q, "参加の目的");
+  assert.deepEqual(profile.answers[0], { a: "クロスボーダー投資", field: "experienceHighlight", q: "話せるトピック" });
+  assert.deepEqual(profile.answers[1], { a: "製造業 DX", field: "targetAttendees", q: "どんな人に会いたい？" });
+  assert.equal(profile.answers[2]!.q, "参加の目的");
   assert.ok(!profile.answers.some((item) => item.a === "非公開の回答"));
   assert.equal(attendeeProfileFromRegistration(registration([response("valueOffered", "matching_only", "x")])), null);
 });

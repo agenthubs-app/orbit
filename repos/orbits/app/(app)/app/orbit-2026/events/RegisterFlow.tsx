@@ -175,8 +175,9 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   };
   const apply = async () => {
     setBusy(true);
-    const edited = intro && intro !== profile?.selfIntro?.text ? intro : undefined;
-    const res = await joinApi.submit(eventId, answers, edited);
+    // 2026-11-26：确认页上的自我介绍（AI 草稿原样或改过的）都随报名留存——它会显示给这场活动的其他参会者。
+    const confirmed = (intro ?? profile?.selfIntro?.text ?? "").trim().slice(0, 400);
+    const res = await joinApi.submit(eventId, answers, confirmed || undefined);
     setBusy(false);
     if (res.ok) { setResult(res.data); setContactOpen(hostContactHasId(res.data.hostContact)); } else toast.error(t("submitFailed"));
   };

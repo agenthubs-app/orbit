@@ -326,7 +326,7 @@ export const eventsJourneyCopy = {
   introShown: { ja: "参加者に表示", zh: "对参会者显示", en: "Shown to attendees", kind: "chip" },
   visibilityTitle: { ja: "公開範囲", zh: "公开范围", en: "Who sees what", kind: "label" },
   visAll: { ja: "参加者全員", zh: "所有参会者", en: "All attendees", kind: "label" },
-  visAllFields: { ja: "名前 · 会社 · 業界 · 自己紹介 · 話題 · 提供できること", zh: "名字 · 公司 · 行业 · 自我介绍 · 话题 · 能提供的", en: "Name · company · industry · intro · topics · what you offer", kind: "label" },
+  visAllFields: { ja: "名前 · 会社 · 業界 · 自己紹介 · 話題 · 提供できること · 交流スタイル · 会後の連絡方法", zh: "名字 · 公司 · 行业 · 自我介绍 · 话题 · 能提供的 · 交流方式 · 会后联系方式", en: "Name · company · industry · intro · topics · what you offer · networking style · follow-up", kind: "label" },
   visOrg: { ja: "主催者のみ", zh: "仅主办方", en: "Organizer only", kind: "label" },
   visOrgFields: { ja: "参加目的 · 会いたい人", zh: "参加目的 · 想见的人", en: "Why you're going · who to meet", kind: "label" },
   applyNow: { ja: "この内容で申し込む", zh: "按这个内容报名", en: "Apply with this", kind: "fullButton" },
