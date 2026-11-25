@@ -45,7 +45,7 @@ export function AuthLogin({ defaultNext, oauthProviders, signInNote = null }: { 
       <AuthNoticeCard notice={session.message} />
       {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Sign in with Google", ja: "Google でログイン", zh: "使用 Google 登录" })} label={t({ en: "Sign in with Google", ja: "Google でログイン", zh: "使用 Google 登录" })} onClick={session.onGoogleSignIn} /> : null}
       {oauthProviders.includes("google") ? <span className="au-divider">{t({ en: "Or use your email", ja: "またはメールアドレスで", zh: "或使用邮箱" })}</span> : null}
-      <div className="au-fields">
+      <fieldset className="au-fields" disabled={!ready}>
         <AuthEmailField autoComplete="username" error={emailError} session={session} />
         <AuthPasswordField
           autoComplete="current-password"
@@ -54,7 +54,7 @@ export function AuthLogin({ defaultNext, oauthProviders, signInNote = null }: { 
           session={session}
           trimPaste
         />
-      </div>
+      </fieldset>
       <a className="au-forgot" href={authRoutePath("forgot", next)}>{t({ en: "Forgot password?", ja: "パスワードをお忘れですか？", zh: "忘记密码？" })}</a>
       <AuthPrimaryButton className="au-btn-login" disabled={!ready} label={label} submitting={session.submitting} />
       <p className="au-switch au-foot">

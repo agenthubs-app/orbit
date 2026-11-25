@@ -180,9 +180,10 @@ test("registration keeps legal links in separate tabs and the typed form in plac
   assert.match(html, /id="au-password"/);
 });
 
-test("login SSR uses POST and holds the submit button until client handlers are ready", () => {
+test("login SSR uses POST and holds the fields and submit until client handlers are ready", () => {
   const html = renderToStaticMarkup(<AuthModal defaultNext="/app/home" oauthProviders={[]} view="login" />);
   assert.match(html, /<form[^>]*method="post"/u);
+  assert.match(html, /<fieldset class="au-fields" disabled=""/u);
   assert.match(html, /<button class="btn au-btn-login" disabled=""[^>]*>/u);
 });
 
@@ -211,6 +212,7 @@ test("login: local validation shows the design copy without any network call", a
 
 test("login: valid submit reaches signIn(credentials) with the typed values, navigates to continuation and shows ✓ 已登录", async () => {
   await withModal("login", `?next=${encodeURIComponent(NEXT)}`, { credentials: "success" }, async (renderer, harness) => {
+    assert.equal(renderer.root.findByType("fieldset").props.disabled, false);
     await fill(renderer, "owner@example.invalid", "password-123");
     await submit(renderer);
     const callback = harness.observed.find((call) => call.url.includes("/callback/credentials"));
