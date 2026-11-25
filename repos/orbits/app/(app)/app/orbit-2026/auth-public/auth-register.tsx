@@ -30,7 +30,7 @@ export function AuthRegister({ defaultNext, oauthProviders }: { defaultNext: str
       {oauthProviders.includes("google") ? <span className="au-divider">{t({ en: "Or use your email", ja: "またはメールアドレスで", zh: "或使用邮箱" })}</span> : null}
       <div className="au-fields">
         <AuthEmailField error={emailError} session={session} />
-        <AuthPasswordField autoComplete="new-password" error={passwordError} placeholder="••••••••" session={session} />
+        <AuthPasswordField autoComplete="new-password" error={passwordError} placeholder="" session={session} />
       </div>
       <div className={`au-reqs${longEnough ? " au-reqs-ok" : ""}`}><Icon name="check" size={16} />{t({ en: "At least 8 characters", ja: "8文字以上", zh: "至少 8 位" })}</div>
       <AuthErrorCard error={emailError || passwordError ? "" : error} />

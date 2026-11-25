@@ -19,14 +19,18 @@ test("public help has local FAQ, safe navigation, and no unconfigured contact ac
   assert.doesNotMatch(html, /mailto:|フォームを開く|送信しました/);
 });
 
-test("public legal pages expose only the approved pre-publication placeholder", () => {
-  for (const kind of ["terms", "privacy"] as const) {
-    const html = renderToStaticMarkup(<PublicInfoPage kind={kind} language="ja" signedIn={false} />);
-    assert.match(html, /公開前に掲載/);
-    assert.match(html, /正式な内容を準備しています。/);
-    assert.match(html, /href="\/help"/);
-    assert.match(html, /href="\/"/);
-    assert.doesNotMatch(html, /mailto:|同意します/);
+test("public legal pages show substantive terms and privacy policy in each language", () => {
+  for (const [language, termsHeading, privacyHeading] of [
+    ["ja", "アカウント", "イベント・連絡先の共有"],
+    ["zh", "账号", "活动与联系人共享"],
+    ["en", "Your account", "Events and contact sharing"],
+  ] as const) {
+    for (const [kind, heading] of [["terms", termsHeading], ["privacy", privacyHeading]] as const) {
+      const html = renderToStaticMarkup(<PublicInfoPage kind={kind} language={language} signedIn={false} />);
+      assert.ok(html.includes(`<h2>${heading}</h2>`), `${language} ${kind} should render its document`);
+      assert.match(html, /href="\/help"/);
+      assert.doesNotMatch(html, /公開前に掲載|正式内容仍在准备中|The full text is being prepared|mailto:/);
+    }
   }
 });
 

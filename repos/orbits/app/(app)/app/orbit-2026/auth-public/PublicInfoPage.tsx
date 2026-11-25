@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { supportEmail } from "../../../../../shared/config/support";
+import { legalCopy } from "../copy/legal";
 import { publicCopy, publicFaqSearchKeywords } from "../copy/public";
 import { pickCopy } from "../copy/types";
 import { Icon, Orbit2026Scope } from "../ui";
@@ -84,10 +85,15 @@ export function PublicInfoPage({ kind, language, signedIn, contactEmail = suppor
       {help ? <>
         <p className={s.intro}>{t("helpIntro")}</p>
         <HelpCenterBody language={language} contactEmail={contactEmail} />
-      </> : <section className={s.legalCard}>
-        <span className={s.badge}>{t("legalPlaceholder")}</span>
-        <p>{t("legalBody")}</p>
-      </section>}
+      </> : <article className={s.legalCard}>
+        {legalCopy[kind].map(({ title, body }) => (
+          <section key={title.en}>
+            <h2>{title[language]}</h2>
+            <p>{body[language]}</p>
+          </section>
+        ))}
+        {contactEmail ? <p><a href={`mailto:${contactEmail}`}>{contactEmail}</a></p> : null}
+      </article>}
       <div className={s.actions}>
         <a className={`${s.action} ${s.primary}`} href="/">{t("home")}</a>
         {!help ? <a className={s.action} href="/help">{t("seeHelp")}</a> : null}

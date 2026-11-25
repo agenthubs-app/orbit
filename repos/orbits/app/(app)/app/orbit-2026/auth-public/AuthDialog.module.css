@@ -34,6 +34,7 @@
 
 .overlayRoot :global(.au-forgot) { align-self: flex-end; margin-top: 14px; color: var(--accent-text); font-size: var(--fs-control); font-weight: var(--fw-bold); }
 .overlayRoot :global(.au-reqs) { display: flex; align-items: center; gap: 6px; margin-top: 10px; color: var(--ink-3-text); font-size: var(--fs-meta); }
+.overlayRoot :global(.au-reqs:not(.au-reqs-ok) svg) { visibility: hidden; }
 .overlayRoot :global(.au-reqs.au-reqs-ok) { color: var(--ok); font-weight: var(--fw-bold); }
 .overlayRoot :global(.au-consent) { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: var(--ink-2); font-size: var(--fs-control); font-weight: 600; }
 .overlayRoot :global(.au-terms-link), .overlayRoot :global(.au-switch-link), .overlayRoot :global(.au-recovery-links a) { color: var(--accent-text); font-weight: var(--fw-bold); }

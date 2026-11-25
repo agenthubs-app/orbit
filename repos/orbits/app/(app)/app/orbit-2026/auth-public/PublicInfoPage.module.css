@@ -173,18 +173,19 @@
   padding: var(--space-28);
 }
 
-.badge {
-  display: inline-flex;
-  padding: var(--space-3) var(--space-9);
-  border-radius: var(--r-pill);
-  background: var(--mac-apricot);
-  color: var(--mac-apricot-ink);
-  font-size: var(--fs-caption);
-  font-weight: 700;
+.legalCard section + section {
+  margin-top: var(--space-22);
+  padding-top: var(--space-18);
+  border-top: 1px solid var(--line);
+}
+
+.legalCard h2 {
+  font-size: var(--fs-title-xs);
+  line-height: 1.4;
 }
 
 .legalCard p {
-  margin-top: var(--space-14);
+  margin-top: var(--space-8);
   line-height: 1.8;
 }
 

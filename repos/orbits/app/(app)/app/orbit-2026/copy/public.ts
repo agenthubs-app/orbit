@@ -25,8 +25,6 @@ export const publicCopy = {
   contactTitle: { ja: "お問い合わせ", zh: "联系我们", en: "Contact", kind: "title" },
   contactUnavailable: { ja: "準備中 · 今はこの画面から送信できません。", zh: "正在准备 · 暂时无法从此页面发送消息。", en: "Coming soon · You cannot send a message from this page yet.", kind: "body" },
   contactEmail: { ja: "メールアプリを開く", zh: "打开邮件应用", en: "Open mail app", kind: "button" },
-  legalPlaceholder: { ja: "公開前に掲載", zh: "发布前提供", en: "Before launch", kind: "label" },
-  legalBody: { ja: "正式な内容を準備しています。", zh: "正式内容仍在准备中。", en: "The full text is being prepared.", kind: "body" },
   home: { ja: "ホームへ", zh: "返回首页", en: "Home", kind: "button" },
   seeHelp: { ja: "ヘルプを見る", zh: "查看帮助", en: "See help", kind: "button" },
   notFoundTitle: { ja: "このページは見つかりません", zh: "找不到这个页面", en: "Page not found", kind: "title" },
