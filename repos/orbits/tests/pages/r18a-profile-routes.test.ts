@@ -21,7 +21,12 @@ test("legacy onboarding enters the R28 flow and normalizes unsafe next paths", (
     "/app/profile/onboarding?next=%2Fapp%2Fhome",
   );
   assert.equal(
+    // 2026-11-26 (return to the page one came from): the profile page itself is a valid destination; the flow's own pages are not.
     profileLegacyDestination({ onboarding: "1", next: "/app/profile", view: "basic" }),
+    "/app/profile/onboarding?next=%2Fapp%2Fprofile",
+  );
+  assert.equal(
+    profileLegacyDestination({ onboarding: "1", next: "/app/profile?onboarding=1" }),
     "/app/profile/onboarding?next=%2Fapp%2Fhome",
   );
 });
