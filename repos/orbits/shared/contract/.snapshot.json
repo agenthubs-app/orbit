@@ -17343,6 +17343,7 @@
         "OrganizerPublicPast",
         "OrganizerPublicResponse",
         "OrganizerPublicUpcoming",
+        "OwnCardScanContract",
         "PasswordResetResponse",
         "PersonalScheduleAssociationKind",
         "PersonalScheduleAssociationOption",
@@ -17496,6 +17497,8 @@
         "PortraitSaveBody",
         "PortraitSaveResult",
         "PortraitSourceAnswer",
+        "ProfileAutofillInferenceContract",
+        "ProfileAutofillInferenceRequestContract",
         "ProfileCardCompletenessContract",
         "ProfileCompletenessContract",
         "ProfileCompletenessFieldCode",
@@ -25172,6 +25175,123 @@
           "optional": true,
           "kind": "text",
           "type": "PlanHomeView | null"
+        }
+      }
+    },
+    "profile-autofill.ts::OwnCardScanContract": {
+      "kind": "object",
+      "members": {
+        "draft": {
+          "optional": false,
+          "kind": "text",
+          "type": "{ displayName: string; organization: string; role: string; email: string; phone: string; } | null"
+        },
+        "ocr": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "structuredExtraction": {
+              "optional": true,
+              "kind": "object",
+              "members": {
+                "primaryIndustryId": {
+                  "optional": true,
+                  "kind": "text",
+                  "type": "IndustryIdCode | null"
+                },
+                "secondaryIndustryId": {
+                  "optional": true,
+                  "kind": "text",
+                  "type": "SecondaryIndustryIdCode | null"
+                },
+                "seniorityLevel": {
+                  "optional": true,
+                  "kind": "text",
+                  "type": "SeniorityLevelCode | null"
+                },
+                "regionCountryCode": {
+                  "optional": true,
+                  "kind": "text",
+                  "type": "string | null"
+                },
+                "regionCity": {
+                  "optional": true,
+                  "kind": "text",
+                  "type": "string | null"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "profile-autofill.ts::ProfileAutofillInferenceRequestContract": {
+      "kind": "object",
+      "members": {
+        "displayName": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "organization": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "role": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "primaryIndustryId": {
+          "optional": true,
+          "kind": "text",
+          "type": "IndustryIdCode | null"
+        },
+        "secondaryIndustryId": {
+          "optional": true,
+          "kind": "text",
+          "type": "SecondaryIndustryIdCode | null"
+        },
+        "language": {
+          "optional": false,
+          "kind": "text",
+          "type": "OrbitLanguage"
+        }
+      }
+    },
+    "profile-autofill.ts::ProfileAutofillInferenceContract": {
+      "kind": "object",
+      "members": {
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'ready' | 'unavailable'"
+        },
+        "primaryIndustryId": {
+          "optional": false,
+          "kind": "text",
+          "type": "IndustryIdCode | null"
+        },
+        "secondaryIndustryId": {
+          "optional": false,
+          "kind": "text",
+          "type": "SecondaryIndustryIdCode | null"
+        },
+        "seniorityLevel": {
+          "optional": false,
+          "kind": "text",
+          "type": "SeniorityLevelCode | null"
+        },
+        "offering": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "topics": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
         }
       }
     },
