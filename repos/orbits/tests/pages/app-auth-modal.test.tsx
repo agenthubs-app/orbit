@@ -180,6 +180,12 @@ test("registration keeps legal links in separate tabs and the typed form in plac
   assert.match(html, /id="au-password"/);
 });
 
+test("login SSR uses POST and holds the submit button until client handlers are ready", () => {
+  const html = renderToStaticMarkup(<AuthModal defaultNext="/app/home" oauthProviders={[]} view="login" />);
+  assert.match(html, /<form[^>]*method="post"/u);
+  assert.match(html, /<button class="btn au-btn-login" disabled=""[^>]*>/u);
+});
+
 test("redesigned auth CSS uses shared theme tokens for light and dark", () => {
   const css = readFileSync(new URL("../../app/(app)/app/orbit-2026/auth-public/AuthDialog.module.css", import.meta.url), "utf8");
   assert.match(css, /var\(--surface\)/);

@@ -1,6 +1,7 @@
 "use client";
 
 /** b1 / b12 登录态；认证请求和安全 next 由 useAccountAuth 处理。 */
+import { useEffect, useState } from "react";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { getOrbitAccountAuthViewModel } from "../../orbit-account-auth-route-view-model";
 import { AuthEmailField, AuthGoogleButton, AuthNoticeCard, AuthPasswordField, AuthPrimaryButton, useAuthSubmit } from "./auth-form";
@@ -31,9 +32,11 @@ export function AuthLogin({ defaultNext, oauthProviders, signInNote = null }: { 
   const emailError = localField === "email" ? error : "";
   const passwordError = emailError ? "" : error;
   const next = session.query.next;
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
 
   return (
-    <form className="au-view" noValidate onSubmit={onSubmit}>
+    <form className="au-view" method="post" noValidate onSubmit={onSubmit}>
       <div className="au-head">
         <h2 className="au-h2" id={authTitleId("login")}>{t({ en: "Sign in", ja: "ログイン", zh: "登录" })}</h2>
         <p className="au-sub">{t({ en: "Welcome back.", ja: "おかえりなさい。", zh: "欢迎回来。" })}</p>
@@ -53,7 +56,7 @@ export function AuthLogin({ defaultNext, oauthProviders, signInNote = null }: { 
         />
       </div>
       <a className="au-forgot" href={authRoutePath("forgot", next)}>{t({ en: "Forgot password?", ja: "パスワードをお忘れですか？", zh: "忘记密码？" })}</a>
-      <AuthPrimaryButton className="au-btn-login" label={label} submitting={session.submitting} />
+      <AuthPrimaryButton className="au-btn-login" disabled={!ready} label={label} submitting={session.submitting} />
       <p className="au-switch au-foot">
         {t({ en: "No account yet? ", ja: "アカウントをお持ちでない方は ", zh: "还没有账号？ " })}
         <a className="au-switch-link" href={authRoutePath("register", next)}>{t({ en: "Sign up", ja: "新規登録", zh: "创建账号" })}</a>
