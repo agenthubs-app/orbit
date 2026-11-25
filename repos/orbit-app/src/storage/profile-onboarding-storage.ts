@@ -1,11 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { normalizeOrbitApiBaseUrl } from "../api/base-url";
+import { isSeniorityLevelValue } from "../api/compute/seniority-group";
 import { EMPTY_BASIC, ONBOARDING_STEPS, type BasicDraft, type OnboardingStep } from "../view-models/profile-onboarding";
 
 /** Where a field's value came from; the mark is dropped as soon as the person edits it. */
 export type OnboardingMark = "card" | "ai";
-export type OnboardingMarkedField = "name" | "company" | "title" | "email" | "phone" | "primaryIndustryId" | "secondaryIndustryId" | "offer" | "topics";
+export type OnboardingMarkedField = "name" | "company" | "title" | "email" | "phone" | "homeMarket" | "seniorityLevel" | "primaryIndustryId" | "secondaryIndustryId" | "offer" | "topics";
 
 /** What was typed but not yet confirmed by 「次へ」, so leaving or killing the App loses nothing. */
 export interface OnboardingDraft {
@@ -52,7 +53,7 @@ export function parseOnboardingDraft(raw: string | null): OnboardingDraft | null
     const marks = (value.marks && typeof value.marks === "object" ? value.marks : {}) as OnboardingDraft["marks"];
     return {
       step, updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : null,
-      basic: Object.fromEntries(Object.keys(EMPTY_BASIC).map(field => [field, text(basic[field])])) as unknown as BasicDraft,
+      basic: { ...Object.fromEntries(Object.keys(EMPTY_BASIC).map(field => [field, text(basic[field])])) as unknown as BasicDraft, seniorityLevel: isSeniorityLevelValue(basic.seniorityLevel) ? basic.seniorityLevel : "" },
       goals: list(value.goals), focus: text(value.focus), offer: list(value.offer), seek: list(value.seek), topics: list(value.topics),
       bio: text(value.bio), headline: text(value.headline), marks,
       scan: scan && typeof scan.card === "number" && typeof scan.ai === "number" ? { card: scan.card, ai: scan.ai } : null,

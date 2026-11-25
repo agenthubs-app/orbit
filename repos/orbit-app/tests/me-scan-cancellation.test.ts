@@ -11,7 +11,7 @@ test("R18a own-card scan forwards an optional cancellation signal without changi
   } } as unknown as OrbitApiClient;
   const image = { base64: "AAAA", mimeType: "image/jpeg", fileName: "card.jpg", size: 3 };
   const abort = new AbortController();
-  assert.deepEqual(await scanOwnBusinessCard(client, image, abort.signal), { ok: true, name: "佐藤", company: "Orbit", title: "担当", email: "", phone: "", industry: null });
+  assert.deepEqual(await scanOwnBusinessCard(client, image, abort.signal), { ok: true, name: "佐藤", company: "Orbit", title: "担当", email: "", phone: "", industry: null, seniorityLevel: null, region: null });
   assert.equal(calls[0]?.options.signal, abort.signal);
   await scanOwnBusinessCard(client, image);
   assert.ok(!("signal" in calls[1]!.options));

@@ -7,6 +7,7 @@
 import type { OrbitApiClient } from "./client";
 import type { ManualProfileContract } from "./contract/profile";
 import type { OwnCardScanContract, ProfileAutofillInferenceContract, ProfileAutofillInferenceRequestContract } from "./contract/profile-autofill";
+import { isSeniorityLevelValue, type SeniorityLevelValue } from "./compute/seniority-group";
 import { isIndustryIdCode, validateIndustrySelection } from "./domain/industries";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "./contract/industries";
 import { ORBIT_API_ENDPOINTS } from "./endpoints";
@@ -23,7 +24,9 @@ export type OnboardingFailure = { ok: false; kind: "offline" | "failed" };
 export type OnboardingSaveFailure = OnboardingFailure | { ok: false; kind: "conflict" };
 export type OnboardingProfileFields = Partial<Pick<ManualProfileContract,
   "birthDate" | "displayName" | "organization" | "primaryIndustryId" | "role" | "secondaryIndustryId"
-  | "handles" | "relationshipGoal" | "offering" | "seeking" | "topics" | "bio" | "headline">>;
+  | "handles" | "homeMarket" | "relationshipGoal" | "offering" | "seeking" | "topics" | "bio" | "headline">>
+  /** null clears the level; leaving it out keeps the saved one. */
+  & { seniorityLevel?: SeniorityLevelValue | null };
 
 function failure(result: ApiResult<unknown>): OnboardingFailure {
   return { ok: false, kind: !result.success && result.error.code === "ORBIT_APP_NETWORK_ERROR" ? "offline" : "failed" };
@@ -61,7 +64,9 @@ export async function saveOnboardingFields(
   const result = await client.put<unknown>(ORBIT_API_ENDPOINTS.profile, { body: request });
   if (result.status === 409) return { ok: false, kind: "conflict" };
   if (!succeeded(result)) return failure(result);
-  const receipt = profileSaveReceiptSchema(base.profile?.id ?? null, request as ProfileSaveRequest).safeParse(result.success ? result.data : null);
+  // A cleared level is simply absent from the receipt.
+  const expected = "seniorityLevel" in request ? { ...request, seniorityLevel: request.seniorityLevel ?? undefined } : request;
+  const receipt = profileSaveReceiptSchema(base.profile?.id ?? null, expected as ProfileSaveRequest).safeParse(result.success ? result.data : null);
   if (!receipt.success) return { ok: false, kind: "failed" };
   const readback = await readOnboardingProfile(client);
   if (!readback.ok) return readback;
@@ -96,6 +101,10 @@ export interface OwnCard {
   phone: string;
   /** Judged by AI from the card, both or neither. */
   industry: { primary: IndustryIdCode; secondary: SecondaryIndustryIdCode } | null;
+  /** Judged by AI from the printed title. */
+  seniorityLevel: SeniorityLevelValue | null;
+  /** The region of the printed address: ISO country code + canonical English city. */
+  region: { countryCode: string; city: string } | null;
 }
 
 const text = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
@@ -120,6 +129,8 @@ export async function scanOwnBusinessCard(
   return {
     ok: true, name: text(data.draft.displayName), company: text(data.draft.organization), title: text(data.draft.role), email: text(data.draft.email), phone: text(data.draft.phone),
     industry: industryPair(judged?.primaryIndustryId, judged?.secondaryIndustryId),
+    seniorityLevel: isSeniorityLevelValue(judged?.seniorityLevel) ? judged.seniorityLevel : null,
+    region: /^[A-Z]{2}$/u.test(text(judged?.regionCountryCode)) ? { countryCode: text(judged?.regionCountryCode), city: text(judged?.regionCity) } : null,
   };
 }
 
@@ -129,12 +140,12 @@ const labels = (value: unknown, limit: number): string[] => (Array.isArray(value
 export async function inferOnboardingAutofill(
   client: OrbitApiClient,
   request: ProfileAutofillInferenceRequestContract,
-): Promise<{ industry: OwnCard["industry"]; offering: string[]; topics: string[] } | null> {
+): Promise<{ industry: OwnCard["industry"]; seniorityLevel: SeniorityLevelValue | null; offering: string[]; topics: string[] } | null> {
   const result = await client.post<unknown>(PROFILE_AUTOFILL_PATH, { body: request, timeoutMs: AUTOFILL_TIMEOUT_MS });
   if (!succeeded(result) || !result.success) return null;
   const data = result.data as Partial<ProfileAutofillInferenceContract> | null;
   if (data?.status !== "ready") return null;
-  return { industry: industryPair(data.primaryIndustryId, data.secondaryIndustryId), offering: labels(data.offering, 5), topics: labels(data.topics, 8) };
+  return { industry: industryPair(data.primaryIndustryId, data.secondaryIndustryId), seniorityLevel: isSeniorityLevelValue(data.seniorityLevel) ? data.seniorityLevel : null, offering: labels(data.offering, 5), topics: labels(data.topics, 8) };
 }
 
 /** Dashed candidates for 「求めていること」; only the texts offered come back. Empty on any failure. */

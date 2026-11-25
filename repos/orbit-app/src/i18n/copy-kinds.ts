@@ -2875,6 +2875,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["onboarding.v3.start", "fullButton"],
   ["onboarding.v3.saving", "fullButton"],
   ["onboarding.v3.step.*", "label"],
+  ["onboarding.v3.country.*", "label"],
   ["onboarding.v3.*", "label"],
   ["auth.err.rateLimited", "sentence"],
   ["auth.err.signupInvalid", "sentence"],

@@ -4,6 +4,7 @@ import { Platform, TextInput, View, type LayoutChangeEvent } from "react-native"
 
 import { BottomSheet, Icon, UiPressable, UiText } from "../../../components/ui";
 import { faceFor } from "../../../components/ui/Text";
+import { SENIORITY_LEVEL_LABELS } from "../../../api/compute/seniority-group";
 import { industryLabel, secondaryIndustryLabel } from "../../../api/domain/industries";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import type { OnboardingMark, OnboardingMarkedField } from "../../../storage/profile-onboarding-storage";
@@ -29,7 +30,7 @@ import { Emo, KitButton, MarkChip, SelectField, TextField, Toggle, useOnboarding
 
 export type Marks = Partial<Record<OnboardingMarkedField, OnboardingMark>>;
 export type ScanState = { kind: "idle" } | { kind: "scanning" } | { kind: "failed"; message: string } | { kind: "done"; card: number; ai: number };
-export type TextKey = "name" | "company" | "title" | "email" | "phone";
+export type TextKey = "name" | "company" | "title" | "homeMarket" | "email" | "phone";
 
 export interface ProfileStepProps {
   basic: BasicDraft;
@@ -43,7 +44,7 @@ export interface ProfileStepProps {
   onBirth: () => void;
   onClearBirth: () => void;
   onFieldLayout: (field: OnboardingMissingField, event: LayoutChangeEvent) => void;
-  onPick: (which: "primary" | "secondary") => void;
+  onPick: (which: "primary" | "secondary" | "seniority") => void;
   onScan: (source: "camera" | "library") => void;
   onText: (key: TextKey, value: string) => void;
   scan: ScanState;
@@ -95,6 +96,9 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
         <SelectField accessibilityLabel={`${t("onboarding.v3.secondaryIndustry")}：${secondary ?? t("onboarding.v3.select")}`} disabled={disabled || !basic.primaryIndustryId} error={errors.has("secondaryIndustry") ? t("onboarding.v3.missDetail") : undefined} icon="down" label={t("onboarding.v3.secondaryIndustry")}
           mark={marks.secondaryIndustryId} onPress={() => onPick("secondary")} placeholder={basic.primaryIndustryId ? t("onboarding.v3.select") : t("onboarding.v3.none")} pressRef={inputs.secondary} style={styles.fieldHalf} value={secondary} />
       </View>
+      <SelectField accessibilityLabel={`${t("onboarding.v3.seniority")}：${basic.seniorityLevel ? SENIORITY_LEVEL_LABELS[basic.seniorityLevel][language] : t("onboarding.v3.select")}`} disabled={disabled} icon="down" label={t(marks.seniorityLevel ? "onboarding.v3.seniority" : "onboarding.v3.seniorityOptional")}
+        mark={marks.seniorityLevel} onPress={() => onPick("seniority")} placeholder={t("onboarding.v3.select")} value={basic.seniorityLevel ? SENIORITY_LEVEL_LABELS[basic.seniorityLevel][language] : null} />
+      {text("homeMarket", t(marks.homeMarket ? "onboarding.v3.homeMarket" : "onboarding.v3.homeMarketOptional"), t("onboarding.v3.homeMarketPlaceholder"))}
       {showEmail ? text("email", t("onboarding.v3.email"), "", { autoCapitalize: "none", autoComplete: "email", keyboardType: "email-address", textContentType: "emailAddress" }) : null}
       {showPhone ? text("phone", t("onboarding.v3.phone"), "", { autoComplete: "tel", keyboardType: "phone-pad", textContentType: "telephoneNumber" }) : null}
       <SelectField accessibilityLabel={`${t("onboarding.v3.birthDate")}：${birthLabel ?? t("onboarding.v3.birthDatePlaceholder")}`} disabled={disabled} hint={t("onboarding.v3.birthDateHelp")} icon="calendar" label={t("onboarding.v3.birthDate")} onPress={onBirth} placeholder={t("onboarding.v3.birthDatePlaceholder")} value={birthLabel}

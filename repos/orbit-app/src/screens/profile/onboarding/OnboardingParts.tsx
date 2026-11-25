@@ -39,6 +39,7 @@ const emoji = (board: number): TextStyle => ({ ...type(board), ...(Platform.OS =
 export function OnboardingFrame({ children, footer, scrollRef }: { children: ReactNode; footer: ReactNode; scrollRef?: RefObject<ScrollView | null> }) {
   const { styles } = useOnboardingStyles();
   const topGap = useShellTopGap();
+  // On iOS the foot is an inset, not padding: UIKit then scrolls a focused field clear of it, not just clear of the keyboard.
   const [footHeight, setFootHeight] = useState(120);
   return (
     <SafeAreaView edges={["top"]} style={[styles.screen, { paddingTop: topGap }]}>
@@ -46,7 +47,7 @@ export function OnboardingFrame({ children, footer, scrollRef }: { children: Rea
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.fill}>
         {/* The foot is absolute: it needs a box that the keyboard padding really shortens. */}
         <View style={styles.fill}>
-        <ScrollView ref={scrollRef} contentContainerStyle={[styles.content, { paddingBottom: footHeight + 24 }]} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" style={styles.fill} testID="onboarding-scroll">
+        <ScrollView ref={scrollRef} contentContainerStyle={[styles.content, { paddingBottom: Platform.OS === "ios" ? 24 : footHeight + 24 }]} contentInset={{ bottom: Platform.OS === "ios" ? footHeight : 0 }} scrollIndicatorInsets={{ bottom: footHeight }} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" style={styles.fill} testID="onboarding-scroll">
           {children}
         </ScrollView>
         <View onLayout={event => setFootHeight(event.nativeEvent.layout.height)} pointerEvents="box-none" style={styles.foot}>

@@ -48,6 +48,16 @@
    "id": "A-OB3-A7",
    "path": "/profile/onboarding?design=A7",
    "board-index": 22
+  },
+  {
+   "id": "A-OB3-A1b",
+   "path": "/profile/onboarding?design=A1b",
+   "board": "A1b second screen"
+  },
+  {
+   "id": "A-OB3-A2b",
+   "path": "/profile/onboarding?design=A2b",
+   "board": "A2b second screen"
   }
  ]
 }

@@ -18,6 +18,16 @@ export const SENIORITY_LEVELS = [
 
 export type SeniorityLevelValue = (typeof SENIORITY_LEVELS)[number];
 
+/** 六档的三语标签（引导第①步「役職層」等单选用；Web 与 App 共用这一份）。 */
+export const SENIORITY_LEVEL_LABELS: Readonly<Record<SeniorityLevelValue, Record<"zh" | "en" | "ja", string>>> = {
+  individual_contributor: { zh: "一般职员", en: "Individual contributor", ja: "一般社員" },
+  manager: { zh: "经理", en: "Manager", ja: "マネージャー" },
+  director: { zh: "总监", en: "Director", ja: "ディレクター" },
+  vp: { zh: "副总裁", en: "VP", ja: "VP（副社長）" },
+  c_level: { zh: "高管（C 级）", en: "C-level", ja: "経営層（C レベル）" },
+  founder: { zh: "创始人", en: "Founder", ja: "創業者" },
+};
+
 export type SeniorityGroup = "decision" | "manager" | "staff" | "other";
 
 export const SENIORITY_GROUPS: readonly SeniorityGroup[] = ["decision", "manager", "staff", "other"];

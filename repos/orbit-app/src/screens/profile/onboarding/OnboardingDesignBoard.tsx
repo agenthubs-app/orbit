@@ -8,13 +8,15 @@ import { KitButton, MissLine, OnboardingFrame, OnboardingProgress, OnboardingTop
 import { GoalsStep, IntroStep, ProfileStep, type Marks } from "./OnboardingSteps";
 import samples from "./onboarding-design-samples.json";
 
-const BOARDS = ["A1", "A2", "A3", "A4", "A5", "A6", "A7"] as const;
+const BOARDS = ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A1b", "A2b"] as const;
 type Board = (typeof BOARDS)[number];
 export const isOnboardingBoard = (value: unknown): value is Board => BOARDS.includes(value as Board);
 
 const nothing = () => undefined;
-const CARD: Marks = { name: "card", company: "card", title: "card", email: "card", phone: "card", primaryIndustryId: "ai", secondaryIndustryId: "ai" };
+const CARD: Marks = { name: "card", company: "card", title: "card", email: "card", phone: "card", homeMarket: "card", seniorityLevel: "ai", primaryIndustryId: "ai", secondaryIndustryId: "ai" };
 /** A5 is A4 scrolled until the second heading sits 250 under the top of the page (`data-off`): 534.09375 on the board at UX-1 sizes. */
+/** A1b / A2b: step ① below its first screen. */
+const SECOND_SCREEN = 400;
 const A5_SCROLL = 534.09375;
 
 export function OnboardingDesignBoard({ board }: { board: Board }) {
@@ -26,9 +28,11 @@ export function OnboardingDesignBoard({ board }: { board: Board }) {
   const step = ONBOARDING_STEPS[index]!;
   const error = board === "A3" || board === "A6";
   const goals = error ? [] : GOAL_OPTIONS.slice(0, 2).map(option => option.ja);
+  const scanned = board === "A2" || board === "A2b";
   useEffect(() => {
-    if (board !== "A5") return;
-    const timer = setTimeout(() => scroll.current?.scrollTo({ y: A5_SCROLL, animated: false }), 1500);
+    const y = board === "A5" ? A5_SCROLL : board.endsWith("b") ? SECOND_SCREEN : null;
+    if (y === null) return;
+    const timer = setTimeout(() => scroll.current?.scrollTo({ y, animated: false }), 1500);
     return () => clearTimeout(timer);
   }, [board]);
   const missing = error ? t("onboarding.v3.missing", index === 0
@@ -44,9 +48,9 @@ export function OnboardingDesignBoard({ board }: { board: Board }) {
       <OnboardingProgress eta={t("onboarding.v3.eta")} index={index} label={t("onboarding.v3.step", { step: index + 1, total: 3, name })} total={3} />
       <OnceNotice scan={index === 0} />
       {step === "profile" ? (
-        <ProfileStep basic={board === "A2" ? { ...EMPTY_BASIC, ...samples.basic } : EMPTY_BASIC} birthLabel={null} disabled={false} errors={new Set<OnboardingMissingField>(board === "A3" ? ["name", "primaryIndustry"] : [])} inputs={inputs} marks={board === "A2" ? CARD : {}}
-          onBirth={nothing} onClearBirth={nothing} onFieldLayout={nothing} onPick={nothing} onScan={nothing} onText={nothing} scan={board === "A2" ? { kind: "done", card: 5, ai: 2 } : { kind: "idle" }} showEmail={board === "A2"} showPhone={board === "A2"}
-          {...(board === "A2" ? { industry: { primary: samples.industry, secondary: samples.detail } } : {})} />
+        <ProfileStep basic={scanned ? { ...EMPTY_BASIC, ...samples.basic, seniorityLevel: "c_level" } : EMPTY_BASIC} birthLabel={null} disabled={false} errors={new Set<OnboardingMissingField>(board === "A3" ? ["name", "primaryIndustry"] : [])} inputs={inputs} marks={scanned ? CARD : {}}
+          onBirth={nothing} onClearBirth={nothing} onFieldLayout={nothing} onPick={nothing} onScan={nothing} onText={nothing} scan={scanned ? { kind: "done", card: 6, ai: 3 } : { kind: "idle" }} showEmail={scanned} showPhone={scanned}
+          {...(scanned ? { industry: { primary: samples.industry, secondary: samples.detail } } : {})} />
       ) : step === "goals" ? (
         <GoalsStep disabled={false} error={error} focus={error ? "" : samples.focus} goals={goals} marks={{ offer: "ai", topics: "ai" }} offer={samples.offer.values} onFocus={nothing} onGoal={nothing} onGoalsLayout={nothing} onGroup={nothing}
           rest={{ offer: samples.offer.rest, seek: error ? samples.seek.none : samples.seek.rest, topics: samples.topics.rest }} seek={error ? [] : samples.seek.values} seekSuggestions={error ? [] : samples.seek.ai} topics={samples.topics.values} />

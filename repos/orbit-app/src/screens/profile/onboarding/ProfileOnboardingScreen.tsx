@@ -15,6 +15,7 @@ import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
 import { encodeDirectScanImage } from "../../../api/batch-images";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../api/contract/industries";
 import type { ProfileOnboardingProgressCommandContract } from "../../../api/contract/profile";
+import { SENIORITY_LEVELS, SENIORITY_LEVEL_LABELS, type SeniorityLevelValue } from "../../../api/compute/seniority-group";
 import { INDUSTRY_CATALOG, listSecondaryIndustries } from "../../../api/domain/industries";
 import type { ProfileDetail } from "../../../api/profile-detail-contract";
 import {
@@ -63,6 +64,7 @@ import {
 } from "../../../view-models/profile-onboarding";
 import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
 import { KitButton, MissLine, OnboardingFrame, OnboardingProgress, OnboardingTopBar, OnceNotice, useOnboardingStyles } from "./OnboardingParts";
+import { regionDisplay } from "./region-display";
 import { GoalsStep, IntroStep, ProfileStep, SheetRow, type IntroStatus, type IntroTone, type Marks, type ScanState, type TextKey } from "./OnboardingSteps";
 
 type View_ = "loading" | "loadError" | OnboardingStep;
@@ -132,7 +134,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   const [attempted, setAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
-  const [picker, setPicker] = useState<"primary" | "secondary" | null>(null);
+  const [picker, setPicker] = useState<"primary" | "secondary" | "seniority" | null>(null);
   const [dateOpen, setDateOpen] = useState(false);
   const today = localToday();
 
@@ -277,7 +279,8 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     const contacts = saved || Object.keys(handles).length ? { handles } : {};
     return {
       birthDate: basic.birthDate || null, displayName: basic.name.trim(), organization: basic.company.trim(),
-      primaryIndustryId: basic.primaryIndustryId as IndustryIdCode, role: basic.title.trim(), secondaryIndustryId: basic.secondaryIndustryId as SecondaryIndustryIdCode, ...contacts,
+      primaryIndustryId: basic.primaryIndustryId as IndustryIdCode, role: basic.title.trim(), secondaryIndustryId: basic.secondaryIndustryId as SecondaryIndustryIdCode, homeMarket: basic.homeMarket.trim(),
+      ...(basic.seniorityLevel || detail?.profile?.seniorityLevel ? { seniorityLevel: basic.seniorityLevel || null } : {}), ...contacts,
     } as OnboardingProfileFields;
   }
 
@@ -321,21 +324,19 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     setSaving(true); setNotice(null); setMessage(null);
     try {
       const fields = fieldsFor(step);
-      const profile = detail.profile as Record<string, unknown> | null;
-      const unchanged = profile !== null && Object.entries(fields).every(([key, value]) => JSON.stringify(profile[key] ?? null) === JSON.stringify(value ?? null));
-      if (!unchanged) {
+      const holds = (profile: ProfileDetail["profile"]) => profile !== null && Object.entries(fields).every(([key, value]) => JSON.stringify((profile as Record<string, unknown>)[key] ?? null) === JSON.stringify(value ?? null));
+      if (!holds(detail.profile)) {
         const result = await saveOnboardingFields(client, fields, detail, () => `ios:onboarding:${Crypto.randomUUID()}`);
         if (!mounted.current) return;
-        if (!result.ok) {
-          setNotice(result.kind);
-          // Another device moved the profile on: take its version, keep what was typed here.
-          if (result.kind === "conflict") {
-            const latest = await readOnboardingProfile(client);
-            if (mounted.current && latest.ok) setDetail(latest.detail);
-          }
-          return;
+        if (result.ok) setDetail(result.detail);
+        else {
+          // Another device moved the profile on (take its version, keep what was typed) — or the last try did save and
+          // only its answer got lost, in which case there is nothing left to save.
+          const newer = result.kind === "conflict" ? await readOnboardingProfile(client) : null;
+          if (!mounted.current) return;
+          if (newer?.ok) setDetail(newer.detail);
+          if (!newer?.ok || !holds(newer.detail.profile)) { setNotice(result.kind); return; }
         }
-        setDetail(result.detail);
       }
       const confirmFailure = await confirmStep(step);
       if (!mounted.current) return;
@@ -420,18 +421,21 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
       const card = await scanOwnBusinessCard(client, image);
       if (!mounted.current) return;
       if (!card.ok) { setScan({ kind: "failed", message: t("onboarding.v3.scanFailed") }); return; }
-      const read = { name: card.name, company: card.company, title: card.title, email: card.email, phone: card.phone };
+      const read = { name: card.name, company: card.company, title: card.title, email: card.email, phone: card.phone, homeMarket: card.region ? regionDisplay(card.region, t, locale.language) : "" };
       const found = (Object.keys(read) as TextKey[]).filter(key => read[key]);
       if (!found.length) { setScan({ kind: "failed", message: t("onboarding.v3.scanFailed") }); return; }
       setBasic(current => ({
         ...current, ...Object.fromEntries(found.map(key => [key, read[key]])),
         ...(card.industry ? { primaryIndustryId: card.industry.primary, secondaryIndustryId: card.industry.secondary } : {}),
+        ...(card.seniorityLevel ? { seniorityLevel: card.seniorityLevel } : {}),
       }));
       setMarks(current => ({
         ...current, ...Object.fromEntries(found.map(key => [key, "card" as const])),
         ...(card.industry ? { primaryIndustryId: "ai" as const, secondaryIndustryId: "ai" as const } : {}),
+        ...(card.seniorityLevel ? { seniorityLevel: "ai" as const } : {}),
       }));
-      setScan({ kind: "done", card: found.length, ai: card.industry ? 2 : 0 });
+      setScan({ kind: "done", card: found.length, ai: (card.industry ? 2 : 0) + (card.seniorityLevel ? 1 : 0) });
+      seniorityTouched.current = false;
       void infer({ displayName: card.name, organization: card.company, role: card.title, industry: card.industry });
     } catch {
       if (mounted.current) setScan(before.kind === "done" ? before : { kind: "failed", message: t("onboarding.v3.scanFailed") });
@@ -440,6 +444,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
 
   // ── AI guesses from company + title: in the background, never over something the person chose ──
   const latest = useRef({ basic, offer, topics }); latest.current = { basic, offer, topics };
+  const seniorityTouched = useRef(false);
   const inferredFor = useRef<string | null>(null);
   async function infer(input: { displayName: string; organization: string; role: string; industry: { primary: IndustryIdCode; secondary: SecondaryIndustryIdCode } | null }) {
     const source = `${input.organization.trim()}\u0000${input.role.trim()}`;
@@ -455,7 +460,13 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     if (industry && !input.industry && !latest.current.basic.primaryIndustryId) {
       setBasic(current => ({ ...current, primaryIndustryId: industry.primary, secondaryIndustryId: industry.secondary }));
       setMarks(current => ({ ...current, primaryIndustryId: "ai", secondaryIndustryId: "ai" }));
-      setScan(current => (current.kind === "done" ? { ...current, ai: 2 } : current));
+      setScan(current => (current.kind === "done" ? { ...current, ai: current.ai + 2 } : current));
+    }
+    const level = result.seniorityLevel;
+    if (level && !latest.current.basic.seniorityLevel && !seniorityTouched.current) {
+      setBasic(current => ({ ...current, seniorityLevel: level }));
+      setMarks(current => ({ ...current, seniorityLevel: "ai" }));
+      setScan(current => (current.kind === "done" ? { ...current, ai: current.ai + 1 } : current));
     }
     const fill = (apply: () => void) => { apply(); setFillRevision(value => value + 1); };
     // Untouched since the request and still empty, or still exactly an earlier guess.
@@ -553,9 +564,14 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   const birthLabel = isValidProfileBirthDate(basic.birthDate, today)
     ? new Intl.DateTimeFormat(locale.language, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(`${basic.birthDate}T12:00:00Z`)) : null;
   const pickerOptions = picker === "primary" ? INDUSTRY_CATALOG.map(item => ({ id: item.id as string, label: item.labels[locale.language] }))
+    : picker === "seniority" ? [{ id: "", label: t("onboarding.v3.unset") }, ...SENIORITY_LEVELS.map(level => ({ id: level as string, label: SENIORITY_LEVEL_LABELS[level][locale.language] }))]
     : picker === "secondary" && basic.primaryIndustryId ? listSecondaryIndustries(basic.primaryIndustryId).map(item => ({ id: item.id as string, label: item.labels[locale.language] })) : [];
   function pick(id: string) {
-    if (picker === "primary") {
+    if (picker === "seniority") {
+      seniorityTouched.current = true;
+      setBasic(current => ({ ...current, seniorityLevel: id as SeniorityLevelValue | "" }));
+      if (id !== basic.seniorityLevel) unmark("seniorityLevel");
+    } else if (picker === "primary") {
       setBasic(current => ({ ...current, primaryIndustryId: id as IndustryIdCode, secondaryIndustryId: current.primaryIndustryId === id ? current.secondaryIndustryId : "" }));
       if (id !== basic.primaryIndustryId) unmark("primaryIndustryId", "secondaryIndustryId");
     } else {
@@ -564,7 +580,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     }
     setPicker(null);
   }
-  const pickerTitle = t(picker === "secondary" ? "onboarding.v3.secondaryIndustry" : "onboarding.v3.primaryIndustry");
+  const pickerTitle = t(picker === "seniority" ? "onboarding.v3.seniority" : picker === "secondary" ? "onboarding.v3.secondaryIndustry" : "onboarding.v3.primaryIndustry");
 
   return (
     <>
@@ -585,7 +601,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
         )}
       </OnboardingFrame>
       <BottomSheet accessibilityLabel={pickerTitle} header={<UiText accessibilityRole="header" style={styles.sheetTitle}>{pickerTitle}</UiText>} onClose={() => setPicker(null)} visible={picker !== null}>
-        {pickerOptions.map(option => <SheetRow key={option.id} label={option.label} on={option.id === (picker === "primary" ? basic.primaryIndustryId : basic.secondaryIndustryId)} onPress={() => pick(option.id)} />)}
+        {pickerOptions.map(option => <SheetRow key={option.id} label={option.label} on={option.id === (picker === "primary" ? basic.primaryIndustryId : picker === "seniority" ? basic.seniorityLevel : basic.secondaryIndustryId)} onPress={() => pick(option.id)} />)}
       </BottomSheet>
       {dateOpen ? (
         <PersonalScheduleDateTimePicker kind="date" value={isValidProfileBirthDate(basic.birthDate, today) ? basic.birthDate : ""} zone={timeZone} disabled={saving} yearJump max={today} title={t("onboarding.v3.birthDate")}

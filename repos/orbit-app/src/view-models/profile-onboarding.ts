@@ -8,6 +8,7 @@ import { isIndustryIdCode, validateIndustrySelection } from "../api/domain/indus
 import type { ProfileDetail } from "../api/profile-detail-contract";
 import { profileBioLimit, profileVisibleLength } from "../api/schema/profile-bio";
 import { PROFILE_ONBOARDING_GOALS } from "../api/compute/profile-onboarding-goal";
+import { isSeniorityLevelValue, type SeniorityLevelValue } from "../api/compute/seniority-group";
 import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../api/compute/profile-tag-options";
 import { safeProfileContinuationNext } from "./profile-continuation-route";
 
@@ -210,13 +211,17 @@ export interface BasicDraft {
   /** Contact details read off the own card; kept private (no row when nothing was read). */
   email: string;
   phone: string;
+  /** 所在地: free text, the profile's homeMarket. */
+  homeMarket: string;
+  /** 役職層: one of the six levels, empty when not chosen. */
+  seniorityLevel: SeniorityLevelValue | "";
   name: string;
   primaryIndustryId: IndustryIdCode | "";
   secondaryIndustryId: SecondaryIndustryIdCode | "";
   title: string;
 }
 
-export const EMPTY_BASIC: BasicDraft = { birthDate: "", company: "", email: "", phone: "", name: "", primaryIndustryId: "", secondaryIndustryId: "", title: "" };
+export const EMPTY_BASIC: BasicDraft = { birthDate: "", company: "", email: "", phone: "", homeMarket: "", seniorityLevel: "", name: "", primaryIndustryId: "", secondaryIndustryId: "", title: "" };
 
 export function basicDraftFromProfile(profile: ProfileDetail["profile"]): BasicDraft {
   if (!profile) return EMPTY_BASIC;
@@ -225,6 +230,8 @@ export function basicDraftFromProfile(profile: ProfileDetail["profile"]): BasicD
     company: profile.organization ?? "",
     email: profile.handles?.email ?? "",
     phone: profile.handles?.phone ?? "",
+    homeMarket: profile.homeMarket ?? "",
+    seniorityLevel: isSeniorityLevelValue(profile.seniorityLevel) ? profile.seniorityLevel : "",
     name: profile.displayName ?? "",
     primaryIndustryId: isIndustryIdCode(profile.primaryIndustryId) ? profile.primaryIndustryId : "",
     secondaryIndustryId: (profile.secondaryIndustryId as SecondaryIndustryIdCode | null | undefined) ?? "",

@@ -23,6 +23,10 @@ document.querySelectorAll('.scrollto').forEach(m => {`);
 // The gate moves the frame, which resets a scroll offset: the same offset as a margin.
 html = replace(html, "  sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - (+m.dataset.off || 70);",
   "  const off = m.getBoundingClientRect().top - sc.getBoundingClientRect().top - (+m.dataset.off || 70); sc.firstElementChild.style.marginTop = -off + 'px'; sc.dataset.off = off;");
+// Step ① runs past the first screen: A1 and A2 again, scrolled 400 (A1b, A2b), appended so board indexes stay; the suite finds them by title, as the design file itself still grows.
+html = replace(html, "docNav(''); orbitChrome();", `{ const frames = [...document.querySelectorAll('.phone:not(.mweb)')]; const holder = frames.at(-1).closest('.boards');
+  for (const k of [0, 1]) { const board = frames[k].closest('.board').cloneNode(true); board.querySelector('.board-label').textContent = ['A1b', 'A2b'][k] + ' second screen'; board.querySelector('.scroll').firstElementChild.style.marginTop = '-400px'; holder.append(board); } }
+docNav(''); orbitChrome();`);
 // Decided 2026-11-25: two tones, as on Web.
 html = html.replaceAll("<button>やわらかめ</button>", "");
 mkdirSync(target, { recursive: true });

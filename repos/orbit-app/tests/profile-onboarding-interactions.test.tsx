@@ -58,8 +58,11 @@ window.fetch = async (input, init = {}) => {
     const { expectedUpdatedAt, mutationId, ...fields } = body;
     if ((d.profile ? d.profile.updatedAt : null) !== expectedUpdatedAt) return json(409, { success: false, error: { code: "PROFILE_VERSION_CONFLICT", message: "stale" } });
     const updatedAt = new Date(Date.parse("2026-09-27T00:00:00Z") + ++tick * 1000).toISOString();
+    if (fields.seniorityLevel === null) delete d.profile?.seniorityLevel;
     const profile = { ...(d.profile || { id: "profile:new", displayName: "", headline: "", organization: "", role: "", homeMarket: "", relationshipGoal: "", targetRelationshipTypes: [], preferredFollowUpWindow: "", preferredLanguage: "zh", preferredIntroChannels: [], offering: [], seeking: [], topics: [], bio: "" }), ...fields, updatedAt };
+    if (profile.seniorityLevel === null) delete profile.seniorityLevel;
     state.detail = { ...d, state: "success", profile, editor: { ...d.editor, canSave: true, lastSavedAt: updatedAt } };
+    if (state.loseAnswer) { state.loseAnswer = false; throw new TypeError("Network request failed"); }
     return json(200, { success: true, data: { ...state.detail, onboarding: onboarding(profile), mutationId } });
   }
   if (url.pathname === "/api/profile/intro-draft") { state.aiCalls++; if (state.aiBio) return json(200, { success: true, data: { bio: state.aiBio, headline: "Product lead" } }); return state.ai === "ok" ? json(200, { success: true, data: { bio: "第" + state.aiCalls + "版：做 AI 会议纪要的产品负责人。", headline: "产品负责人 " + state.aiCalls } }) : json(422, { success: false, error: { code: "MODEL_FAILED", message: "no" } }); }
@@ -171,7 +174,7 @@ test("a new account goes 名片与基本信息 → 目标与强项 → 自我介
   const first = await fx(page);
   const writes = first.requests.filter((r: any) => r.path === "/api/profile");
   assert.deepEqual(writes.map((r: any) => r.method), ["GET", "PUT", "GET"], "initial read, save, readback");
-  assert.deepEqual({ ...writes[1].body, mutationId: undefined }, { birthDate: "1990-05-20", displayName: "林晓", organization: "", role: "产品负责人", ...IT, expectedUpdatedAt: null, mutationId: undefined });
+  assert.deepEqual({ ...writes[1].body, mutationId: undefined }, { birthDate: "1990-05-20", displayName: "林晓", organization: "", role: "产品负责人", ...IT, homeMarket: "", expectedUpdatedAt: null, mutationId: undefined });
   for (const goal of ["获取客户", "寻找投资"]) await page.getByRole("button", { name: goal, exact: true }).click();
   assert.equal(await page.getByRole("button", { name: "招聘人才", exact: true }).isDisabled(), true, "a third goal is blocked");
   assert.equal((await next(page).textContent())!.replace(/\s+/gu, " "), "下一步 · 目标2/2");
@@ -255,6 +258,56 @@ test("the own card fills what is printed and what AI judged, says which is which
   await page.getByRole("button", { name: "人才推荐", exact: true }).click();
   assert.equal(await page.getByText("AI推断", { exact: true }).count(), 1, "the changed group is the person's own now");
   assert.equal((await fx(page)).requests.filter((r: any) => r.path === "/api/profile/autofill-inference").length, 1, "asked once");
+});
+
+test("level and place: optional, filled from the card with their own marks, changed or cleared by the person", async t => {
+  const draft = { displayName: "佐藤 健一", organization: "株式会社ミナトリンク", role: "CEO", email: "", phone: "" };
+  const page = await open(t, { card: true, scan: { draft, ocr: { structuredExtraction: { ...IT, seniorityLevel: "c_level", regionCountryCode: "JP", regionCity: "Tokyo" } } }, infer: { status: "ready", seniorityLevel: "founder" } });
+  await page.getByText("职级（可选）", { exact: true }).waitFor();
+  await page.getByText("所在地（可选）", { exact: true }).waitFor();
+  const y = async (name: RegExp | string, role: "button" | "textbox") => (await page.getByRole(role, { name }).boundingBox())!.y;
+  assert.ok(await y(/^细分：/u, "button") < await y(/^职级：/u, "button") && await y(/^职级：/u, "button") < await y("所在地", "textbox") && await y("所在地", "textbox") < await y(/^生日/u, "button"));
+  await page.getByRole("button", { name: "从相册选择" }).click();
+  await page.getByText("名片读到4项，AI推断3项", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("textbox", { name: "所在地" }).inputValue(), "日本 · 东京");
+  await page.getByRole("button", { name: "职级：高管（C 级）" }).waitFor();
+  assert.deepEqual([await page.getByText("来自名片", { exact: true }).count(), await page.getByText("AI推断", { exact: true }).count()], [4, 3]);
+  await page.getByRole("textbox", { name: "所在地" }).fill("大阪");
+  await page.getByRole("button", { name: /^职级：/u }).click();
+  for (const label of ["未选", "一般职员", "经理", "总监", "副总裁", "高管（C 级）", "创始人"]) assert.equal(await page.getByRole("button", { name: label, exact: true }).count(), 1, label);
+  await page.getByRole("button", { name: "经理", exact: true }).click();
+  assert.deepEqual([await page.getByText("来自名片", { exact: true }).count(), await page.getByText("AI推断", { exact: true }).count()], [3, 2]);
+  await next(page).click();
+  await page.getByText("第2/3步 · 目标与强项", { exact: true }).waitFor();
+  let saved = (await fx(page)).profile;
+  assert.deepEqual([saved.seniorityLevel, saved.homeMarket], ["manager", "大阪"]);
+  await page.getByRole("button", { name: "返回", exact: true }).click();
+  await page.getByRole("button", { name: "职级：经理" }).click();
+  await page.getByRole("button", { name: "未选", exact: true }).click();
+  await page.getByRole("textbox", { name: "所在地" }).fill("");
+  await next(page).click();
+  await page.getByText("第2/3步 · 目标与强项", { exact: true }).waitFor();
+  saved = (await fx(page)).profile;
+  assert.deepEqual([saved.seniorityLevel ?? null, saved.homeMarket], [null, ""], "both can be emptied; neither stops 下一步");
+  assert.equal((await fx(page)).requests.filter((r: any) => r.path === "/api/profile/autofill-inference").length, 1);
+});
+
+test("the inferred level fills only an empty, untouched field", async t => {
+  const scan = { draft: { displayName: "林晓", organization: "Orbit", role: "CEO", email: "", phone: "" }, ocr: { structuredExtraction: { ...IT, regionCountryCode: "SG", regionCity: "Singapore" } } };
+  const filled = await open(t, { card: true, scan, infer: { status: "ready", seniorityLevel: "founder" } });
+  await filled.getByRole("button", { name: "从相册选择" }).click();
+  await filled.getByText("名片读到4项，AI推断3项", { exact: true }).waitFor();
+  await filled.getByRole("button", { name: "职级：创始人" }).waitFor();
+  assert.equal(await filled.getByRole("textbox", { name: "所在地" }).inputValue(), "新加坡", "a city state is not said twice");
+  const touched = await open(t, { card: true, scan, inferHold: true, infer: { status: "ready", seniorityLevel: "founder" } });
+  await touched.getByRole("button", { name: "从相册选择" }).click();
+  await touched.getByText("名片读到4项，AI推断2项", { exact: true }).waitFor();
+  await touched.getByRole("button", { name: /^职级：/u }).click();
+  await touched.getByRole("button", { name: "未选", exact: true }).click();
+  await touched.evaluate(() => { const s = (window as any).fixture; s.inferHold = false; s.releaseInfer(); });
+  await touched.waitForTimeout(60);
+  await touched.getByRole("button", { name: "职级：选择" }).waitFor();
+  assert.equal((await fx(touched)).requests.filter((r: any) => r.path === "/api/profile/autofill-inference").length, 1);
 });
 
 test("no industry on the card, AI unavailable or late: nothing blocks, nothing the person chose is overwritten", async t => {
@@ -382,6 +435,23 @@ test("a failed save keeps every value; the next tap saves and goes on", async t 
   await next(page).click();
   await page.getByText("第3/3步 · 自我介绍", { exact: true }).waitFor();
   assert.equal((await fx(page)).profile.relationshipGoal, "获取客户（本月）", "a saved deadline is kept");
+});
+
+test("a save whose answer was lost goes on at the next tap; a real conflict is told and takes the newer version", async t => {
+  const page = await open(t, { ...withProfile({ ...complete, ...blank }), ...flowAt(1) });
+  await page.getByRole("button", { name: "获取客户", exact: true }).click();
+  await set(page, { loseAnswer: true });
+  await next(page).click();
+  await page.getByText("当前离线，填写的内容都还在。", { exact: true }).waitFor();
+  await next(page).click();
+  await page.getByText("第3/3步 · 自我介绍", { exact: true }).waitFor();
+  assert.equal((await fx(page)).profile.relationshipGoal, "获取客户");
+  const other = await open(t, { ...withProfile({ ...complete, ...blank }), ...flowAt(1) });
+  await other.getByRole("button", { name: "获取客户", exact: true }).click();
+  await other.evaluate(() => { const s = (window as any).fixture; s.detail = { ...s.detail, profile: { ...s.detail.profile, updatedAt: "2026-11-20T00:00:00.000Z", relationshipGoal: "别处改的" } }; });
+  await next(other).click();
+  await other.getByText("资料在另一台设备上更新过，正在读取最新内容。", { exact: true }).waitFor();
+  assert.equal((await fx(other)).profile.relationshipGoal, "别处改的", "nothing overwritten yet");
 });
 
 test("a failed progress confirmation retains the saved step but does not drop later edits", async t => {

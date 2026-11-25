@@ -170,9 +170,9 @@ test("intro draft posts the language and accepts only a complete draft", async (
 });
 
 test("own business card scan keeps what is printed apart from the industry AI judged", async () => {
-  const server = aiServer(() => ok({ draft: { displayName: " 林晓 ", organization: "Orbit", role: "产品负责人", email: "x@y.z" }, ocr: { structuredExtraction: { primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" } } }));
+  const server = aiServer(() => ok({ draft: { displayName: " 林晓 ", organization: "Orbit", role: "产品负责人", email: "x@y.z" }, ocr: { structuredExtraction: { primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data", seniorityLevel: "founder", regionCountryCode: "JP", regionCity: "Tokyo" } } }));
   const result = await scanOwnBusinessCard(server.client, { base64: "AAAA", mimeType: "image/jpeg", fileName: "card.jpg", size: 3 });
-  assert.deepEqual(result, { ok: true, name: "林晓", company: "Orbit", title: "产品负责人", email: "x@y.z", phone: "", industry: { primary: "technology_internet", secondary: "technology_internet.ai_data" } });
+  assert.deepEqual(result, { ok: true, name: "林晓", company: "Orbit", title: "产品负责人", email: "x@y.z", phone: "", industry: { primary: "technology_internet", secondary: "technology_internet.ai_data" }, seniorityLevel: "founder", region: { countryCode: "JP", city: "Tokyo" } });
   const mismatched = await scanOwnBusinessCard(aiServer(() => ok({ draft: { displayName: "林晓" }, ocr: { structuredExtraction: { primaryIndustryId: "technology_internet", secondaryIndustryId: "food_hospitality.restaurants" } } })).client, { base64: "A", mimeType: "image/jpeg", fileName: "c.jpg", size: 1 });
   assert.equal(mismatched.ok && mismatched.industry, null, "never half an industry");
   assert.deepEqual(server.requests[0], { path: "/api/contact-drafts/business-card/scan", body: { imageBase64: "AAAA", imageName: "card.jpg", imageSizeBytes: 3, mimeType: "image/jpeg" } });
@@ -183,7 +183,7 @@ test("own business card scan keeps what is printed apart from the industry AI ju
 test("autofill inference: only a ready answer counts; everything else leaves the fields to the person", async () => {
   const request = { organization: "Orbit", role: "CEO", language: "ja" as const };
   const ready = aiServer(() => ok({ status: "ready", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data", seniorityLevel: "founder", offering: ["顧客紹介", "顧客紹介", " "], topics: ["生成 AI"] }));
-  assert.deepEqual(await inferOnboardingAutofill(ready.client, request), { industry: { primary: "technology_internet", secondary: "technology_internet.ai_data" }, offering: ["顧客紹介"], topics: ["生成 AI"] });
+  assert.deepEqual(await inferOnboardingAutofill(ready.client, request), { industry: { primary: "technology_internet", secondary: "technology_internet.ai_data" }, seniorityLevel: "founder", offering: ["顧客紹介"], topics: ["生成 AI"] });
   assert.deepEqual(ready.requests, [{ path: "/api/profile/autofill-inference", body: request }]);
   for (const reply of [() => ok({ status: "unavailable", primaryIndustryId: null, secondaryIndustryId: null, seniorityLevel: null, offering: [], topics: [] }), () => fail(400, "VALIDATION_ERROR"), () => fail(503, "DOWN"), () => { throw new TypeError("offline"); }]) {
     assert.equal(await inferOnboardingAutofill(aiServer(reply).client, request), null);
