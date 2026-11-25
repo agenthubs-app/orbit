@@ -43,6 +43,7 @@ interface AccountAuthOptions {
 }
 
 const defaultNext = "/home";
+/** One-use, in-process hand-over of the typed email between login and signup; never in the URL. */
 let signupFallback: { email: string; next: string; expiresAt: number } | null = null;
 
 export function rememberSignupFallbackEmail(email: string, next: string): void {
@@ -55,8 +56,17 @@ export function takeSignupFallbackEmail(next: string): string {
   return fallback?.next === normalizedNext(next) && fallback.expiresAt > Date.now() ? fallback.email : "";
 }
 
+/** Same rule as Web's auth-model and the server's contract, on the trimmed address. */
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/u;
+
+export function accountAuthEmailError(email: string): "invalid" | null {
+  return EMAIL_PATTERN.test(email.trim()) ? null : "invalid";
+}
+
+export const ACCOUNT_PASSWORD_MIN_LENGTH = 8;
+
 export function accountAuthPasswordError(password: string): "too-short" | "too-long" | null {
-  if (password.length < 8) return "too-short";
+  if (password.length < ACCOUNT_PASSWORD_MIN_LENGTH) return "too-short";
   if (new TextEncoder().encode(password).byteLength > 72) return "too-long";
   return null;
 }
@@ -188,6 +198,12 @@ export function nextHrefForAccountAuthSubmit({
   }
 
   return `/profile/onboarding?next=${encodeURIComponent(safeNext)}`;
+}
+
+/** Where a completed sign-in goes: onboarding decides there whether setup is still needed (a set-up account goes straight to next). */
+export function signedInHref({ next, pendingDeletion }: { next?: string | undefined; pendingDeletion?: boolean | undefined }): string {
+  if (pendingDeletion) return "/account/pending";
+  return nextHrefForAccountAuthSubmit(next === undefined ? { mode: "login" } : { mode: "login", next });
 }
 
 // QA-D: the auth transport (mobile-auth / browser-auth / auth-session) returns fixed Chinese messages; show them in the UI language.

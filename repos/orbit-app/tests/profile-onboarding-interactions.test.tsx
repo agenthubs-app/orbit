@@ -175,6 +175,26 @@ test("a new account walks welcome → profile, saves with a receipt and a readba
   assert.equal(profile.displayName, "林晓");
 });
 
+for (const [language, later, retry] of [["zh", "稍后", "重试"], ["ja", "あとで", "再試行"], ["en", "Later", "Retry"]] as const) test(`load failure (${language}): 「${later}」 leaves for next even though nothing can be saved; 「${retry}」 reads again`, async t => {
+  const page = await open(t, { language, network: true });
+  await page.getByRole("button", { name: later, exact: true }).waitFor();
+  const before = (await fx(page)).requests.length;
+  await page.getByRole("button", { name: retry, exact: true }).click();
+  await page.waitForFunction(count => (window as any).fixture.requests.length >= count + 2, before);
+  await page.getByRole("button", { name: later, exact: true }).click();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["replace:/events/e1"]);
+});
+
+test("load failure: 稍后 records the deferral when the server answers again, and with no next lands on Home", async t => {
+  const page = await open(t, { network: true, next: "" });
+  const later = page.getByRole("button", { name: "稍后", exact: true });
+  await later.waitFor();
+  await page.evaluate(() => { (window as any).fixture.network = false; });
+  await later.click();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["replace:/home"]);
+  await page.waitForFunction(() => (window as any).fixture.flow?.deferred === true);
+});
+
 test("goals: at most two in selection order with no default deadline", async t => {
   const page = await open(t, withProfile({ ...complete, ...blank }));
   await page.getByRole("button", { name: "继续" }).click();

@@ -4,12 +4,16 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, typ
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { openMainTab } from "../../components/shell-navigation";
+import { resetStackTo } from "../../components/shell-navigation";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
-import { isGoogleSignInCancelled, localizeAuthMessage } from "../../view-models/account-auth";
+import { isGoogleSignInCancelled, localizeAuthMessage, signedInHref } from "../../view-models/account-auth";
 
-export function WelcomeScreen() {
+/**
+ * `onSigningIn(true)` while Google sign-in runs: the index route then keeps this page instead of sending the new
+ * session to Home, so onboarding is opened from here (as on login and signup).
+ */
+export function WelcomeScreen({ onSigningIn }: { onSigningIn?: (active: boolean) => void }) {
   const { colors, styles } = useStyles();
   const { t } = useOrbitLocale();
   const router = useRouter();
@@ -45,12 +49,17 @@ export function WelcomeScreen() {
     if (googlePending) return;
     setGooglePending(true);
     setGoogleError(null);
+    onSigningIn?.(true);
+    let leaving = false;
     try {
       const result = await auth.startGoogleSignIn({ redirectTo: "/home" });
-      if (result.success) openMainTab(router, "/home");
-      else setGoogleError(isGoogleSignInCancelled(result.message) ? t("auth.googleCancelled") : localizeAuthMessage(result.message, t) ?? t("auth.googleIncomplete"));
+      if (result.success) {
+        leaving = true;
+        resetStackTo(router, signedInHref({ next: "/home", pendingDeletion: result.pendingDeletion }));
+      } else setGoogleError(isGoogleSignInCancelled(result.message) ? t("auth.googleCancelled") : localizeAuthMessage(result.message, t) ?? t("auth.googleIncomplete"));
     } finally {
-      setGooglePending(false);
+      // Leaving: keep the page and the busy button until the next page replaces them.
+      if (!leaving) { setGooglePending(false); onSigningIn?.(false); }
     }
   }
 

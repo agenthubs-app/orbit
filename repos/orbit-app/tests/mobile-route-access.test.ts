@@ -7,12 +7,14 @@ import test from "node:test";
 import {
   isPrivateMobileRoute,
   mobileAuthReturnHref,
-  mobileLoginHref
+  mobileLoginHref,
+  mobileSignInHref
 } from "../src/view-models/mobile-route-access";
 import {
   nextHrefForAccountAuthSubmit,
   normalizedNext
 } from "../src/view-models/account-auth";
+import { onboardingDestination } from "../src/view-models/profile-onboarding";
 
 test("R12 scan batch private entry and encoded detail preserve auth return context", () => {
   const path = "/contacts/new/scan/batch%3A%2F%20%E7%A9%BA";
@@ -218,7 +220,7 @@ test("root navigator stays mounted while grouped and root-level private entries 
     boundarySource,
     /export function OrbitRouteAccessBoundary\(\) \{\s*const \{ colors \} = useOrbitTheme\(\);\s*return <Stack screenOptions=/u
   );
-  assert.match(boundarySource, /return <Redirect href=\{mobileLoginHref/u);
+  assert.match(boundarySource, /return <Redirect href=\{mobileSignInHref/u);
   assert.match(boundarySource, /withOrbitPrivateRoute/u);
   assert.match(appGroupSource, /return <Stack screenOptions=/u);
   assert.doesNotMatch(appGroupSource, /OrbitPrivateRouteBoundary/u);
@@ -382,6 +384,38 @@ test("every root-level private entry uses the shared render gate", () => {
     assert.match(source, /withOrbitPrivateRoute/u, path);
   }
 });
+test("event and invite entries send signed-out people to signup; other private pages to login", () => {
+  for (const [pathname, params, next] of [
+    ["/events/event-1", { id: "event-1", tab: "details" }, "/events/event-1?tab=details"],
+    ["/app/events/event-1", { id: "event-1" }, "/events/event-1"],
+    ["/events/event-1/register", { id: "event-1", step: "questions" }, "/events/event-1/register?step=questions"],
+    ["/register/invite-1", { code: "invite-1", source: "qr" }, "/register/invite-1?source=qr"],
+    ["/events/assess", { mode: "code" }, "/events/assess?mode=code"],
+    ["/host/join/H7KQ-M2TR", { code: "H7KQ-M2TR" }, "/host/join/H7KQ-M2TR"]
+  ] as const) {
+    assert.equal(mobileSignInHref(pathname, params), `/account/signup?next=${encodeURIComponent(next)}`, pathname);
+    // …and the way back survives signup and onboarding.
+    assert.equal(normalizedNext(next), next, pathname);
+    assert.equal(onboardingDestination(next), next, pathname);
+  }
+  for (const [pathname, params] of [
+    ["/events/center", {}],
+    ["/events/center/new", {}],
+    ["/events/assess", {}],
+    ["/events/assessments/a1", { id: "a1" }],
+    ["/events/event-1/live", { id: "event-1" }],
+    ["/events/event-1/attendees", { id: "event-1" }],
+    ["/events/event-1/operations", { id: "event-1" }],
+    ["/host/join", {}],
+    ["/party/checkin", { code: "event-1" }],
+    ["/contacts/contact-1", { id: "contact-1" }],
+    ["/home", {}]
+  ] as const) {
+    assert.equal(mobileSignInHref(pathname, params), mobileLoginHref(pathname, params), pathname);
+    assert.match(mobileSignInHref(pathname, params), /^\/account\/login\?next=/u, pathname);
+  }
+});
+
 test("experience login return drops duplicate path ids and preserves other context", () => {
   const path = "/events/event%3A%2F%20%E7%A9%BA/operations/experience";
   assert.equal(isPrivateMobileRoute(path), true);

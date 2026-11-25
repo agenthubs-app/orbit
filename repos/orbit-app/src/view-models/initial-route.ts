@@ -27,6 +27,7 @@ type InitialRoutePath =
   | "/contacts/list"
   | "/inbox"
   | "/login-admin"
+  | `/host/join/${string}`
   | `/o/${string}`
   | "/party"
   | "/platform"
@@ -271,6 +272,12 @@ function detailRouteHref(routeKey: string): InitialRoutePath | null {
   const registerMatch = /^register\/([A-Za-z0-9_-]+)$/u.exec(routeKey);
   if (registerMatch) {
     return `/register/${registerMatch[1]}` as InitialRoutePath;
+  }
+
+  // Co-host invite: where the invitee returns after signing up or in.
+  const hostJoinMatch = /^host\/join\/([A-Za-z0-9_-]+)$/u.exec(routeKey);
+  if (hostJoinMatch) {
+    return `/host/join/${hostJoinMatch[1]}`;
   }
 
   const organizerMatch = /^o\/([A-Za-z0-9_-]+)$/u.exec(routeKey);

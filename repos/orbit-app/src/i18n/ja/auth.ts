@@ -120,4 +120,7 @@ export const auth = {
   "auth.changeFailed": "パスワードを変更できませんでした。しばらくしてからお試しください。",
   "auth.err.rateLimited": "試行回数が多すぎます。しばらくしてからお試しください。",
   "auth.err.signupInvalid": "有効なメールアドレスと、8 文字以上・72 バイト以内のパスワードを入力してください。",
+  "auth.err.emailInvalid": "有効なメールアドレスを入力してください。",
+  "auth.err.passwordTooShort": "8文字以上で入力してください。",
+  "auth.err.passwordTooLong": "72 UTF-8 バイト以内で入力してください。",
 } as const;

@@ -120,4 +120,7 @@ export const auth = {
   "auth.changeFailed": "Could not change the password. Please try again later.",
   "auth.err.rateLimited": "Too many attempts. Please try again later.",
   "auth.err.signupInvalid": "Enter a valid email and a password of at least 8 characters (up to 72 bytes).",
+  "auth.err.emailInvalid": "Please enter a valid email address.",
+  "auth.err.passwordTooShort": "Password must be at least 8 characters.",
+  "auth.err.passwordTooLong": "Use no more than 72 UTF-8 bytes.",
 } as const;

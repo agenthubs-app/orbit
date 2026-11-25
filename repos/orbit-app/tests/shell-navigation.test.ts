@@ -75,7 +75,7 @@ test("every auth change resets the stack instead of replacing one page", () => {
   const onboarding = read("src/screens/profile/onboarding/ProfileOnboardingScreen.tsx");
   assert.match(onboarding, /if \(isTabPageHref\(href\)\) openMainTab\(router, href\);/u, "onboarding done: Home is the only page");
   assert.doesNotMatch(onboarding, /\.replace\(destination/u);
-  assert.match(read("src/screens/public/WelcomeScreen.tsx"), /openMainTab\(router, "\/home"\)/u, "Google from the welcome page");
+  assert.match(read("src/screens/public/WelcomeScreen.tsx"), /resetStackTo\(router, signedInHref\(/u, "Google from the welcome page");
 });
 
 test("first-level pages open by tap only: tab pages and iOrbit appear at once, other pages keep their slide", async () => {

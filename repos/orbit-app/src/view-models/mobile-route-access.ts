@@ -189,6 +189,31 @@ export function mobileAuthReturnHref(
     : `${href}#${encodeURIComponent(fragment)}`;
 }
 
+/**
+ * Event and invite links are usually opened by people without an account: signed out they land on signup.
+ * Every other private page goes to login. Same rule as Web.
+ */
+export function isSignupFirstRoute(
+  pathname: string,
+  params: Record<string, string | string[] | undefined> = {}
+): boolean {
+  const route = appRelativePath(pathname).replace(/(?<=.)\/+$/u, "");
+  // 参加コード入力: what `/register` without a code opens.
+  if (route === "/events/assess") return [params.mode].flat()[0] === "code";
+  return /^\/events\/(?!center$)[^/]+(?:\/register)?$/u.test(route) ||
+    /^\/register(?:\/[^/]+)?$/u.test(route) ||
+    /^\/host\/join\/[^/]+$/u.test(route);
+}
+
+/** Where a signed-out person is sent from a private route, keeping the way back in `next`. */
+export function mobileSignInHref(
+  pathname: string,
+  params: Record<string, string | string[] | undefined> = {}
+): string {
+  if (!isSignupFirstRoute(pathname, params)) return mobileLoginHref(pathname, params);
+  return `/account/signup?next=${encodeURIComponent(mobileAuthReturnHref(pathname, params))}`;
+}
+
 export function mobileLoginHref(
   pathname: string,
   params: Record<string, string | string[] | undefined> = {}

@@ -13,7 +13,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { spacing, typography } from "../design/tokens";
 import { createThemedStyles, useOrbitTheme } from "../design/theme";
-import { mobileLoginHref } from "../view-models/mobile-route-access";
+import { mobileSignInHref } from "../view-models/mobile-route-access";
 import { rootStackScreenOptions } from "./shell-navigation";
 
 export function OrbitRouteAccessBoundary() {
@@ -40,7 +40,7 @@ export function OrbitPrivateRouteBoundary({
     return <OrbitAuthLoading />;
   }
 
-  return <Redirect href={mobileLoginHref(pathname, params) as Href} />;
+  return <Redirect href={mobileSignInHref(pathname, params) as Href} />;
 }
 
 export function withOrbitPrivateRoute<Props extends object>(

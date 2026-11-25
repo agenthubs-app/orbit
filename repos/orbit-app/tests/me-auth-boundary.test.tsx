@@ -5,10 +5,10 @@ import test from "node:test";
 import * as React from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 import ts from "typescript";
-import { mobileLoginHref } from "../src/view-models/mobile-route-access";
+import { mobileSignInHref } from "../src/view-models/mobile-route-access";
 import { renderToHtml } from "./helpers/render";
 
-function privateAccountHtml(auth: { ready: boolean; signedIn: boolean }): string {
+function privateAccountHtml(auth: { ready: boolean; signedIn: boolean }, pathname = "/settings/integrations", params: Record<string, string> = {}): string {
   const source = readFileSync("src/components/OrbitRouteAccessBoundary.tsx", "utf8");
   const code = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText;
   const colors = { bg: "white", accentText: "black" };
@@ -23,9 +23,9 @@ function privateAccountHtml(auth: { ready: boolean; signedIn: boolean }): string
     if (name.endsWith("/AuthSessionProvider")) return { useOrbitAuthSession: () => auth };
     if (name.endsWith("/tokens")) return { spacing: { md: 12, sm: 8 }, typography: { body: 14 } };
     if (name.endsWith("/theme")) return { useOrbitTheme: () => ({ colors }), createThemedStyles: (factory: (value: unknown) => unknown) => () => ({ colors, styles: factory(colors) }) };
-    if (name.endsWith("/mobile-route-access")) return { mobileLoginHref };
+    if (name.endsWith("/mobile-route-access")) return { mobileSignInHref };
     if (name.endsWith("/shell-navigation")) return { rootStackScreenOptions: () => ({}) };
-    if (name === "expo-router") return { Stack: div, usePathname: () => "/settings/integrations", useGlobalSearchParams: () => ({}), Redirect: ({ href }: { href: string }) => React.createElement("div", { "data-redirect": href }) };
+    if (name === "expo-router") return { Stack: div, usePathname: () => pathname, useGlobalSearchParams: () => params, Redirect: ({ href }: { href: string }) => React.createElement("div", { "data-redirect": href }) };
     throw new Error(`Unexpected boundary dependency ${name}`);
   };
   vm.runInNewContext(code, { module, exports: module.exports, require: requireBoundary });
@@ -38,6 +38,12 @@ test("R18a private account surfaces redirect signed-out users without rendering 
   assert.ok(html.includes('data-redirect="/account/login?next=%2Fsettings%2Fintegrations"'), html);
   assert.ok(!html.includes("PRIVATE_ACCOUNT_CONTENT"));
   assert.ok(!html.includes("checkingSignIn"));
+});
+test("a signed-out event link lands on signup with the way back; the event's workspace still goes to login", () => {
+  const signedOut = { ready: true, signedIn: false };
+  assert.ok(privateAccountHtml(signedOut, "/events/event-1/register", { id: "event-1" }).includes('data-redirect="/account/signup?next=%2Fevents%2Fevent-1%2Fregister"'));
+  assert.ok(privateAccountHtml(signedOut, "/events/event-1/operations", { id: "event-1" }).includes('data-redirect="/account/login?next=%2Fevents%2Fevent-1%2Foperations"'));
+  assert.ok(privateAccountHtml({ ready: true, signedIn: true }, "/events/event-1/register", { id: "event-1" }).includes("PRIVATE_ACCOUNT_CONTENT"));
 });
 test("R18a unconfirmed auth never renders protected account content", () => {
   const html = privateAccountHtml({ ready: false, signedIn: false });

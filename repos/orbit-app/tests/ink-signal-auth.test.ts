@@ -32,7 +32,7 @@ export const Ionicons = ({ name, size, color }) => <span aria-hidden="true" styl
 `;
 
 test.before(async () => {
-  const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { AccountAuthScreen } from "./src/screens/profile/AccountAuthScreen"; function App() { const s = useFixture(); return <AccountAuthScreen mode={s.mode} />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "auth-boundaries", setup(plugin) {
+  const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { AccountAuthScreen } from "./src/screens/profile/AccountAuthScreen"; function App() { const s = useFixture(); return <AccountAuthScreen key={s.remount || 0} mode={s.mode} />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "auth-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-auth" }));
     plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|useOrbitApiClient|ApiBaseUrlProvider)$/ }, () => ({ path: "fixture", namespace: "ink-auth" }));
     plugin.onLoad({ filter: /.*/, namespace: "ink-auth" }, args => ({ contents: args.path === "native" ? `
@@ -170,6 +170,86 @@ test("Google signup enters profile completion instead of returning an authentica
   await page.getByRole("button", { name: "使用 Google 登录", exact: true }).click();
   assert.deepEqual(await requests(page), [{ name: "google", payload: { redirectTo: "/events/event-1?tab=details" } }]);
   assert.deepEqual(await navigation(page), ["/profile/onboarding?next=%2Fevents%2Fevent-1%3Ftab%3Ddetails"]);
+});
+
+test("signup always offers sign-in for an existing account, keeping next and the typed email", async t => {
+  const page = await open(t, { mode: "signup", next: "/events/event-1?tab=details" });
+  const toLogin = page.getByRole("button", { name: "已有账号，去登录", exact: true });
+  assert.equal(await toLogin.textContent(), "已有账号？ 登录");
+  assert.ok((await toLogin.boundingBox())!.y > (await page.getByRole("button", { name: "创建账号", exact: true }).boundingBox())!.y);
+  await page.getByRole("textbox", { name: "邮箱", exact: true }).fill("cheng.chuan@example.test");
+  await toLogin.click();
+  assert.deepEqual(await navigation(page), ["/account/login?next=%2Fevents%2Fevent-1%3Ftab%3Ddetails"], "no email in the URL");
+  assert.deepEqual(await requests(page), []);
+  await page.evaluate(() => (window as any).fixture.update({ remount: 1, mode: "login" }));
+  await page.getByRole("heading", { name: "欢迎回来", exact: true }).waitFor();
+  assert.equal(await page.getByRole("textbox", { name: "邮箱", exact: true }).inputValue(), "cheng.chuan@example.test");
+  assert.equal(await page.locator("input[type=password]").inputValue(), "", "the password is not carried over");
+  // …and back again.
+  await page.getByRole("textbox", { name: "邮箱", exact: true }).fill("other@example.test");
+  await page.getByRole("button", { name: "还没有账号，创建账号", exact: true }).click();
+  await page.evaluate(() => (window as any).fixture.update({ remount: 2, mode: "signup" }));
+  await page.getByRole("heading", { name: "创建账号", exact: true }).waitFor();
+  assert.equal(await page.getByRole("textbox", { name: "邮箱", exact: true }).inputValue(), "other@example.test");
+});
+
+test("signup shows each problem on its own field, sends nothing, and clears it on typing", async t => {
+  const page = await open(t, { mode: "signup" });
+  const email = page.getByRole("textbox", { name: "邮箱", exact: true }), password = page.locator("input[type=password]");
+  const submit = page.getByRole("button", { name: "创建账号", exact: true });
+  await email.fill("name@host"); await password.fill("short7!"); await submit.click();
+  assert.deepEqual(await page.getByRole("alert").allTextContents(), ["请输入有效的邮箱地址。", "密码至少8位。"]);
+  const alerts = page.getByRole("alert");
+  assert.ok((await alerts.nth(0).boundingBox())!.y > (await email.boundingBox())!.y && (await alerts.nth(0).boundingBox())!.y < (await password.boundingBox())!.y, "the email problem sits between the two fields");
+  assert.equal(await email.evaluate(el => el === document.activeElement), true, "focus goes to the first problem");
+  assert.notEqual(await email.locator("..").evaluate(el => getComputedStyle(el).backgroundColor), await page.evaluate(() => "rgba(0, 0, 0, 0)"));
+  await shot(page, "signup-field-errors");
+  await email.fill("name@host.test");
+  assert.deepEqual(await page.getByRole("alert").allTextContents(), ["密码至少8位。"]);
+  await submit.click();
+  assert.equal(await password.evaluate(el => el === document.activeElement), true);
+  await password.fill("界".repeat(25)); await submit.click();
+  assert.deepEqual(await page.getByRole("alert").allTextContents(), ["密码不能超过72个UTF-8字节。"]);
+  assert.deepEqual(await requests(page), []);
+  await password.fill("fixture8"); await submit.click();
+  assert.deepEqual((await requests(page))[0], { name: "register", payload: { email: "name@host.test", password: "fixture8" } });
+});
+
+test("login keeps the server's word on the email and shows a short password on its field", async t => {
+  const page = await open(t);
+  await page.getByRole("textbox", { name: "邮箱", exact: true }).fill("name@host");
+  await page.locator("input[type=password]").fill("short");
+  await page.getByRole("button", { name: "登录", exact: true }).click();
+  assert.deepEqual(await page.getByRole("alert").allTextContents(), ["密码至少8位。"]);
+});
+
+test("signup's 「至少 8 位」 is met as soon as the password is long enough", async t => {
+  const page = await open(t, { mode: "signup" });
+  const hint = page.getByText("至少 8 位", { exact: true }), password = page.locator("input[type=password]");
+  const look = () => hint.evaluate(el => ({ color: getComputedStyle(el).color, weight: getComputedStyle(el).fontWeight, check: el.parentElement!.querySelectorAll("svg").length }));
+  const before = await look();
+  assert.equal(before.check, 0);
+  await password.fill("1234567"); assert.deepEqual(await look(), before);
+  await password.fill("12345678");
+  assert.deepEqual(await look(), { color: "rgb(68, 115, 97)", weight: "700", check: 1 });
+  await shot(page, "signup-helper-met");
+  await password.fill("1234567"); assert.deepEqual(await look(), before);
+});
+
+test("Enter on the email moves to the password, Enter on the password submits; autofill knows a new password", async t => {
+  const page = await open(t, { mode: "signup" });
+  const email = page.getByRole("textbox", { name: "邮箱", exact: true }), password = page.locator("input[type=password]");
+  assert.equal(await email.getAttribute("enterkeyhint"), "next");
+  assert.equal(await password.getAttribute("enterkeyhint"), "go");
+  assert.equal(await password.getAttribute("autocomplete"), "new-password");
+  await email.fill("name@host.test"); await email.press("Enter");
+  assert.equal(await password.evaluate(el => el === document.activeElement), true);
+  assert.deepEqual(await requests(page), []);
+  await password.fill("fixture8"); await password.press("Enter");
+  await page.waitForFunction(() => (window as any).fixture.requests.length > 0);
+  assert.deepEqual((await requests(page))[0], { name: "register", payload: { email: "name@host.test", password: "fixture8" } });
+  const login = await open(t);
+  assert.equal(await login.locator("input[type=password]").getAttribute("autocomplete"), "password");
 });
 
 for (const action of ["password", "google"] as const) test(`obsolete ${action} login cannot navigate a replacement auth scope`, async t => {

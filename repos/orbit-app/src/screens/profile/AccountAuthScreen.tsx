@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   Pressable,
   Platform,
@@ -16,18 +16,22 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import type { PasswordResetResponse } from "../../api/contract/password-reset";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { Icon } from "../../components/ui/Icon";
 import { resetStackTo } from "../../components/shell-navigation";
 import { layout, radius, spacing, textStyles, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import {
+  ACCOUNT_PASSWORD_MIN_LENGTH,
   accountAuthToView,
+  accountAuthEmailError,
   accountAuthPasswordError,
   isGoogleSignInCancelled,
   localizeAuthMessage,
   nextHrefForAccountAuthSubmit,
   normalizedNext,
   rememberSignupFallbackEmail,
+  signedInHref,
   takeSignupFallbackEmail,
   type AccountAuthFieldView,
   type AccountAuthMode
@@ -62,6 +66,11 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Problems found before sending, shown on their own field.
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<AccountAuthFieldView["name"], string>>>({});
+  const emailInput = useRef<TextInput>(null);
+  const passwordInput = useRef<TextInput>(null);
+  const inputs = { email: emailInput, password: passwordInput };
   // Login / forgot-password links only help when the server refused the sign-up (e.g. the address is taken), not for a short password.
   const [signupRefused, setSignupRefused] = useState(false);
   const [devicePendingWrites, setDevicePendingWrites] = useState<{
@@ -127,10 +136,10 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     password: ""
   });
   useEffect(() => {
-    if (mode !== "login" || !created) return;
+    if (mode === "forgot") return;
     const fallbackEmail = takeSignupFallbackEmail(next);
     if (fallbackEmail) setValues((current) => current.email ? current : { ...current, email: fallbackEmail });
-  }, [created, mode, next]);
+  }, [mode, next]);
   const accepted = mode === "forgot" && notice !== null;
 
   if (authScopeRef.current !== authScopeKey) {
@@ -144,6 +153,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     setScope(nextScope);
     authPending.current = false;
     setSubmitting(false);
+    setFieldErrors({});
     if (mode === "forgot" || scope.mode === "forgot") {
       recoveryPending.current = false;
       setValues({ email: "", password: "" });
@@ -154,6 +164,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   }
 
   function updateValue(field: AccountAuthFieldView, value: string) {
+    setFieldErrors(({ [field.name]: _cleared, ...rest }) => rest);
     setValues((current) => ({
       ...current,
       // Login: a pasted password loses its surrounding spaces (as Web); typing is untouched.
@@ -163,6 +174,12 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
   function navigateTo(href: string) {
     router.push(href as Href);
+  }
+
+  /** Login ↔ signup: next stays in the URL, the typed email is handed over in-process. */
+  function switchMode(href: string) {
+    if (values.email.trim()) rememberSignupFallbackEmail(values.email, next);
+    navigateTo(`${href}?next=${encodeURIComponent(next)}`);
   }
 
   async function submit() {
@@ -191,11 +208,18 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       }
       return;
     }
-    if (!ready || authPending.current) return;
+    if (!ready || authPending.current || landing !== null) return;
     setSignupRefused(false);
+    const problems: typeof fieldErrors = {};
+    if (mode === "signup" && accountAuthEmailError(values.email)) problems.email = locale.t("auth.err.emailInvalid");
     const passwordError = accountAuthPasswordError(values.password);
-    if (passwordError) {
-      setError(locale.t(passwordError === "too-long" ? "reset.tooLong" : "reset.tooShort"));
+    if (passwordError) problems.password = locale.t(passwordError === "too-long" ? "auth.err.passwordTooLong" : "auth.err.passwordTooShort");
+    setFieldErrors(problems);
+    const firstProblem = problems.email ? "email" : problems.password ? "password" : null;
+    if (firstProblem) {
+      setNotice(null);
+      setError(null);
+      inputs[firstProblem].current?.focus();
       return;
     }
     authPending.current = true;
@@ -223,7 +247,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         if (!isCurrent()) return;
         if (!signedIn.success) rememberSignupFallbackEmail(values.email, next);
         // Signed in now: nothing from before (welcome, login, signup) stays to go back to.
-        resetStackTo(router, signedIn.pendingDeletion ? "/account/pending" : nextHrefForAccountAuthSubmit({ mode: signedIn.success ? "login" : "signup", next }));
+        resetStackTo(router, signedIn.success ? signedInHref({ next, pendingDeletion: signedIn.pendingDeletion }) : nextHrefForAccountAuthSubmit({ mode: "signup", next }));
         return;
       }
 
@@ -276,12 +300,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       }
 
       // Google completes a session even when launched from the signup screen.
-      resetStackTo(router, result.pendingDeletion ? "/account/pending" :
-        nextHrefForAccountAuthSubmit({
-          mode: "login",
-          next
-        })
-      );
+      resetStackTo(router, signedInHref({ next, pendingDeletion: result.pendingDeletion }));
     } finally {
       if (isCurrent()) {
         authPending.current = false;
@@ -367,11 +386,15 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
             </View>
           ) : null}
           {!accepted ? <View style={styles.fields}>
-          {view.fields.map((field) => (
+          {view.fields.map((field, index) => (
             <AuthField
+              error={fieldErrors[field.name]}
               field={field}
+              inputRef={inputs[field.name]}
               key={field.name}
+              last={index === view.fields.length - 1}
               mode={mode}
+              onSubmit={() => { if (index === view.fields.length - 1) void submit(); else passwordInput.current?.focus(); }}
               onChange={(value) => updateValue(field, value)}
               t={locale.t}
               value={fieldValue(field, values)}
@@ -385,7 +408,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           {notice && !accepted ? <Text style={styles.noticeText}>{notice}</Text> : null}
           {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
           {mode === "signup" && error && signupRefused ? <View style={styles.errorLinks}>
-            <Pressable accessibilityRole="link" onPress={() => navigateTo(`/account/login?next=${encodeURIComponent(next)}`)} style={styles.errorLink}><Text style={styles.errorLinkText}>{locale.t("auth.loginPrimary")}</Text></Pressable>
+            <Pressable accessibilityRole="link" onPress={() => switchMode("/account/login")} style={styles.errorLink}><Text style={styles.errorLinkText}>{locale.t("auth.loginPrimary")}</Text></Pressable>
             <Pressable accessibilityRole="link" onPress={() => navigateTo(`/account/forgot-password?next=${encodeURIComponent(next)}`)} style={styles.errorLink}><Text style={styles.errorLinkText}>{locale.t("auth.forgotPassword")}</Text></Pressable>
           </View> : null}
           {accepted ? <Pressable
@@ -421,7 +444,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           </View>
           </View>
         )}
-        {!view.restrictionMessage && mode !== "signup" && !accepted ? (
+        {!view.restrictionMessage && !accepted ? (
           <View style={styles.footer}>
           {view.helperLinks.length > 0 ? (
             <View style={styles.helperLinkRow}>
@@ -442,7 +465,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
             accessibilityLabel={view.switchLabel}
             accessibilityRole="button"
             disabled={submitting}
-            onPress={() => navigateTo(`${view.switchHref}?next=${encodeURIComponent(next)}`)}
+            onPress={() => switchMode(view.switchHref)}
             style={({ pressed }) => [
               styles.switchButton,
               pressed ? styles.pressed : null,
@@ -450,8 +473,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
             ]}
           >
             <Text style={styles.switchText}>
-              {mode === "login" ? locale.t("auth.noAccount") : ""}
-              <Text style={styles.switchAction}>{mode === "login" ? locale.t("auth.register") : view.switchLabel}</Text>
+              {mode === "login" ? locale.t("auth.noAccount") : mode === "signup" ? locale.t("auth.hasAccount") : ""}
+              <Text style={styles.switchAction}>{mode === "login" ? locale.t("auth.register") : mode === "signup" ? locale.t("auth.loginPrimary") : view.switchLabel}</Text>
             </Text>
           </Pressable>
           </View>
@@ -462,42 +485,60 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 }
 
 function AuthField({
+  error,
   field,
+  inputRef,
+  last,
   mode,
   onChange,
+  onSubmit,
   t,
   value
 }: {
+  error?: string | undefined;
   field: AccountAuthFieldView;
+  inputRef: RefObject<TextInput | null>;
+  last: boolean;
   mode: AccountAuthMode;
   onChange: (value: string) => void;
+  onSubmit: () => void;
   t: OrbitTranslator;
   value: string;
 }) {
   const { colors, styles } = useStyles();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [focused, setFocused] = useState(false);
+  // Signup: 「at least 8」 turns to the kit's met state (b1 .reqs .ok) as soon as it is.
+  const helperMet = field.name === "password" && value.length >= ACCOUNT_PASSWORD_MIN_LENGTH;
 
   return (
     <View style={styles.fieldWrap}>
       <View style={styles.labelRow}>
         <Text style={styles.fieldLabel}>{field.label}</Text>
-        {field.helper ? <Text style={styles.fieldHelper}>{field.helper}</Text> : null}
+        {field.helper ? <View style={styles.helperRow}>
+          {helperMet ? <Icon color={colors.okText} name="check" size={16} /> : null}
+          <Text style={[styles.fieldHelper, helperMet ? styles.fieldHelperMet : null]}>{field.helper}</Text>
+        </View> : null}
       </View>
-      <View style={[styles.inputShell, focused ? styles.inputFocused : null]}>
+      <View style={[styles.inputShell, focused ? styles.inputFocused : null, error ? styles.inputInvalid : null]}>
         <TextInput
           accessibilityLabel={field.label}
           autoCapitalize="none"
-          autoComplete={field.name === "email" ? "email" : "password"}
+          autoComplete={field.name === "email" ? "email" : mode === "signup" ? "new-password" : "password"}
           autoCorrect={false}
           keyboardType={field.name === "email" ? "email-address" : "default"}
           onChangeText={onChange}
           onBlur={() => setFocused(false)}
           onFocus={() => setFocused(true)}
+          onSubmitEditing={onSubmit}
           placeholder={field.placeholder}
           placeholderTextColor={colors.ink3Text}
+          ref={inputRef}
+          returnKeyType={last ? "go" : "next"}
           secureTextEntry={field.secure && !passwordVisible}
           style={styles.input}
+          // 「next」 keeps the keyboard up while the focus moves to the password.
+          submitBehavior={last ? "blurAndSubmit" : "submit"}
           // iOS keychain: the email is the account name; sign-up offers to save a new password.
           textContentType={field.name === "email" ? "username" : mode === "signup" ? "newPassword" : "password"}
           value={value}
@@ -521,6 +562,7 @@ function AuthField({
           </Pressable>
         ) : null}
       </View>
+      {error ? <Text accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
     </View>
   );
 }
@@ -574,6 +616,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink3Text,
     flexShrink: 1
   },
+  fieldHelperMet: { color: colors.okText, fontWeight: "700" },
+  helperRow: { alignItems: "center", flexDirection: "row", flexShrink: 1, gap: 6 },
+  // b1 .fld.err: coral outline and fill, the reason under the field.
+  fieldError: { ...textStyles.caption, color: colors.coralText, fontWeight: "600" },
+  inputInvalid: { backgroundColor: colors.coralSoft, borderColor: colors.coral },
   fieldLabel: {
     color: colors.ink,
     fontSize: 14,

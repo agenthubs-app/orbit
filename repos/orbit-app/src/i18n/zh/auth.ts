@@ -120,4 +120,7 @@ export const auth = {
   "auth.changeFailed": "修改失败，请稍后重试。",
   "auth.err.rateLimited": "尝试次数过多，请稍后再试。",
   "auth.err.signupInvalid": "请输入有效的邮箱，并设置至少 8 位、不超过 72 字节的密码。",
+  "auth.err.emailInvalid": "请输入有效的邮箱地址。",
+  "auth.err.passwordTooShort": "密码至少8位。",
+  "auth.err.passwordTooLong": "密码不能超过72个UTF-8字节。",
 } as const;
