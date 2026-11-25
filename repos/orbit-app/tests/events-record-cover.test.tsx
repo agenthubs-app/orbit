@@ -61,7 +61,7 @@ test("attendee sheet: exchanged opens the contact; past the window the request b
   await exchanged.getByTestId("events-attendee-open-contact").waitFor();
   const closed = await harness.open(t, { screen: "venue", params: { id: eventId }, responses: {
     [`${path}/venue`]: { ...ended, rounds },
-    [`${path}/attendees/`]: profile({ canRequestExchange: false, exchangeUntil: null }),
+    [`${path}/attendees/`]: profile({ canRequestExchange: false, exchangeClosedReason: "ended", exchangeUntil: null }),
   } });
   await closed.getByRole("button", { name: mate.name }).first().click();
   await closed.getByText("申请期已结束", { exact: true }).waitFor();

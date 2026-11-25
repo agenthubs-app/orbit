@@ -1902,6 +1902,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["eventsJourney.itemTopics", "label"],
   ["eventsJourney.itemTarget", "label"],
   ["eventsJourney.itemOffer", "label"],
+  ["eventsJourney.itemFromProfile", "label"],
   ["eventsJourney.topicsLbl", "label"],
   ["eventsJourney.introDraftLbl", "label"],
   ["eventsJourney.reviewBeforeSubmit", "label"],

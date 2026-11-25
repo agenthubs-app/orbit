@@ -162,7 +162,10 @@ export function AttendeeSheet({ eventId, person, onClose, onChanged }: {
                     </UiPressable>
                     {deadlineParts ? <UiText style={[vs.lbl, styles.center]}>{t("pExchangeUntil", { date: `${deadlineParts.month}/${deadlineParts.day}` })}</UiText> : null}
                   </>
-                ) : <View style={[styles.block, styles.off]}><UiText style={[styles.blockText, { color: colors.ink3 }]}>{t("pExchangeClosed")}</UiText></View>
+                ) : profile.exchangeClosedReason ? (
+                  // 开始前 / 期限已过才说明；原因未知（旧服务端、本人）不显示这一行。
+                  <View style={[styles.block, styles.off]} testID="events-attendee-exchange-closed"><UiText style={[styles.blockText, { color: colors.ink3 }]}>{t(profile.exchangeClosedReason === "not_started" ? "pExchangeNotStarted" : "pExchangeClosed")}</UiText></View>
+                ) : null
               ) : profile.exchange === "incoming" && profile.requestId ? (
                 <View style={[vs.card, vs.flat, styles.incoming]} testID="events-attendee-incoming">
                   <View style={[vs.row, { gap: 8 }]}>
@@ -215,7 +218,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   block: { alignItems: "center", borderRadius: 999, flexDirection: "row", gap: 6, height: 44, justifyContent: "center", marginTop: 14 },
   primary: { backgroundColor: colors.ink },
   off: { backgroundColor: colors.surface2 },
-  blockText: { fontSize: 15, fontWeight: "700", lineHeight: 22 },
+  blockText: { flexShrink: 1, fontSize: 15, fontWeight: "700", lineHeight: 22, textAlign: "center" },
   center: { marginTop: 6, textAlign: "center" },
   incoming: { marginTop: 14, padding: 14 },
 }));

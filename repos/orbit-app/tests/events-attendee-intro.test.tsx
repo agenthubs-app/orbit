@@ -53,3 +53,25 @@ test("all eight questions show", async (t) => {
   const text = await card.innerText();
   for (const { a, q } of answers) assert.ok(text.includes(q) && text.includes(a), `${q} missing: ${text}`);
 });
+
+test("before the start it says when requests open, after the window that they closed; no reason, no line", async (t) => {
+  for (const [exchangeClosedReason, text] of [["not_started", "活动开始后可以申请交换名片"], ["ended", "申请期已结束"], [null, null], [undefined, null], ["later", null]] as const) {
+    const page = await harness.open(t, { screen: "attendee", responses: { [path]: { ...base, canRequestExchange: false, exchangeClosedReason, intro: null } } });
+    await page.getByTestId("events-attendee-memo").waitFor();
+    const line = page.getByTestId("events-attendee-exchange-closed");
+    assert.equal(await line.count(), text ? 1 : 0, String(exchangeClosedReason));
+    if (text) assert.equal(await line.innerText(), text);
+    assert.equal(await page.getByTestId("events-attendee-request").count(), 0);
+  }
+});
+
+test("the line about the start stays inside the sheet in every language, also on a 320-wide screen", async (t) => {
+  for (const [language, text] of [["ja", "名刺交換の申請はイベント開始後にできます"], ["zh", "活动开始后可以申请交换名片"], ["en", "Card swaps open when the event starts"]] as const) {
+    const page = await harness.open(t, { screen: "attendee", language, responses: { [path]: { ...base, canRequestExchange: false, exchangeClosedReason: "not_started", intro: null } } });
+    await page.setViewportSize({ height: 700, width: 320 });
+    const line = page.getByText(text, { exact: true });
+    await line.waitFor();
+    const [box, button] = [(await line.boundingBox())!, (await page.getByTestId("events-attendee-exchange-closed").boundingBox())!];
+    assert.ok(box.x >= button.x && box.x + box.width <= button.x + button.width && box.height <= button.height, `${language} ${JSON.stringify([box, button])}`);
+  }
+});

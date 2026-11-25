@@ -149,10 +149,10 @@ function RegisterFlow() {
     }
     setBusy(false);
   };
-  // 「追加」：访谈认为够了也再问一题（live 由 AI 决定，可能仍然结束 → 留在确认页）。
-  const askMore = async () => {
+  // 「追加」：访谈认为够了也再问一题（live 由 AI 决定，可能仍然结束 → 留在确认页）。`focus`：会用资料补上的那一项，改成自己回答。
+  const askMore = async (focus?: EventJoinProfileItemKey) => {
     setBusy(true);
-    const res = await api.joinNext(eventId, answers, true);
+    const res = await api.joinNext(eventId, answers, true, focus);
     setBusy(false);
     if (res.ok) showStep(res.data); else toast.error(t("submitFailed"));
   };
@@ -253,7 +253,11 @@ function RegisterFlow() {
               {(profile?.items ?? []).map((item) => (
                 <View key={item.key} style={[styles.row, { gap: 6 }]}>
                   <UiText style={[styles.mark, { color: item.done ? colors.ok : colors.coral }]}>{item.done ? "✓" : "△"}</UiText>
-                  <UiText style={[styles.itemText, item.done ? null : { color: colors.ink3 }]}>{t(ITEM_LABEL[item.key])}</UiText>
+                  <View style={styles.fill}>
+                    <UiText style={[styles.itemText, item.done ? null : { color: colors.ink3 }]}>{t(ITEM_LABEL[item.key])}</UiText>
+                    {item.fromProfile ? <UiText style={styles.lbl} testID={`events-join-from-profile-${item.key}`}>{t("itemFromProfile")}</UiText> : null}
+                  </View>
+                  {item.fromProfile ? <UiPressable accessibilityRole="button" accessibilityLabel={`${t("edit")} ${t(ITEM_LABEL[item.key])}`} disabled={busy} onPress={() => void askMore(item.key)} style={styles.btnXs}><UiText style={styles.btnXsText}>{t("edit")}</UiText></UiPressable> : null}
                   {item.done ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("add")} disabled={busy} onPress={() => void askMore()} style={styles.btnXs}><UiText style={styles.btnXsText}>{t("add")}</UiText></UiPressable>}
                 </View>
               ))}
@@ -391,7 +395,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   covLbl: { color: colors.ink3, fontSize: 12, fontWeight: "500", lineHeight: 13 },
   items: { flex: 1, gap: 5 },
   mark: { fontSize: 15, fontWeight: "800", lineHeight: 23, width: 12 },
-  itemText: { color: colors.ink, flex: 1, fontSize: 15, lineHeight: 23 },
+  itemText: { color: colors.ink, fontSize: 15, lineHeight: 23 },
   why: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 18, justifyContent: "center", width: 18 },
   whyText: { color: colors.ink3, fontSize: 12, fontWeight: "800", lineHeight: 15 },
   whyBody: { backgroundColor: colors.surface2, borderRadius: 14, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10 },

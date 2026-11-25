@@ -92,3 +92,38 @@ test("the review names everything attendees see, wrapped inside the card", async
   const chip = (await page.getByText("所有参会者", { exact: true }).boundingBox())!;
   assert.ok(chip.height < 24, `the chip stays on one line: ${JSON.stringify(chip)}`);
 });
+
+test("an item filled from the profile says so; 编辑 asks that one item, and the mark goes once it is answered", async (t) => {
+  const question = { allowCustom: true, field: "targetAttendees", help: "同场参会者也能看到（可多选）", max: null, multi: true, options: ["投资人", "创业者"], prompt: "这次活动上，你最想认识哪类人？", questionToken: "q-target" };
+  const items = (fromProfile: boolean) => [{ done: true, key: "company" }, { done: true, key: "target", ...(fromProfile ? { fromProfile } : {}) }, { done: true, key: "offer", fromProfile: true }];
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/join/profile`]: { ...profile, items: items(true) } } });
+  await page.getByTestId("events-join-from-profile-target").waitFor();
+  assert.equal(await page.getByText("来自资料", { exact: true }).count(), 2);
+  assert.equal(await page.getByTestId("events-join-from-profile-company").count(), 0);
+  const edit = page.getByRole("button", { name: "编辑 想见的人", exact: true });
+  const [note, button] = [(await page.getByTestId("events-join-from-profile-target").boundingBox())!, (await edit.boundingBox())!];
+  assert.ok(note.x + note.width <= button.x && button.x + button.width <= (page.viewportSize()?.width ?? 390) - 18, JSON.stringify([note, button]));
+  await page.evaluate(([key, next]) => { (window as any).fixture.responses[key as string] = next; }, [`${base}/join/next`, { ...step, done: false, index: 1, question }] as const);
+  await edit.click();
+  await page.getByText(question.prompt, { exact: true }).waitFor();
+  const asked = await page.evaluate(() => (window as any).fixture.postBodies.filter((call: any) => call.path.endsWith("/join/next")).at(-1).body);
+  assert.deepEqual(asked, { answers: [], focus: "target", more: true });
+  await page.evaluate(([next, shown, nextBody, shownBody]) => { const { responses } = (window as any).fixture; responses[next as string] = nextBody; responses[shown as string] = shownBody; },
+    [`${base}/join/next`, `${base}/join/profile`, step, { ...profile, items: items(false) }] as const);
+  await page.getByRole("button", { name: "投资人", exact: true }).click();
+  await page.getByTestId("events-join-next").click();
+  await page.getByTestId("events-join-from-profile-offer").waitFor();
+  assert.equal(await page.getByTestId("events-join-from-profile-target").count(), 0);
+  const last = await page.evaluate(() => (window as any).fixture.postBodies.filter((call: any) => call.path.endsWith("/join/next")).at(-1).body);
+  assert.equal(last.answers[0].questionToken, "q-target");
+  assert.ok(!("focus" in last), "answering goes on without a focus");
+});
+
+test("without fromProfile (an older server) the list is as before, with the same wording as the visibility line", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/join/profile`]: { ...profile, items: [{ done: true, key: "purpose" }, { done: false, key: "offer" }] } } });
+  await page.getByText("参加目的", { exact: true }).waitFor();
+  assert.equal(await page.getByText("来自资料", { exact: true }).count(), 0);
+  await page.getByRole("button", { name: "添加", exact: true }).click();
+  const asked = await page.evaluate(() => (window as any).fixture.postBodies.filter((call: any) => call.path.endsWith("/join/next")).at(-1).body);
+  assert.deepEqual(asked, { answers: [], more: true });
+});

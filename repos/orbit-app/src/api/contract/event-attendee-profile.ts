@@ -4,8 +4,8 @@
 // registration profile; anything else is a plain 404 (never says whether the person exists). No email / phone here:
 // contact details live on the contact page after an exchange.
 // Exchange requests keep using `POST /api/events/[id]/operations/contact-requests` (+ `/respond`), with the
-// `participantId` / `requestId` / `requestRevision` below (same meaning as `EventVenuePerson`). After the event the server
-// accepts new requests for 30 days only (`canRequestExchange`), and rejects them afterwards.
+// `participantId` / `requestId` / `requestRevision` below (same meaning as `EventVenuePerson`). The server accepts new
+// requests from the event's start until 30 days after its end (`canRequestExchange`), and rejects them outside that window.
 
 import type { EventVenueExchangeState } from "./event-venue";
 
@@ -19,7 +19,7 @@ export interface EventAttendeeProfile {
   role?: string | null;
   /** 参加用プロフィールの自己紹介 (public part). */
   intro?: string | null;
-  /** Public registration Q&A (question text + answer), at most 6. */
+  /** Public registration Q&A (question text + answer), at most 8. */
   answers: readonly { q: string; a: string }[];
   /** What I share with them at this event. */
   together: {
@@ -39,8 +39,10 @@ export interface EventAttendeeProfile {
   contactId?: string | null;
   /** My private memo about them (same memo as 会場モード). */
   memo?: string | null;
-  /** A new exchange request is allowed now (before the event ends, or within 30 days after it). */
+  /** A new exchange request is allowed now: from the event's start until 30 days after its end (and none exists yet). */
   canRequestExchange: boolean;
+  /** Why a new request is not allowed now because of time: before the start / more than 30 days after the end. Null otherwise (allowed, a request already exists, or it is me). */
+  exchangeClosedReason?: "not_started" | "ended" | null;
   /** Last day a request is allowed after the event (ISO), for 「終了後 30日まで申請できます（M/D まで）」; null before the event. */
   exchangeUntil?: string | null;
 }

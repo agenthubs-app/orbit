@@ -30,7 +30,7 @@ export interface EventJoinAnswer {
   questionToken: string;
 }
 
-/** `POST /api/events/[id]/join/next` */
+/** `POST /api/events/[id]/join/next` — body `{ answers, more?, focus? }`; `focus` (an item key) asks that one item again although the profile would fill it. */
 export interface EventJoinStep {
   /** 1-based index of `question`. */
   index: number;
@@ -43,7 +43,8 @@ export interface EventJoinStep {
 /** `POST /api/events/[id]/join/profile` — rules only unless `draft` (then the AI persona writes the self-introduction draft). */
 export interface EventJoinProfile {
   coverage: number;
-  items: readonly { key: EventJoinProfileItemKey; done: boolean }[];
+  /** `fromProfile`: nobody asked, the answer will be filled from the person's own profile (offering / seeking) — shown as such and changeable (`next` with `focus`). */
+  items: readonly { key: EventJoinProfileItemKey; done: boolean; fromProfile?: boolean }[];
   topics: readonly string[];
   selfIntro?: { text: string; source: "ai_draft" | "profile" } | null;
   /** What the draft was written from (「回答（目的・テーマ・会いたい人）とプロフィール（…）から作成。」). */
