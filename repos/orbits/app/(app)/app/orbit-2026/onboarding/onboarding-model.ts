@@ -147,11 +147,51 @@ export function readOnboardingDraft(actorKey: string): OnboardingDraft | null {
   }
 }
 
-export function writeOnboardingDraft(actorKey: string, draft: OnboardingDraft): void {
+/** 草稿里有没有人填的内容（打开页面就会写一份空草稿，不算）。 */
+export function hasDraftInput(draft: OnboardingDraft): boolean {
+  const { basic, offer, seek, topics, bio } = draft.fields ?? {};
+  return [draft.goalText, bio ?? "", ...Object.values(basic ?? {})].some(value => value.trim())
+    || [draft.goalChoices, offer, seek, topics].some(values => values?.length);
+}
+
+/** 返回是否真的写进了本地（「已自动保存」只在写成之后显示）。 */
+export function writeOnboardingDraft(actorKey: string, draft: OnboardingDraft): boolean {
   try {
     window.localStorage.setItem(`${DRAFT_PREFIX}${actorKey}`, JSON.stringify(draft));
+    return true;
   } catch {
     // 无痕模式/存储被禁：草稿只是便利，失败不影响流程。
+    return false;
+  }
+}
+
+/**
+ * 第 5 屏去导入再回来时（`?screen=5`，返回地址是固定白名单，带不了 next），从这里接回原本要去的页面。
+ * 只在这个标签页有效，按账号分开；走完或离开引导时清掉。
+ */
+const NEXT_PREFIX = "orbit.onboarding.next:";
+
+export function rememberOnboardingNext(actorKey: string, next: string): void {
+  try {
+    window.sessionStorage.setItem(`${NEXT_PREFIX}${actorKey}`, next);
+  } catch {
+    // 存不了就按默认去首页。
+  }
+}
+
+export function rememberedOnboardingNext(actorKey: string): string | null {
+  try {
+    return window.sessionStorage.getItem(`${NEXT_PREFIX}${actorKey}`);
+  } catch {
+    return null;
+  }
+}
+
+export function forgetOnboardingNext(actorKey: string): void {
+  try {
+    window.sessionStorage.removeItem(`${NEXT_PREFIX}${actorKey}`);
+  } catch {
+    // 同上。
   }
 }
 

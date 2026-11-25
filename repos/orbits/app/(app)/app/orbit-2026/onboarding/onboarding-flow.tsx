@@ -25,12 +25,14 @@ import {
 } from "../../../../../shared/domain/industries";
 import { isValidProfileBirthDate } from "../../../../../features/profile/onboarding";
 import { appendWebGuideReturnTo } from "../../../../../features/guide/return-to";
-import { forgetBatchReturnTo } from "../../contacts/card-batch-return";
+import { forgetBatchReturnTo, hasBatchReturnTo } from "../../contacts/card-batch-return";
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { normalizeProfileOnboardingNext } from "../../profile/profile-onboarding-navigation";
 import { visibleCharacterCount } from "../../profile/profile-save-model";
 import { Icon, MacTile, Orbit2026Scope, SampleTag, WhyBody, WhyButton } from "../ui";
 import type { AvatarTone } from "../ui/Basics";
 import {
+  fetchContactTotal,
   fetchProfile,
   fetchOnboardingProgress,
   generateIntroDraft,
@@ -52,8 +54,12 @@ import {
   TOPIC_OPTIONS,
   addCustomValue,
   clearOnboardingDraft,
+  forgetOnboardingNext,
+  hasDraftInput,
   optionMatches,
   readOnboardingDraft,
+  rememberOnboardingNext,
+  rememberedOnboardingNext,
   toggleValue,
   writeOnboardingDraft,
   type Copy,
@@ -124,7 +130,14 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const t: T = (copy) => siteText(copy as { ja: string; zh: string; en: string });
   // Start on the screen the link names (`?screen=5` back from card import) or the flow this tab last read,
   // so the header and stepper do not show step 1 and then jump once the read lands.
-  const screenParam = Number(useSearchParams()?.get("screen") ?? "");
+  const params = useSearchParams();
+  const screenParam = Number(params?.get("screen") ?? "");
+  const hasNextParam = Boolean(params?.get("next"));
+  const destination = () => {
+    const remembered = !hasNextParam && screenParam === 5 ? rememberedOnboardingNext(actorKey) : null;
+    return remembered ? normalizeProfileOnboardingNext(remembered, next) : next;
+  };
+  const leave = (href: string) => { forgetOnboardingNext(actorKey); window.location.assign(href); };
   const [start] = useState(() => {
     const remembered = rememberedOnboardingFlow();
     const screen = screenParam >= 1 && screenParam <= ONBOARDING_STEPS.length ? screenParam : remembered?.currentScreen ?? 1;
@@ -152,6 +165,11 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   // 每个语气只生成一次：切回已生成过的语气直接复用，不再调用模型（R28 §2.11）。
   const introDrafts = useRef<Partial<Record<IntroTone, { bio: string; headline: string }>>>({});
   const [saving, setSaving] = useState(false);
+  // 「已自动保存」只在真的存过之后出现：某屏已经服务端确认，或这次改动已写进本地草稿（读取后的第一次写入不算改动）。
+  const [draftSaved, setDraftSaved] = useState(false);
+  const draftBaselineRef = useRef<string | null>(null);
+  // 第 5 屏：已经有联系人或从这一步开始的名片批次。读不到时按「还没导入」，主按钮照样去导入。
+  const [imported, setImported] = useState(false);
   const progressRef = useRef<ProfileOnboardingProgressContract | null>(null);
   const initMutationRef = useRef<string | null>(null);
   const pendingConfirmRef = useRef<ProfileOnboardingProgressCommandContract | null>(null);
@@ -166,6 +184,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const stepIndex = ONBOARDING_STEPS.indexOf(view);
   const name = basic.name.trim();
   const initial = name ? Array.from(name)[0]!.toUpperCase() : "";
+
+  useEffect(() => { if (hasNextParam) rememberOnboardingNext(actorKey, next); }, [actorKey, hasNextParam, next]);
 
   // 读取已保存资料 + 进度 + 本地草稿。草稿只补该屏还没被服务端确认的输入。
   useEffect(() => {
@@ -189,6 +209,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         setBio(done < 4 && fields?.bio !== undefined ? fields.bio : profile?.bio ?? "");
         setHeadline(profile?.headline ?? "");
         if (draft) {
+          setDraftSaved(hasDraftInput(draft));
           setGoalText(draft.goalText);
           setGoalChoices(draft.goalChoices ?? []);
           setIntroRegenerations(draft.introRegenerations);
@@ -200,7 +221,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
           setGoalChoices(restored.choices);
         }
         if (flow?.currentScreen) setView(ONBOARDING_STEPS[flow.currentScreen - 1]!);
-        if (flow?.finishedAt) window.location.assign(next);
+        if (flow?.finishedAt) leave(destination());
         setLoaded(true);
       } catch {
         if (!active) return;
@@ -216,8 +237,20 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
 
   useEffect(() => {
     if (!loaded) return;
-    writeOnboardingDraft(actorKey, { goalText, goalChoices, horizon: "", introRegenerations, view, fields: { basic, offer, seek, topics, bio } });
+    const fields = { basic, offer, seek, topics, bio };
+    const written = writeOnboardingDraft(actorKey, { goalText, goalChoices, horizon: "", introRegenerations, view, fields });
+    const input = JSON.stringify([goalText, goalChoices, fields]);
+    if (draftBaselineRef.current === null) draftBaselineRef.current = input;
+    else if (written && input !== draftBaselineRef.current) setDraftSaved(true);
   }, [actorKey, goalText, goalChoices, introRegenerations, loaded, view, basic, offer, seek, topics, bio]);
+
+  useEffect(() => {
+    if (view !== "import" || !loaded) return;
+    if (hasBatchReturnTo(IMPORT_RETURN)) { setImported(true); return; }
+    let active = true;
+    fetchContactTotal().then(total => { if (active) setImported(total > 0); }, () => undefined);
+    return () => { active = false; };
+  }, [view, loaded]);
 
   function go(nextView: OnboardingView) {
     setError("");
@@ -242,7 +275,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         if (!readback?.deferred) throw new Error("Onboarding defer was not confirmed.");
         progressRef.current = readback;
       }
-      window.location.assign(next);
+      leave(destination());
     } catch {
       setLoadError(t({ zh: "暂时无法保存进度，请重试。", en: "Could not save your progress. Please retry.", ja: "進捗を保存できませんでした。もう一度お試しください。" }));
     } finally {
@@ -264,7 +297,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       }
       clearOnboardingDraft(actorKey);
       forgetBatchReturnTo("/app/profile/onboarding?screen=5");
-      window.location.assign(next);
+      leave(destination());
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t({ zh: "无法完成设置，请重试。", en: "Could not finish onboarding. Please retry.", ja: "設定を完了できませんでした。再試行してください。" }));
     } finally {
@@ -492,11 +525,11 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
 
             <div className={styles.foot}>
               {stepIndex > 0 ? <button className={`btn ${styles.back}`} disabled={saving} onClick={onBack} type="button"><Icon name="left" size={16} />{t({ zh: "返回", en: "Back", ja: "戻る" })}</button> : null}
-              <span className={styles.saved}><Icon name="check" size={16} />{t({ zh: "已自动保存", en: "Saved automatically", ja: "自動保存済み" })}</span>
+              {confirmed > 0 || draftSaved ? <span className={styles.saved}><Icon name="check" size={16} />{t({ zh: "已自动保存", en: "Saved automatically", ja: "自動保存済み" })}</span> : null}
               <span className={styles.spacer} />
               {view === "import" ? <>
                 <button className={`btn ${styles.ghost}`} disabled={saving} onClick={() => void finish()} type="button">{t({ zh: "跳过，先看示例", en: "Skip and explore the sample", ja: "スキップしてサンプルで見る" })}</button>
-                <button className={`btn ${styles.primary}`} disabled={saving} onClick={() => void finish()} type="button">{t({ zh: "导入后继续", en: "Import and continue", ja: "取り込んで次へ" })}</button>
+                <button className={`btn ${styles.primary}`} disabled={saving} onClick={() => imported ? void finish() : window.location.assign(importEntry(cardScanAvailable))} type="button">{t({ zh: "导入后继续", en: "Import and continue", ja: "取り込んで次へ" })}</button>
               </> : <button aria-busy={saving || undefined} className={`btn ${styles.primary}`} disabled={nextDisabled} onClick={() => void onNext()} type="button">
                 {saving ? t(ONBOARDING_COPY.flow024) : view === "intro" ? t({ zh: "保存这段介绍", en: "Save this introduction", ja: "この内容で保存" }) : t({ zh: "下一步", en: "Next", ja: "次へ" })}<Icon name="right" size={16} />
               </button>}
@@ -764,9 +797,14 @@ function IntroStep({
   );
 }
 
+/** 第 5 屏主按钮去的导入页：能识别名片就是扫描，否则是文件导入。 */
+function importEntry(cardScanAvailable: boolean): string {
+  return appendWebGuideReturnTo(cardScanAvailable ? "/app/contacts/new/scan" : "/app/contacts/new/import?method=csv", IMPORT_RETURN);
+}
+
 function ImportStep({ cardScanAvailable, t }: { cardScanAvailable: boolean; t: T }) {
-  const scan = appendWebGuideReturnTo("/app/contacts/new/scan", IMPORT_RETURN);
-  const csv = appendWebGuideReturnTo("/app/contacts/new/import?method=csv", IMPORT_RETURN);
+  const scan = importEntry(true);
+  const csv = importEntry(false);
   const vcard = appendWebGuideReturnTo("/app/contacts/new/import?method=contacts", IMPORT_RETURN);
   return (
     <div data-screen-label={ONBOARDING_SCREEN_LABELS.import}>

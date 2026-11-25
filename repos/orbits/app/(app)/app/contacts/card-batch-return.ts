@@ -32,6 +32,17 @@ export function forgetBatchReturnTo(returnTo: WebGuideReturnTo): void {
   }
 }
 
+/** 这个账号是否已有从 `returnTo` 那一步开始的名片批次（识别中、待确认也算）。 */
+export function hasBatchReturnTo(returnTo: WebGuideReturnTo): boolean {
+  try {
+    const prefix = returnKey("");
+    return Array.from({ length: window.localStorage.length }, (_, index) => window.localStorage.key(index))
+      .some((key) => key?.startsWith(prefix) && window.localStorage.getItem(key) === returnTo);
+  } catch {
+    return false;
+  }
+}
+
 export function batchReturnTo(batchId: string): WebGuideReturnTo | null {
   try {
     return webGuideReturnTo(window.localStorage.getItem(returnKey(batchId)));

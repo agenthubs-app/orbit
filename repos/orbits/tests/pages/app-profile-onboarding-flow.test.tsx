@@ -112,6 +112,7 @@ function stubProfileApi(t: { mock: { method: (target: object, name: string, impl
       if (command.action === "defer" && deferFailures-- > 0) return Response.json({ success: false, error: { code: "SERVICE_UNAVAILABLE", message: "down" } }, { status: 503 });
       if (command.action === "initialize") flow ??= { version: 1, lastConfirmedScreen: 0, currentScreen: 1, deferred: false, finishedAt: null, revision: "flow:1" };
       if (command.action === "confirm" && flow) flow = { ...flow, lastConfirmedScreen: command.screen, currentScreen: (command.screen ?? 0) + 1, revision: `flow:${++revision + 1}` };
+      if (command.action === "finish" && flow) flow = { ...flow, finishedAt: "2026-09-28T00:00:02.000Z", deferred: false, revision: `flow:${++revision + 1}` };
       if (command.action === "defer" && flow) flow = { ...flow, deferred: true, revision: `flow:${++revision + 1}` };
       return Response.json({ success: true, data: flow });
     }
@@ -126,6 +127,7 @@ function stubProfileApi(t: { mock: { method: (target: object, name: string, impl
     if (url === "/api/profile") {
       return Response.json({ success: true, data: { profile, mutationId, onboarding: { status: "complete", missingFields: [], policyVersion: 1 } } });
     }
+    if (url === "/api/contacts/summary") return extra.contactTotal === undefined ? Response.json({ success: false }, { status: 503 }) : Response.json({ success: true, data: { total: extra.contactTotal } });
     if (url === "/api/profile/seek-suggestions") return Response.json({ success: true, data: { suggestions: [] } });
     if (url === "/api/profile/intro-draft" && introFailureMessage) return Response.json({ success: false, error: { code: introFailureCode, message: introFailureMessage } }, { status: 503 });
     return Response.json({ success: false }, { status: 404 });
@@ -133,10 +135,10 @@ function stubProfileApi(t: { mock: { method: (target: object, name: string, impl
   return { puts, commands, progressReads: () => progressReads, progress: () => flow, saved: () => String(profile.relationshipGoal) };
 }
 
-async function mountFlow(actorKey: string) {
+async function mountFlow(actorKey: string, next = "/app/home") {
   let root!: ReactTestRenderer;
   await act(async () => {
-    root = create(<OnboardingFlow actorKey={actorKey} cardScanAvailable next="/app/home" todayIso="2026-09-28" />, {
+    root = create(<OnboardingFlow actorKey={actorKey} cardScanAvailable next={next} todayIso="2026-09-28" />, {
       createNodeMock: () => ({ focus() {}, setSelectionRange() {}, value: "" }),
     });
   });
@@ -286,4 +288,113 @@ test("intro quota exhaustion offers manual writing without another retry", async
   assert.doesNotMatch(output, /Quota error from server/);
   assert.equal(root.root.findAll(node => node.type === "button" && textOf(node) === "重试").length, 0);
   act(() => root.unmount());
+});
+
+const button = (root: ReactTestRenderer, text: string) => root.root.findAll(node => node.type === "button" && textOf(node) === text)[0]!;
+const settleFlow = () => act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+const SCAN = "/app/contacts/new/scan?returnTo=%2Fapp%2Fprofile%2Fonboarding%3Fscreen%3D5";
+
+test("last screen: 导入后继续 opens the import while nothing is imported (or the count is unreadable); 跳过 finishes", async (t) => {
+  for (const contactTotal of [0, undefined]) {
+    const assignments = stubWindow(t, new Map());
+    const api = stubProfileApi(t, "資金調達", { contactTotal }, 4);
+    const root = await mountFlow(`u-last-${contactTotal}`);
+    await settleFlow();
+    await act(async () => { await button(root, "导入后继续").props.onClick(); });
+    assert.deepEqual(assignments, [SCAN]);
+    assert.equal(api.commands.some(command => command.action === "finish"), false, "going to import is not finishing");
+    await act(async () => { await button(root, "跳过，先看示例").props.onClick(); });
+    await settleFlow();
+    assert.equal(api.commands.at(-1)?.action, "finish");
+    assert.deepEqual(assignments, [SCAN, "/app/home"]);
+    act(() => root.unmount());
+  }
+});
+
+test("last screen: once there are contacts, 导入后继续 finishes", async (t) => {
+  const assignments = stubWindow(t, new Map());
+  const api = stubProfileApi(t, "資金調達", { contactTotal: 3 }, 4);
+  const root = await mountFlow("u-imported");
+  await settleFlow();
+  await act(async () => { await button(root, "导入后继续").props.onClick(); });
+  await settleFlow();
+  assert.equal(api.commands.at(-1)?.action, "finish");
+  assert.deepEqual(assignments, ["/app/home"]);
+  act(() => root.unmount());
+});
+
+test("last screen: a card batch started from this step counts as imported while it is still being read", async (t) => {
+  const assignments = stubWindow(t, new Map([["orbit.cardBatches.returnTo.v1::batch-1", "/app/profile/onboarding?screen=5"]]));
+  const local = window.localStorage as unknown as { key?: (index: number) => string | null; length?: number };
+  local.key = index => index === 0 ? "orbit.cardBatches.returnTo.v1::batch-1" : null;
+  local.length = 1;
+  const api = stubProfileApi(t, "資金調達", { contactTotal: 0 }, 4);
+  const root = await mountFlow("u-batch");
+  await settleFlow();
+  await act(async () => { await button(root, "导入后继续").props.onClick(); });
+  await settleFlow();
+  assert.equal(api.commands.at(-1)?.action, "finish");
+  assert.deepEqual(assignments, ["/app/home"]);
+  act(() => root.unmount());
+});
+
+test("已自动保存 shows only after something was saved", async (t) => {
+  const saved = (root: ReactTestRenderer) => JSON.stringify(root.toJSON()).includes("已自动保存");
+  stubWindow(t, new Map());
+  stubProfileApi(t, "", {});
+  const fresh = await mountFlow("u-fresh");
+  assert.equal(saved(fresh), false, "nothing typed yet");
+  const company = fresh.root.findAll(node => node.type === "input" && node.props.value === "" && node.props.type !== "file" && node.props.type !== "date")[0]!;
+  await act(async () => { company.props.onChange({ target: { value: "Minato" } }); });
+  assert.equal(saved(fresh), true, "the local draft was written");
+  act(() => fresh.unmount());
+
+  stubWindow(t, new Map([[DRAFT_KEY("u-empty"), JSON.stringify({ view: "profile", goalText: "", fields: { basic: {}, offer: [] } })]]));
+  const reopened = await mountFlow("u-empty");
+  // stubProfileApi's profile has a name, so only the stored draft's own (empty) input decides.
+  assert.equal(saved(reopened), false, "an untouched draft is not a save");
+  act(() => reopened.unmount());
+
+  stubWindow(t, new Map());
+  Object.defineProperty(window, "localStorage", { configurable: true, value: { getItem: () => null, removeItem() {}, setItem() { throw new Error("blocked"); } } });
+  const blocked = await mountFlow("u-blocked");
+  const field = blocked.root.findAll(node => node.type === "input" && node.props.value === "" && node.props.type !== "file" && node.props.type !== "date")[0]!;
+  await act(async () => { field.props.onChange({ target: { value: "Minato" } }); });
+  assert.equal(saved(blocked), false, "storage refused the draft");
+  act(() => blocked.unmount());
+});
+
+test("已自动保存 stays for a flow with a confirmed screen", async (t) => {
+  stubWindow(t, new Map());
+  stubProfileApi(t, "", {}, 1);
+  const root = await mountFlow("u-confirmed");
+  assert.ok(JSON.stringify(root.toJSON()).includes("已自动保存"));
+  act(() => root.unmount());
+});
+
+test("going to import and back (?screen=5, no next) still ends where the person was headed", async (t) => {
+  const { SearchParamsContext } = await import("next/dist/shared/lib/hooks-client-context.shared-runtime");
+  const assignments = stubWindow(t, new Map());
+  const session = new Map<string, string>();
+  Object.defineProperty(window, "sessionStorage", { configurable: true, value: { getItem: (key: string) => session.get(key) ?? null, removeItem: (key: string) => { session.delete(key); }, setItem: (key: string, value: string) => { session.set(key, value); } } });
+  stubProfileApi(t, "資金調達", { contactTotal: 0 }, 4);
+  const mount = async (search: string, next: string) => {
+    let root!: ReactTestRenderer;
+    await act(async () => {
+      root = create(<SearchParamsContext.Provider value={new URLSearchParams(search)}><OnboardingFlow actorKey="u-next" cardScanAvailable next={next} todayIso="2026-09-28" /></SearchParamsContext.Provider>);
+    });
+    await settleFlow();
+    return root;
+  };
+  const first = await mount("next=%2Fapp%2Fevents%2Fev-1%2Fregister", "/app/events/ev-1/register");
+  await act(async () => { await button(first, "导入后继续").props.onClick(); });
+  assert.deepEqual(assignments, [SCAN]);
+  act(() => first.unmount());
+
+  const back = await mount("screen=5", "/app/home");
+  await act(async () => { await button(back, "跳过，先看示例").props.onClick(); });
+  await settleFlow();
+  assert.deepEqual(assignments, [SCAN, "/app/events/ev-1/register"]);
+  assert.equal(session.size, 0, "consumed once");
+  act(() => back.unmount());
 });
