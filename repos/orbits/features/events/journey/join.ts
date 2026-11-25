@@ -245,8 +245,10 @@ export interface JoinPorts {
    * `from.derived`：访谈没问到的核心项（主办方题或资料标签提供），提交端签成固定题一起交。
    */
   submit(eventId: string, answers: readonly EventJoinAnswer[], from?: { actorId: string; language: JourneyLanguage; derived?: readonly JoinDerivedAnswer[] }): Promise<{ status: "registered" | "pending_review"; submittedAt: string }>;
-  /** 确认页改过的自己紹介，跟这次报名一起留存。 */
+  /** 确认页上的自己紹介，跟这次报名一起留存（显示给这场活动的其他参会者）。 */
   saveIntro(actorId: string, eventId: string, text: string): Promise<void>;
+  /** 清掉这场活动的自己紹介（取消报名、或这次报名没带介绍时；文字一并抹掉，不只是隐藏）。 */
+  removeIntro?(actorId: string, eventId: string): Promise<void>;
   /** 取消报名（现有取消路由）；之后由 syncTentative 删掉仮予定。 */
   cancel(eventId: string): Promise<void>;
   createSchedule(actorId: string, input: { title: string; startsAt: string; endsAt: string; idempotencyKey: string }): Promise<string>;
@@ -366,7 +368,9 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const outcome = await ports.submit(eventId, answers.filter((answer) => !isHostAnswer(answer)), { actorId, language, ...(derived.length ? { derived } : {}) });
       const hostAnswers = validHostAnswers(hostQuestions, answers);
       if (ports.saveHostAnswers && Object.keys(hostAnswers).length > 0) await ports.saveHostAnswers(actorId, eventId, hostAnswers);
-      if (selfIntro) await ports.saveIntro(actorId, eventId, selfIntro);
+      // 这次报名的介绍覆盖上一次的；没带介绍就清掉旧的（取消后再报名时，旧介绍不能借着新报名重新显示给别人）。
+      if (selfIntro?.trim()) await ports.saveIntro(actorId, eventId, selfIntro);
+      else await ports.removeIntro?.(actorId, eventId);
       const endsAt = event.endsAt ?? new Date(Date.parse(event.startsAt) + 2 * 3_600_000).toISOString();
       return {
         endsAt: event.endsAt,
@@ -397,6 +401,8 @@ export function createJoinService(deps: { ports: JoinPorts }) {
     async cancel(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventJoinCancelResult | null> {
       if (!(await ports.event(eventId))) return null;
       await ports.cancel(eventId);
+      // 取消后介绍已不显示（只认 rsvped）；文字也清掉，不留着等下次报名。
+      await ports.removeIntro?.(actorId, eventId).catch(() => undefined);
       await service.syncTentative(actorId, eventId, language).catch(() => undefined);
       return { eventId, status: "cancelled" };
     },

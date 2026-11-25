@@ -122,3 +122,18 @@ test("the visibility line names networking style and follow-up too (three langua
   assert.match(eventsJourneyCopy.visAllFields.ja, /交流スタイル · 会後の連絡方法$/);
   assert.match(eventsJourneyCopy.visAllFields.en, /networking style · follow-up$/);
 });
+
+test("cancelling clears the intro text; a registration without an intro clears the old one (no stale intro after re-registering)", async () => {
+  const intros = new Map<string, string>();
+  const calls: string[] = [];
+  const ports = { cancel: async () => { calls.push("cancel"); }, createSchedule: async () => "s", event: async () => ({ endsAt: null, registrationClosesAt: null, review: false, startsAt: "2026-12-07T10:00:00.000Z", title: "T" }), next: async () => null, persona: async () => null, profileIntro: async () => null, readTentative: async () => null, registrationStatus: async () => "none" as const, removeIntro: async (actor: string, event: string) => { calls.push("removeIntro"); intros.delete(`${actor}:${event}`); }, removeSchedule: async () => undefined, renameSchedule: async () => undefined, saveIntro: async (actor: string, event: string, text: string) => { intros.set(`${actor}:${event}`, text); }, saveTentative: async () => undefined, submit: async () => ({ status: "registered" as const, submittedAt: "x" }) } satisfies JoinPorts;
+  const service = createJoinService({ ports });
+  await service.submit("u", "ev", [], "zh", "第一次的介绍");
+  assert.equal(intros.get("u:ev"), "第一次的介绍");
+  await service.cancel("u", "ev", "zh");
+  assert.deepEqual(calls, ["cancel", "removeIntro"]);
+  assert.equal(intros.has("u:ev"), false, "gone, not only hidden");
+  await service.submit("u", "ev", [], "zh", "再报名的介绍");
+  await service.submit("u", "ev", [], "zh");
+  assert.equal(intros.has("u:ev"), false, "a registration that confirmed no intro leaves none behind");
+});

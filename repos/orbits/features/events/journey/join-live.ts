@@ -177,6 +177,14 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     async saveIntro(actorId, eventId, text) {
       await store.put("eventJoinIntros", actorId, tentativeId(actorId, eventId), { eventId, text }, new Date().toISOString());
     },
+    async removeIntro(actorId, eventId) {
+      // 先抹掉文字再标删除（remove 只改状态、保留 payload）。
+      const at = new Date().toISOString();
+      const existing = await store.get("eventJoinIntros", actorId, tentativeId(actorId, eventId));
+      if (!existing) return;
+      await store.put("eventJoinIntros", actorId, tentativeId(actorId, eventId), { eventId, text: "" }, at);
+      await store.remove("eventJoinIntros", actorId, tentativeId(actorId, eventId), at);
+    },
     async createSchedule(actorId, value) {
       const service = await schedule();
       const created = await service.create(actorId, { endsAt: value.endsAt, idempotencyKey: value.idempotencyKey, startsAt: value.startsAt, timeZone: "Asia/Tokyo", title: value.title });

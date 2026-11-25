@@ -27,8 +27,13 @@ test("event purge removes actor-owned legacy participation and unregistered host
     await insert("event_registrations", "mine", "actor", { registration: { eventId: "event-1", userId: "actor" } });
     await insert("event_registrations", "theirs", "other", { registration: { eventId: "event-1", userId: "other" } });
     await insert("attendees", "mine", "actor", { eventId: "event-1" });
+    // The registration self-introduction is shown to other attendees: it goes with the account; others' stay.
+    await insert("eventJoinIntros", "intro-mine", "actor", { eventId: "event-1", text: "Private intro" });
+    await insert("eventJoinIntros", "intro-theirs", "other", { eventId: "event-1", text: "Their intro" });
     const { purgeAccountEvents } = await import("../../features/account/data-rights/purge/events");
-    assert.equal((await purgeAccountEvents(db, "space", "actor")).deleted, 2);
+    assert.equal((await purgeAccountEvents(db, "space", "actor")).deleted, 3);
+    assert.equal((await pool.query(`select count(*)::int as n from orbit_records where collection_name='eventJoinIntros' and user_id='actor'`)).rows[0]?.n, 0);
+    assert.equal((await pool.query(`select count(*)::int as n from orbit_records where collection_name='eventJoinIntros' and user_id='other'`)).rows[0]?.n, 1);
     assert.equal((await purgeAccountEvents(db, "space", "actor")).deleted, 0);
     assert.equal((await pool.query(`select count(*)::int as n from orbit_records where collection_name='event_registrations' and user_id='other'`)).rows[0]?.n, 1);
     await insert("events", "shared", "other", { accountId: "other", attendees: [

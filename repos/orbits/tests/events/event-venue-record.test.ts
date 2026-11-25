@@ -123,7 +123,11 @@ test("attendee profile: fields, shared rounds, recommendation, exchange (same ru
   assert.equal(profile.attendeeId, "vr-liu");
   assert.equal(profile.participantId, "vr-liu");
   assert.equal(profile.name, "劉 洋");
-  assert.equal(profile.answers.length, 3);
+  // 2026-11-26: the confirmed self-introduction is the intro; the topic is the first Q&A row.
+  assert.equal(profile.intro, "個人でエンジェル投資をしています。シード期の B2B SaaS の方とお話しできればうれしいです。");
+  assert.equal(profile.answers.length, 4);
+  assert.deepEqual(profile.answers[0], { a: "B2B SaaS へのエンジェル投資 12 件", q: "話せるトピック" });
+  assert.equal((await venueRecordService().attendeeProfile("actor:me", VENUE_RECORD_EVENT_ID, "vr-tanaka"))?.intro, null, "no intro written → no intro line");
   assert.deepEqual(profile.together.sharedRounds, [{ round: 1, table: "A-1" }, { round: 2, table: "C-2" }]);
   assert.equal(profile.together.recommended, true);
   assert.equal(profile.exchange, "incoming");

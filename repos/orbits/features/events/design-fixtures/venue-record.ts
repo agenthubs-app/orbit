@@ -106,10 +106,23 @@ const ANSWERS: Record<string, { q: string; a: string }[]> = {
   "vr-wang": [{ a: "日本の製造業 DX スタートアップ", q: "会いたい人" }, { a: "中国側の LP・事業会社の紹介", q: "提供できること" }],
 };
 
+/**
+ * 报名时确认的自己紹介（第一人称，显示给同场参会者）。田中さん・鈴木さん没写（旧报名）：介绍位缺位，只显示问答。
+ * 2026-11-26 与 live 映射一致：intro = 自己紹介；話せるトピック（experienceHighlight）是问答里的一行。
+ */
+const INTROS: Record<string, string> = {
+  "vr-chen": "深圳でハードウェアの会社の CTO をしています。日本のスタートアップの量産立ち上げを手伝える相手を探しています。",
+  "vr-li": "東瀛貿易で事業開発を担当しています。日中の越境 EC の物流について、困っていることがあれば気軽に声をかけてください。",
+  "vr-liu": "個人でエンジェル投資をしています。シード期の B2B SaaS の方とお話しできればうれしいです。",
+  "vr-wang": "華東キャピタルで日中のシード投資を担当しています。日本の製造業 DX のスタートアップと知り合いたくて参加しました。",
+  "vr-yamada": "ネクストファクトリーの COO です。工場 DX を進めている方と、現場の話をしたいです。",
+};
+
 function profileOf(participantId: string): JourneyAttendeeProfileFacts | null {
   const person = DIRECTORY.find((item) => item.participantId === participantId);
   if (!person || PRIVATE_IDS.has(participantId)) return null;
-  return { answers: ANSWERS[participantId] ?? [], attendeeId: person.participantId, intro: person.experienceHighlight, name: person.displayName, org: person.company, role: person.role };
+  const topic = person.experienceHighlight ? [{ a: person.experienceHighlight, q: "話せるトピック" }] : [];
+  return { answers: [...topic, ...(ANSWERS[participantId] ?? [])], attendeeId: person.participantId, intro: INTROS[participantId] ?? null, name: person.displayName, org: person.company, role: person.role };
 }
 
 export function venueRecordPorts(): JourneyLivePorts {
