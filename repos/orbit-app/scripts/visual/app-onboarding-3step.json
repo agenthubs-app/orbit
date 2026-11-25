@@ -1,12 +1,13 @@
 {
- "_note": "新用户引导三步版 App A1–A7（onboarding-3step-proposal.html ④）。实现侧 = /profile/onboarding?design=A1…A7（开发包、已登录、界面语言日语），Metro 带 EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=open-path,onboarding,no-keyboard。在 repos/orbits 下跑：node scripts/visual/compare-redesign-app.mjs --suite ../orbit-app/scripts/visual/app-onboarding-3step.json --simulator <udid> --out <dir>",
+ "_note": "新用户引导三步版 App A1–A7（onboarding-3step-proposal.html ④）。实现侧 = /profile/onboarding?design=A1…A7（开发包、已登录、界面语言日语），Metro 带 EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=open-path,onboarding,no-keyboard。在 repos/orbits 下跑：node scripts/visual/compare-redesign-app.mjs --suite ../orbit-app/scripts/visual/app-onboarding-3step.json --simulator <udid> --out <dir>。A5 的设计侧靠脚本滚动（scrollTop 456），门禁脚本搬动画框会把它复位：用一份把 scrollTop 换成等值负 margin 的副本（另起端口）跑 A5。",
  "defaults": {
   "design": "onboarding-3step-proposal.html",
   "grid": 30,
   "wait": 12000,
   "themes": [
    "light"
-  ]
+  ],
+  "attribution": "../orbit-app/scripts/visual/attribution-onboarding-3step.json"
  },
  "sources": [
   "repos/orbit-app/src/screens/profile/onboarding/**",

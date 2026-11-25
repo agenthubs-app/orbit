@@ -1,3 +1,4 @@
+import { usePathname } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
 import { AppState } from "react-native";
 
@@ -51,7 +52,11 @@ export function OnboardingGateProvider({ children }: PropsWithChildren) {
     if (current.current === scopeKey) setResolved(value => (value?.scopeKey === scopeKey && value.status !== "open" ? value : { scopeKey, status: next }));
   }, [actorId, client, scopeKey, server.baseUrl]);
 
-  useEffect(() => { void check(); }, [check]);
+  // On sign-in the next page is onboarding, which reads the same two answers and settles this itself.
+  const pathname = usePathname();
+  const answersItself = pathname.startsWith("/profile/onboarding") || pathname.startsWith("/account");
+  const waiting = status === "unknown" && !answersItself;
+  useEffect(() => { if (waiting) void check(); }, [check, waiting]);
   useEffect(() => {
     if (status !== "open") return;
     const subscription = AppState.addEventListener("change", state => { if (state === "active") void check(); });

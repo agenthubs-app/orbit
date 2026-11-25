@@ -8,7 +8,7 @@ import * as Crypto from "expo-crypto";
 import * as ImagePicker from "expo-image-picker";
 import { type Href, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, findNodeHandle, Linking, Platform, View, type LayoutChangeEvent, type ScrollView, type TextInput } from "react-native";
+import { AccessibilityInfo, findNodeHandle, Keyboard, Linking, Platform, View, type LayoutChangeEvent, type ScrollView, type TextInput } from "react-native";
 
 import { useOrbitApiBaseUrl } from "../../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
@@ -399,6 +399,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   async function scanWith(source: "camera" | "library") {
     if (scan.kind === "scanning") return;
     const before = scan;
+    Keyboard.dismiss();
     try {
       // The iOS photo picker needs no library access; only Android and the camera ask.
       const permission = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : Platform.OS === "ios" ? { granted: true, canAskAgain: true } : await ImagePicker.requestMediaLibraryPermissionsAsync();

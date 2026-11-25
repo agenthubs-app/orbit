@@ -85,7 +85,7 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
       )}
       {scan.kind === "failed" ? <UiText accessibilityRole="alert" style={styles.errLine}>{scan.message}</UiText> : null}
       <View onLayout={event => onFieldLayout("name", event)}>
-        {text("name", t("onboarding.v3.name"), t("onboarding.v3.namePlaceholder"), { inputRef: inputs.name, error: errors.has("name") ? t("onboarding.v3.missName") : undefined, autoComplete: "name", textContentType: "name" })}
+        {text("name", t("onboarding.v3.name"), errors.has("name") ? "" : t("onboarding.v3.namePlaceholder"), { inputRef: inputs.name, error: errors.has("name") ? t("onboarding.v3.missName") : undefined, autoComplete: "name", textContentType: "name" })}
       </View>
       {text("company", optional("company", done || Boolean(marks.company)), t("onboarding.v3.companyPlaceholder"))}
       {text("title", optional("role", done || Boolean(marks.title)), t("onboarding.v3.rolePlaceholder"))}
@@ -297,7 +297,7 @@ export function IntroStep({ bio, bioCount, disabled, editing, error, goals, inpu
       </View>
       {failed ? <UiText accessibilityRole="alert" style={[styles.errLine, { marginTop: 0, marginBottom: 12 }]}>{t(status === "limit" ? "onboarding.v3.introLimit" : "onboarding.v3.introFailed")}</UiText> : null}
       {message ? <UiText accessibilityLiveRegion="polite" style={[styles.errLine, { marginTop: 0, marginBottom: 12 }]}>{message}</UiText> : null}
-      <View onLayout={onCardLayout} style={[styles.card, error ? styles.boxError : null, error ? { borderWidth: 1.5, padding: 16.5 } : null]} testID="onboarding-intro-card">
+      <View onLayout={onCardLayout} style={[styles.card, error ? styles.boxError : null, error ? { borderWidth: 1, padding: 17 } : null]} testID="onboarding-intro-card">
         {generating ? <View accessibilityLabel={t("onboarding.v3.introGenerating")} accessible><View style={[styles.bone, { width: "92%" }]} /><View style={[styles.bone, { width: "86%" }]} /><View style={[styles.bone, { width: "64%" }]} /></View>
           : writing ? <TextInput accessibilityHint={error ?? undefined} accessibilityLabel={t("onboarding.v3.bio")} editable={!disabled} multiline onChangeText={onBio} ref={input} scrollEnabled={false} style={styles.introInput} value={bio} />
             : <UiText style={styles.introText}>{bio}</UiText>}

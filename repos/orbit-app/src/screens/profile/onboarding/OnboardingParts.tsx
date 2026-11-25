@@ -27,6 +27,10 @@ export function type(board: number, weight: TextStyle["fontWeight"] = "400", lin
 // Measured on the gate (see ui/cjk-lift): in the same line box iOS sets these sizes 1pt lower than the browser, and
 // draws an emoji about 1.18× wider.
 const LIFT = Platform.OS === "ios" ? { transform: [{ translateY: -1 }] } : {};
+// The board's 1.5px borders lay out and draw as 1 (measured: .tog 36.75 = 18.75 + 16 + 2).
+const LINE = 1;
+/** Kana / kanji take the Japanese face; an all-Latin value (a phone number, an address) stays in the system font, as drawn. */
+const CJK = /[\u3040-\u30ff\u3400-\u9fff]/u;
 const HALF_LIFT = Platform.OS === "ios" ? { transform: [{ translateY: -0.5 }] } : {};
 const emoji = (board: number): TextStyle => ({ ...type(board), ...(Platform.OS === "ios" ? { fontSize: Math.round(board * 8.5) / 10 } : {}) });
 
@@ -39,12 +43,15 @@ export function OnboardingFrame({ children, footer, scrollRef }: { children: Rea
     <SafeAreaView edges={["top"]} style={[styles.screen, { paddingTop: topGap }]}>
       <ShellBackground />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.fill}>
+        {/* The foot is absolute: it needs a box that the keyboard padding really shortens. */}
+        <View style={styles.fill}>
         <ScrollView ref={scrollRef} contentContainerStyle={[styles.content, { paddingBottom: footHeight + 24 }]} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" style={styles.fill} testID="onboarding-scroll">
           {children}
         </ScrollView>
         <View onLayout={event => setFootHeight(event.nativeEvent.layout.height)} pointerEvents="box-none" style={styles.foot}>
           <FootFade />
           {footer}
+        </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -174,7 +181,7 @@ export function TextField({ error, hint, inputRef, label, accessibilityLabel, ma
   return (
     <Field error={error} focused={focused} {...(hint ? { hint } : {})} label={label} mark={mark} {...(onLayout ? { onLayout } : {})}>
       <TextInput {...input} accessibilityHint={error} accessibilityLabel={accessibilityLabel} maxFontSizeMultiplier={1.7} onBlur={() => setFocused(false)} onFocus={() => setFocused(true)} placeholderTextColor={colors.ink3Text} ref={inputRef}
-        returnKeyType={input.returnKeyType ?? "done"} style={[styles.input, Platform.OS === "ios" && language === "ja" ? { fontFamily: faceFor("400") } : null]} />
+        returnKeyType={input.returnKeyType ?? "done"} style={[styles.input, Platform.OS === "ios" && language === "ja" && CJK.test(input.value || input.placeholder || "") ? { fontFamily: faceFor("400") } : null]} />
     </Field>
   );
 }
@@ -254,7 +261,7 @@ export const useOnboardingStyles = createThemedStyles(colors => StyleSheet.creat
   h1: { color: colors.ink, marginTop: 14, ...type(24, "900", 1.35, -0.01) },
   h1Second: { color: colors.ink, marginTop: 22, marginBottom: 4, ...type(19, "900", 1.35, -0.01), ...LIFT },
   sub: { color: colors.ink2, marginTop: 4, marginBottom: 13.4, ...type(12.5), ...LIFT },
-  subSecond: { color: colors.ink2, marginBottom: 14, ...type(12.5), ...LIFT },
+  subSecond: { color: colors.ink2, marginBottom: 13.5, ...type(12.5), ...LIFT },
 
   scan: { borderWidth: 2, borderStyle: "dashed", borderColor: colors.plum300, borderRadius: 22, paddingVertical: 18, paddingHorizontal: 16, marginTop: 12, gap: 10, alignItems: "center", overflow: "hidden" },
   // color-mix(accent-soft 55%, transparent)
@@ -286,11 +293,11 @@ export const useOnboardingStyles = createThemedStyles(colors => StyleSheet.creat
   fieldRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
   label: { color: colors.ink2, ...type(12, "700"), ...LIFT },
-  box: { height: 48, borderRadius: 14, borderWidth: 1.5, borderColor: "transparent", backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", overflow: "hidden" },
+  box: { height: 48, borderRadius: 14, borderWidth: LINE, borderColor: "transparent", backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", overflow: "hidden" },
   boxFocused: { borderColor: colors.plum500 },
   boxError: { borderColor: colors.coral, backgroundColor: colors.coralSoft },
-  input: { flex: 1, minWidth: 0, alignSelf: "stretch", paddingHorizontal: 12.5, paddingVertical: 0, color: colors.ink, fontSize: type(14).fontSize, outlineStyle: "solid", outlineWidth: 0 },
-  select: { flex: 1, alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12.5 },
+  input: { flex: 1, minWidth: 0, alignSelf: "stretch", paddingHorizontal: 14, paddingVertical: 0, color: colors.ink, fontSize: type(14).fontSize, outlineStyle: "solid", outlineWidth: 0 },
+  select: { flex: 1, alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14 },
   selectText: { flex: 1, minWidth: 0, color: colors.ink, ...type(14), ...LIFT },
   placeholder: { color: colors.ink3Text },
   clear: { alignItems: "center", justifyContent: "center", width: 24, height: 24 },
@@ -308,8 +315,8 @@ export const useOnboardingStyles = createThemedStyles(colors => StyleSheet.creat
   errLine: { color: colors.coralText, marginTop: 12, ...type(12, "700"), ...LIFT },
 
   goals: { gap: 10 },
-  // .gt.err outline (1.5, offset 6) drawn outside the grid without moving it.
-  goalsError: { position: "absolute", left: -7.5, right: -7.5, top: -7.5, bottom: -7.5, borderRadius: 23.5, borderWidth: 1.5, borderColor: colors.coral },
+  // .gt.err outline (1.5 → drawn as 1, offset 6) outside the grid without moving it.
+  goalsError: { position: "absolute", left: -7, right: -7, top: -7, bottom: -7, borderRadius: 29, borderWidth: 1, borderColor: colors.coral },
   goalRow: { flexDirection: "row", gap: 10 },
   goal: { flex: 1, minWidth: 0, borderRadius: 20, borderWidth: 2, borderColor: "transparent", backgroundColor: colors.surface, padding: 13, gap: 6, alignItems: "flex-start" },
   goalOn: { borderColor: colors.plum500 },
@@ -324,7 +331,7 @@ export const useOnboardingStyles = createThemedStyles(colors => StyleSheet.creat
   groupTitle: { color: colors.ink, ...type(13, "800"), ...LIFT },
   groupChip: { marginLeft: 6 },
   togs: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
-  tog: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 8, paddingHorizontal: 13, borderRadius: 999, borderWidth: 1.5, borderColor: "transparent", backgroundColor: colors.surface },
+  tog: { flexDirection: "row", alignItems: "center", gap: 5, minHeight: 36.75, paddingVertical: 7.5, paddingHorizontal: 13, borderRadius: 999, borderWidth: LINE, borderColor: "transparent", backgroundColor: colors.surface },
   togOn: { backgroundColor: colors.accentSoft, borderColor: colors.plum500 },
   togAi: { backgroundColor: "transparent", borderStyle: "dashed", borderColor: colors.plum300 },
   togAdd: { backgroundColor: "transparent", borderStyle: "dashed", borderColor: colors.ink4 },
