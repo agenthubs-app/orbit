@@ -12,6 +12,7 @@ import { runNetworkAnalysisMigrations } from "../features/network-analysis/migra
 import { runContactInsightsMigrations } from "../features/contacts/insights/migrations";
 import { runContactImportMigrations } from "../features/contacts/import/migrations";
 import { runInviteCodeMigrations } from "../features/invite-codes/migrations";
+import { runSignupFunnelMigrations } from "../features/signup-funnel/migrations";
 import { loadLocalEnv } from "./load-local-env";
 
 async function main() {
@@ -43,6 +44,8 @@ async function main() {
     await runContactImportMigrations(runtime.client);
     phase = "invite-codes";
     await runInviteCodeMigrations(runtime.client);
+    phase = "signup-funnel";
+    await runSignupFunnelMigrations(runtime.client);
     phase = "retired-tables";
     // The maintenance heartbeat chain was removed in 0f6139353 (hourly cron instead); nothing reads or writes this
     // table any more. A rollback to an older build recreates it on first use (it was always created lazily).

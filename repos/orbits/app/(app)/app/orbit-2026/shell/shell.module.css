@@ -5,7 +5,7 @@
   --orbit-shell-bottom-inset: 0px;
   display: grid;
   grid-template-columns: 84px minmax(0, 1fr);
-  min-height: 100vh; min-height: 100dvh;
+  min-height: calc(100vh - var(--orbit-notice-h, 0px)); min-height: calc(100dvh - var(--orbit-notice-h, 0px));
   /* kit .web: two fog blooms, top left (lavender) and top right (smoke pink). */
   background:
     radial-gradient(900px 500px at 10% -10%, var(--fog-a), transparent 70%),
@@ -14,7 +14,7 @@
 }
 .frame[data-rail="true"] { grid-template-columns: 84px minmax(0, 1fr) 360px; }
 
-.sideScope { position: sticky; top: 0; height: 100vh; height: 100dvh; z-index: var(--z-sticky); }
+.sideScope { position: sticky; top: 0; height: calc(100vh - var(--orbit-notice-h, 0px)); height: calc(100dvh - var(--orbit-notice-h, 0px)); z-index: var(--z-sticky); }
 .side {
   height: 100%;
   padding: var(--space-22) 0;
@@ -111,7 +111,7 @@
 }
 .content { flex: 1; min-width: 0; }
 
-.railScope { display: block; position: sticky; top: 0; height: 100vh; height: 100dvh; }
+.railScope { display: block; position: sticky; top: 0; height: calc(100vh - var(--orbit-notice-h, 0px)); height: calc(100dvh - var(--orbit-notice-h, 0px)); }
 .rail {
   height: 100%;
   border-left: 1px solid var(--line);

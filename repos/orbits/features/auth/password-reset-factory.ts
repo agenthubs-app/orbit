@@ -3,21 +3,28 @@ import { createPasswordResetService, type PasswordResetMailer } from "./password
 import { createPasswordResetStore } from "./password-reset-store";
 import { createSmtpPasswordResetMailer, passwordResetSmtpConfig } from "./password-reset-smtp";
 
+/** The site origin links in mail are built from: https (http only for a local non-production host), no path. */
+export function publicOrigin(env: Record<string, string | undefined> = process.env): string | null {
+  const rawOrigin = env.ORBIT_PUBLIC_ORIGIN?.trim();
+  if (!rawOrigin) return null;
+  try {
+    const url = new URL(rawOrigin);
+    const local = env.NODE_ENV !== "production" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+    if ((url.protocol !== "https:" && !(local && url.protocol === "http:")) || url.username || url.password || url.search || url.hash || url.pathname !== "/") return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 export function passwordResetConfig(env: NodeJS.ProcessEnv = process.env) {
   const secret = env.AUTH_SECRET?.trim();
   const apiKey = env.ORBIT_AUTH_RESEND_API_KEY?.trim();
   const from = env.ORBIT_AUTH_MAIL_FROM?.trim();
   const smtp = passwordResetSmtpConfig(env);
-  const rawOrigin = env.ORBIT_PUBLIC_ORIGIN?.trim();
-  if (!secret || secret.length < 32 || (!smtp && (!apiKey || !from)) || !rawOrigin) return null;
-  try {
-    const url = new URL(rawOrigin);
-    const local = env.NODE_ENV !== "production" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-    if ((url.protocol !== "https:" && !(local && url.protocol === "http:")) || url.username || url.password || url.search || url.hash || url.pathname !== "/") return null;
-    return { secret, apiKey, from, smtp, origin: url.origin };
-  } catch {
-    return null;
-  }
+  const origin = publicOrigin(env);
+  if (!secret || secret.length < 32 || (!smtp && (!apiKey || !from)) || !origin) return null;
+  return { secret, apiKey, from, smtp, origin };
 }
 
 export function createResendPasswordResetMailer(config: { apiKey: string; from: string }, fetcher: typeof fetch = fetch): PasswordResetMailer {

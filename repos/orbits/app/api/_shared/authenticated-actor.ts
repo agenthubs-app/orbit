@@ -27,6 +27,8 @@ export interface AuthenticatedApiActor {
   id: string;
   accountId?: string;
   email?: string | null;
+  /** From the session check's own read; absent = not known. */
+  emailVerification?: { verified: boolean; sent: boolean };
   name?: string | null;
   profileId?: string;
   userId?: string;
@@ -110,11 +112,13 @@ export async function resolveAuthenticatedApiActor(): Promise<AuthenticatedApiAc
     return null;
   }
 
-  return resolveAuthenticatedApiActorFromSession({
+  const actor = await resolveAuthenticatedApiActorFromSession({
     email: session.user.email,
     name: session.user.name,
     userId: session.user.id,
   });
+  const { emailVerification } = session.user;
+  return actor && emailVerification ? { ...actor, emailVerification } : actor;
 }
 
 // Layout, page and server components resolve the same actor; within one server render they share

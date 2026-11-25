@@ -6,6 +6,7 @@
  */
 import { NextResponse } from "next/server";
 
+import { EMAIL_NOTICE_COOKIE } from "./app/(app)/app/email-notice-cookie";
 import { parseOrbitLanguage } from "./app/(app)/app/orbit-language-core";
 import { auth } from "./auth";
 import {
@@ -226,6 +227,12 @@ export const proxy = auth(async (request) => {
   // best practices). The app's own in-memory caches (router cache, orbit-last-answer) are unaffected.
   if (request.nextUrl.pathname.startsWith("/app") && request.auth?.user?.id) {
     response.headers.set("cache-control", "private, no-store");
+  }
+
+  // The email notice on this page asked to be told when the address is verified (another tab or device did it):
+  // answered from the session read this request made anyway.
+  if (request.cookies.get(EMAIL_NOTICE_COOKIE)?.value === "pending" && request.auth?.user?.emailVerification?.verified) {
+    response.cookies.set(EMAIL_NOTICE_COOKIE, "done", { maxAge: 86400, path: "/", sameSite: "lax" });
   }
 
   if (settledValue) {

@@ -9,6 +9,7 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { AccountLayout } from "../account/AccountLayout";
 import { useAccountIdentity } from "../account/AppearanceSettings";
 import styles from "../account/SettingsSecondary.module.css";
+import { EmailVerificationRow } from "../email-verification/EmailVerificationRow";
 import { Bone, Chip, Icon, MacTile, useStandardCopy } from "../ui";
 import { accountRightsApi } from "./api";
 import { rightsCopy } from "./copy";
@@ -57,6 +58,7 @@ export function AccountOverviewPage() {
         </div> : <div className={styles.accountRow} role="progressbar" aria-busy="true" aria-label={copy.loading.loading}>
           <Bone width={56} height={56} round /><div className={`${styles.accountText} ${styles.boneCard}`}><Bone width={120} height={16} /><Bone width={180} height={13} /></div>
         </div>}
+        {ready ? <EmailVerificationRow /> : null}
       </section>
       <section className={styles.setCard}>
         <div className={styles.setCardHead}><h2>{t("dataTitle")}</h2></div>

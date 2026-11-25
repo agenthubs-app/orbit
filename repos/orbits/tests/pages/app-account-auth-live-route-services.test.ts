@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { LEGAL_VERSIONS } from "../../shared/compute/legal-version";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
@@ -426,8 +427,11 @@ test("successful signup posts credentials, auto-signs in, and enters profile con
   const register = calls.find((call) => call.url === "/api/auth/register");
   assert.ok(register, "signup should create the account first");
   assert.deepEqual(JSON.parse(String(register.init?.body)), {
+    client: "web", consent: { accepted: true, privacyVersion: LEGAL_VERSIONS.privacy, termsVersion: LEGAL_VERSIONS.terms },
     email: "new-owner@example.invalid",
+    language: "zh",
     password: "password-123",
+    source: "direct",
   });
   assert.equal(calls.filter((call) => call.url.includes("/callback/credentials")).length, 1);
 });

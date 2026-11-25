@@ -7,6 +7,7 @@ import {
   authUserFailure,
   isValidAuthEmail,
   normalizeAuthEmail,
+  type AuthUserConsentInput,
   type AuthUserResult,
   type OAuthUserInput,
   type RegisterUserInput,
@@ -15,6 +16,7 @@ import {
 import type { AuthUserService } from "./service";
 import {
   toAuthUserDTO,
+  type AuthConsentRecord,
   type AuthUserStorageProvider,
   type StoredAuthUser,
 } from "./storage/auth-user-live-record-provider";
@@ -39,6 +41,11 @@ function displayNameFor(email: string, displayName?: string): string {
 
 function newUserId(now: Date): string {
   return `user_${now.getTime().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function consentsFor(consent: AuthUserConsentInput | undefined, method: AuthConsentRecord["method"], agreedAt: string): { consents?: readonly AuthConsentRecord[] } {
+  if (!consent) return {};
+  return { consents: [{ termsVersion: consent.termsVersion, privacyVersion: consent.privacyVersion, agreedAt, client: consent.client, method }] };
 }
 
 export function createAuthUserService({
@@ -86,6 +93,7 @@ export function createAuthUserService({
         providerAccountId: null,
         createdAt: timestamp,
         updatedAt: timestamp,
+        ...consentsFor(input.consent, "credentials", timestamp),
       };
 
       if (provider.insertUserIfAbsent) {
@@ -95,7 +103,7 @@ export function createAuthUserService({
       }
       if (!await provisionAccount(user)) return authUserFailure("AUTH_INVALID_CREDENTIALS");
 
-      return { data: { user: toAuthUserDTO(user) }, state: "success" };
+      return { data: { user: toAuthUserDTO(user), created: true }, state: "success" };
     },
 
     async verifyCredentials(
@@ -140,7 +148,9 @@ export function createAuthUserService({
 
       // 同邮箱已有账号(含密码注册的)直接复用:IdP 已验证邮箱所有权,
       // 与参考实现 allowDangerousEmailAccountLinking 的语义一致。
+      // 邮箱没验证过的密码账号可能是别人抢注的：并入时作废原密码（见 absorbUnverifiedCredentials）。
       if (existingUser) {
+        if (existingUser.provider === "credentials") await provider.absorbUnverifiedCredentials?.(email, now().toISOString());
         if (!await provisionAccount(existingUser)) return authUserFailure("AUTH_INVALID_CREDENTIALS");
         return { data: { user: toAuthUserDTO(existingUser) }, state: "success" };
       }
@@ -155,18 +165,21 @@ export function createAuthUserService({
         providerAccountId: input.providerAccountId,
         createdAt: timestamp,
         updatedAt: timestamp,
+        ...consentsFor(input.consent, input.provider, timestamp),
       };
 
       if (provider.insertUserIfAbsent) {
         const inserted = await provider.insertUserIfAbsent(user);
         const canonical = inserted ?? await provider.getUserByEmail(email);
         if (!canonical) return authUserFailure("AUTH_EMAIL_TAKEN");
+        // A password registration of the same address won the race: same rule as an existing account.
+        if (!inserted && canonical.provider === "credentials") await provider.absorbUnverifiedCredentials?.(email, now().toISOString());
         if (!await provisionAccount(canonical)) return authUserFailure("AUTH_INVALID_CREDENTIALS");
-        return { data: { user: toAuthUserDTO(canonical) }, state: "success" };
+        return { data: { user: toAuthUserDTO(canonical), ...(inserted ? { created: true } : {}) }, state: "success" };
       }
       await provider.saveUser(user);
       if (!await provisionAccount(user)) return authUserFailure("AUTH_INVALID_CREDENTIALS");
-      return { data: { user: toAuthUserDTO(user) }, state: "success" };
+      return { data: { user: toAuthUserDTO(user), created: true }, state: "success" };
     },
   };
 }

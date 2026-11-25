@@ -142,7 +142,7 @@
 .scope .pickerDone:disabled { opacity: .45; cursor: default; }
 @media (max-width: 767px) { .picker { max-height: 50dvh; } .pickerKeys { display: none; } }
 .privacy { max-width: 680px; width: 100%; margin: 8px auto 0; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); text-align: center; line-height: var(--lh-body); }
-@media (min-width: 768px) { .layout { height: calc(100dvh - 99px); box-sizing: border-box; } .main { height: 100%; } .start, .thread { flex: 1; overflow: auto; } .composer { margin-top: auto; } }
+@media (min-width: 768px) { .layout { height: calc(100dvh - 99px - var(--orbit-notice-h, 0px)); box-sizing: border-box; } .main { height: 100%; } .start, .thread { flex: 1; overflow: auto; } .composer { margin-top: auto; } }
 /* b8 #9: at 1024 the header keeps only ⌘ K. */
 @media (max-width: 1199px) { .anywhereText { display: none; } }
 @media (max-width: 1023px) { .layout { padding: 0 var(--space-26) var(--space-40); } .historyScrim { left: var(--space-26); right: var(--space-26); } .historyDrawer { left: var(--space-26); } }

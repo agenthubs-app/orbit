@@ -15,6 +15,7 @@
 
 .overlayRoot :global(.btn.au-google) { display: flex; width: 100%; height: 48px; margin-top: 20px; align-items: center; justify-content: center; gap: 10px; border: 1.5px solid var(--surface-3); border-radius: var(--r-pill); background: var(--surface); color: var(--ink); font-size: var(--fs-row); font-weight: var(--fw-bold); }
 .overlayRoot :global(.au-g) { width: 24px; height: 24px; display: grid; place-items: center; border-radius: var(--r-pill); background: var(--surface-2); font-family: var(--font-num); font-size: var(--fs-body-sm); font-weight: var(--fw-black); }
+.overlayRoot :global(.au-gterms) { margin: 8px 0 0; color: var(--ink-3-text); font-size: var(--fs-label); font-weight: var(--fw-medium); line-height: 1.7; text-align: center; }
 .overlayRoot :global(.au-divider) { display: flex; align-items: center; gap: 10px; margin: 16px 0 2px; color: var(--ink-3-text); font-size: var(--fs-label); }
 .overlayRoot :global(.au-divider::before), .overlayRoot :global(.au-divider::after) { content: ""; flex: 1 1 0%; height: 1px; background: var(--surface-3); }
 
@@ -52,6 +53,10 @@
 .overlayRoot :global(.au-notice), .overlayRoot :global(.au-success) { margin-top: 16px; padding: 12px; border-radius: var(--r-row); background: var(--plum-100); color: var(--accent-text); font-size: var(--fs-body-sm); line-height: 1.6; }
 .overlayRoot :global(.au-success) { display: flex; flex-direction: column; gap: 5px; }
 .overlayRoot :global(.au-btn-link) { text-decoration: none; }
+
+/* onboarding-3step-proposal V1: no close button, so the tile starts at the panel's top. */
+.overlayRoot :global(.au-panel[data-mail-sent="true"] .au-center) { padding-top: 10px; }
+.overlayRoot :global(.au-center .au-sub b) { font-weight: var(--fw-bold); overflow-wrap: anywhere; }
 
 /* b1 #5: centred state — 64px tile under the close row, title, two-line note, CTA, back link. */
 .overlayRoot :global(.au-center) { padding-top: 34px; text-align: center; }

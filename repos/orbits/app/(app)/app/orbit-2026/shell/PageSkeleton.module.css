@@ -17,7 +17,7 @@
 .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; margin-top: 18px; }
 .tile { display: block; min-height: 104px; border-radius: var(--r-card-web); background: var(--surface); }
 /* 受信箱: the 420 / 1fr card under the tabs. */
-.split { display: grid; grid-template-columns: 420px minmax(0, 1fr); height: calc(100vh - 184px); height: calc(100dvh - 184px); border-radius: var(--r-card-web); background: var(--surface); overflow: hidden; }
+.split { display: grid; grid-template-columns: 420px minmax(0, 1fr); height: calc(100vh - 184px - var(--orbit-notice-h, 0px)); height: calc(100dvh - 184px - var(--orbit-notice-h, 0px)); border-radius: var(--r-card-web); background: var(--surface); overflow: hidden; }
 .list { display: grid; align-content: start; gap: 18px; padding: var(--space-20); border-right: 1px solid var(--line); }
 .pane { min-width: 0; }
 .phoneInbox, .phone { display: none; }

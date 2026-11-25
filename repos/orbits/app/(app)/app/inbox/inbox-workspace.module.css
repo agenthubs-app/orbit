@@ -3,7 +3,7 @@
 .tabs { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin: calc(var(--space-2) * -1) 0 var(--space-16); }
 .tabsNote { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
 
-.card { height: calc(100vh - 184px); min-height: 520px; display: grid; grid-template-columns: 420px minmax(0, 1fr); overflow: hidden; background: var(--surface); border-radius: var(--r-card-web); }
+.card { height: calc(100vh - 184px - var(--orbit-notice-h, 0px)); min-height: 520px; display: grid; grid-template-columns: 420px minmax(0, 1fr); overflow: hidden; background: var(--surface); border-radius: var(--r-card-web); }
 .list { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line); }
 .tool { display: grid; gap: var(--space-10); padding: var(--space-16) var(--space-16) var(--space-12); border-bottom: 1px solid var(--line); }
 .tool [role="radiogroup"] { display: flex; flex-wrap: nowrap; gap: var(--space-4); margin: 0; padding: 0; overflow: visible; }
@@ -112,7 +112,7 @@
      在页签以下、底部导航以上的区域里垂直居中。
      可用高度 = 100dvh − 顶栏与页签 110 − 外壳底部留白 96（胶囊 + 间距）− 页面底边距 18 − 安全区。 */
   .card { display: block; height: auto; min-height: 0; border-radius: var(--r-none); background: transparent; overflow: visible; }
-  .list { position: relative; border-right: 0; padding: 0 var(--space-18); min-height: calc(100dvh - 224px - env(safe-area-inset-bottom, 0px)); }
+  .list { position: relative; border-right: 0; padding: 0 var(--space-18); min-height: calc(100dvh - 224px - var(--orbit-notice-h, 0px) - env(safe-area-inset-bottom, 0px)); }
   .tool { padding: 0 0 var(--space-12); border-bottom: 0; }
   .rows { flex: none; background: var(--surface); border-radius: var(--r-card-web); }
   .listNote { position: absolute; inset: 0; display: grid; place-content: center; padding: 0 var(--space-18); pointer-events: none; }

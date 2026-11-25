@@ -8,6 +8,7 @@ import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
+import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
 import {
   normalizeAuthEmail,
   type AuthUserDTO,
@@ -19,6 +20,17 @@ export const AUTH_USER_LIVE_RECORD_COLLECTION = "auth_users";
 export interface StoredAuthUser extends AuthUserDTO {
   passwordHash: string | null;
   providerAccountId: string | null;
+  /** 建号时写入，之后没有任何代码改它（只追加不改写）。 */
+  consents?: readonly AuthConsentRecord[];
+}
+
+/** 同意了哪一版条款。 */
+export interface AuthConsentRecord {
+  termsVersion: string;
+  privacyVersion: string;
+  agreedAt: string;
+  client: "web" | "app";
+  method: "credentials" | "google";
 }
 
 export interface AuthUserStorageProvider {
@@ -26,9 +38,16 @@ export interface AuthUserStorageProvider {
   insertUserIfAbsent?: (user: StoredAuthUser) => Promise<StoredAuthUser | null>;
   getUserByEmail: (email: string) => Promise<StoredAuthUser | null>;
   saveUser: (user: StoredAuthUser) => Promise<StoredAuthUser>;
+  /**
+   * 同邮箱第一次用 Google 登录，而这个密码账号的邮箱没验证过：设密码的不一定是邮箱的主人（抢注）。
+   * 标为已验证、改为 Google 账号、作废原密码和它发出的所有会话；已验证的账号什么都不动。返回是否改了。
+   */
+  absorbUnverifiedCredentials?: (email: string, now: string) => Promise<boolean>;
 }
 
 export interface StorageAuthUserProviderOptions {
+  /** 有它时 absorbUnverifiedCredentials 是一条带条件的 UPDATE；内存存储（mock）没有。 */
+  client?: LiveRecordSqlClient;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
 }
@@ -89,6 +108,7 @@ export function toAuthUserDTO(user: StoredAuthUser): AuthUserDTO {
 }
 
 export function createStorageAuthUserProvider({
+  client,
   store,
   workspaceId,
 }: StorageAuthUserProviderOptions): AuthUserStorageProvider {
@@ -133,6 +153,25 @@ export function createStorageAuthUserProvider({
 
       return user;
     },
+    async absorbUnverifiedCredentials(email, now) {
+      const recordId = authUserRecordId(email);
+      if (client) {
+        const result = await client.query(`UPDATE orbit_records SET provider = 'google',
+            payload = (payload - 'passwordReset' - 'mustChangePassword') || jsonb_build_object('provider', 'google', 'passwordHash', null,
+              'emailVerifiedAt', $4::text, 'passwordChangedAt', $4::text, 'passwordRevokedAt', $4::text, 'updatedAt', $4::text),
+            updated_at = $4::timestamptz
+          WHERE workspace_id = $1 AND collection_name = $2 AND record_id = $3 AND lifecycle_state = 'active'
+            AND payload->>'provider' = 'credentials' AND coalesce(payload->>'emailVerifiedAt', '') = ''
+          RETURNING record_id`, [workspaceId, AUTH_USER_LIVE_RECORD_COLLECTION, recordId, now]);
+        return result.rows.length === 1;
+      }
+      const record = await store.getRecord({ workspaceId, collectionName: AUTH_USER_LIVE_RECORD_COLLECTION, recordId });
+      if (!record || record.payload.provider !== "credentials" || nonEmptyString(record.payload.emailVerifiedAt)) return false;
+      const { passwordReset: _reset, mustChangePassword: _must, ...rest } = record.payload;
+      await store.upsertRecord({ ...record, provider: "google", updatedAt: now, payload: { ...rest, provider: "google", passwordHash: null,
+        emailVerifiedAt: now, passwordChangedAt: now, passwordRevokedAt: now, updatedAt: now } });
+      return true;
+    },
   };
 }
 
@@ -146,6 +185,7 @@ export function createConfiguredStorageAuthUserProvider(
   }
 
   return createStorageAuthUserProvider({
+    client: configuredStore.client,
     store: configuredStore.store,
     workspaceId: configuredStore.workspaceId,
   });

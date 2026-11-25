@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { getOrbitAccountAuthViewModel } from "../../orbit-account-auth-route-view-model";
-import { AuthEmailField, AuthGoogleButton, AuthNoticeCard, AuthPasswordField, AuthPrimaryButton, useAuthSubmit } from "./auth-form";
+import { AuthEmailField, AuthGoogleButton, GoogleConsent, AuthNoticeCard, AuthPasswordField, AuthPrimaryButton, useAuthSubmit } from "./auth-form";
 import { authRoutePath, authTitleId } from "./auth-model";
 import { useAccountAuth } from "./use-account-auth";
 import type { SignInNote } from "../../../../api/_shared/mcp-access";
@@ -44,6 +44,7 @@ export function AuthLogin({ defaultNext, oauthProviders, signInNote = null }: { 
       {signInNote ? <SignInNoteLine note={signInNote} language={language} /> : null}
       <AuthNoticeCard notice={session.message} />
       {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Sign in with Google", ja: "Google でログイン", zh: "使用 Google 登录" })} label={t({ en: "Sign in with Google", ja: "Google でログイン", zh: "使用 Google 登录" })} onClick={session.onGoogleSignIn} /> : null}
+      {oauthProviders.includes("google") ? <GoogleConsent /> : null}
       {oauthProviders.includes("google") ? <span className="au-divider">{t({ en: "Or use your email", ja: "またはメールアドレスで", zh: "或使用邮箱" })}</span> : null}
       <fieldset className="au-fields" disabled={!ready}>
         <AuthEmailField autoComplete="username" error={emailError} session={session} />

@@ -10,6 +10,7 @@ import {
   accountSessionFailureToAppError,
 } from "../../../../features/account/service";
 import { createAccountSessionService } from "../../../../features/account/service-factory";
+import type { EmailVerificationStatusContract } from "../../../../shared/contract/email-verification";
 import type { AccountSessionScenario } from "../../../../features/account/contract";
 import { getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-error";
 import {
@@ -66,7 +67,10 @@ export function createAccountMeGetHandler(
       );
     }
 
-    return NextResponse.json(success(result.data), {
+    const emailVerification: EmailVerificationStatusContract | undefined = actor?.email && actor.emailVerification
+      ? { email: actor.email, ...actor.emailVerification } : undefined;
+
+    return NextResponse.json(success({ ...result.data, ...(emailVerification ? { emailVerification } : {}) }), {
       headers: runtimeBoundaryHeaders(mode),
       status: 200,
     });

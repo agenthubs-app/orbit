@@ -1,0 +1,451 @@
+{
+ "_note": "邮箱验证 onboarding-3step-proposal ⑤。QA 账号须未验证、发过信：psql 里给 auth_user:qa@orbit.test 的 payload 去掉 emailVerifiedAt、加 emailVerification；跑完改回已验证，否则别的画面门禁顶上会多一条提醒。实现侧接口全部在浏览器里打桩。",
+ "defaults": {
+  "app-origin": "http://localhost:3040",
+  "login": "qa@orbit.test",
+  "grid": 30,
+  "attribution": "scripts/visual/attribution-email-verification.json",
+  "viewport": true,
+  "init-script": "(() => {\n  if (!location.pathname.startsWith(\"/app/profile/onboarding\")) return;\n  try { Object.keys(localStorage).filter(k => k.startsWith(\"orbit.onboarding\")).forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}\n  const real = window.fetch.bind(window);\n  const ok = (data) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  let rev = 0, flow = null, updated = 0, mutationId;\n  let profile = { displayName: \"\", organization: \"\", role: \"\", headline: \"\", bio: \"\", relationshipGoal: \"\", handles: {}, offering: [], seeking: [], topics: [], updatedAt: \"2026-11-25T00:00:00.000Z\" };\n  const payload = () => ({ state: \"success\", profile, mutationId, onboarding: { policyVersion: 2, status: profile.displayName && profile.secondaryIndustryId ? \"complete\" : \"incomplete\", missingFields: [] } });\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    const body = () => JSON.parse(String(init.body || \"{}\"));\n    if (url.includes(\"/api/profile/onboarding-progress\")) {\n      if ((init.method || \"GET\") === \"POST\") { const c = body(); rev += 1;\n        if (c.action === \"initialize\") flow = flow || { version: 1, lastConfirmedScreen: 0, currentScreen: 1, deferred: false, finishedAt: null };\n        if (c.action === \"confirm\") flow = { ...flow, lastConfirmedScreen: c.screen, currentScreen: c.screen >= 5 ? null : c.screen + 1 };\n        flow = { ...flow, revision: \"r\" + rev }; }\n      return ok(flow);\n    }\n    if (url.includes(\"/api/profile/autofill-inference\")) return ok({ status: \"ready\", primaryIndustryId: null, secondaryIndustryId: null, seniorityLevel: \"c_level\", offering: [\"資本政策の知見\", \"SaaS の営業組織づくり\", \"エンジニア採用\"], topics: [\"SaaS\", \"製造業 DX\", \"組織づくり\"] });\n    if (url.includes(\"/api/profile/seek-suggestions\")) return ok({ suggestions: [\"企業の意思決定者\"] });\n    if (url.includes(\"/api/profile/intro-draft\")) return ok({ headline: \"業務 SaaS の代表\", bio: \"株式会社ミナトリンク代表の佐藤です。製造業向けの業務 SaaS を展開しています。シリーズAの資金調達と新規顧客開拓に力を入れています。\", model: \"fixture\", provider: \"fixture\" });\n    if (url.includes(\"/api/contact-drafts/business-card/scan\")) return ok({ draft: { displayName: \"佐藤 健一\", organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", email: \"sato@minatolink.example\", phone: \"03-5555-0142\" }, ocr: { structuredExtraction: { primaryIndustryId: \"finance_investment\", secondaryIndustryId: \"finance_investment.insurance\", seniorityLevel: \"c_level\", regionCountryCode: \"JP\", regionCity: \"Tokyo\" } } });\n    if (/\\/api\\/profile(\\?|$)/.test(url)) {\n      if (init.method === \"PUT\") { const { expectedUpdatedAt, mutationId: id, ...f } = body(); mutationId = id; updated += 1; profile = { ...profile, ...f, updatedAt: \"2026-11-25T00:00:0\" + updated + \".000Z\" }; }\n      return ok(payload());\n    }\n    return real(input, init);\n  };\n})();\n(() => {\n  const real = window.fetch.bind(window);\n  const reply = (body, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { \"content-type\": \"application/json\" } }));\n  const EMAIL = \"sato@minatolink.example\";\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.includes(\"/api/auth/signup-funnel\")) return Promise.resolve(new Response(null, { status: 204 }));\n    if (url.includes(\"/api/auth/register\")) return reply({ success: true, data: { emailVerification: { email: EMAIL, sending: true } } }, 201);\n    if (url.includes(\"/api/auth/providers\")) return reply({ credentials: { id: \"credentials\", type: \"credentials\" }, google: { id: \"google\", type: \"oidc\" } });\n    if (url.includes(\"/api/auth/csrf\")) return reply({ csrfToken: \"x\" });\n    if (url.includes(\"/api/auth/callback/credentials\")) return reply({ url: location.origin + \"/\" });\n    if (url.includes(\"/api/auth/email-verification/confirm\")) return reply({ success: true, data: { outcome: location.search.includes(\"expired\") ? \"expired\" : \"verified\" } });\n    if (url.includes(\"/api/account/email-verification/send\")) return reply({ success: true, data: { email: EMAIL, verified: false, sentAt: \"2026-11-25T00:00:00.000Z\" } });\n    return real(input, init);\n  };\n})();\n",
+  "themes": [
+   "light",
+   "dark"
+  ]
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/email-verification/**",
+  "repos/orbits/app/(app)/app/orbit-2026/auth-public/**"
+ ],
+ "views": [
+  {
+   "id": "V1",
+   "app": "/app/account/signup?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 23,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": ".au-btn-primary:not([disabled])"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "fill": [
+      "input[type=email]",
+      "sato@minatolink.example"
+     ]
+    },
+    {
+     "fill": [
+      "input[type=password]",
+      "password-one"
+     ]
+    },
+    {
+     "click": ".au-consent [role=checkbox]"
+    },
+    {
+     "click": ".au-btn-primary"
+    },
+    {
+     "waitFor": "[data-mail-sent-notice]"
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 600
+    }
+   ],
+   "login": "",
+   "app-clip": ".au-panel",
+   "design-clip": ".web:not(.w834) .wmodal"
+  },
+  {
+   "id": "V2",
+   "app": "/verify-email?lang=ja#token=x",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 24,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-verify-email=done],[data-verify-email=expired]"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "login": ""
+  },
+  {
+   "id": "V3",
+   "app": "/verify-email?lang=ja&expired=1#token=x",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 25,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-verify-email=done],[data-verify-email=expired]"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "login": ""
+  },
+  {
+   "id": "V4",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 26,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "waitFor": "[data-email-notice]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "VT1",
+   "app": "/app/account/signup?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 31,
+   "width": 834,
+   "steps": [
+    {
+     "waitFor": ".au-btn-primary:not([disabled])"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "fill": [
+      "input[type=email]",
+      "sato@minatolink.example"
+     ]
+    },
+    {
+     "fill": [
+      "input[type=password]",
+      "password-one"
+     ]
+    },
+    {
+     "click": ".au-consent [role=checkbox]"
+    },
+    {
+     "click": ".au-btn-primary"
+    },
+    {
+     "waitFor": "[data-mail-sent-notice]"
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 600
+    }
+   ],
+   "login": "",
+   "app-clip": ".au-panel",
+   "height": 1194,
+   "design-clip": ".w834 .wmodal"
+  },
+  {
+   "id": "VT2",
+   "app": "/verify-email?lang=ja#token=x",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 32,
+   "width": 834,
+   "steps": [
+    {
+     "waitFor": "[data-verify-email=done],[data-verify-email=expired]"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "login": "",
+   "height": 1194
+  },
+  {
+   "id": "VT3",
+   "app": "/verify-email?lang=ja&expired=1#token=x",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 33,
+   "width": 834,
+   "steps": [
+    {
+     "waitFor": "[data-verify-email=done],[data-verify-email=expired]"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "login": "",
+   "height": 1194
+  },
+  {
+   "id": "VT4",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 34,
+   "width": 834,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "waitFor": "[data-email-notice]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ],
+   "height": 1194
+  },
+  {
+   "id": "VM1",
+   "app": "/app/account/signup?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 37,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": ".au-btn-primary:not([disabled])"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "fill": [
+      "input[type=email]",
+      "sato@minatolink.example"
+     ]
+    },
+    {
+     "fill": [
+      "input[type=password]",
+      "password-one"
+     ]
+    },
+    {
+     "click": ".au-consent [role=checkbox]"
+    },
+    {
+     "click": ".au-btn-primary"
+    },
+    {
+     "waitFor": "[data-mail-sent-notice]"
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 600
+    }
+   ],
+   "login": "",
+   "app-clip": ".au-panel",
+   "design-clip": ".mweb .wmodal"
+  },
+  {
+   "id": "VM2",
+   "app": "/verify-email?lang=ja#token=x",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 38,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-verify-email=done],[data-verify-email=expired]"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "login": ""
+  },
+  {
+   "id": "VM3",
+   "app": "/verify-email?lang=ja&expired=1#token=x",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 39,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-verify-email=done],[data-verify-email=expired]"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "login": ""
+  },
+  {
+   "id": "VM4",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 40,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "waitFor": "[data-email-notice]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 1200
+    }
+   ]
+  },
+  {
+   "id": "V7",
+   "app": "/app/settings/account?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 29,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-email-verification-row]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    }
+   ],
+   "app-clip": "[data-email-verification-row]",
+   "design-clip": ".web:not(.w834) .evrow"
+  },
+  {
+   "id": "VT5",
+   "app": "/app/settings/account?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 35,
+   "width": 834,
+   "steps": [
+    {
+     "waitFor": "[data-email-verification-row]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    }
+   ],
+   "app-clip": "[data-email-verification-row]",
+   "design-clip": ".w834 .evrow",
+   "height": 1194
+  },
+  {
+   "id": "VM6",
+   "app": "/app/settings/account?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 42,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-email-verification-row]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    }
+   ],
+   "app-clip": "[data-email-verification-row]",
+   "design-clip": ".mweb .evrow"
+  },
+  {
+   "id": "V8",
+   "app": "/app/account/signup?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 30,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": ".au-gterms"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    }
+   ],
+   "login": "",
+   "app-clip": ".au-gterms",
+   "design-clip": ".web:not(.w834) .gterms"
+  },
+  {
+   "id": "VT6",
+   "app": "/app/account/login?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 36,
+   "width": 834,
+   "steps": [
+    {
+     "waitFor": ".au-gterms"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    }
+   ],
+   "login": "",
+   "app-clip": ".au-gterms",
+   "design-clip": ".w834 .gterms",
+   "height": 1194
+  },
+  {
+   "id": "V5",
+   "app": "/app/inbox?lang=ja",
+   "design": "_onboarding-3step-gate.html",
+   "board-index": 27,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-email-notice]"
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    }
+   ],
+   "region": "0,0,1440,48"
+  }
+ ]
+}

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { LEGAL_VERSIONS } from "../../shared/compute/legal-version";
 import test from "node:test";
 
 import { renderToStaticMarkup } from "react-dom/server";
@@ -329,6 +330,25 @@ async function agree(renderer: ReactTestRenderer): Promise<void> {
   await act(async () => { box.props.onClick(); });
 }
 
+/** Calls other than the anonymous "registration opened" step. */
+const beyondOpened = (harness: Harness) => harness.observed.filter((call) => call.url !== "/api/auth/signup-funnel").length;
+
+test("register: a mail on its way is said once, with one way on and no way to close", async () => {
+  const register = () => Response.json({ data: { emailVerification: { email: "new@example.invalid", sending: true } }, success: true }, { status: 201 });
+  await withModal("register", `?next=${encodeURIComponent(NEXT)}`, { credentials: "success", register }, async (renderer, harness) => {
+    await agree(renderer);
+    await fill(renderer, "new@example.invalid", "password-123");
+    await submit(renderer);
+    const buttons = renderer.root.findAll((node) => node.type === "button");
+    assert.deepEqual(buttons.map((button) => button.props.children), ["知道了"], "no close button either");
+    assert.match(JSON.stringify(renderer.toJSON()), /确认邮件已发送[\s\S]*new@example\.invalid/u);
+    assert.deepEqual(harness.navigation.assigned, [], "not before it is read");
+    await act(async () => { buttons[0]!.props.onClick(); });
+    assert.deepEqual(harness.navigation.assigned, [profileContinuationPath(NEXT)]);
+    assert.deepEqual(harness.observed.filter((call) => call.url === "/api/auth/signup-funnel").map((call) => JSON.parse(String(call.body))), [{ client: "web", name: "register_opened", source: "direct" }]);
+  });
+});
+
 const CONSENT = "请先勾选同意使用条款和隐私政策。";
 
 test("register: an unticked consent says why on submit, without any network call; ticking clears it", async () => {
@@ -340,7 +360,7 @@ test("register: an unticked consent says why on submit, without any network call
     await fill(renderer, "new@example.invalid", "password-123");
     await submit(renderer);
     assert.deepEqual(alerts(renderer), [CONSENT]);
-    assert.equal(harness.observed.length, 0);
+    assert.equal(beyondOpened(harness), 0);
     await agree(renderer);
     assert.deepEqual(alerts(renderer), []);
     await submit(renderer);
@@ -376,12 +396,12 @@ test("register: local validation, then POST /api/auth/register + auto sign-in + 
     await fill(renderer, "new@example.invalid", "1234567");
     await submit(renderer);
     assert.deepEqual(alerts(renderer), ["密码至少 8 位。"]);
-    assert.equal(harness.observed.length, 0);
+    assert.equal(beyondOpened(harness), 0);
     await fill(renderer, "new@example.invalid", "password-123");
     await submit(renderer);
     const register = harness.observed.find((call) => call.url === "/api/auth/register");
     assert.ok(register);
-    assert.deepEqual(JSON.parse(String(register.body)), { email: "new@example.invalid", password: "password-123" });
+    assert.deepEqual(JSON.parse(String(register.body)), { client: "web", consent: { accepted: true, privacyVersion: LEGAL_VERSIONS.privacy, termsVersion: LEGAL_VERSIONS.terms }, email: "new@example.invalid", language: "zh", password: "password-123", source: "direct" });
     assert.ok(harness.observed.some((call) => call.url.includes("/callback/credentials")));
     assert.deepEqual(harness.navigation.assigned, [profileContinuationPath(NEXT)]);
     assert.deepEqual(alerts(renderer), []);

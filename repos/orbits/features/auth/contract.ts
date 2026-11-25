@@ -4,6 +4,7 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
 
 export const AUTH_USER_ERROR_CODES = [
+  "AUTH_CONSENT_REQUIRED",
   "AUTH_EMAIL_TAKEN",
   "AUTH_INVALID_CREDENTIALS",
   "AUTH_INVALID_INPUT",
@@ -19,6 +20,11 @@ export interface AuthUserErrorDefinition {
 }
 
 export const AUTH_USER_ERROR_DEFINITIONS = {
+  AUTH_CONSENT_REQUIRED: {
+    code: "AUTH_CONSENT_REQUIRED",
+    appCode: "VALIDATION_ERROR",
+    message: "Agreeing to the current terms and privacy policy is required.",
+  },
   AUTH_EMAIL_TAKEN: {
     code: "AUTH_EMAIL_TAKEN",
     appCode: "CONFLICT",
@@ -58,6 +64,14 @@ export interface RegisterUserInput {
   email: string;
   password: string;
   displayName?: string;
+  consent?: AuthUserConsentInput;
+}
+
+/** 建号时同意的条款版本和在哪一端同意的；注册方式与时间由服务写。 */
+export interface AuthUserConsentInput {
+  termsVersion: string;
+  privacyVersion: string;
+  client: "web" | "app";
 }
 
 export interface VerifyCredentialsInput {
@@ -70,10 +84,13 @@ export interface OAuthUserInput {
   displayName?: string;
   provider: Exclude<AuthUserProvider, "credentials">;
   providerAccountId: string;
+  /** 只在第一次建号时写；已有账号登录不追加。 */
+  consent?: AuthUserConsentInput;
 }
 
 export interface AuthUserSuccess {
-  data: { user: AuthUserDTO };
+  /** `created`：这次新建了账号（OAuth 登录已有账号时没有）。 */
+  data: { user: AuthUserDTO; created?: boolean };
   state: "success";
 }
 

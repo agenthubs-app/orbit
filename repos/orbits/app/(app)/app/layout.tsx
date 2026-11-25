@@ -21,6 +21,7 @@ import { resolveRequestOrbitLanguage } from "./orbit-language-core";
 import { OrbitResponsiveA11y } from "./orbit-responsive-a11y";
 import { OrbitThemeRuntime, OrbitThemeStyles } from "./orbit-theme";
 import { OrbitWebTiming } from "./orbit-web-timing";
+import { EmailVerificationNotice } from "./orbit-2026/email-verification/EmailVerificationNotice";
 import { Orbit2026Shell } from "./orbit-2026/shell/Orbit2026Shell";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -46,6 +47,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <OrbitWebTiming />
         {/* iOrbit 提问的草稿与交接（R07 起由新壳的 ⌘K 面板使用）。挂在 layout：
             App Router 换页时只有 layout 存活，草稿要跨页保留就必须住在这一层。 */}
+        {/* 2026-11-25 邮箱没验证：每个登录后的页面最上面一条，随内容滚走。状态来自上面那次会话读取。 */}
+        <EmailVerificationNotice />
         <OrbitAskProvider>
           {/* R07 (RD-19)：所有已登录页面由新壳 Orbit2026Shell 统一挂导航（左栏、主标题区、右栏、⌘K）；
               页面不再自己挂顶栏。壳自己按路由决定是否出现（公开页、登录页、管理台不出现）。 */}

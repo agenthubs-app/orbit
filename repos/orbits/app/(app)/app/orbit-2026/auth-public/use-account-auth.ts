@@ -10,6 +10,9 @@ import {
 } from "../../profile/profile-onboarding-navigation";
 import type { OrbitAccountAuthViewModel } from "../../orbit-account-auth-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { LEGAL_VERSIONS } from "../../../../../shared/compute/legal-version";
+import type { AccountRegisterEmailVerification, AccountRegisterRequest } from "../../../../../shared/contract/account-register";
+import type { SignupFunnelOpenedInput, SignupFunnelSource } from "../../../../../shared/contract/signup-funnel";
 import { AUTH_ERROR_COPY, registerErrorCopy } from "./auth-model";
 import { credentialsLandingPath } from "./password-change-client";
 
@@ -96,12 +99,32 @@ function readAccountAuthQueryFromLocation(defaultNext: string): AccountAuthQuery
   };
 }
 
+/** 从哪来注册：只取类别（活动 / 邀请 / 其余），不把地址发出去。 */
+export function signupSourceOf(next: string): SignupFunnelSource {
+  let path = next;
+  try { path = decodeURIComponent(next); } catch { /* 原样判断 */ }
+  if (/(?:^|[=&?])\/i\//u.test(path)) return "invite";
+  return /(?:^|[=&?])\/(?:app\/)?(?:e|events)\//u.test(path) ? "event" : "direct";
+}
+
+function signupSourceFromLocation(): SignupFunnelSource {
+  return signupSourceOf(new URLSearchParams(window.location.search).get("next") ?? "");
+}
+
+/** 注册漏斗第一步。失败不影响注册。 */
+export function reportRegisterOpened(): void {
+  const body: SignupFunnelOpenedInput = { client: "web", name: "register_opened", source: signupSourceFromLocation() };
+  void fetch("/api/auth/signup-funnel", { body: JSON.stringify(body), headers: { "content-type": "application/json" }, keepalive: true, method: "POST" }).catch(() => undefined);
+}
+
 export interface AccountAuthSession {
   email: string;
   emailTaken: boolean;
   error: string;
   /** 注册成功但自动登录未建立会话时（?created=1）的登录页提示；否则空串。 */
   message: string;
+  /** 注册成功、已登录、验证邮件已安排发出：先提示，点了再继续。 */
+  mailSent: { email: string; proceed: () => void } | null;
   onGoogleSignIn: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   query: AccountAuthQuery;
@@ -118,7 +141,8 @@ export interface AccountAuthSession {
 }
 
 export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAuthSession {
-  const { t } = useOrbitLanguage();
+  const { language, t } = useOrbitLanguage();
+  const [mailSent, setMailSent] = useState<AccountAuthSession["mailSent"]>(null);
   const [query, setQuery] = useState<AccountAuthQuery>(() =>
     accountAuthQueryFallback(viewModel.defaultNext),
   );
@@ -168,11 +192,15 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
     try {
       if (isSignup) {
         const response = await fetch("/api/auth/register", {
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({
+            client: "web", email, language, password, source: signupSourceFromLocation(),
+            consent: { accepted: true, privacyVersion: LEGAL_VERSIONS.privacy, termsVersion: LEGAL_VERSIONS.terms },
+          } satisfies AccountRegisterRequest),
           headers: { "content-type": "application/json" },
           method: "POST",
         });
         const payload = (await response.json().catch(() => null)) as {
+          data?: { emailVerification?: AccountRegisterEmailVerification };
           error?: { code?: string; message?: string };
           success?: boolean;
         } | null;
@@ -193,7 +221,10 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
         }).catch(() => null);
 
         if (autoSignIn && !autoSignIn.error) {
-          navigate(profileContinuationPath(query.next));
+          const proceed = () => navigate(profileContinuationPath(query.next));
+          const verification = payload.data?.emailVerification;
+          if (verification?.sending) setMailSent({ email: verification.email, proceed });
+          else proceed();
           return;
         }
 
@@ -248,6 +279,7 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
     email,
     emailTaken,
     error,
+    mailSent,
     message,
     onGoogleSignIn,
     onSubmit,

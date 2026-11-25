@@ -12,6 +12,7 @@ import type { OrganizerPublicResponse, OrganizerPublicUpcoming } from "../../../
 import { followOrganizer } from "./host-api";
 import { eventTone, hostDateDay, hostDateLong, hostTranslator, type HostT } from "./host-model";
 import { BottomSheet, Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { GoogleConsent } from "../auth-public/auth-form";
 import s from "./host.module.css";
 import p from "./public.module.css";
 
@@ -157,6 +158,7 @@ function LoginPrompt({ name, slug, t, google, narrow, onClose }: { name: string;
       <b className={p.sheetTitle}>{t("pubLoginTitle")}</b>
       <div className={`${s.lbl} ${p.sheetSub}`}>{t("pubLoginSub", { name })}</div>
       {google ? <button type="button" className={`btn ${s.btn} ${s.primary} ${p.xl} ${p.block} ${p.flush}`} onClick={() => void signIn("google", { callbackUrl: organizerReturnPath(slug, true) })}>{t("pubGoogle")}</button> : null}
+      {google ? <GoogleConsent className={`${s.lbl} ${p.center} ${p.gap8}`} /> : null}
       <a className={`btn ${s.btn} ${google ? "" : s.primary} ${p.xl} ${p.block} ${google ? "" : p.flush}`} href={organizerAuthHref("login", slug)}>{t("pubEmail")}</a>
       <div className={`${s.lbl} ${p.center} ${p.gap8}`}>{t("pubLoginNote")}</div>
     </div>

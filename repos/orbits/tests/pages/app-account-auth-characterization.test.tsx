@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { LEGAL_VERSIONS } from "../../shared/compute/legal-version";
 import test from "node:test";
 
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
@@ -300,7 +301,7 @@ test("signup success: POST /api/auth/register {email,password}, auto signIn(cred
     assert.ok(register, "signup should create the account first");
     assert.equal(register.method, "POST");
     assert.equal(register.headers["content-type"], "application/json");
-    assert.deepEqual(JSON.parse(String(register.body)), { email: "new-owner@example.invalid", password: "password-123" });
+    assert.deepEqual(JSON.parse(String(register.body)), { client: "web", consent: { accepted: true, privacyVersion: LEGAL_VERSIONS.privacy, termsVersion: LEGAL_VERSIONS.terms }, email: "new-owner@example.invalid", language: "zh", password: "password-123", source: "direct" });
 
     const callbacks = harness.observed.filter((call) => call.url.includes("/callback/credentials"));
     assert.equal(callbacks.length, 1);

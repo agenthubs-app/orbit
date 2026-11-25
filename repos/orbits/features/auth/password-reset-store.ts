@@ -40,7 +40,8 @@ export function createPasswordResetStore(client: LiveRecordSqlClient, workspaceI
       // One row per existing account: atomic cooldown, no unbounded anonymous rows.
       await client.query(`UPDATE orbit_records SET payload = jsonb_set(payload, '{passwordReset}', $3::jsonb), updated_at = $4
         WHERE workspace_id = $1 AND collection_name = 'auth_users' AND record_id = $2
-          AND lifecycle_state = 'active' AND coalesce(payload->>'passwordHash', '') <> ''
+          AND lifecycle_state = 'active'
+          AND (coalesce(payload->>'passwordHash', '') <> '' OR coalesce(payload->>'passwordRevokedAt', '') <> '')
           AND coalesce(payload->'passwordReset'->>'requestedAt', '') <= $5`,
       [workspaceId, authUserRecordId(email), JSON.stringify(reset), reset.requestedAt, before]);
     },
@@ -54,10 +55,13 @@ export function createPasswordResetStore(client: LiveRecordSqlClient, workspaceI
     async consume(tokenHash, passwordHash, now) {
       // Credential update and token consumption are ONE conditional SQL statement.
       // Row locking makes simultaneous redemption succeed at most once. A reset also satisfies the
-      // bulk-provisioning "change your initial password" flag (password-change.ts).
+      // bulk-provisioning "change your initial password" flag (password-change.ts). Redeeming a mailed link also proves
+      // the address, and gives an account whose password a Google sign-in voided (absorbUnverifiedCredentials) one again.
       const result = await client.query(`UPDATE orbit_records SET
-        payload = (payload - 'passwordReset' - 'mustChangePassword') || jsonb_build_object('passwordHash', $3::text,
-          'passwordChangedAt', $4::text, 'updatedAt', $4::text), updated_at = $4
+        payload = (payload - 'passwordReset' - 'mustChangePassword' - 'passwordRevokedAt') || jsonb_build_object('passwordHash', $3::text,
+          'passwordChangedAt', $4::text, 'updatedAt', $4::text,
+          'emailVerifiedAt', coalesce(nullif(payload->>'emailVerifiedAt', ''), $4::text),
+          'provider', CASE WHEN coalesce(payload->>'passwordRevokedAt', '') <> '' THEN 'credentials' ELSE payload->>'provider' END), updated_at = $4
         WHERE workspace_id = $1 AND collection_name = 'auth_users' AND lifecycle_state = 'active'
           AND payload->'passwordReset'->>'tokenHash' = $2
           AND (payload->'passwordReset'->>'expiresAt')::timestamptz > $4::timestamptz

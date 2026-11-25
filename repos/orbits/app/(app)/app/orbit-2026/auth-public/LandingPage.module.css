@@ -20,6 +20,8 @@
 .copy > p { max-width: 540px; color: var(--ink-2); font-size: var(--fs-dialog-title); line-height: 1.85; }
 .ctas { display: flex; align-items: center; gap: 10px; margin-top: 28px; }
 .cta { height: 52px; padding: 0 26px; font-size: var(--fs-emph); }
+.copy > .consent { margin: 6px 0 0; color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-medium); line-height: 1.7; }
+.consent a { color: var(--accent-text); font-weight: var(--fw-bold); }
 .google { height: 52px; padding: 0 22px; display: inline-flex; align-items: center; gap: 10px; border-radius: var(--r-pill); background: var(--surface) !important; border: 1.5px solid var(--surface-3) !important; font-family: var(--font); font-size: var(--fs-row); font-weight: var(--fw-bold); color: var(--ink); }
 .g { width: 24px; height: 24px; border-radius: var(--r-pill); background: var(--surface-2); display: grid; place-items: center; font-weight: var(--fw-black); font-size: var(--fs-body-sm); font-family: var(--font-num); }
 .copy small { display: block; margin-top: 12px; color: var(--ink-3-text); font-size: var(--fs-label); font-weight: var(--fw-medium); }

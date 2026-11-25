@@ -45,6 +45,7 @@
   .evbar .btn { background: var(--surface); flex: none; }
   .w834 .evbar { justify-content: space-between; }
   .phone .evbar { margin: 0 -18px 10px; padding: 8px 18px; justify-content: space-between; }
+  .mweb .evbar { margin-bottom: 0; }
   .web.ev { padding-top: 48px; } .web.ev > .evbar { position: absolute; left: 0; right: 0; top: 0; z-index: 30; }
   .web.bare.ev .obw { height: 100%; }
   .vpage { height: 100%; display: flex; flex-direction: column; background: var(--bg); }
@@ -376,10 +377,10 @@ const EV_MAIL = 'sato@minatolink.example';
 const evbar = (kind = 'todo') => kind === 'sent'
   ? `<div class="evbar"><span class="t">${ic('check', 'sm')}${EV_MAIL} に送りました</span></div>`
   : `<div class="evbar"><span class="t">${ic('mail', 'sm')}${kind === 'wait' ? 'あと 45 秒で再送できます' : kind === 'limit' ? '今日はこれ以上送れません。明日お試しください' : kind === 'fail' ? '送信できませんでした。少し待ってからお試しください' : 'メールアドレスが未確認です'}</span><button class="btn sm">${kind === 'first' ? '確認メールを送る' : '再送する'}</button></div>`;
-const evModal = (w) => `<div class="overlay" style="z-index:50"></div><div class="modal wmodal on-surface" style="width:${w}px;z-index:51"><div class="center"><span class="emo lav" style="width:64px;height:64px;font-size:32px;border-radius:20px;margin:10px auto 0">📮</span>
+const evModal = (w) => `<div class="overlay" style="z-index:50"></div><div class="modal wmodal on-surface" style="width:${w}px;z-index:51"><div class="center"><span class="emo lav" style="width:64px;height:64px;font-size:30px;border-radius:20px;margin:10px auto 0">📮</span>
   <div class="mt" style="margin-top:14px">確認メールを送りました</div><div class="sub" style="margin-top:6px;line-height:1.7"><b>${EV_MAIL}</b><br>メール内のリンクを開いて確認してください。</div></div><button class="btn primary block xl" style="margin-top:18px">わかりました</button></div>`;
-const vpage = (kind) => `<div class="vpage"><div class="vh"><span class="lp-logo" style="width:32px;height:32px">O</span><b style="font-size:18px">Orbit</b></div><div class="vb"><div class="vc"><span class="emo ${kind === 'ok' ? 'teal' : 'apricot'}" style="width:64px;height:64px;font-size:32px;border-radius:20px;margin:0 auto">${kind === 'ok' ? '✅' : '⏳'}</span>
-  <div class="mt" style="margin-top:14px">${kind === 'ok' ? 'メールアドレスを確認しました' : 'リンクは期限切れです'}</div><div class="sub" style="margin-top:6px;line-height:1.7">${kind === 'ok' ? 'このページは閉じてかまいません。' : 'ログイン後、アカウント設定から再送できます。'}</div></div></div></div>`;
+const vpage = (kind) => `<div class="vpage"><div class="vh"><span class="lp-logo" style="width:32px;height:32px">O</span><b style="font-size:17px">Orbit</b></div><div class="vb"><div class="vc"><span class="emo ${kind === 'ok' ? 'teal' : 'apricot'}" style="width:64px;height:64px;font-size:30px;border-radius:20px;margin:0 auto">${kind === 'ok' ? '✅' : '⏳'}</span>
+  <div class="mt" style="margin-top:14px">${kind === 'ok' ? 'メール確認が完了しました' : 'リンクは期限切れです'}</div><div class="sub" style="margin-top:6px;line-height:1.7">${kind === 'ok' ? 'このページは閉じてかまいません。' : 'ログイン後、アカウント設定から再送できます。'}</div></div></div></div>`;
 const evRow = (kind) => `<div class="card span12"><div class="card-h"><h3>ログイン情報</h3></div>
   <div class="row" style="gap:14px;flex-wrap:wrap"><div class="av lg c1">佐</div><div style="flex:1 1 200px;min-width:0"><b style="font-size:15px">佐藤 健一</b><div class="lbl">${EV_MAIL}</div></div><span class="chip">パスワードでログイン</span></div>
   <div class="evrow"><div class="m"><b style="font-size:13.5px">メールアドレスの確認</b>${kind === 'sent' ? `<div class="lbl">${EV_MAIL} に送りました</div>` : ''}</div>${kind === 'ok' ? '<span class="chip teal">確認済み</span>' : `<span class="chip apricot">未確認</span>${kind === 'sent' ? '' : '<button class="btn">再送する</button>'}`}</div></div>`;
@@ -400,7 +401,7 @@ h += board('V3 · 邮件链接打开的页面 · 过期', '状态', bare({ body:
 h += board('V4 · 顶部提醒 · 三步引导', '提案', evW({ body: obWeb(0, 'empty'), pins: pin(1, '.evbar') + pin(2, '.evbar .btn') }), ['整行 48 高，页面内容从它下面开始，随页面滚走', '「再送する」点一次发一封；发过信的账号写「再送する」，从没发过的老账号写「確認メールを送る」']);
 h += board('V5 · 顶部提醒 · 登录后的页面', '提案', shellW, ['横跨左栏、主栏、右栏，全站同一条', '左栏和主栏的高度减去这 48，首屏不会多出一截滚动']);
 h += board('V6 · 顶部提醒的几种状态', '状态', bare({ body: `<div style="display:grid;gap:18px">${['todo', 'first', 'sent', 'wait', 'limit', 'fail'].map(evbar).join('')}</div>` }), ['依次：发过信 / 从没发过信 / 已发送（60 秒后恢复按钮）/ 一分钟内再点 / 当天 5 封用完 / 发信失败', '一分钟一封、一天五封']);
-h += board('V7 · 账号页的状态行', '提案', bare({ body: `<div style="padding:30px;display:grid;gap:18px;width:900px">${evRow('todo')}${evRow('sent')}${evRow('ok')}</div>` }), ['設定 › アカウント的「ログイン情報」卡里加一行：未确认 / 已发送 / 已确认', 'Google 登录的账号显示「確認済み」']);
+h += board('V7 · 账号页的状态行', '提案', bare({ body: `<div style="padding:30px;display:grid;gap:18px;width:1106px">${evRow('todo')}${evRow('sent')}${evRow('ok')}</div>` }), ['設定 › アカウント的「ログイン情報」卡里加一行：未确认 / 已发送 / 已确认', 'Google 登录的账号显示「確認済み」']);
 h += board('V8 · Google 按钮下的同意说明（注册）', '提案', bare({ body: blank, overlay: authModal(true, 440) }), ['第一次用 Google 登录就会建号，按钮下面一行写明同意哪两份条款；登录框同样加', '邮箱注册的勾选框不变']);
 h += boards([
   ['VT1 · 注册成功后的提示', '提案', T({ body: blank, overlay: evModal(440) }), ['同桌面']],
@@ -411,7 +412,7 @@ h += boards([
   ['VT4 · 顶部提醒 · 三步引导', '提案', evT({ body: obWeb(0, 'empty', true) }), ['834 起文字靠左、按钮靠右']],
 ]);
 h += boards([
-  ['VT5 · 账号页的状态行', '提案', T({ body: `<div style="padding:24px 28px">${evRow('todo')}</div>` }), ['同桌面']],
+  ['VT5 · 账号页的状态行', '提案', T({ body: `<div style="padding:24px 28px;width:524px">${evRow('todo')}</div>` }), ['同桌面']],
   ['VT6 · Google 同意说明（登录）', '提案', T({ body: blank, overlay: authModal(false, 440) }), ['同桌面']],
 ]);
 h += boards([

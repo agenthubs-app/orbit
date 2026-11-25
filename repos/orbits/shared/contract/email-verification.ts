@@ -10,6 +10,8 @@ export interface EmailVerificationStatusContract {
   email: string;
   /** Google 登录的账号一律为 true；邮箱密码账号点过邮件里的链接、或走过忘记密码重设之后为 true。 */
   verified: boolean;
+  /** 给这个账号发过验证邮件：按钮写「再送する」；没发过（老账号）写「確認メールを送る」。 */
+  sent?: boolean;
 }
 
 /** POST /api/account/email-verification/send（要登录）。两个字段都可不给：语言缺省按请求头。 */
@@ -27,7 +29,7 @@ export interface EmailVerificationSendResult {
 
 /**
  * 发不出去的原因，在失败响应的 `error.context.reason`：
- * - `EMAIL_SEND_TOO_SOON` 429：同一账号一分钟一封，`context.retryAfterSeconds` 是还要等的秒数；
+ * - `EMAIL_SEND_TOO_SOON` 429：同一账号一分钟一封，`context.retryAfterSeconds` 是还要等的秒数（字符串）；
  * - `EMAIL_SEND_DAILY_LIMIT` 429：同一账号一天五封（按东京日期），明天再试；
  * - `EMAIL_SEND_FAILED` 502：发信通道没收下这封信，一分钟后可再试（这次不占当天的五封）；
  * - `EMAIL_SEND_UNAVAILABLE` 503：这个环境没有配置发信通道。

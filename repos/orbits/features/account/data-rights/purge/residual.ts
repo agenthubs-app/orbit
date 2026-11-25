@@ -50,6 +50,8 @@ export async function purgeAccountResidual(db: TransactionalPostgresClient, work
     for (const { table, column } of ACTOR_TABLES) {
       if (await exists(sql, table)) deleted += await count(sql, `delete from ${table} where workspace_id=$1 and ${column}=$2`, [workspaceId, actorId]);
     }
+    // Sign-up funnel steps carry the sign-in user id only.
+    if (await exists(sql, "signup_funnel_events")) deleted += await count(sql, "delete from signup_funnel_events where workspace_id=$1 and user_id=any($2::text[])", [workspaceId, owners]);
     return { deleted, retainedPseudonymizedAuditRows };
   });
 }

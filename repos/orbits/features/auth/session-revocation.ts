@@ -46,15 +46,18 @@ const ROW_READABLE = `(
       and not coalesce(isfinite(deleted_at) and not ${jsDateSafeTimestampSql("deleted_at")}, false)
     )`;
 
-// One statement per check. Readable rows return only lifecycle, the three payload values (jsonb as
+// One statement per check. Readable rows return only lifecycle, the payload values (jsonb as
 // is, never `->>`) and the flag; unreadable rows instead return the native columns `rowToRecord`
 // needs (c1–c5), so the old conversion and its errors run on the same snapshot without a second
 // read. Where clause = `getRecord`'s. No password hash or reset data is ever returned.
-const SESSION_CHECK_SQL = `/* auth-session-revocation:v1 */
+const SESSION_CHECK_SQL = `/* auth-session-revocation:v2 */
     select lifecycle_state, readable,
       case when readable then payload -> 'id' end as id,
       case when readable then payload -> 'passwordChangedAt' end as password_changed_at,
       case when readable then payload -> 'deletionRequestedAt' end as deletion_requested_at,
+      case when readable then (payload ->> 'provider') is not distinct from 'google'
+        or (jsonb_typeof(payload -> 'emailVerifiedAt') = 'string' and payload ->> 'emailVerifiedAt' <> '') end as email_verified,
+      case when readable then payload -> 'emailVerification' is not null end as email_mailed,
       case when not readable then occurred_at end as c1,
       case when not readable then created_at end as c2,
       case when not readable then updated_at end as c3,
@@ -73,6 +76,8 @@ interface SessionCheckRow {
   id: unknown;
   password_changed_at: unknown;
   deletion_requested_at: unknown;
+  email_verified: boolean | null;
+  email_mailed: boolean | null;
   c1: Date | string | null;
   c2: Date | string;
   c3: Date | string;
@@ -99,25 +104,29 @@ function isBeforeDeletionRequest(lifecycleState: string, payload: Record<string,
   return Number.isFinite(requestedMs) && requestedMs < input.authenticatedAt;
 }
 
-type SessionDecision = (lifecycleState: string, payload: Record<string, unknown>, input: SessionCheckInput) => boolean;
+/** `sent`: a verification mail was sent to this account before (the button then says 再送する). */
+export interface EmailVerificationFlags { verified: boolean; sent: boolean }
 
-async function readSessionCheck(
-  database: SessionCheckDatabase & { client: LiveRecordSqlClient; customRead: LiveRecordCustomRead },
-  recordId: string,
-  input: SessionCheckInput,
-  decide: SessionDecision = isSessionCurrent,
-): Promise<boolean> {
-  sessionCheckSeq += 1;
+type SessionRow = { lifecycleState: string; payload: Record<string, unknown>; email: EmailVerificationFlags };
+
+async function readSessionRow(database: SessionCheckDatabase, recordId: string): Promise<SessionRow | null> {
   const collectionName = "auth_users";
-  const row = await database.customRead({
+  if (!database.client || !database.customRead) {
+    const user = await database.store.getRecord({ workspaceId: database.workspaceId, collectionName, recordId });
+    return user ? { lifecycleState: user.lifecycleState, payload: user.payload, email: emailFlags(user.payload) } : null;
+  }
+  const { client, customRead } = database;
+  sessionCheckSeq += 1;
+  const row = await customRead({
     collectionName,
-    key: JSON.stringify(["auth-session-revocation:v1:unshared", database.workspaceId, recordId, sessionCheckSeq]),
-    read: async () => (await database.client.query<SessionCheckRow>(SESSION_CHECK_SQL, [database.workspaceId, collectionName, recordId])).rows[0] ?? null,
+    key: JSON.stringify(["auth-session-revocation:v2:unshared", database.workspaceId, recordId, sessionCheckSeq]),
+    read: async () => (await client.query<SessionCheckRow>(SESSION_CHECK_SQL, [database.workspaceId, collectionName, recordId])).rows[0] ?? null,
   });
-  if (!row) return false;
+  if (!row) return null;
   if (row.readable === true) {
     const lifecycleState = row.lifecycle_state === "archived" || row.lifecycle_state === "deleted" ? row.lifecycle_state : "active";
-    return decide(lifecycleState, { id: row.id, passwordChangedAt: row.password_changed_at, deletionRequestedAt: row.deletion_requested_at }, input);
+    return { lifecycleState, email: { verified: row.email_verified === true, sent: row.email_mailed === true },
+      payload: { id: row.id, passwordChangedAt: row.password_changed_at, deletionRequestedAt: row.deletion_requested_at } };
   }
   // Bad data: the real conversion decides (and throws) exactly as the full read would.
   const user = rowToRecord<Record<string, unknown>>({
@@ -133,18 +142,13 @@ async function readSessionCheck(
     updated_at: row.c3,
     workspace_id: database.workspaceId,
   } satisfies PostgresLiveRecordRow);
-  return decide(user.lifecycleState, user.payload, input);
+  return { lifecycleState: user.lifecycleState, payload: user.payload, email: emailFlags(user.payload) };
 }
 
 export async function isPasswordSessionCurrent(input: SessionCheckInput, database: SessionCheckDatabase | null = createConfiguredPostgresLiveRecordStore()): Promise<boolean> {
   if (!database) return process.env.NODE_ENV !== "production";
-  const recordId = authUserRecordId(input.email);
-  if (database.client && database.customRead) {
-    return readSessionCheck({ ...database, client: database.client, customRead: database.customRead }, recordId, input);
-  }
-  const user = await database.store.getRecord({ workspaceId: database.workspaceId, collectionName: "auth_users", recordId });
-  if (!user) return false;
-  return isSessionCurrent(user.lifecycleState, user.payload, input);
+  const user = await readSessionRow(database, authUserRecordId(input.email));
+  return user ? isSessionCurrent(user.lifecycleState, user.payload, input) : false;
 }
 
 /** A deletion application invalidates JWTs issued before it, including rotated cookies. */
@@ -155,19 +159,36 @@ export async function isPreDeletionSessionCurrent(input: SessionCheckInput, data
   return isBeforeDeletionRequest(user.lifecycleState, user.payload, input);
 }
 
+/** Google accounts are verified by Google; a password account once its mailed link (or a mailed password reset) was used. */
+export function isEmailVerifiedPayload(payload: Record<string, unknown> | null): boolean {
+  if (!payload) return false;
+  return payload.provider === "google" || (typeof payload.emailVerifiedAt === "string" && payload.emailVerifiedAt !== "");
+}
+
+function emailFlags(payload: Record<string, unknown> | null): EmailVerificationFlags {
+  return { verified: isEmailVerifiedPayload(payload), sent: Boolean(payload?.emailVerification) };
+}
+
+export interface AuthSessionState {
+  current: boolean;
+  /** Same read as the check itself. null: no database to ask (development without one). */
+  emailVerification: EmailVerificationFlags | null;
+}
+
 /**
- * Both Auth.js session checks (password change and deletion request) decided from one read of the
- * auth_users row, instead of one read each. Still unshared across checks (D31).
+ * Both Auth.js session checks (password change and deletion request) and the email-verified flag, decided from one
+ * read of the auth_users row, instead of one read each. Still unshared across checks (D31).
  */
+export async function readAuthSessionState(input: SessionCheckInput, database: SessionCheckDatabase | null = createConfiguredPostgresLiveRecordStore()): Promise<AuthSessionState> {
+  if (!database) return { current: process.env.NODE_ENV !== "production", emailVerification: null };
+  const user = await readSessionRow(database, authUserRecordId(input.email));
+  if (!user) return { current: false, emailVerification: null };
+  return {
+    current: isSessionCurrent(user.lifecycleState, user.payload, input) && isBeforeDeletionRequest(user.lifecycleState, user.payload, input),
+    emailVerification: user.email,
+  };
+}
+
 export async function isAuthSessionCurrent(input: SessionCheckInput, database: SessionCheckDatabase | null = createConfiguredPostgresLiveRecordStore()): Promise<boolean> {
-  if (!database) return process.env.NODE_ENV !== "production";
-  const decide: SessionDecision = (lifecycleState, payload, check) =>
-    isSessionCurrent(lifecycleState, payload, check) && isBeforeDeletionRequest(lifecycleState, payload, check);
-  const recordId = authUserRecordId(input.email);
-  if (database.client && database.customRead) {
-    return readSessionCheck({ ...database, client: database.client, customRead: database.customRead }, recordId, input, decide);
-  }
-  const user = await database.store.getRecord({ workspaceId: database.workspaceId, collectionName: "auth_users", recordId });
-  if (!user) return false;
-  return decide(user.lifecycleState, user.payload, input);
+  return (await readAuthSessionState(input, database)).current;
 }

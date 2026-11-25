@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, type MouseEvent } from "react";
+import { useCallback, useRef, useState, type MouseEvent } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
@@ -42,7 +42,10 @@ export function AuthModal({
   view: AuthModalView;
 }) {
   const { language, t } = useOrbitLanguage();
-  const handleClose = useCallback(() => navigate(closeHref), [closeHref]);
+  // Once the account exists there is only the one way on (V1): no close, no backdrop, no Escape.
+  const [mailSent, setMailSent] = useState(false);
+  const onMailSent = useCallback(() => setMailSent(true), []);
+  const handleClose = useCallback(() => { if (!mailSent) navigate(closeHref); }, [closeHref, mailSent]);
   const cardRef = useOrbitModalA11y(handleClose);
   const pressedOnOverlay = useRef(false);
 
@@ -59,10 +62,10 @@ export function AuthModal({
     <div className="au-overlay">
       {/* The backdrop takes the outside click on its own pointer-only layer (as the kit Overlay does). */}
       <div aria-hidden="true" className="au-scrim" onMouseDown={onOverlayMouseDown} onClick={onOverlayClick} />
-      <div aria-labelledby={view === "change-password" ? AUTH_CHANGE_PASSWORD_TITLE_ID : authTitleId(view)} aria-modal="true" className="au-panel" ref={cardRef} role="dialog" tabIndex={-1}>
+      <div aria-labelledby={view === "change-password" ? AUTH_CHANGE_PASSWORD_TITLE_ID : authTitleId(view)} aria-modal="true" className="au-panel" data-mail-sent={mailSent ? "true" : undefined} ref={cardRef} role="dialog" tabIndex={-1}>
         {/* b1 #2–#5 .lbtn: the close button sits on the title row (top-right), no wordmark. */}
-        <button aria-label={t({ ja: "閉じる", zh: "关闭", en: "Close" })} className="btn au-lbtn au-close" onClick={handleClose} type="button"><Icon name="x" size={16} /></button>
-        {view === "register" ? <AuthRegister defaultNext={defaultNext} oauthProviders={oauthProviders} />
+        {mailSent ? null : <button aria-label={t({ ja: "閉じる", zh: "关闭", en: "Close" })} className="btn au-lbtn au-close" onClick={handleClose} type="button"><Icon name="x" size={16} /></button>}
+        {view === "register" ? <AuthRegister defaultNext={defaultNext} oauthProviders={oauthProviders} onMailSent={onMailSent} />
           : view === "forgot" ? <AuthForgot defaultNext={defaultNext} oauthProviders={oauthProviders} />
           : view === "reset" ? <AuthReset />
           : view === "change-password" ? <AuthChangePassword email={changePassword?.email ?? ""} first={changePassword?.first ?? false} next={changePassword?.next ?? defaultNext} />

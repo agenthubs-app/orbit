@@ -5,12 +5,13 @@ import { useEffect, useState } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { getOrbitAccountAuthViewModel } from "../../orbit-account-auth-route-view-model";
-import { AuthEmailField, AuthErrorCard, AuthGoogleButton, AuthPasswordField, AuthPrimaryButton, useAuthSubmit } from "./auth-form";
+import { AuthEmailField, AuthErrorCard, AuthGoogleButton, GoogleConsent, AuthPasswordField, AuthPrimaryButton, useAuthSubmit } from "./auth-form";
 import { AUTH_ERROR_COPY, AUTH_PASSWORD_MIN_LENGTH, authRoutePath, authTitleId } from "./auth-model";
-import { Checkbox, Icon } from "../ui";
-import { useAccountAuth } from "./use-account-auth";
+import { emailVerificationCopy } from "../copy/email-verification";
+import { Checkbox, Icon, MacTile } from "../ui";
+import { reportRegisterOpened, useAccountAuth } from "./use-account-auth";
 
-export function AuthRegister({ defaultNext, oauthProviders }: { defaultNext: string; oauthProviders: readonly string[] }) {
+export function AuthRegister({ defaultNext, oauthProviders, onMailSent }: { defaultNext: string; oauthProviders: readonly string[]; onMailSent?: () => void }) {
   const { t } = useOrbitLanguage();
   const session = useAccountAuth({ ...getOrbitAccountAuthViewModel("signup"), defaultNext });
   const [agreed, setAgreed] = useState(false);
@@ -25,7 +26,20 @@ export function AuthRegister({ defaultNext, oauthProviders }: { defaultNext: str
   // 水合前不可提交：否则浏览器会用原生方式提交，把密码带进地址栏（与登录屏同一处理）。
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
+  useEffect(() => { reportRegisterOpened(); }, []);
   const longEnough = session.password.length >= AUTH_PASSWORD_MIN_LENGTH;
+
+  // V1: the account exists and is signed in; one button, then on with the same window.
+  const mailSent = session.mailSent;
+  useEffect(() => { if (mailSent) onMailSent?.(); }, [mailSent, onMailSent]);
+  if (mailSent) return (
+    <div className="au-view au-center" data-mail-sent-notice="">
+      <span className="au-hero-tile"><MacTile emoji="📮" tone="lav" /></span>
+      <h2 className="au-h2" id={authTitleId("register")}>{t(emailVerificationCopy.popupTitle)}</h2>
+      <p className="au-sub" role="status"><b>{mailSent.email}</b>{"\n"}{t(emailVerificationCopy.popupBody)}</p>
+      <button autoFocus className="btn au-btn-primary" onClick={mailSent.proceed} type="button">{t(emailVerificationCopy.popupOk)}</button>
+    </div>
+  );
 
   return (
     <form className="au-view" method="post" noValidate onSubmit={onSubmit}>
@@ -34,6 +48,7 @@ export function AuthRegister({ defaultNext, oauthProviders }: { defaultNext: str
         <p className="au-sub">{t({ en: "It takes about a minute. You can add your cards right after.", ja: "1分で完了します。名刺の取り込みはこのあとすぐ。", zh: "约 1 分钟完成，之后马上就能导入名片。" })}</p>
       </div>
       {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Sign up with Google", ja: "Google で登録", zh: "使用 Google 注册" })} label={t({ en: "Sign up with Google", ja: "Google で登録", zh: "使用 Google 注册" })} onClick={session.onGoogleSignIn} /> : null}
+      {oauthProviders.includes("google") ? <GoogleConsent /> : null}
       {oauthProviders.includes("google") ? <span className="au-divider">{t({ en: "Or use your email", ja: "またはメールアドレスで", zh: "或使用邮箱" })}</span> : null}
       <fieldset className="au-fields" disabled={!ready}>
         <AuthEmailField error={emailError} session={session} />

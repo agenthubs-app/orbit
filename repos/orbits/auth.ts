@@ -9,7 +9,10 @@ import Google from "next-auth/providers/google";
 import { authClientIp, getAuthRateLimiter } from "./features/auth/auth-rate-limit";
 import { enabledOAuthProviders } from "./features/auth/oauth-providers";
 import { resolveAuthUserService } from "./features/auth/service-factory";
-import { isAuthSessionCurrent } from "./features/auth/session-revocation";
+import { readAuthSessionState, type EmailVerificationFlags } from "./features/auth/session-revocation";
+import { SIGNUP_COOKIE, readSignupCookie } from "./features/signup-funnel/context";
+import { recordSignupFunnel } from "./features/signup-funnel/record";
+import { LEGAL_VERSIONS } from "./shared/compute/legal-version";
 import { cacheForRequest } from "./shared/performance/request-cache";
 
 // 限流命中：前端 signIn 结果里 code === "rate_limited"，显示「尝试次数过多」而不是「密码错误」。
@@ -27,7 +30,18 @@ function authUserService() {
 // share a single revocation read. Outside a render (proxy, route handlers) React calls straight
 // through, so every request still reads the row itself (D31).
 const checkSessionForRequest = cacheForRequest((email: string, userId: string, authenticatedAt: number) =>
-  isAuthSessionCurrent({ email, userId, authenticatedAt }));
+  readAuthSessionState({ email, userId, authenticatedAt }));
+
+// The sign-up cookie of this Google callback (visitor, source, web or the App's broker page); outside a request: none.
+async function takeSignupContext() {
+  try {
+    const { cookies } = await import("next/headers");
+    const store = await cookies();
+    return readSignupCookie(store.get(SIGNUP_COOKIE)?.value);
+  } catch {
+    return null;
+  }
+}
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   // zrok 隧道/代理场景需要信任转发的 Host,与 dev 的 allowedDevOrigins 配套。
@@ -84,24 +98,40 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (!user && token.email && token.sub) {
         const authenticatedAt = typeof token.authenticatedAt === "number"
           ? token.authenticatedAt : (token.iat ?? 0) * 1000;
-        if (!await checkSessionForRequest(token.email, token.sub, authenticatedAt)) return null;
+        const state = await checkSessionForRequest(token.email, token.sub, authenticatedAt);
+        if (!state.current) return null;
+        token.emailVerification = state.emailVerification;
         // Keep the original authentication time as Auth.js rotates iat on refresh.
         token.authenticatedAt = authenticatedAt;
       }
       // OAuth 首次登录:把 IdP 身份换成我们自己的用户记录,token.sub 用我们的 id。
       if (account?.provider === "google" && profile?.email) {
+        // Joining an existing account relies on Google having verified the address.
+        if (profile.email_verified === false) return null;
+        const signup = await takeSignupContext();
+        const client = signup?.client ?? "web";
         const result = await authUserService().getOrCreateOAuthUser({
           email: profile.email,
           displayName:
             typeof profile.name === "string" ? profile.name : undefined,
           provider: "google",
           providerAccountId: account.providerAccountId,
+          // The versions linked next to the Google button ("by continuing you agree").
+          consent: { termsVersion: LEGAL_VERSIONS.terms, privacyVersion: LEGAL_VERSIONS.privacy, client },
         });
 
         if (result.state !== "success") return null;
         token.sub = result.data.user.id;
         token.email = result.data.user.email;
         token.name = result.data.user.displayName;
+        token.emailVerification = { verified: true, sent: false };
+        // Joining may just have voided an unverified password and every session before it; this one starts after.
+        token.authenticatedAt = Date.now() + 1;
+        const userId = result.data.user.id;
+        if (result.data.created) recordSignupFunnel(async (funnel) => {
+          await funnel.accountCreated({ userId, visitorId: signup?.visitorId ?? null, client, source: signup?.source ?? "direct" });
+          await funnel.step({ userId, name: "email_verified", client });
+        });
         // Auth.js supplies validated ID token claims here. The deletion flow
         // accepts only Google-provided auth_time; it never substitutes callback time.
         token.googleAuthTime = typeof profile.auth_time === "number" ? profile.auth_time : null;
@@ -119,6 +149,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (token.sub) {
         session.user.id = token.sub;
+        session.user.emailVerification = (token.emailVerification as EmailVerificationFlags | null | undefined) ?? null;
       }
 
       return session;

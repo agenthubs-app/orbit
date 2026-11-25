@@ -6,6 +6,7 @@ import { Fragment } from "react";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { profileContinuationPath } from "../../profile/profile-onboarding-navigation";
 import { Icon, MacTile, Orbit2026Scope } from "../ui";
+import { GoogleConsent } from "./auth-form";
 import s from "./LandingPage.module.css";
 
 type Copy = { ja: string; zh: string; en: string };
@@ -47,6 +48,7 @@ export function LandingPage({ googleEnabled }: { googleEnabled: boolean }) {
             {googleEnabled ? <button className={s.google} type="button" onClick={() => { void signIn("google", { callbackUrl: profileContinuationPath("/app/home") }); }}><span className={s.g}>G</span>{t({ ja: "Google で続ける", zh: "使用 Google 继续", en: "Continue with Google" })}</button> : null}
           </div>
           <small>{t({ ja: "登録は1分 · クレジットカード不要", zh: "约 1 分钟完成注册 · 无需信用卡", en: "Sign up in about a minute · No credit card required" })}</small>
+          {googleEnabled ? <GoogleConsent className={s.consent} /> : null}
         </div>
         <div className={s.art} aria-label={sample}>
           <span className={s.sampleLabel}>{sample}</span>

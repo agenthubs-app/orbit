@@ -5,6 +5,8 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
+      /** 邮箱验证状态，和会话检查同一次读取；null / 没有 = 不知道，不提醒。 */
+      emailVerification?: { verified: boolean; sent: boolean } | null;
     } & DefaultSession["user"];
   }
 }

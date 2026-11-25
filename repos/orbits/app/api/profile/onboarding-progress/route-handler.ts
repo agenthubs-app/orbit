@@ -6,6 +6,7 @@ import {
   type ProfileOnboardingProgressService,
 } from "../../../../features/profile/onboarding-progress";
 import { resolveProfileOnboardingProgressService } from "../../../../features/profile/onboarding-progress-factory";
+import { recordSignupFunnel } from "../../../../features/signup-funnel/record";
 import { isSampleWrite } from "../../../../features/guide/sample-write";
 import { failure, runtimeBoundaryHeaders, success } from "../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
@@ -15,6 +16,14 @@ import {
   resolveAuthenticatedApiActor,
   type AuthenticatedApiActor,
 } from "../../_shared/authenticated-actor";
+
+// 三步引导：①＝确认 1；②＝确认 2、3；③＝确认 4、5，再 finish。
+const FUNNEL_STEP = { 1: "onboarding_step1", 3: "onboarding_step2", 5: "onboarding_step3" } as const;
+
+function funnelStep(command: ProfileOnboardingProgressCommand) {
+  if (command.action === "finish") return "onboarding_finished" as const;
+  return command.action === "confirm" ? FUNNEL_STEP[command.screen as keyof typeof FUNNEL_STEP] ?? null : null;
+}
 
 const ALLOWED = new Set(["action", "screen", "expectedRevision", "mutationId"]);
 
@@ -42,7 +51,7 @@ export function createProfileOnboardingProgressRouteHandlers(dependencies: {
 } = {}) {
   const resolveActor = dependencies.resolveActor ?? resolveAuthenticatedApiActor;
   const serviceForActor = dependencies.serviceForActor ?? resolveProfileOnboardingProgressService;
-  async function run(operation: (service: ProfileOnboardingProgressService) => Promise<unknown>, request?: Request) {
+  async function run(operation: (service: ProfileOnboardingProgressService) => Promise<unknown>, request?: Request, done?: (actor: AuthenticatedApiActor) => void) {
     const mode = resolveFeatureMode();
     const headers = runtimeBoundaryHeaders(mode);
     try {
@@ -53,7 +62,9 @@ export function createProfileOnboardingProgressRouteHandlers(dependencies: {
       }
       const service = serviceForActor(actor.id);
       if (!service) throw new AppError("SERVICE_UNAVAILABLE", "Profile onboarding progress is unavailable.");
-      return NextResponse.json(success(await operation(service)), { headers, status: 200 });
+      const data = await operation(service);
+      done?.(actor);
+      return NextResponse.json(success(data), { headers, status: 200 });
     } catch (error) {
       const appError = error instanceof ProfileOnboardingProgressError
         ? new AppError(error.code === "REVISION_CONFLICT" || error.code === "MUTATION_CONFLICT" ? "CONFLICT" :
@@ -76,7 +87,13 @@ export function createProfileOnboardingProgressRouteHandlers(dependencies: {
       return run((service) => {
         if (!command) throw invalid;
         return service.apply(command);
-      }, request);
+      }, request, (actor) => {
+        const name = command ? funnelStep(command) : null;
+        const userId = actor.userId;
+        if (!name || !userId) return;
+        const client = request.headers.get("x-orbit-platform") === "app" ? "app" : null;
+        recordSignupFunnel((funnel) => funnel.step({ userId, name, client }));
+      });
     },
   };
 }

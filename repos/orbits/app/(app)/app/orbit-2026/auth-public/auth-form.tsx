@@ -4,6 +4,7 @@
 import { useState, type ClipboardEvent, type FormEvent, type ReactNode } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { emailVerificationCopy } from "../copy/email-verification";
 import { AUTH_BUTTON_LABELS, AUTH_PASSWORD_MIN_LENGTH, authRoutePath, trimPastedPassword, validateEmail, validatePassword, type AuthView } from "./auth-model";
 import type { AccountAuthSession } from "./use-account-auth";
 
@@ -179,6 +180,15 @@ export function AuthBackToLogin({ next = "" }: { next?: string }) {
 }
 
 /** b1 #2 / #3 .gbtn: 48px pill, surface with a surface-3 rim, a round「G」mark; the label differs for sign-in and sign-up. */
+/** Under every Google button that can create an account: which texts continuing agrees to (their version is stored with the account). */
+export function GoogleConsent({ className = "au-gterms" }: { className?: string }) {
+  const { t } = useOrbitLanguage();
+  return <p className={className}>{t(emailVerificationCopy.googleTerms).split(/(\{terms\}|\{privacy\})/u).map((part, index) => part === "{terms}"
+    ? <a className="au-terms-link" href="/terms" key={index} rel="noopener noreferrer" target="_blank">{t(emailVerificationCopy.terms)}</a>
+    : part === "{privacy}" ? <a className="au-terms-link" href="/privacy" key={index} rel="noopener noreferrer" target="_blank">{t(emailVerificationCopy.privacy)}</a>
+      : part)}</p>;
+}
+
 export function AuthGoogleButton({ "aria-label": ariaLabel, label, onClick }: { "aria-label"?: string; label: string; onClick: () => void }) {
   return (
     <button aria-label={ariaLabel} className="btn au-google" onClick={onClick} type="button">
