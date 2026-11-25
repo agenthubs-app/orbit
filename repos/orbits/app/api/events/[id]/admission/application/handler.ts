@@ -1,3 +1,4 @@
+import { actorDisplayName } from "../../../../../../shared/domain/actor-display-name";
 import { NextResponse } from "next/server";
 
 import {
@@ -89,6 +90,9 @@ function admissionError(error: unknown): AppError {
         return new AppError("NOT_FOUND", error.message, { cause: error });
       case "CAPACITY_FULL":
       case "INVALID_TRANSITION":
+      case "PROFILE_EDIT_CLOSED":
+      case "PROFILE_LOCKED":
+      case "APPLICATION_REJECTED":
       case "VERSION_CONFLICT":
       case "WINDOW_CLOSED":
         return new AppError("CONFLICT", error.message, { cause: error });
@@ -111,6 +115,7 @@ function errorResponse(error: unknown, mode: FeatureMode): Response {
     failure(appError, {
       boundary: "runtime",
       privacy: "authenticated-actor-and-event-scoped",
+      ...(error instanceof EventAdmissionError ? { reason: error.code } : {}),
       service: "canonical-event-admission-journey",
     }),
     {
@@ -233,7 +238,7 @@ export function createEventAdmissionApplicationPostHandler(
       const submissions = await exactApplicationBody(request);
       const application = await serviceFor(dependencies).apply({
         actorId: actor.id,
-        displayName: actor.profileName ?? actor.name,
+        displayName: actorDisplayName(actor),
         eventReference: reference,
         responses: submissions,
       });

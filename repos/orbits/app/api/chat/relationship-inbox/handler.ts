@@ -1,3 +1,4 @@
+import { actorDisplayName } from "../../../../shared/domain/actor-display-name";
 import { NextResponse } from "next/server";
 
 import {
@@ -85,7 +86,7 @@ export function createRelationshipInboxGetHandler(
     const service = createService(mode);
     const result = await service.getCorrespondenceWorkspace({
       ...readInput(request),
-      actorDisplayName: actor?.name,
+      actorDisplayName: actorDisplayName(actor),
       actorId: actor?.id,
     });
 
@@ -157,7 +158,7 @@ export function createRelationshipInboxPostHandler(
 
     const body = await readJsonBody(request);
     const input: AsyncConversationCreateFromDraftInput = {
-      actorDisplayName: actor?.name,
+      actorDisplayName: actorDisplayName(actor),
       actorId: actor?.id,
       requestId: readString(body.requestId),
       contactId: readString(body.contactId),

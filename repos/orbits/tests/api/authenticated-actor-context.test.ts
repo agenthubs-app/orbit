@@ -141,3 +141,17 @@ test("the profile name is given next to the session's account name (an email pre
   assert.deepEqual([resolve("佐藤 健一")?.profileName, resolve("佐藤 健一")?.name], ["佐藤 健一", "verify.qa2"]);
   assert.equal(resolve("  ")?.profileName, undefined, "no profile name: callers fall back to the account name");
 });
+
+test("the name shown to others: profile name first, the account name only without one (registration, inbox sender, post-event material)", async () => {
+  const { actorDisplayName } = await import("../../shared/domain/actor-display-name");
+  assert.equal(actorDisplayName({ name: "verify.qa2", profileName: "佐藤 健一" }), "佐藤 健一");
+  assert.equal(actorDisplayName({ name: "verify.qa2", profileName: " " }), "verify.qa2");
+  assert.equal(actorDisplayName({ name: "verify.qa2" }), "verify.qa2");
+  assert.equal(actorDisplayName(null), undefined);
+  const { readFileSync } = await import("node:fs");
+  for (const file of ["app/api/events/[id]/registration/route-handlers.ts", "app/api/events/[id]/admission/application/handler.ts", "app/api/chat/relationship-inbox/handler.ts", "app/api/events/[id]/post-event/artifact/handler.ts", "features/relationship-communication/service-factory.ts"]) {
+    const source = readFileSync(file, "utf8");
+    assert.match(source, /actorDisplayName\(/, file);
+    assert.doesNotMatch(source, /[dD]isplayName: (?:access\.)?actor\??\.name\b/, file);
+  }
+});

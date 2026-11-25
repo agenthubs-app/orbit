@@ -1,3 +1,4 @@
+import { actorDisplayName } from "../../../../../../shared/domain/actor-display-name";
 import { NextResponse } from "next/server";
 
 import type { AttendeePostEventAiArtifactReader } from "../../../../../../features/events/post-event-artifact/contract";
@@ -85,7 +86,7 @@ export function createAttendeePostEventAiArtifactPostHandler(
     }).catch(() => null);
     const task = await repository.request({
       attendeeActorId: access.actor.id,
-      attendeeDisplayName: access.actor.name,
+      attendeeDisplayName: actorDisplayName(access.actor),
       ...(context ? { context } : {}),
       eventId: access.eventId,
       evidenceSnapshot,

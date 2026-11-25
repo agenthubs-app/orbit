@@ -1,3 +1,4 @@
+import { actorDisplayName } from "../../../../../shared/domain/actor-display-name";
 import { NextResponse } from "next/server";
 
 import {
@@ -569,7 +570,7 @@ export function createEventRegistrationRouteHandlers(input: {
       }
       registration = await registrationService.register({
         answers: payload.answers,
-        displayName: actor.profileName ?? actor.name,
+        displayName: actorDisplayName(actor),
         eventId: event.id,
         interviewResponses: [...payload.interviewResponses],
         questionSetHash: publishedQuestionSet?.hash,

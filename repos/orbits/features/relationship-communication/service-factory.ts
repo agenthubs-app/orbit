@@ -1,3 +1,4 @@
+import { actorDisplayName } from "../../shared/domain/actor-display-name";
 import type { AuthenticatedApiActor } from "../../app/api/_shared/authenticated-actor";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { createConfiguredTransactionalPostgresRuntime } from "../../shared/storage/transactional-postgres";
@@ -38,7 +39,7 @@ export function createConfiguredRelationshipCommunicationService(
   const configured = createConfiguredPostgresLiveRecordStore<Record<string, unknown>>();
   const transactional = createConfiguredTransactionalPostgresRuntime();
   const accountId = actor.accountId ?? actor.id;
-  const displayName = actor.name?.trim();
+  const displayName = actorDisplayName(actor)?.trim();
   const email = actor.email?.trim();
   if (!configured || !transactional || transactional.workspaceId !== configured.workspaceId) {
     return unavailableService("Relationship communication storage is unavailable.");
