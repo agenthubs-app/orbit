@@ -46,16 +46,6 @@ export async function fetchOnboardingProgress(): Promise<ProfileOnboardingProgre
   return envelope.data;
 }
 
-/** 已有的联系人数（第 5 屏判断是否已经导入过）。 */
-export async function fetchContactTotal(): Promise<number> {
-  const response = await fetch("/api/contacts/summary", { cache: "no-store" });
-  const envelope = await readJson<{ total?: number }>(response);
-  if (!response.ok || envelope.success !== true || typeof envelope.data?.total !== "number") {
-    throw new OnboardingRequestError(envelope.error?.message ?? "Contact summary read failed", envelope.error?.code);
-  }
-  return envelope.data.total;
-}
-
 export async function updateOnboardingProgress(command: ProfileOnboardingProgressCommandContract): Promise<ProfileOnboardingProgressContract> {
   const response = await fetch("/api/profile/onboarding-progress", {
     body: JSON.stringify(command),
