@@ -1,5 +1,5 @@
 {
- "_note": "三步引导 onboarding-3step-proposal W1–W6 / T1–T4 / M1–M6。设计侧用同目录的门禁副本 _onboarding-3step-gate.html（不提交）：只换示例数据文字、补上画板漏带的 .lp-logo 规则、去掉 PDF 与やわらかめ（没有对应功能）、把手机按钮条放回视口底。实现侧接口全部在浏览器里打桩，不调模型、不写库。",
+ "_note": "三步引导 onboarding-3step-proposal W1–W6 / T1–T4 / M1–M6。设计侧用同目录的门禁副本 _onboarding-3step-gate.html（不提交）：只换示例数据文字、去掉 PDF 与やわらかめ（没有对应功能）、把手机按钮条放回视口底。实现侧接口全部在浏览器里打桩，不调模型、不写库。",
  "defaults": {
   "app-origin": "http://localhost:3040",
   "login": "qa@orbit.test",

@@ -6,8 +6,14 @@ import { transformSync } from "esbuild";
 import { NextRequest } from "next/server";
 
 import {
+  ONBOARDING_SETTLED_COOKIE,
+  hasOnboardingSettledValue,
+  onboardingSettledValue,
+} from "../../app/(app)/app/profile/profile-onboarding-settled-cookie";
+import {
   isProfileOnboardingNavigationExemptPath,
   profileOnboardingRedirectPath,
+  profileOnboardingSettled,
   shouldGateProfileOnboardingRequest,
 } from "../../app/(app)/app/profile/profile-onboarding-route-policy";
 
@@ -20,7 +26,7 @@ type AccessStatus = "complete" | "incomplete" | "unavailable" | "throw";
 
 function loadProxy(
   status?: AccessStatus,
-  options: { throwOnHelperLoad?: boolean } = {},
+  options: { answered?: boolean; flow?: { deferred: boolean; finishedAt: string | null } | null | "throw"; throwOnHelperLoad?: boolean } = {},
 ) {
   const compiled = transformSync(readFileSync(proxyPath, "utf8"), {
     loader: "ts",
@@ -28,6 +34,7 @@ function loadProxy(
     supported: { "dynamic-import": false },
   });
   let accessCalls = 0;
+  let flowReads = 0;
   let helperLoads = 0;
   const proxyModule = {
     exports: {} as {
@@ -49,8 +56,19 @@ function loadProxy(
             if (status === "throw") {
               throw new Error("onboarding access failure");
             }
-            return { status };
+            return { actorId: "account:proxy-user", answered: options.answered ?? true, status };
           },
+        };
+      }
+      if (name === "./features/profile/onboarding-progress-factory") {
+        return {
+          resolveProfileOnboardingProgressService: () => ({
+            get: async () => {
+              flowReads += 1;
+              if (options.flow === "throw") throw new Error("progress unavailable");
+              return options.flow ?? null;
+            },
+          }),
         };
       }
       if (options.throwOnHelperLoad && name === onboardingAccessRequest) {
@@ -64,6 +82,7 @@ function loadProxy(
   );
   return {
     accessCalls: () => accessCalls,
+    flowReads: () => flowReads,
     helperLoads: () => helperLoads,
     proxy: proxyModule.exports.proxy,
   };
@@ -279,4 +298,83 @@ test("missing sessions keep existing private-page login behavior without onboard
   assert.equal(response.status, 307);
   assert.match(response.headers.get("location") ?? "", /\/app\/account\/login/);
   assert.equal(accessCalls(), 0);
+});
+
+const UNFINISHED = { deferred: false, finishedAt: null };
+const FINISHED = { deferred: false, finishedAt: "2026-11-25T00:00:00.000Z" };
+
+async function withAuthSecret(run: () => Promise<void>) {
+  const previous = process.env.AUTH_SECRET;
+  process.env.AUTH_SECRET = "proxy-test-secret";
+  try { await run(); } finally {
+    if (previous === undefined) delete process.env.AUTH_SECRET; else process.env.AUTH_SECRET = previous;
+  }
+}
+
+test("a new account that only saved step 1 (complete profile, unfinished flow) is sent back with next, on every product page", async () => {
+  const { proxy } = loadProxy("complete", { flow: UNFINISHED });
+  for (const [path, next] of [
+    ["/app/home", "%2Fapp%2Fhome"],
+    ["/app/events", "%2Fapp%2Fevents"],
+    ["/app/events/one/register?lang=ja", "%2Fapp%2Fevents%2Fone%2Fregister%3Flang%3Dja"],
+    ["/app/contacts", "%2Fapp%2Fcontacts"],
+    ["/app/start", "%2Fapp%2Fstart"],
+  ] as const) {
+    const response = await proxy(request(path));
+    assert.equal(response.status, 307, path);
+    assert.equal(response.headers.get("location"), `https://test/app/profile/onboarding?next=${next}`);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.doesNotMatch(response.headers.get("set-cookie") ?? "", /orbit-onb/, "unfinished is never remembered");
+  }
+  // Client-side navigations (RSC) are caught the same way.
+  assert.equal((await proxy(request("/app/contacts?_rsc=x", { headers: { rsc: "1" } }))).status, 307);
+});
+
+test("setup itself, sign-in / account pages and APIs stay reachable while the flow is unfinished", async () => {
+  const { proxy, flowReads } = loadProxy("complete", { flow: UNFINISHED });
+  for (const path of ["/app/profile/onboarding?next=%2Fapp%2Fhome", "/app/profile/continue?next=%2Fapp%2Fhome", "/app/profile", "/app/account/login", "/app/account/change-password", "/api/profile", "/api/profile/onboarding-progress", "/api/home/guide-progress"]) {
+    assert.notEqual((await proxy(request(path))).status, 307, path);
+  }
+  assert.equal((await proxy(request("/app/home", { method: "POST" }))).status, 200);
+  assert.equal(flowReads(), 0);
+});
+
+test("accounts without a flow, finished ones and answered deferred ones pass; an unanswered deferred one resumes", async () => {
+  for (const options of [{ flow: null }, { flow: FINISHED }, { answered: true, flow: { deferred: true, finishedAt: null } }]) {
+    assert.equal((await loadProxy("complete", options).proxy(request("/app/home"))).status, 200, JSON.stringify(options));
+  }
+  assert.equal((await loadProxy("complete", { answered: false, flow: { deferred: true, finishedAt: null } }).proxy(request("/app/home"))).status, 307);
+  assert.equal(profileOnboardingSettled({ answered: undefined, flow: { deferred: true, finishedAt: null } }), false);
+});
+
+test("a settled account reads the flow once per browser: the signed cookie answers afterwards, for that account only", async () => {
+  await withAuthSecret(async () => {
+    const { proxy, flowReads } = loadProxy("complete", { flow: FINISHED });
+    const first = await proxy(request("/app/home"));
+    assert.equal(flowReads(), 1);
+    const cookie = /orbit-onb=([^;]+); Path=\/app; .*HttpOnly/iu.exec(first.headers.get("set-cookie") ?? "");
+    assert.ok(cookie, first.headers.get("set-cookie") ?? "no cookie");
+    const withCookie = { headers: { cookie: `${ONBOARDING_SETTLED_COOKIE}=${cookie[1]}` } };
+    for (const path of ["/app/home", "/app/events", "/app/contacts"]) assert.equal((await proxy(request(path, withCookie))).status, 200);
+    assert.equal(flowReads(), 1, "no further reads");
+    assert.equal((await proxy(request("/app/home", { ...withCookie, auth: { user: { email: "b@example.test", id: "profile:other", name: "B" } } }))).status, 200);
+    assert.equal(flowReads(), 2, "another account's cookie does not count");
+    assert.equal((await proxy(request("/app/home", { headers: { cookie: `${ONBOARDING_SETTLED_COOKIE}=forged` } }))).status, 200);
+    assert.equal(flowReads(), 3);
+
+    // The cookie never lets an incomplete profile through.
+    assert.equal((await loadProxy("incomplete").proxy(request("/app/home", withCookie))).status, 307);
+  });
+});
+
+test("an unreadable flow lets a complete profile through without remembering it; an unset secret never signs", async () => {
+  await withAuthSecret(async () => {
+    const { proxy } = loadProxy("complete", { flow: "throw" });
+    const response = await proxy(request("/app/home"));
+    assert.equal(response.status, 200);
+    assert.doesNotMatch(response.headers.get("set-cookie") ?? "", /orbit-onb/);
+  });
+  assert.equal(onboardingSettledValue("u", {}), null);
+  assert.equal(hasOnboardingSettledValue("x", "u", {}), false);
+  assert.equal(hasOnboardingSettledValue(onboardingSettledValue("u", { AUTH_SECRET: "a" })!, "u", { AUTH_SECRET: "b" }), false);
 });

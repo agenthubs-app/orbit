@@ -42,6 +42,18 @@ export function shouldGateProfileOnboardingRequest(input: {
   return !isProfileOnboardingNavigationExemptPath(input.pathname);
 }
 
+/**
+ * 引导是不是已经走完（门禁与登录后的 /app/profile/continue 共用这一条；App 同一口径）。
+ * 没有流程记录的老账号、走完的、以前点过「あとで設定する」且目标和自我介绍都填过的算走完；其余回引导接着走。
+ * 只对资料已 complete 的账号有意义：资料不全一律回引导，不必看流程。
+ */
+export function profileOnboardingSettled(input: {
+  answered: boolean | undefined;
+  flow: { deferred: boolean; finishedAt: string | null } | null;
+}): boolean {
+  return !input.flow || Boolean(input.flow.finishedAt) || Boolean(input.flow.deferred && input.answered);
+}
+
 function requestSearchWithoutRsc(search: string): string {
   const params = new URLSearchParams(search);
   params.delete("_rsc");

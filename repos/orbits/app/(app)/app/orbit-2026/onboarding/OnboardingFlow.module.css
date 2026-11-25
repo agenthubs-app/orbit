@@ -43,6 +43,7 @@
 .foot { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 20px; }
 .saved { color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-medium); white-space: nowrap; }
 .spacer { flex: 1 1 auto; }
+.foot .primary:global(.btn) { height: 50px; font-size: var(--fs-card-title); }
 .miss { display: inline-flex; align-items: center; gap: 6px; color: var(--coral-text); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
 .goalCount { display: none; }
 
@@ -121,6 +122,10 @@ select.input option { color: var(--ink); }
 .over { color: var(--coral-text); }
 .bones { display: flex; flex-direction: column; gap: 12px; padding: 6px 0; }
 .bones i { height: 12px; border-radius: var(--r-tag); background: var(--surface-3); }
+/* First read not back yet: the page's own layout as bones (no step is drawn before it is known). */
+.onceBone { height: 60px; }
+.bones .boneField { height: 48px; margin-top: 12px; border-radius: var(--r-md); }
+.boneAside { min-height: 190px; }
 .introActions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .left { padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink-2); font-size: var(--fs-caption); font-weight: var(--fw-bold); }
 .pushEnd { margin-left: auto; }
@@ -178,6 +183,8 @@ select.input option { color: var(--ink); }
   .barLabel { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 7px 0 12px; color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-medium); }
   .body { padding: 0 18px 130px; }
   .once { align-items: flex-start; margin-bottom: 0; padding: 12px 14px; font-size: var(--fs-control); }
+  .onceBone { height: 66px; }
+  .card > .bones { padding-top: 20px; }
   .card { display: block; min-height: 0; padding: 0; border-radius: var(--r-none); background: transparent; animation: none; }
   .title { margin-top: 14px; font-size: var(--fs-title); line-height: 1.35; letter-spacing: -.01em; }
   .sub { margin-top: 4px; }

@@ -56,7 +56,7 @@ import {
   type OnboardingView,
   type ProfileScreenNumber,
 } from "./onboarding-model";
-import { ONBOARDING_STEP_LABELS, OnboardingStepper, rememberOnboardingFlow, rememberedOnboardingFlow } from "./OnboardingGuide";
+import { ONBOARDING_STEP_LABELS, OnboardingStepper, rememberOnboardingFlow } from "./OnboardingGuide";
 import {
   GoalsStep,
   IntroAside,
@@ -114,16 +114,12 @@ type Origins = Partial<Record<BasicField, FieldOrigin>>;
 export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: OnboardingFlowProps) {
   const { language, t: siteText } = useOrbitLanguage();
   const t: T = (copy: Copy) => siteText(copy as { ja: string; zh: string; en: string });
-  // Start on the step this tab last read, so the header and stepper do not show step 1 and then jump once the read lands.
-  const [start] = useState(() => {
-    const confirmed = rememberedOnboardingFlow()?.lastConfirmedScreen ?? 0;
-    return { confirmed, view: onboardingStepForProgress(confirmed) };
-  });
-  const [view, setView] = useState<OnboardingView>(start.view);
+  // Which step it is comes with the first read: until then the page draws its skeleton, never a step it may have to leave.
+  const [view, setView] = useState<OnboardingView>("basics");
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState<number>(start.confirmed);
+  const [confirmed, setConfirmed] = useState<number>(0);
   const [basic, setBasic] = useState<BasicDraft>(EMPTY_BASIC);
   const [origins, setOrigins] = useState<Origins>({});
   const [scan, setScan] = useState<{ ai: number; card: number } | null>(null);
@@ -562,6 +558,33 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const nextLabel = saving ? t(ONBOARDING_COPY.flow024) : view === "intro" ? t({ ja: "この内容ではじめる", zh: "就用这份开始", en: "Start with this" }) : t({ zh: "下一步", en: "Next", ja: "次へ" });
   const stepLabel = t(ONBOARDING_STEP_LABELS[stepIndex]!);
 
+  if (!loaded) {
+    return (
+      <Orbit2026Scope language={language} as="main" className={styles.page}>
+        <header className={styles.head}>
+          <span className={styles.brand}><span className={styles.logo} aria-hidden>O</span><b>Orbit</b></span>
+          {logoutButton}
+        </header>
+        <div className={styles.body} data-onboarding-loading="">
+          <div className={styles.phoneHead}>
+            <div className={styles.phoneTop}><span className={styles.logo} aria-hidden>O</span><b>Orbit</b>{logoutButton}</div>
+            <div className={styles.bar} aria-hidden>{ONBOARDING_STEPS.map(step => <i key={step} />)}</div>
+            <div className={styles.barLabel}>{"\u00a0"}</div>
+          </div>
+          {loadError ? <div className={styles.notice} role="alert">{loadError}</div> : <>
+            <div className={`${styles.once} ${styles.onceBone}`} aria-hidden />
+            <div className={styles.grid} aria-busy="true" aria-label={t({ ja: "読み込み中", zh: "加载中", en: "Loading" })}>
+              <section className={styles.card}>
+                <div className={styles.bones} aria-hidden><i style={{ height: 24, width: "46%" }} /><i style={{ width: "62%" }} />{[0, 1, 2].map(row => <i className={styles.boneField} key={row} />)}</div>
+              </section>
+              <aside className={styles.aside} aria-hidden><div className={`${styles.asideCard} ${styles.boneAside}`} /></aside>
+            </div>
+          </>}
+        </div>
+      </Orbit2026Scope>
+    );
+  }
+
   return (
     <Orbit2026Scope language={language} as="main" className={styles.page}>
       <header className={styles.head}>
@@ -580,11 +603,10 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
           <div className={styles.bar} aria-hidden>{ONBOARDING_STEPS.map((step, index) => <i className={index < stepIndex ? styles.barDone : index === stepIndex ? styles.barNow : ""} key={step} />)}</div>
           <div className={styles.barLabel}><span>{t({ ja: `ステップ ${stepIndex + 1} / 3 · ${stepLabel}`, zh: `第 ${stepIndex + 1} / 3 步 · ${stepLabel}`, en: `Step ${stepIndex + 1} / 3 · ${stepLabel}` })}</span><span>{eta}</span></div>
         </div>
-        {loadError ? <div className={styles.notice} role="alert">{loadError}</div> : null}
         <OnceNote t={t} withScan={view === "basics" && cardScanAvailable} />
         <div className={styles.grid}>
-          <section className={styles.card} aria-busy={!loaded || undefined}>
-            {view === "basics" ? <ProfileStep basic={basic} cameraRef={cameraRef} cardScanAvailable={cardScanAvailable} disabled={!loaded || saving} fileRef={fileRef} language={language} missing={shown}
+          <section className={styles.card}>
+            {view === "basics" ? <ProfileStep basic={basic} cameraRef={cameraRef} cardScanAvailable={cardScanAvailable} disabled={saving} fileRef={fileRef} language={language} missing={shown}
               onCardDrop={(file) => void scanCard(file)} onCardFile={(event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; event.target.value = ""; void scanCard(file); }} onQr={() => setQrOpen(true)}
               onUserEdit={editBasic} origins={origins} scan={scan} scanning={scanning} showContact={{ email: Boolean(basic.email) || Boolean(origins.email) || scan !== null && Boolean(handlesRef.current.email), phone: Boolean(basic.phone) || Boolean(origins.phone) || scan !== null && Boolean(handlesRef.current.phone) }} t={t} todayIso={todayIso} /> : null}
             {view === "goals" ? <>

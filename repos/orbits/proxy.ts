@@ -14,8 +14,15 @@ import {
 } from "./features/auth/app-auth-routing";
 import {
   profileOnboardingRedirectPath,
+  profileOnboardingSettled,
   shouldGateProfileOnboardingRequest,
 } from "./app/(app)/app/profile/profile-onboarding-route-policy";
+import {
+  ONBOARDING_SETTLED_COOKIE,
+  ONBOARDING_SETTLED_MAX_AGE,
+  hasOnboardingSettledValue,
+  onboardingSettledValue,
+} from "./app/(app)/app/profile/profile-onboarding-settled-cookie";
 
 function isPublicApiPath(pathname: string): boolean {
   return (
@@ -140,6 +147,9 @@ export const proxy = auth(async (request) => {
     }
   }
 
+  // Set when this request proved the setup is done: remembered in a signed cookie so later pages do not read for it.
+  let settledValue: string | null = null;
+
   if (
     shouldGateProfileOnboardingRequest({
       authenticated: Boolean(request.auth?.user?.id),
@@ -147,7 +157,7 @@ export const proxy = auth(async (request) => {
       pathname: request.nextUrl.pathname,
     })
   ) {
-    let access: { status: "complete" | "incomplete" | "unavailable" } = {
+    let access: { actorId?: string; answered?: boolean; status: "complete" | "incomplete" | "unavailable" } = {
       status: "unavailable",
     };
     try {
@@ -163,7 +173,27 @@ export const proxy = auth(async (request) => {
       // A gate dependency failure must not turn into an accidental pass.
     }
 
-    if (access.status !== "complete") {
+    // A complete profile is only the first step of setup: an unfinished flow goes back to it (same rule as
+    // /app/profile/continue). Read once per browser — the cookie answers afterwards; "not finished" is never remembered.
+    let finished = true;
+    const userId = request.auth!.user!.id!;
+    if (access.status === "complete" && !hasOnboardingSettledValue(request.cookies.get(ONBOARDING_SETTLED_COOKIE)?.value, userId)) {
+      try {
+        const { resolveProfileOnboardingProgressService } = await import(
+          "./features/profile/onboarding-progress-factory"
+        );
+        const progress = access.actorId ? resolveProfileOnboardingProgressService(access.actorId) : null;
+        if (!progress) throw new Error("Progress storage unavailable");
+        finished = profileOnboardingSettled({ answered: access.answered, flow: await progress.get() });
+        if (finished) settledValue = onboardingSettledValue(userId);
+      } catch {
+        // The profile itself was readable and complete: an unreadable progress record must not lock every finished
+        // account out of the product. Nothing is remembered, so the next page asks again.
+        console.warn(JSON.stringify({ event: "onboarding_progress_gate_unreadable" }));
+      }
+    }
+
+    if (access.status !== "complete" || !finished) {
       const redirectResponse = NextResponse.redirect(
         new URL(
           profileOnboardingRedirectPath({
@@ -196,6 +226,16 @@ export const proxy = auth(async (request) => {
   // best practices). The app's own in-memory caches (router cache, orbit-last-answer) are unaffected.
   if (request.nextUrl.pathname.startsWith("/app") && request.auth?.user?.id) {
     response.headers.set("cache-control", "private, no-store");
+  }
+
+  if (settledValue) {
+    response.cookies.set(ONBOARDING_SETTLED_COOKIE, settledValue, {
+      httpOnly: true,
+      maxAge: ONBOARDING_SETTLED_MAX_AGE,
+      path: "/app",
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:",
+    });
   }
 
   if (rememberLanguage) {

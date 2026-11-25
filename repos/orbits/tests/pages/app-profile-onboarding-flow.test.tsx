@@ -64,13 +64,44 @@ test("gate target is the onboarding route and keeps a safe next", () => {
   assert.equal(profileOnboardingFlowPath("/app/profile/onboarding"), "/app/profile/onboarding?next=%2Fapp%2Fhome");
 });
 
-test("the first screen: card scan first, the once-only notice, log out instead of 稍后设置, no skip and no app nav", () => {
+test("before the first read comes back no step is drawn — only the page's skeleton, with log out", () => {
   const html = renderToStaticMarkup(<OnboardingFlow actorKey="u1" cardScanAvailable next="/app/home" todayIso="2026-09-26" />);
-  for (const label of ["名片与基本信息", "目标与强项", "自我介绍", "约 1 分钟", "退出登录", "把名片图片拖到这里", "用手机拍（二维码）", "先从你开始"]) assert.ok(html.includes(label), label);
-  assert.match(html, /这份资料<b>只填一次，之后参加的每场活动都会用它<\/b>。扫一下自己的名片，大部分内容会自动填好。/u);
-  assert.doesNotMatch(html, /稍后设置|跳过|>iOrbit<|>活动<|>人脉<|导入名片/);
-  const noScan = renderToStaticMarkup(<OnboardingFlow actorKey="u1" cardScanAvailable={false} next="/app/home" todayIso="2026-09-26" />);
-  assert.doesNotMatch(noScan, /扫一下自己的名片|把名片图片拖到这里/);
+  assert.match(html, /data-onboarding-loading/);
+  assert.match(html, /退出登录/);
+  assert.doesNotMatch(html, /先从你开始|onb-name|data-onboarding-view|名片与基本信息|只填一次|data-onboarding-next/);
+});
+
+test("a reopened page lands straight on the step the server knows, without drawing step 1 first", async (t) => {
+  stubWindow(t, new Map());
+  stubProfileApi(t, "寻找投资", { secondaryIndustryId: "other.other" }, 1);
+  const drawn: string[] = [];
+  let root!: ReactTestRenderer;
+  await act(async () => { root = create(<OnboardingFlow actorKey="u-reopen" cardScanAvailable next="/app/home" todayIso="2026-09-28" />); drawn.push(JSON.stringify(root.toJSON() ?? "")); });
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  drawn.push(JSON.stringify(root.toJSON()));
+  assert.ok(drawn.every(output => !output.includes("onb-name")), "step 1 never appears");
+  assert.equal(root.root.findAll(node => node.props["data-onboarding-view"] === "goals").length, 1);
+  act(() => root.unmount());
+});
+
+test("a failed first read says so instead of showing an empty form", async (t) => {
+  stubWindow(t, new Map());
+  t.mock.method(globalThis, "fetch", async () => Response.json({ success: false }, { status: 503 }));
+  const root = await mountFlow("u-read-fail");
+  assert.equal(root.root.findAll(node => typeof node.type === "string" && node.props.role === "alert").length, 1);
+  assert.equal(root.root.findAll(node => node.props.id === "onb-name").length, 0);
+  act(() => root.unmount());
+});
+
+test("the first screen: card scan first, the once-only notice, log out instead of 稍后设置, no skip and no app nav", async (t) => {
+  stubWindow(t, new Map());
+  stubProfileApi(t, "", { assumeComplete: false, displayName: "" });
+  const textIn = (root: ReactTestRenderer) => root.root.findAll(node => typeof node.type === "string").flatMap(node => node.children.filter((child): child is string => typeof child === "string")).join("|");
+  const root = await mountFlow("u-first");
+  const html = textIn(root);
+  for (const label of ["名片与基本信息", "目标与强项", "自我介绍", "约 1 分钟", "退出登录", "把名片图片拖到这里", "用手机拍（二维码）", "先从你开始", "只填一次，之后参加的每场活动都会用它", "扫一下自己的名片，大部分内容会自动填好。"]) assert.ok(html.includes(label), label);
+  assert.doesNotMatch(html, /稍后设置|跳过|导入名片/);
+  act(() => root.unmount());
 });
 
 test("saved goal text round-trips into the editor; old chip-prefixed text keeps every word", () => {

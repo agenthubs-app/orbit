@@ -1,6 +1,5 @@
 // 三步引导门禁用的画板副本：docs/designs/redesign-2026-10/_onboarding-3step-gate.html（不提交）。
-// 只做四类替换，其余逐字照画板：① 示例数据文字换成产品候选表里的词（介绍文改到 80 字以内）；② 画板漏带的 .lp-logo 规则（b1 同款）；
-// ③ 去掉没有对应功能的「PDF」与「やわらかめ」；④ 手机按钮条放回视口底（真实视口不含 Safari 底栏），去掉盖住红色描边的标注针。
+// 只做三类替换，其余逐字照画板：① 示例数据文字换成产品候选表里的词（介绍文改到 80 字以内）；② 去掉没有对应功能的「PDF」与「やわらかめ」；③ 手机按钮条放回视口底（真实视口不含 Safari 底栏），去掉盖住红色描边的标注针。
 // 用法：node scripts/visual/onboarding-3step-gate-copy.mjs，然后 compare-redesign.mjs --suite scripts/visual/views/web-onboarding-3step.json
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -10,8 +9,7 @@ const swap = (from, to) => {
   if (!html.includes(from)) throw new Error(`画板里找不到：${from}`);
   html = html.replaceAll(from, to);
 };
-swap("/* ===== 本稿新增 ===== */", `.lp-logo { width: 36px; height: 36px; border-radius: 12px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
-  .mweb .foot { bottom: 0 !important; }`);
+swap("/* ===== 本稿新增 ===== */", ".mweb .foot { bottom: 0 !important; }");
 swap("JPG・PNG・HEIC・PDF · ", "JPG・PNG・HEIC · ");
 swap("<button>やわらかめ</button>", "");
 swap("pin(1, '.gt.err') + ", "");

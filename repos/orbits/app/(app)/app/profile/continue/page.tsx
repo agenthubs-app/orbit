@@ -4,6 +4,7 @@ import { auth } from "../../../../../auth";
 import { resolveProfileOnboardingProgressService } from "../../../../../features/profile/onboarding-progress-factory";
 import type { ProfileOnboardingProgress } from "../../../../../features/profile/onboarding-progress";
 import { readProfileOnboardingAccess } from "../profile-onboarding-access.server";
+import { profileOnboardingSettled } from "../profile-onboarding-route-policy";
 import { getOrbitServerLanguage } from "../../orbit-language-server";
 import {
   normalizeProfileOnboardingNext,
@@ -71,8 +72,7 @@ export default async function AppProfileContinuePage({
     const language = await getOrbitServerLanguage();
     return <main role="alert">{RETRY_COPY.progress[language]}</main>;
   }
-  // 引导不能跳过（两端同一规则）：没走完的流程接着走。以前点过「あとで設定する」且目标、自我介绍都填过的，不再拦；没有流程记录的老账号不拦。
-  if (access.status === "complete" && (!flow || flow.finishedAt || (flow.deferred && access.answered))) redirect(next);
+  if (access.status === "complete" && profileOnboardingSettled({ answered: access.answered, flow })) redirect(next);
 
   redirect(profileOnboardingFlowPath(next));
 }
