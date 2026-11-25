@@ -94,7 +94,8 @@ test("application API accepts only exact signed-response submissions and forward
   let observed: unknown;
   const handler = createEventAdmissionApplicationPostHandler({
     createService: () => service({ onApply(value) { observed = value; } }),
-    resolveActor: async () => ({ id: actorId, name: "森 爱子" }),
+    // The profile name goes on the registration; the session name is the account name (an email prefix).
+    resolveActor: async () => ({ id: actorId, name: "mori.aiko1", profileName: "森 爱子" }),
   });
   const responses = [
     { answer: "Cross-border operator", questionToken: "signed-positioning" },

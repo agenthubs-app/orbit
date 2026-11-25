@@ -30,6 +30,8 @@ export interface AuthenticatedApiActor {
   /** From the session check's own read; absent = not known. */
   emailVerification?: { verified: boolean; sent: boolean };
   name?: string | null;
+  /** 资料里的姓名。`name` 是会话里的账号名（简化注册后是邮箱前缀），给别人看的名字用这个，没有才退回 `name`。 */
+  profileName?: string;
   profileId?: string;
   userId?: string;
   workspaceId?: string;
@@ -99,6 +101,7 @@ export function resolveAuthenticatedApiActorIdentity({
     email: session.email,
     id: account.id,
     name: session.name ?? profile.displayName,
+    ...(profile.displayName.trim() ? { profileName: profile.displayName.trim() } : {}),
     profileId: profile.id,
     userId: session.userId,
     workspaceId,

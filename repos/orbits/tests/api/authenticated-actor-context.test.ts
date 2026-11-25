@@ -66,6 +66,7 @@ test("authenticated actor resolves a profile subject to its owning account", () 
     id: "account:a",
     name: "Actor A",
     profileId: "profile:a",
+    profileName: "Actor A",
     userId: "profile:a",
     workspaceId: "workspace:shared",
   });
@@ -128,4 +129,15 @@ test("shared-shell API routes bind actor resolution to the Auth.js request", () 
     );
     assert.match(source, /request\.auth\?\.user/u, filePath);
   }
+});
+
+test("the profile name is given next to the session's account name (an email prefix after the short signup)", () => {
+  const resolve = (displayName: string) => resolveAuthenticatedApiActorIdentity({
+    graph: { ...graph, profiles: graph.profiles.map((profile) => ({ ...profile, displayName })) },
+    mode: "live",
+    session: { name: "verify.qa2", userId: "profile:a" },
+    workspaceId: "workspace:shared",
+  });
+  assert.deepEqual([resolve("佐藤 健一")?.profileName, resolve("佐藤 健一")?.name], ["佐藤 健一", "verify.qa2"]);
+  assert.equal(resolve("  ")?.profileName, undefined, "no profile name: callers fall back to the account name");
 });

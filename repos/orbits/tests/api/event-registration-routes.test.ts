@@ -461,7 +461,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
   const previousSecret = process.env.ORBIT_INTERVIEW_SIGNING_SECRET;
   process.env.ORBIT_INTERVIEW_SIGNING_SECRET =
     "route-test-interview-secret-with-enough-entropy";
-  const tokenActor = { id: "user:signed-registration", name: "Signed Tester" };
+  const tokenActor = { id: "user:signed-registration", name: "signed.tester1", profileName: "Signed Tester" };
   const tokenService = createEventRegistrationService({
     provider: createMemoryEventRegistrationProvider(),
   });
@@ -518,6 +518,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     );
     const acceptedBody = await accepted.json();
     assert.equal(accepted.status, 200);
+    assert.equal(acceptedBody.data.participantProfile.displayName, "Signed Tester", "the profile name, not the account name");
     assert.equal(
       acceptedBody.data.participantProfile.answers.valueOffered,
       "valueOffered option A",

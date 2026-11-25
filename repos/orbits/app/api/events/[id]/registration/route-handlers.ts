@@ -50,7 +50,7 @@ interface EventRegistrationRouteContext {
   params: Promise<{ id: string }>;
 }
 
-type RegistrationActor = { id: string; name?: string | null };
+type RegistrationActor = { id: string; name?: string | null; profileName?: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -569,7 +569,7 @@ export function createEventRegistrationRouteHandlers(input: {
       }
       registration = await registrationService.register({
         answers: payload.answers,
-        displayName: actor.name,
+        displayName: actor.profileName ?? actor.name,
         eventId: event.id,
         interviewResponses: [...payload.interviewResponses],
         questionSetHash: publishedQuestionSet?.hash,

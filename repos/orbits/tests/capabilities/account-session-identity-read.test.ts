@@ -625,7 +625,7 @@ test("SC-03 PG configured database: resolveAuthenticatedApiActorFromSession uses
       try {
         const { calls, value } = await capturePoolQueries(() => resolveAuthenticatedApiActorFromSession({ email: null, name: null, userId: "account:a" }));
         assert.deepEqual(value, {
-          accountId: "account:a", email: null, id: "account:a", name: "Actor P", profileId: "profile:account:a", userId: "account:a", workspaceId: ws,
+          accountId: "account:a", email: null, id: "account:a", name: "Actor P", profileId: "profile:account:a", profileName: "Actor P", userId: "account:a", workspaceId: ws,
         });
         assert.equal(calls.length, 3);
         for (const call of calls) {

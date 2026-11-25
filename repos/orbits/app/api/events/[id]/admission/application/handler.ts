@@ -233,7 +233,7 @@ export function createEventAdmissionApplicationPostHandler(
       const submissions = await exactApplicationBody(request);
       const application = await serviceFor(dependencies).apply({
         actorId: actor.id,
-        displayName: actor.name,
+        displayName: actor.profileName ?? actor.name,
         eventReference: reference,
         responses: submissions,
       });
