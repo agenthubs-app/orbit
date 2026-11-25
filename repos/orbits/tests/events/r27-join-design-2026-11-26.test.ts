@@ -139,11 +139,15 @@ test("7. visibility line lists what you offer (three languages), matching the fi
   const { registrationFieldVisibility } = await import("../../features/events/registration/interview-question-token.server");
   assert.equal(registrationFieldVisibility("valueOffered"), "event_attendees");
   assert.equal(registrationFieldVisibility("industry"), "event_attendees");
-  assert.equal(registrationFieldVisibility("desiredOutcome"), "matching_only");
+  assert.equal(registrationFieldVisibility("desiredOutcome"), "event_attendees");
+  assert.equal(registrationFieldVisibility("targetAttendees"), "event_attendees");
   assert.match(eventsJourneyCopy.visAllFields.zh, /能提供的/);
   assert.match(eventsJourneyCopy.visAllFields.ja, /提供できること/);
   assert.match(eventsJourneyCopy.visAllFields.en, /what you offer/);
-  assert.match(eventsJourneyCopy.visOrgFields.zh, /参加目的 · 想见的人/);
+  assert.match(eventsJourneyCopy.visAllFields.zh, /参加目的 · 想见的人/);
+  assert.match(eventsJourneyCopy.visAllFields.ja, /参加目的 · 会いたい人/);
+  assert.match(eventsJourneyCopy.visAllFields.en, /why you're going · who to meet/);
+  assert.equal("visOrg" in eventsJourneyCopy || "visOrgFields" in eventsJourneyCopy, false, "no organizer-only row left");
 });
 
 test("first-come registration: confirmed flow copy exists in three languages; the calendar line has no 「result」 wording", () => {
@@ -157,4 +161,22 @@ test("progress: profile strengths do not count before the questions are done (44
   const five = ["lib-role", "lib-industry", "lib-company-stage", "lib-language", "lib-source"].map((id, n) => answer(`host:${id}`, "x", n));
   const after = await service.profile("actor:a", "ev", five, false, "zh");
   assert.deepEqual(after?.items.filter((item) => item.done).map((item) => item.key), ["company", "target", "offer"]);
+});
+
+test("AI questions do not say 今天 / 今日 / today: registration happens before the event", async () => {
+  const { withoutToday } = await import("../../features/events/registration/adaptive-interview-service");
+  assert.equal(withoutToday("今天你最想认识哪类人？"), "当天你最想认识哪类人？");
+  assert.equal(withoutToday("你想在今天的活动上聊什么？"), "你想在这次活动上聊什么？");
+  assert.equal(withoutToday("今日はどんな方に会いたいですか？"), "当日はどんな方に会いたいですか？");
+  assert.equal(withoutToday("今日のイベントで話したいことは？"), "今回のイベントで話したいことは？");
+  assert.equal(withoutToday("Who would you like to meet today?"), "Who would you like to meet at the event?");
+  assert.equal(withoutToday("Who would you like to meet at today's event?"), "Who would you like to meet at this event?");
+  assert.equal(withoutToday("Today, who would you like to meet?"), "Who would you like to meet?");
+  for (const kept of ["你怎么看今天的市场？", "今日の市場をどう見ますか？", "这次活动上，你最想认识哪类人？"]) assert.equal(withoutToday(kept), kept);
+});
+
+test("confirmed registration asks about the calendar without 「tentative」 wording (three languages)", () => {
+  for (const language of ["ja", "zh", "en"] as const) {
+    assert.doesNotMatch(eventsJourneyCopy.calAskFinal[language] + eventsJourneyCopy.calendarAdded[language], /仮|暂定|tentative/i);
+  }
 });

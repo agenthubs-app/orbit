@@ -252,6 +252,10 @@ test(
       assert.equal(waitlisted.status, "waitlisted");
       assert.equal(pending.status, "pending_review");
       assert.equal(pending.profilePayload.interviewResponses?.length, 5);
+      // 2026-11-26：参加目的 / 会いたい人 也对参加者公开——审核制申请照样收下，存进库的每条回答级别一致。
+      assert.deepEqual([...new Set(pending.profilePayload.interviewResponses?.map((item) => item.visibility))], ["event_attendees"]);
+      const storedVisibility = await operationPool.query(`select distinct field_key, visibility from event_ops_profile_response_versions where workspace_id = $1 and event_id = $2 and field_key in ('desiredOutcome', 'targetAttendees') order by 1`, [workspaceId, instantEventId]);
+      assert.deepEqual(storedVisibility.rows, [{ field_key: "desiredOutcome", visibility: "event_attendees" }, { field_key: "targetAttendees", visibility: "event_attendees" }]);
       assert.equal(
         (await journey.getState({
           actorId: reviewActor,

@@ -48,7 +48,7 @@ test("language: the join route reads the orbit-lang cookie when the call carries
   const call = (headers: Record<string, string>, url = "http://localhost/x") => routes.joinNext(new Request(url, { body: JSON.stringify({ answers: [] }), headers: { "content-type": "application/json", ...headers }, method: "POST" }), { params: Promise.resolve({ id: "ev" }) });
   const zh = eventJoinStepSchema.parse((await (await call({ cookie: "a=1; orbit-lang=zh" })).json()).data);
   assert.equal(seen.at(-1), "zh");
-  assert.equal(zh.question?.help, "只用于排座和推荐（可多选）", "help text in Chinese too");
+  assert.equal(zh.question?.help, "用于排座和推荐，参会者也能看到（可多选）", "help text in Chinese too");
   await call({ cookie: "orbit-lang=zh", "x-orbit-lang": "en" });
   assert.equal(seen.at(-1), "en", "the header beats the cookie");
   await call({ cookie: "orbit-lang=zh" }, "http://localhost/x?lang=ja");

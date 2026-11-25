@@ -186,7 +186,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     setBusy(true);
     const res = await joinApi.tentative(eventId);
     setBusy(false);
-    if (res.ok) { setCalendar("added"); toast.success(t("tentativeAdded")); } else toast.error(at("genericError"));
+    if (res.ok) { setCalendar("added"); toast.success(t(result?.status === "registered" ? "calendarAdded" : "tentativeAdded")); } else toast.error(at("genericError"));
   };
   const dictate = () => {
     if (!Speech) return;
@@ -326,7 +326,6 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       <div className={`${styles.card} ${r.inner} ${r.gap} ${r.scope}`}>
         <div className={`${styles.lbl} ${r.scopeLbl}`}>{t("visibilityTitle")}</div>
         <div className={`${styles.row} ${r.scopeRow}`}><span className={`${styles.chip} ${styles.c_teal}`}>{t("visAll")}</span><span className={styles.sub}>{t("visAllFields")}</span></div>
-        <div className={`${styles.row} ${r.scopeRow} ${r.scopeRow2}`}><span className={styles.chip}>{t("visOrg")}</span><span className={styles.sub}>{t("visOrgFields")}</span></div>
       </div>
       <div className={`${styles.row} ${r.go}`}>
         <span className={`${styles.lbl} ${r.grow}`}>{profile?.editableUntil ? t("editableUntil", { date: monthDaySlash(profile.editableUntil) }) : null}</span>
@@ -366,7 +365,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       {result.hostContact !== undefined ? <HostContactCard contact={result.hostContact} t={t} className={r.gap} /> : null}
       {result.tentative && calendar === "asked" ? (
         <div className={`${styles.card} ${r.confirm}`} data-join-calendar="">
-          <div className={styles.row} style={{ gap: 8 }}><span className={`${styles.emo} ${styles.t_lav} ${r.emoSm}`}>📅</span><b className={r.confirmTitle}>{t("calAsk")}</b></div>
+          <div className={styles.row} style={{ gap: 8 }}><span className={`${styles.emo} ${styles.t_lav} ${r.emoSm}`}>📅</span><b className={r.confirmTitle}>{t(result.status === "registered" ? "calAskFinal" : "calAsk")}</b></div>
           <div className={`${styles.sub} ${r.confirmSub}`}>{t(result.status === "registered" ? "calendarLineFinal" : "calendarLine", { range: eventRange(result.tentative.startsAt, result.tentative.endsAt, language), title: result.tentative.title })}</div>
           <div className={styles.row} style={{ gap: 8 }}>
             <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} onClick={() => void addTentative()}>{t("addIt")}</button>

@@ -235,10 +235,13 @@ function verifiedPayload(input: {
   return payload;
 }
 
-/** R27 公開範囲：「主催者のみ」= 参加目的（desiredOutcome）、会いたい人（targetAttendees）；其余「参加者全員」。 */
-export const ORGANIZER_ONLY_REGISTRATION_FIELDS = ["desiredOutcome", "targetAttendees"] as const;
-export function registrationFieldVisibility(field: string): "event_attendees" | "matching_only" {
-  return (ORGANIZER_ONLY_REGISTRATION_FIELDS as readonly string[]).includes(field) ? "matching_only" : "event_attendees";
+/**
+ * 公開範囲：新提交的回答一律对同场参加者公开（2026-11-26 用户定；此前 R27 参加目的 desiredOutcome、会いたい人 targetAttendees
+ * 只给主办方和匹配）。级别随每条回答一起存，读取处只看存的那个级别（profileResponsesForParticipantDetail）：
+ * 改动前存成 `matching_only` 的旧回答不回填，本人重新提交后才按新规则。
+ */
+export function registrationFieldVisibility(_field: string): "event_attendees" | "matching_only" {
+  return "event_attendees";
 }
 
 export function verifyInterviewResponseSubmissions(input: {
@@ -300,8 +303,7 @@ export function verifyInterviewResponseSubmissions(input: {
       questionId: payload.questionId,
       questionSource: "ai_adaptive" as const,
       responseId: `response:${payload.questionId}`,
-      // Visibility is a server policy per field (events DESIGN §2.4, R27 公開範囲): 参加目的 / 会いたい人 are for the
-      // organizer and matching only; everything else is shared with attendees. The client cannot change it.
+      // Visibility is a server policy per field (R27 公開範囲, see registrationFieldVisibility); the client cannot change it.
       visibility: registrationFieldVisibility(payload.field),
     };
   });

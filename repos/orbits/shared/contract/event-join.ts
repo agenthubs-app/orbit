@@ -1,7 +1,7 @@
 // R27 — 参加登録 (5 questions → attendee profile → submit). Owner: 甲 (R27). Used by: events (参加登録, both clients).
 // A thin facade over the existing registration routes (adaptive interview, persona, registration / admission application):
 // questions are the existing AI interview (≤ 5), answers carry the signed question tokens, and the server keeps per-field
-// visibility (参加目的 / 会いたい人 = organizer only; name / company / intro / topics = attendees).
+// visibility (2026-11-26: every answer of a new submission, incl. 参加目的 / 会いたい人, is shown to the event's attendees).
 
 import type { HostEventContact } from "./host-events";
 
@@ -10,7 +10,7 @@ export type EventJoinProfileItemKey = "company" | "purpose" | "topics" | "target
 export interface EventJoinQuestion {
   field: string;
   prompt: string;
-  /** Small line under the prompt (「席決めとおすすめにだけ使います（複数可）」). */
+  /** Small line under the prompt (「席決めとおすすめに使い、参加者にも表示されます（複数可）」). */
   help?: string | null;
   options: readonly string[];
   multi: boolean;

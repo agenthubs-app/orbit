@@ -82,7 +82,7 @@ const OTHER_TEXTS = new Set(["その他", "其他", "Other"]);
 const tri = (language: JourneyLanguage, ja: string, zh: string, en: string) => (language === "zh" ? zh : language === "en" ? en : ja);
 
 export function questionShape(field: string, language: JourneyLanguage): Pick<EventJoinQuestion, "multi" | "max" | "help"> {
-  if (field === "targetAttendees") return { help: tri(language, "席決めとおすすめにだけ使います（複数可）", "只用于排座和推荐（可多选）", "Only used for seating and suggestions (choose any)"), max: null, multi: true };
+  if (field === "targetAttendees") return { help: tri(language, "席決めとおすすめに使い、参加者にも表示されます（複数可）", "用于排座和推荐，参会者也能看到（可多选）", "Used for seating and suggestions, and shown to attendees (choose any)"), max: null, multi: true };
   if (field === "experienceHighlight") return { help: null, max: 2, multi: true };
   // 2026-11-26：资料里的强项 / 目标各自一个选项、各自预选，可以单独取消（以前并成「A · B · C」一个选项）。
   if (field === "valueOffered") return { help: null, max: null, multi: true };
@@ -400,7 +400,8 @@ export function createJoinService(deps: { ports: JoinPorts }) {
     },
     async cancel(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventJoinCancelResult | null> {
       if (!(await ports.event(eventId))) return null;
-      await ports.cancel(eventId);
+      // 幂等：已经取消的报名再取消一次照样成功（重复点击、网络重试），不再走报名接口。
+      if ((await ports.registrationStatus(actorId, eventId).catch(() => null)) !== "cancelled") await ports.cancel(eventId);
       // 取消后介绍已不显示（只认 rsvped）；文字也清掉，不留着等下次报名。
       await ports.removeIntro?.(actorId, eventId).catch(() => undefined);
       await service.syncTentative(actorId, eventId, language).catch(() => undefined);

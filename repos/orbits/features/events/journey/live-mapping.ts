@@ -2,7 +2,7 @@
  * R27 live 端口的纯映射（`live.ts` 读数据，这里只做形状转换；测试直接覆盖这里）。Owner: 甲 (R27).
  * - 主办方 actor id 只在这里变成 `organizerKey`（单向摘要），之后不再外传。
  * - 公开参加者：只读 `event_attendees` / `public` 可见的回答（`profileResponsesForParticipantDetail`，与参加者详情同一边界）；
- *   一个可见回答都没有的报名者不出现（`matching_only` / 旧 `private` 只给匹配用）。
+ *   一个可见回答都没有的报名者不出现（`matching_only` / 旧 `private` 只给匹配用；2026-11-26 前的参加目的 / 会いたい人 就存成这样，不回填）。
  * - 判定：`judgeEvent` 的结果原样折叠（分数、3 维、会えそうな人），只补「理由」一句与根拠文字。
  */
 import { createHash } from "node:crypto";
@@ -155,7 +155,8 @@ export function publicAttendeesFromRegistrations(registrations: readonly EventRe
   return { attendees: attendees.slice(0, PUBLIC_ATTENDEES_LIMIT), total: active.length };
 }
 
-export const ATTENDEE_PROFILE_ANSWERS_LIMIT = 6;
+/** 一次报名最多存 8 条回答（interview-question-token），确认页写明都给参会者看：详情不截断。 */
+export const ATTENDEE_PROFILE_ANSWERS_LIMIT = 8;
 
 /**
  * 参加者の詳細：一位报名者对参加者公开的资料（与 `publicAttendeesFromRegistrations` 同一边界：只用 `event_attendees` / `public`

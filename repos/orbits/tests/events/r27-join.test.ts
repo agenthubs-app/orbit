@@ -90,9 +90,9 @@ test("sample mode: submit answers without writing; signed-out callers are refuse
   assert.equal((await live.joinSubmit(post({ answers: [answer("targetAttendees", "VC", 1)], idempotencyKey: "k" }), params)).status, 401);
 });
 
-test("公開範囲 is a per-field server policy: 参加目的 / 会いたい人 organizer-only, the rest shared with attendees", () => {
-  assert.equal(registrationFieldVisibility("desiredOutcome"), "matching_only");
-  assert.equal(registrationFieldVisibility("targetAttendees"), "matching_only");
+test("公開範囲 is a per-field server policy: every answer of a new submission is shared with attendees (2026-11-26)", () => {
+  assert.equal(registrationFieldVisibility("desiredOutcome"), "event_attendees");
+  assert.equal(registrationFieldVisibility("targetAttendees"), "event_attendees");
   assert.equal(registrationFieldVisibility("valueOffered"), "event_attendees");
   assert.equal(registrationFieldVisibility("positioning"), "event_attendees");
 });
@@ -215,4 +215,24 @@ test("roster policy A: a signed-in user sees names only after registering; count
   assert.equal(canSeeRoster({ registrationStatus: "pending_review", signedIn: true }), false, "pending review is not an attendee yet");
   assert.equal(canSeeRoster({ signedIn: true }, "signed_in"), true, "the alternative switch opens it to any signed-in user");
   assert.equal(canSeeRoster({ signedIn: false }, "signed_in"), false);
+});
+
+test("cancelling an already cancelled registration succeeds again without calling the registration routes", async () => {
+  let called = 0;
+  const removed: string[] = [];
+  const service = createJoinService({ ports: fakePorts({ cancel: async () => { called += 1; throw new Error("409"); }, registrationStatus: async () => "cancelled", removeIntro: async (_actor, event) => { removed.push(event); } }) });
+  assert.deepEqual(await service.cancel("actor:a", "ev", "ja"), { eventId: "ev", status: "cancelled" });
+  assert.equal(called, 0);
+  assert.deepEqual(removed, ["ev"]);
+  // Never registered (or still active and failing): the error is not swallowed.
+  await assert.rejects(createJoinService({ ports: fakePorts({ cancel: async () => { throw new Error("404"); } }) }).cancel("actor:a", "ev", "ja"));
+});
+
+test("参加目的 / 会いたい人 of a new submission: stored event_attendees on every path (asked, from organizer questions, from the profile)", () => {
+  const sign = (field: string, provider: string) => ({ answer: "A", questionToken: signAdaptiveInterviewQuestion({ actorId: "a", eventId: "e", language: "zh", secret: "s".repeat(32),
+    question: { acknowledgment: "", field: field as never, options: ["A", "B"], prompt: "这次活动的一个问题？", provenance: provider === "orbit-fixed" ? { fallbackReason: "profile", generationMethod: "deterministic-fallback", model: "fixed-questions-v1", provider } : { fallbackReason: null, generationMethod: "orbit-agent-model-adaptive", model: "m", provider } } }) });
+  for (const provider of ["deepseek", "orbit-fixed"]) {
+    const verified = verifyInterviewResponseSubmissions({ actorId: "a", eventId: "e", responses: ["desiredOutcome", "targetAttendees", "valueOffered"].map((field) => sign(field, provider)), secret: "s".repeat(32) });
+    assert.deepEqual(verified.map((item) => item.visibility), ["event_attendees", "event_attendees", "event_attendees"], provider);
+  }
 });

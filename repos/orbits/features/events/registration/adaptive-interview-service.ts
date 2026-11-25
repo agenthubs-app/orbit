@@ -160,6 +160,7 @@ const QUESTION_STYLE_RULES = [
   "The question is ONE short sentence that asks exactly ONE thing. No greeting, no welcome, no thanks, no preamble, no explanation of why you ask, no self-reference.",
   "Use plain everyday words an older reader understands at a glance. No jargon or service-speak such as 精准对接 / マッチング精度 / precise matching.",
   "Chinese: address the person as 你, never 您.",
+  "The person registers before the event: never say today, tonight, 今天, 今晚 or 今日; say this event / 这次活动 / 当日.",
   "Options never state facts about the person (past experience, achievements, credentials, clients, years). Anything about the person's own experience is left for them to type themselves.",
 ].join("\n");
 
@@ -177,6 +178,19 @@ export function questionTextAcceptable(prompt: string, options: readonly string[
   if (/您/u.test(prompt) || options.some((option) => /您/u.test(option))) return false;
   if (/(经历|經歷|経験談|实战|実戦|past experience|achievement)/iu.test(prompt)) return false;
   return !options.some((option) => EXPERIENCE_CLAIM.test(option));
+}
+
+/** 报名在活动之前：模型还是写了「今天」时换成活动当天的说法（只换时间状语，「今天的市场」这类不动）。 */
+export function withoutToday(prompt: string): string {
+  const eventNamed = /\bevent\b/iu.test(prompt);
+  return prompt
+    .replace(/今[天晚]的(?=活动|聚会|交流会|论坛)/gu, "这次")
+    .replace(/今[天晚](?!的)/gu, "当天")
+    .replace(/(?:今日|今夜)の(?=イベント|会|交流会)/gu, "今回の")
+    .replace(/(?:今日|今夜)(?!の)/gu, "当日")
+    .replace(/\b(?:today|tonight)['’]s (?=event|meetup|gathering)/giu, "this ")
+    .replace(/^(?:today|tonight),?\s+(\w)/iu, (_match, first: string) => first.toUpperCase())
+    .replace(/\s+(?:today|tonight)\b(?!['’])/giu, eventNamed ? "" : " at the event");
 }
 
 interface AdaptiveInterviewInput {
@@ -252,7 +266,7 @@ function readModelQuestion(
     typeof parsed.field === "string"
       ? (parsed.field as EventParticipantProfileField)
       : null;
-  const prompt = typeof parsed.prompt === "string" ? parsed.prompt.trim() : "";
+  const prompt = typeof parsed.prompt === "string" ? withoutToday(parsed.prompt.trim()) : "";
   const acknowledgment =
     typeof parsed.acknowledgment === "string"
       ? parsed.acknowledgment.trim()
@@ -485,7 +499,7 @@ function readModelPersona(text: string, sourceText = ""): Omit<EventPersona, "pr
   }
 
   // R27 E4：可选字段；给了就校验长度，不合格只丢掉这一项（不让整份画像失败）。
-  const selfIntroDraft = typeof parsed.selfIntroDraft === "string" ? parsed.selfIntroDraft.trim() : "";
+  const selfIntroDraft = typeof parsed.selfIntroDraft === "string" ? withoutToday(parsed.selfIntroDraft.trim()) : "";
   const introOk = selfIntroDraft.length >= 10 && selfIntroDraft.length <= 200 && !sensitivePattern.test(selfIntroDraft) && !unsupportedClaim(selfIntroDraft, sourceText);
   const intro = introOk ? { selfIntroDraft } : {};
   // 2026-11-26：只放用户说要聊的话题（报名确认页的话题 chip 用它，不混入能提供的 / 目的）。
@@ -516,6 +530,7 @@ export async function generateEventPersona(
       `Write everything in ${language === "zh" ? "Chinese" : language === "ja" ? "Japanese" : "English"}.`,
       "selfIntroDraft: a first-person self-introduction for other attendees (60-200 chars): who I am, what I want to talk about at THIS event, what I can offer. No revenue or other numbers unless they appear in the transcript.",
       "selfIntroDraft uses ONLY facts stated in the transcript. Never add a specialty, focus or strength the person did not say themselves (no 专注… / 擅长… / 専門… / 得意… / specializes in… / expert in…), and never turn a chosen option into a claim about their past work.",
+      "selfIntroDraft is written before the event: never say today, tonight, 今天, 今晚 or 今日; say this event / 这次活动 / 当日.",
       "topics: 1-5 short labels (<=16 chars each) — ONLY the subjects they said they want to talk about. Not what they offer, not their goals, not who they want to meet. Empty array if they named none.",
       "tagline: one line (<=60 chars) positioning this person for THIS event.",
       "tags: 3-5 short labels (<=16 chars each) covering their strongest matching signals.",

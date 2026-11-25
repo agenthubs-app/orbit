@@ -57,7 +57,7 @@
 .scope.scope { background: var(--surface); }
 .scopeLbl.scopeLbl { margin-bottom: 8px; }
 .scopeRow.scopeRow { gap: 8px; font-size: var(--fs-control); }
-.scopeRow2.scopeRow2 { margin-top: 6px; }
+.scopeRow > :first-child { flex: none; }
 .go.go { gap: 10px; margin-top: 16px; align-items: center; }
 .check.check { text-align: center; padding: 26px 18px; }
 .popcheck { width: 76px; height: 76px; border-radius: var(--r-pill); background: var(--mac-teal); color: var(--mac-teal-ink); display: grid; place-items: center; margin: 0 auto; }

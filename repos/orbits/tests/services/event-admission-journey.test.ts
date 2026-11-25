@@ -45,7 +45,7 @@ function response(
     questionId: `question:${field}`,
     questionSource: "ai_adaptive",
     responseId: `response:${field}`,
-    // R27 公開範囲：与生产的 verifyInterviewResponseSubmissions 一样按字段给（参加目的 / 会いたい人 = matching_only）。
+    // R27 公開範囲：与生产的 verifyInterviewResponseSubmissions 一样按字段给（registrationFieldVisibility）。
     visibility: registrationFieldVisibility(field),
   };
 }
