@@ -22,14 +22,17 @@ export async function POST(request: Request): Promise<Response> {
   const mode = resolveFeatureMode(
     process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
   );
-  const gate = await (await getAuthRateLimiter()).checkRegister({ ip: authClientIp(request.headers) });
-  if (gate.allowed === false) return authRateLimitedResponse(gate.retryAfterSeconds);
-  const authService = resolveAuthUserService(mode);
   const body = (await request.json().catch(() => ({}))) as {
     displayName?: unknown;
     email?: unknown;
     password?: unknown;
   };
+  const gate = await (await getAuthRateLimiter()).checkRegister({
+    email: typeof body.email === "string" ? body.email : "",
+    ip: authClientIp(request.headers),
+  });
+  if (gate.allowed === false) return authRateLimitedResponse(gate.retryAfterSeconds);
+  const authService = resolveAuthUserService(mode);
 
   const result = await authService.registerUser({
     email: typeof body.email === "string" ? body.email : "",

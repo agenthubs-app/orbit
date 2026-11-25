@@ -8,8 +8,10 @@
  *   密钥从 `AUTH_SECRET` 用 HKDF 派生（info 与邀请码不同）。
  * - 出错或未配置（非 live、库或密钥缺失）一律放行：限流挂了不能把所有人挡在登录页外（对标常见做法：limiter fail-open）。
  * - 阈值按「会场里几百人共用一个 Wi-Fi」放宽 IP 维度，账号维度收紧：
- *   登录：每 IP 10 分钟 100 次；每邮箱 15 分钟失败 10 次后锁到窗口结束（成功登录不清零，窗口到期自然解锁）。
- *   注册：每 IP 10 分钟 30 次、每天 300 次。
+ *   登录：每 IP 10 分钟失败 100 次、总数 600 次；每邮箱 15 分钟失败 10 次后锁到窗口结束（成功登录不清零，窗口到期自然解锁）。
+ *     只有失败计入较紧的那道：注册完会自动登录，两百多人同一出口 IP 时成功登录不能把后面的人挡住。
+ *   注册：每 IP 10 分钟 300 次、每天 1000 次；每邮箱 10 分钟 10 次（换 IP 反复试同一个邮箱也拦）。
+ *     300 = 一场活动约 220 人在几分钟内集中注册，再留约三成给输错重试；一个 IP 一天两三场活动仍在 1000 内。
  *   找回密码申请：每 IP 10 分钟 10 次（每邮箱冷却已在 password-reset-service 里）。
  */
 import { createHmac, hkdfSync } from "node:crypto";
@@ -22,10 +24,12 @@ export const AUTH_RATE_HKDF_INFO = "orbit-auth-rate-v1";
 const MINUTE = 60 * 1000;
 
 export const AUTH_RATE_RULES = {
-  loginPerIp: { limit: 100, windowMs: 10 * MINUTE },
+  loginPerIp: { limit: 600, windowMs: 10 * MINUTE },
+  loginFailuresPerIp: { limit: 100, windowMs: 10 * MINUTE },
   loginFailuresPerEmail: { limit: 10, windowMs: 15 * MINUTE },
-  registerPerIpShort: { limit: 30, windowMs: 10 * MINUTE },
-  registerPerIpDay: { limit: 300, windowMs: 24 * 60 * MINUTE },
+  registerPerIpShort: { limit: 300, windowMs: 10 * MINUTE },
+  registerPerIpDay: { limit: 1000, windowMs: 24 * 60 * MINUTE },
+  registerPerEmail: { limit: 10, windowMs: 10 * MINUTE },
   resetRequestPerIp: { limit: 10, windowMs: 10 * MINUTE },
 } as const;
 
@@ -34,11 +38,11 @@ type Rule = { limit: number; windowMs: number };
 export type AuthRateDecision = { allowed: true } | { allowed: false; retryAfterSeconds: number };
 
 export interface AuthRateLimiter {
-  /** 登录前：IP 计一次；IP 超量或该邮箱本窗口失败已满 → 不允许。 */
+  /** 登录前：IP 计一次；IP 总数或失败数超量、该邮箱本窗口失败已满 → 不允许。 */
   checkLogin(input: { ip: string; email: string }): Promise<AuthRateDecision>;
-  /** 登录失败：该邮箱失败 +1。 */
-  recordLoginFailure(input: { email: string }): Promise<void>;
-  checkRegister(input: { ip: string }): Promise<AuthRateDecision>;
+  /** 登录失败：该邮箱、该 IP 的失败各 +1。 */
+  recordLoginFailure(input: { ip: string; email: string }): Promise<void>;
+  checkRegister(input: { ip: string; email: string }): Promise<AuthRateDecision>;
   checkResetRequest(input: { ip: string }): Promise<AuthRateDecision>;
 }
 
@@ -75,18 +79,24 @@ export function createAuthRateLimiter(input: { secret: Buffer; store: InviteAtte
         const failures = await input.store.read(bucket("loginfail", "email", email), windowStart(rule, at));
         if (failures >= rule.limit) return { allowed: false, retryAfterSeconds: retryAfter(rule, at) };
       }
+      const ipRule = AUTH_RATE_RULES.loginFailuresPerIp;
+      const ipFailures = await input.store.read(bucket("loginfail", "ip", ip), windowStart(ipRule, at));
+      if (ipFailures >= ipRule.limit) return { allowed: false, retryAfterSeconds: retryAfter(ipRule, at) };
       return count("login", "ip", ip, AUTH_RATE_RULES.loginPerIp, at);
     },
-    async recordLoginFailure({ email }) {
-      if (!email.trim()) return;
+    async recordLoginFailure({ ip, email }) {
       const at = now().getTime();
+      await input.store.increment(bucket("loginfail", "ip", ip), windowStart(AUTH_RATE_RULES.loginFailuresPerIp, at));
+      if (!email.trim()) return;
       await input.store.increment(bucket("loginfail", "email", email), windowStart(AUTH_RATE_RULES.loginFailuresPerEmail, at));
     },
-    async checkRegister({ ip }) {
+    async checkRegister({ ip, email }) {
       const at = now().getTime();
       const short = await count("register10m", "ip", ip, AUTH_RATE_RULES.registerPerIpShort, at);
       if (!short.allowed) return short;
-      return count("registerday", "ip", ip, AUTH_RATE_RULES.registerPerIpDay, at);
+      const day = await count("registerday", "ip", ip, AUTH_RATE_RULES.registerPerIpDay, at);
+      if (!day.allowed || !email.trim()) return day;
+      return count("registeremail", "email", email, AUTH_RATE_RULES.registerPerEmail, at);
     },
     checkResetRequest: async ({ ip }) => count("reset", "ip", ip, AUTH_RATE_RULES.resetRequestPerIp, now().getTime()),
   };

@@ -29,6 +29,13 @@ export const AUTH_ERROR_COPY = {
   /** 设计 526：密码 8 位。 */
   passwordTooShort: { en: "Password must be at least 8 characters.", ja: "8文字以上で入力してください。", zh: "密码至少 8 位。" },
   passwordTooLong: { en: "Use no more than 72 UTF-8 bytes.", ja: "72 UTF-8 バイト以内で入力してください。", zh: "密码不能超过 72 个 UTF-8 字节。" },
+  /** 注册：没勾同意就提交。 */
+  consentRequired: { en: "Agree to the Terms of Use and Privacy Policy to create your account.", ja: "登録するには、利用規約とプライバシーポリシーへの同意が必要です。", zh: "请先勾选同意使用条款和隐私政策。" },
+  /** 注册 400：服务端不认可的邮箱或密码。 */
+  registerInvalid: { en: "Check your email address and use a password of at least 8 characters.", ja: "メールアドレスと、8文字以上のパスワードを確認してください。", zh: "请检查邮箱地址，密码至少 8 位。" },
+  /** 注册 401 / 503：账号开通不了（身份清除中、存储不可用），与邮箱密码对不对无关。 */
+  registerUnavailable: { en: "We can’t create this account right now. Please try again later.", ja: "現在このアカウントを登録できません。しばらくしてからお試しください。", zh: "暂时无法创建这个账号，请稍后再试。" },
+  registerFailed: { en: "Sign-up failed. Please try again.", ja: "登録できませんでした。もう一度お試しください。", zh: "注册失败，请稍后再试。" },
   /** 设计 529：重置失败回退。 */
   resetFailed: { en: "Reset failed. Please try again later.", ja: "再設定できませんでした。しばらくしてからお試しください。", zh: "重置失败，请稍后重试。" },
   /** 设计 529：新密码 8 位。 */
@@ -36,6 +43,15 @@ export const AUTH_ERROR_COPY = {
 } as const satisfies Record<string, AuthCopy>;
 
 export const AUTH_PASSWORD_MIN_LENGTH = 8;
+
+/** `POST /api/auth/register` 的失败 → 注册页文案：只看状态码和错误码，从不显示服务端原文。 */
+export function registerErrorCopy(status: number, code?: string): AuthCopy {
+  if (status === 409 || code === "CONFLICT") return AUTH_ERROR_COPY.emailTaken;
+  if (status === 429 || code === "RATE_LIMITED") return AUTH_ERROR_COPY.rateLimited;
+  if (status === 400 || status === 422 || code === "VALIDATION_ERROR") return AUTH_ERROR_COPY.registerInvalid;
+  if (status === 401 || status === 503 || code === "UNAUTHORIZED" || code === "SERVICE_UNAVAILABLE") return AUTH_ERROR_COPY.registerUnavailable;
+  return AUTH_ERROR_COPY.registerFailed;
+}
 
 export function validateEmail(value: string): AuthCopy | null {
   return DESIGN_EMAIL_PATTERN.test(value) ? null : AUTH_ERROR_COPY.invalidEmail;

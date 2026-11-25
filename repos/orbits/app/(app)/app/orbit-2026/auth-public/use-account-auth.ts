@@ -10,7 +10,7 @@ import {
 } from "../../profile/profile-onboarding-navigation";
 import type { OrbitAccountAuthViewModel } from "../../orbit-account-auth-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { AUTH_ERROR_COPY } from "./auth-model";
+import { AUTH_ERROR_COPY, registerErrorCopy } from "./auth-model";
 import { credentialsLandingPath } from "./password-change-client";
 
 // 原样抽自 account/orbit-real-account-auth.tsx（15–57 行：productHref / navigate /
@@ -179,14 +179,7 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
 
         if (!response.ok || payload?.success !== true) {
           setEmailTaken(response.status === 409);
-          setError(
-            response.status === 409
-              ? t(AUTH_ERROR_COPY.emailTaken)
-              : payload?.error?.code === "RATE_LIMITED"
-                ? t(AUTH_ERROR_COPY.rateLimited)
-                : payload?.error?.message ??
-                  t({ en: "Sign-up failed. Please try again.", ja: "登録できませんでした。もう一度お試しください。", zh: "注册失败,请稍后再试。" }),
-          );
+          setError(t(registerErrorCopy(response.status, payload?.error?.code)));
           return;
         }
 

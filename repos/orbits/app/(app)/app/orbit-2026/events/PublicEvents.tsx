@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { EventDiscoverResponse } from "../../../../../shared/contract/event-discover";
 import type { EventOverviewResponse } from "../../../../../shared/contract/event-overview";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { authRoutePath } from "../auth-public/auth-model";
 import { Icon, Orbit2026Scope, ToastProvider } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { DEFAULT_DISCOVER_QUERY, coverBands, discoverWhen, journeyTranslator, rowTone, type JourneyT } from "./DiscoverTab";
@@ -21,14 +22,15 @@ import r from "./record.module.css";
 
 const LOGIN = "/app/account/login";
 
-export function PublicNav({ t }: { t: JourneyT }) {
+/** `next`：登录 / 注册完回到的页面（这条顶栏所在的活动列表或详情）。 */
+export function PublicNav({ t, next }: { t: JourneyT; next: string }) {
   return (
     <nav className={p.lpNav} data-public-nav="">
       <a className={`${styles.row} ${p.brand}`} href="/" style={{ gap: 10 }}><span className={p.logo}>O</span><b>Orbit</b></a>
       <div className={`${styles.row} ${p.links}`}><a href="/#features">{t("navFeatures")}</a><a href="/#how">{t("navHowTo")}</a><a href="/app/events">{t("navEvents")}</a></div>
       <div className={styles.row} style={{ gap: 8 }}>
-        <a className={`btn ${styles.btn} ${p.ghost}`} href={LOGIN}>{t("navLogin")}</a>
-        <a className={`btn ${styles.btn} ${styles.primary} ${p.start}`} href="/app/account/signup">{t("navStart")}</a>
+        <a className={`btn ${styles.btn} ${p.ghost}`} href={authRoutePath("login", next)}>{t("navLogin")}</a>
+        <a className={`btn ${styles.btn} ${styles.primary} ${p.start}`} href={authRoutePath("register", next)}>{t("navStart")}</a>
       </div>
     </nav>
   );
@@ -58,7 +60,7 @@ function ListInner({ language, nowIso, frame = false }: { language: OrbitLanguag
   const month = new Date(Date.parse(nowIso) + 9 * 3_600_000).getUTCMonth() + 1;
   return (
     <div className={p.page}>
-      <PublicNav t={t} />
+      <PublicNav t={t} next="/app/events" />
       <div className={p.pubmain}>
         <div className={`${styles.cardH} ${p.head}`}><h3 className={p.headTitle}>{t("pubTitle")}</h3><span className={styles.lbl}>{t("pubSub", { month })}</span></div>
         <div className={styles.wgrid}>
@@ -124,10 +126,13 @@ function DetailInner({ eventId, language, inviteCode, frame = false }: { eventId
   const { canRegister } = useDetailTiming(data);
   // < 768：和登录后一样用 App 式详情（b12 W-R27-20u-390）；桌面 12 栏网格在手机宽度会挤成窄列。
   const phone = usePhone();
+  // 报名对没有账号的人就是注册：直接去注册页（里面有「已有账号？登录」，next 一起带过去）。
+  const here = inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : eventId ? `/app/events/${encodeURIComponent(eventId)}` : "/app/events";
+  const registerHref = authRoutePath("register", inviteCode ? here : `${here}/register`);
   useEffect(() => { if (!frame) void journeyApi.overview(eventId).then((result) => { if (result.ok) setData({ ...result.data, signedOut: true }); else setMissing(true); }); }, [eventId, frame]);
   return (
     <div className={p.page}>
-      <PublicNav t={t} />
+      <PublicNav t={t} next={here} />
       <div className={p.pubmain}>
         <div className={p.mainhead}>
           <div className={p.l}><a className={`btn ${x.rbtn}`} href="/app/events" aria-label={t("back")}><Icon name="left" size={16} /></a></div>
@@ -136,12 +141,12 @@ function DetailInner({ eventId, language, inviteCode, frame = false }: { eventId
           <div className={p.r}>
             <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void navigator.clipboard?.writeText(window.location.href).catch(() => undefined)}><Icon name="share" size={16} /></button>
             {/* 2026-11-21：公开页没有右栏，主按钮在页头（W2）；截止 / 已结束不在页头再说一次（封面 chip 已说）。 */}
-            {phone || !canRegister ? null : <a className={`btn ${styles.btn} ${x.accent}`} href={`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`}>{t("loginRegister")}</a>}
+            {phone || !canRegister ? null : <a className={`btn ${styles.btn} ${x.accent}`} href={registerHref}>{t("signupRegister")}</a>}
           </div>
         </div>
         {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone
-          ? <PhoneDetailBody data={data} language={language} t={t} onRegister={() => window.location.assign(`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`)} />
-          : <EventDetailBody data={data} language={language} t={t} onRegister={() => window.location.assign(`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`)} signedOutAside={inviteCode ? <InviteCodeCard code={inviteCode} data={data} t={t} /> : undefined} />) : null}
+          ? <PhoneDetailBody data={data} language={language} t={t} onRegister={() => window.location.assign(registerHref)} />
+          : <EventDetailBody data={data} language={language} t={t} onRegister={() => window.location.assign(registerHref)} signedOutAside={inviteCode ? <InviteCodeCard code={inviteCode} data={data} t={t} /> : undefined} />) : null}
       </div>
     </div>
   );
@@ -173,7 +178,7 @@ export function PublicInviteInvalid({ language }: { language: OrbitLanguage }) {
   return (
     <Orbit2026Scope language={language} className={p.scope}>
       <div className={p.page}>
-        <PublicNav t={t} />
+        <PublicNav t={t} next="/app/events" />
         <div className={p.pubmain}>
           <div className={`${styles.card} ${x.missing}`} data-public-invite-invalid="">
             <b>{t("inviteInvalid")}</b>

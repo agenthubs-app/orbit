@@ -177,6 +177,11 @@ async function fill(renderer: ReactTestRenderer, email: string, password = ""): 
   });
 }
 
+async function agree(renderer: ReactTestRenderer): Promise<void> {
+  const box = renderer.root.find((node) => node.type === "button" && node.props.role === "checkbox");
+  await act(async () => { box.props.onClick(); });
+}
+
 async function submit(renderer: ReactTestRenderer): Promise<void> {
   await act(async () => {
     await renderer.root.findByType("form").props.onSubmit({ preventDefault() {} });
@@ -271,6 +276,7 @@ test("network exception in the register call: shows the generic retry copy and d
   let renderer: ReactTestRenderer | undefined;
   try {
     renderer = await mount("signup");
+    await agree(renderer);
     await fill(renderer, "owner@example.invalid", "password-123");
     await submit(renderer);
     assert.deepEqual(byRole(renderer, "alert"), ["网络异常,请稍后再试。"]);
@@ -286,6 +292,7 @@ test("signup success: POST /api/auth/register {email,password}, auto signIn(cred
   let renderer: ReactTestRenderer | undefined;
   try {
     renderer = await mount("signup");
+    await agree(renderer);
     await fill(renderer, "new-owner@example.invalid", "password-123");
     await submit(renderer);
 
@@ -319,6 +326,7 @@ test("signup auto sign-in failure keeps email in one-use page state and preserve
   let renderer: ReactTestRenderer | undefined;
   try {
     renderer = await mount("signup");
+    await agree(renderer);
     await fill(renderer, email, "password-123");
     await submit(renderer);
     assert.deepEqual(harness.navigation.assigned, [
@@ -345,16 +353,17 @@ test("signup auto sign-in failure keeps email in one-use page state and preserve
   }
 });
 
-test("signup 409 → duplicate-email copy; other register errors → server message; no auto sign-in", async () => {
+test("signup 409 → duplicate-email copy; other register errors → copy by status, never the server message; no auto sign-in", async () => {
   for (const [response, expected] of [
     [Response.json({ success: false, error: { message: "ignored" } }, { status: 409 }), "该邮箱已注册，请直接登录。"],
-    [Response.json({ success: false, error: { message: "Password too weak" } }, { status: 422 }), "Password too weak"],
-    [Response.json({ success: false }, { status: 500 }), "注册失败,请稍后再试。"],
+    [Response.json({ success: false, error: { message: "Password too weak" } }, { status: 422 }), "请检查邮箱地址，密码至少 8 位。"],
+    [Response.json({ success: false }, { status: 500 }), "注册失败，请稍后再试。"],
   ] as const) {
     const harness = install(`?next=${encodeURIComponent(NEXT)}`, { register: response });
     let renderer: ReactTestRenderer | undefined;
     try {
       renderer = await mount("signup");
+      await agree(renderer);
       await fill(renderer, "dup@example.invalid", "password-123");
       await submit(renderer);
       assert.deepEqual(byRole(renderer, "alert"), [expected]);
@@ -482,6 +491,7 @@ test("?next= normalisation: a safe next is threaded through forgot/switch hrefs 
   let renderer: ReactTestRenderer | undefined;
   try {
     renderer = await mount("signup");
+    await agree(renderer);
     await fill(renderer, "owner@example.invalid", "password-123");
     await submit(renderer);
     const hrefs = anchorHrefs(renderer);

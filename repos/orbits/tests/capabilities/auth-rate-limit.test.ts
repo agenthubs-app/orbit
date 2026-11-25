@@ -20,7 +20,7 @@ test("login: 10 failures for one email lock that email until the window ends; ot
   const { clock, limiter: rl } = limiter();
   for (let i = 0; i < AUTH_RATE_RULES.loginFailuresPerEmail.limit; i += 1) {
     assert.equal((await rl.checkLogin({ email: "A@x.com", ip: "1.1.1.1" })).allowed, true);
-    await rl.recordLoginFailure({ email: "a@x.com " });
+    await rl.recordLoginFailure({ email: "a@x.com ", ip: "1.1.1.1" });
   }
   const blocked = await rl.checkLogin({ email: "a@x.com", ip: "2.2.2.2" });
   assert.equal(blocked.allowed, false);
@@ -30,17 +30,53 @@ test("login: 10 failures for one email lock that email until the window ends; ot
   assert.equal((await rl.checkLogin({ email: "a@x.com", ip: "1.1.1.1" })).allowed, true);
 });
 
-test("login: one IP gets 100 attempts per 10 minutes", async () => {
+test("login: one IP gets 600 attempts per 10 minutes", async () => {
   const { limiter: rl } = limiter();
   for (let i = 0; i < AUTH_RATE_RULES.loginPerIp.limit; i += 1) assert.equal((await rl.checkLogin({ email: `u${i}@x.com`, ip: "9.9.9.9" })).allowed, true);
   assert.equal((await rl.checkLogin({ email: "z@x.com", ip: "9.9.9.9" })).allowed, false);
   assert.equal((await rl.checkLogin({ email: "z@x.com", ip: "8.8.8.8" })).allowed, true);
 });
 
-test("register: 30 per IP per 10 minutes; reset request: 10 per IP per 10 minutes", async () => {
+test("login: 100 failures from one IP block it for the window, whatever the email; other IPs are unaffected", async () => {
+  const { clock, limiter: rl } = limiter();
+  for (let i = 0; i < AUTH_RATE_RULES.loginFailuresPerIp.limit; i += 1) {
+    assert.equal((await rl.checkLogin({ email: `u${i}@x.com`, ip: "7.7.7.7" })).allowed, true);
+    await rl.recordLoginFailure({ email: `u${i}@x.com`, ip: "7.7.7.7" });
+  }
+  assert.equal((await rl.checkLogin({ email: "z@x.com", ip: "7.7.7.7" })).allowed, false);
+  assert.equal((await rl.checkLogin({ email: "z@x.com", ip: "8.8.8.8" })).allowed, true);
+  clock(10 * 60 * 1000);
+  assert.equal((await rl.checkLogin({ email: "z@x.com", ip: "7.7.7.7" })).allowed, true);
+});
+
+test("a venue on one IP: 250 people register and are signed in within one window", async () => {
   const { limiter: rl } = limiter();
-  for (let i = 0; i < AUTH_RATE_RULES.registerPerIpShort.limit; i += 1) assert.equal((await rl.checkRegister({ ip: "3.3.3.3" })).allowed, true);
-  assert.equal((await rl.checkRegister({ ip: "3.3.3.3" })).allowed, false);
+  for (let i = 0; i < 250; i += 1) {
+    assert.equal((await rl.checkRegister({ email: `guest${i}@x.com`, ip: "5.5.5.5" })).allowed, true, `register ${i}`);
+    assert.equal((await rl.checkLogin({ email: `guest${i}@x.com`, ip: "5.5.5.5" })).allowed, true, `sign-in ${i}`);
+  }
+});
+
+test("register: one email gets 10 tries per 10 minutes across IPs; an empty email only counts against the IP", async () => {
+  const { limiter: rl } = limiter();
+  for (let i = 0; i < AUTH_RATE_RULES.registerPerEmail.limit; i += 1) assert.equal((await rl.checkRegister({ email: "Same@x.com", ip: `10.0.0.${i}` })).allowed, true);
+  assert.equal((await rl.checkRegister({ email: "same@x.com ", ip: "10.0.1.1" })).allowed, false);
+  assert.equal((await rl.checkRegister({ email: "other@x.com", ip: "10.0.1.1" })).allowed, true);
+  for (let i = 0; i < 20; i += 1) assert.equal((await rl.checkRegister({ email: "", ip: "10.0.2.1" })).allowed, true);
+});
+
+test("register: 300 per IP per 10 minutes, 1000 per day; reset request: 10 per IP per 10 minutes", async () => {
+  const { clock, limiter: rl } = limiter();
+  let sent = 0;
+  const register = () => rl.checkRegister({ email: `r${sent += 1}@x.com`, ip: "3.3.3.3" });
+  for (let i = 0; i < AUTH_RATE_RULES.registerPerIpShort.limit; i += 1) assert.equal((await register()).allowed, true);
+  assert.equal((await register()).allowed, false);
+  let passed = AUTH_RATE_RULES.registerPerIpShort.limit;
+  for (let window = 0; window < 4; window += 1) {
+    clock(10 * 60 * 1000);
+    for (let i = 0; i < AUTH_RATE_RULES.registerPerIpShort.limit; i += 1) if ((await register()).allowed) passed += 1;
+  }
+  assert.equal(passed, AUTH_RATE_RULES.registerPerIpDay.limit);
   for (let i = 0; i < AUTH_RATE_RULES.resetRequestPerIp.limit; i += 1) assert.equal((await rl.checkResetRequest({ ip: "3.3.3.3" })).allowed, true);
   assert.equal((await rl.checkResetRequest({ ip: "3.3.3.3" })).allowed, false);
 });
@@ -49,7 +85,7 @@ test("buckets hold only HMACs, never the raw IP or email", async () => {
   const store = createMemoryInviteAttemptStore();
   const { limiter: rl } = limiter(store);
   await rl.checkLogin({ email: "secret@x.com", ip: "203.0.113.5" });
-  await rl.recordLoginFailure({ email: "secret@x.com" });
+  await rl.recordLoginFailure({ email: "secret@x.com", ip: "203.0.113.5" });
   const keys = [...store.rows.keys()].join(" ");
   assert.ok(keys.startsWith("auth-"));
   assert.ok(!keys.includes("secret") && !keys.includes("203.0.113.5"));
@@ -58,7 +94,7 @@ test("buckets hold only HMACs, never the raw IP or email", async () => {
 test("unconfigured (no AUTH_SECRET) allows everything; 429 response carries Retry-After", async () => {
   setAuthRateLimiterForTests(null);
   const open = await getAuthRateLimiter({});
-  assert.equal((await open.checkRegister({ ip: "x" })).allowed, true);
+  assert.equal((await open.checkRegister({ email: "x@x.com", ip: "x" })).allowed, true);
   const response = authRateLimitedResponse(42);
   assert.equal(response.status, 429);
   assert.equal(response.headers.get("retry-after"), "42");

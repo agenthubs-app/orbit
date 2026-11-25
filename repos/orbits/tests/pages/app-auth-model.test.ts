@@ -8,8 +8,7 @@ import {
   authTitleId,
   validateEmail,
   validatePassword,
-  validateResetPair,
-} from "../../app/(app)/app/orbit-2026/auth-public/auth-model";
+  validateResetPair, registerErrorCopy } from "../../app/(app)/app/orbit-2026/auth-public/auth-model";
 
 // 认证弹窗 任务 2：auth-model 纯函数（设计 renderVals 496 validEmail / 526–529 校验文案 / 517–520 按钮文案）。
 
@@ -65,4 +64,12 @@ test("authTitleId is one id per view (aria-labelledby target)", () => {
 test("AUTH_ERROR_COPY is the single source for the hook's login-failure / 409 copy (任务 3 撤桥后设计 526–527 逐字)", () => {
   assert.equal(AUTH_ERROR_COPY.loginFailed.zh, "邮箱或密码不正确，请重试。");
   assert.equal(AUTH_ERROR_COPY.emailTaken.zh, "该邮箱已注册，请直接登录。");
+});
+
+test("register error copy: every case has zh / ja / en, and no case reads as a wrong password", () => {
+  for (const [status, code] of [[409, "CONFLICT"], [429, "RATE_LIMITED"], [400, "VALIDATION_ERROR"], [401, "UNAUTHORIZED"], [503, "SERVICE_UNAVAILABLE"], [500, undefined]] as const) {
+    const copy = registerErrorCopy(status, code);
+    assert.ok(copy.zh && copy.ja && copy.en, String(status));
+    assert.notEqual(copy, AUTH_ERROR_COPY.loginFailed);
+  }
 });

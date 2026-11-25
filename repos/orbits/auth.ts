@@ -55,7 +55,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         });
 
         if (result.state !== "success") {
-          if (result.error.code !== "AUTH_LIVE_STORE_UNCONFIGURED") await limiter.recordLoginFailure({ email });
+          if (result.error.code !== "AUTH_LIVE_STORE_UNCONFIGURED") await limiter.recordLoginFailure({ email, ip: authClientIp(request.headers) });
           // authorize 返回 null 即 401;具体原因不外泄,防账号枚举。
           return null;
         }

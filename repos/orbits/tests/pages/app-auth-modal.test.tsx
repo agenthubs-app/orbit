@@ -324,8 +324,55 @@ test("overlay: a click inside the panel does not close; mousedown in the panel r
   });
 });
 
+async function agree(renderer: ReactTestRenderer): Promise<void> {
+  const box = renderer.root.find((node) => node.type === "button" && node.props.role === "checkbox");
+  await act(async () => { box.props.onClick(); });
+}
+
+const CONSENT = "请先勾选同意使用条款和隐私政策。";
+
+test("register: an unticked consent says why on submit, without any network call; ticking clears it", async () => {
+  await withModal("register", "", { credentials: "success" }, async (renderer, harness) => {
+    const primary = renderer.root.find((node) => node.type === "button" && node.props.type === "submit");
+    assert.equal(primary.props.disabled, false, "the button answers instead of sitting grey");
+    await submit(renderer);
+    assert.deepEqual(alerts(renderer), ["请输入有效的邮箱地址。", CONSENT]);
+    await fill(renderer, "new@example.invalid", "password-123");
+    await submit(renderer);
+    assert.deepEqual(alerts(renderer), [CONSENT]);
+    assert.equal(harness.observed.length, 0);
+    await agree(renderer);
+    assert.deepEqual(alerts(renderer), []);
+    await submit(renderer);
+    assert.ok(harness.observed.some((call) => call.url === "/api/auth/register"));
+  });
+});
+
+test("register SSR: the consent text labels the checkbox, the form posts, and fields wait for hydration", () => {
+  const html = renderToStaticMarkup(<AuthModal defaultNext="/app/home" view="register" />);
+  const label = /<label class="au-consent">([\s\S]*?)<\/label>/u.exec(html)?.[1] ?? "";
+  assert.match(label, /role="checkbox"/u);
+  assert.match(label, /href="\/terms"/u);
+  assert.match(label, /href="\/privacy"/u);
+  assert.match(html, /<form[^>]*method="post"/u);
+  assert.match(html, /<fieldset class="au-fields" disabled=""/u);
+  assert.match(html, /<button class="btn au-btn-primary" disabled=""[^>]*>/u);
+});
+
+test("register and login switch to each other without losing next", async () => {
+  await withModal("register", `?next=${encodeURIComponent(NEXT)}`, {}, async (renderer) => {
+    const hrefs = renderer.root.findAll((node) => node.type === "a").map((node) => node.props.href);
+    assert.ok(hrefs.includes(`/app/account/login?next=${encodeURIComponent(NEXT)}`));
+  });
+  await withModal("login", `?next=${encodeURIComponent(NEXT)}`, {}, async (renderer) => {
+    const hrefs = renderer.root.findAll((node) => node.type === "a").map((node) => node.props.href);
+    assert.ok(hrefs.includes(`/app/account/signup?next=${encodeURIComponent(NEXT)}`));
+  });
+});
+
 test("register: local validation, then POST /api/auth/register + auto sign-in + continuation with ✓ 账号已创建", async () => {
   await withModal("register", `?next=${encodeURIComponent(NEXT)}`, { credentials: "success" }, async (renderer, harness) => {
+    await agree(renderer);
     await fill(renderer, "new@example.invalid", "1234567");
     await submit(renderer);
     assert.deepEqual(alerts(renderer), ["密码至少 8 位。"]);
@@ -342,19 +389,27 @@ test("register: local validation, then POST /api/auth/register + auto sign-in + 
   });
 });
 
-test("register: 409 shows the design copy 该邮箱已注册，请直接登录。; other server messages pass through verbatim", async () => {
-  await withModal("register", "", { register: () => Response.json({ success: false }, { status: 409 }) }, async (renderer, harness) => {
-    await fill(renderer, "dup@example.invalid", "password-123");
-    await submit(renderer);
-    assert.deepEqual(alerts(renderer), ["该邮箱已注册，请直接登录。"]);
-    assert.equal(harness.observed.some((call) => call.url.includes("/callback/credentials")), false);
-    assert.equal(submitLabel(renderer), "创建账号");
-  });
-  await withModal("register", "", { register: () => Response.json({ success: false, error: { message: "Password too weak" } }, { status: 422 }) }, async (renderer) => {
-    await fill(renderer, "dup@example.invalid", "password-123");
-    await submit(renderer);
-    assert.deepEqual(alerts(renderer), ["Password too weak"]);
-  });
+test("register: failures read from status and code in the page language; the server's own words never show", async () => {
+  const cases = [
+    [409, "CONFLICT", "该邮箱已注册，请直接登录。"],
+    [429, "RATE_LIMITED", "尝试次数过多，请过几分钟再试。"],
+    [400, "VALIDATION_ERROR", "请检查邮箱地址，密码至少 8 位。"],
+    [422, undefined, "请检查邮箱地址，密码至少 8 位。"],
+    // 账号开通不了（身份清除中 / 状态读不到）时服务端回 401：不是「邮箱或密码不正确」。
+    [401, "UNAUTHORIZED", "暂时无法创建这个账号，请稍后再试。"],
+    [503, "SERVICE_UNAVAILABLE", "暂时无法创建这个账号，请稍后再试。"],
+    [500, "INTERNAL_ERROR", "注册失败，请稍后再试。"],
+  ] as const;
+  for (const [status, code, expected] of cases) {
+    await withModal("register", "", { register: () => Response.json({ success: false, error: { code, message: "Email or password is incorrect." } }, { status }) }, async (renderer, harness) => {
+      await agree(renderer);
+      await fill(renderer, "dup@example.invalid", "password-123");
+      await submit(renderer);
+      assert.deepEqual(alerts(renderer), [expected], String(status));
+      assert.equal(harness.observed.some((call) => call.url.includes("/callback/credentials")), false);
+      assert.equal(submitLabel(renderer), "创建账号");
+    });
+  }
 });
 
 // ============================================================================

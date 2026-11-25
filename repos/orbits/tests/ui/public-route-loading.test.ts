@@ -53,5 +53,5 @@ test("the public events nav folds on the landing's phone breakpoint: no middle l
   // .lpNav prefix + doubled class: `.links` also carries `.row { display: flex }` and the button `.btn.btn { display: inline-flex }`; same weight would let bundle order decide.
   assert.match(nav, /@media \(max-width: 700px\) \{ \.lpNav \.links\.links, \.lpNav \.start\.start \{ display: none; \} \}/u);
   const tsx = readFileSync(new URL("../../app/(app)/app/orbit-2026/events/PublicEvents.tsx", import.meta.url), "utf8");
-  assert.match(tsx, /\$\{p\.start\}`\} href="\/app\/account\/signup"/u);
+  assert.match(tsx, /\$\{p\.start\}`\} href=\{authRoutePath\("register", next\)\}/u);
 });

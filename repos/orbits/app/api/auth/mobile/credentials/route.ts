@@ -27,7 +27,7 @@ export async function POST(request: Request): Promise<Response> {
   });
 
   if (result.success === false) {
-    if (result.error.appCode === "UNAUTHORIZED") await limiter.recordLoginFailure({ email });
+    if (result.error.appCode === "UNAUTHORIZED") await limiter.recordLoginFailure({ email, ip: authClientIp(request.headers) });
     return mobileAuthFailureResponse(result, mode);
   }
 

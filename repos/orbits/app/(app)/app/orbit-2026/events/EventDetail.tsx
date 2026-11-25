@@ -515,7 +515,7 @@ export function PhoneDetailBody({ data, language, t, onRegister, onOpenPerson, a
   ].filter((fact) => fact.text);
   const going = !ended && !live && (status === "registered" || status === "pending_review" || status === "waitlisted");
   const bar: { label: string; href?: string; onClick?: () => void; star?: boolean } | null = ended ? null
-    : status === "none" ? (canRegister ? { label: data.signedOut ? t("loginRegister") : t("register"), onClick: onRegister, star: true } : null)
+    : status === "none" ? (canRegister ? { label: data.signedOut ? t("signupRegister") : t("register"), onClick: onRegister, star: true } : null)
       : live && (status === "registered" || status === "attended") ? { href: `/app/events/${id}/live`, label: t("goVenue") }
         : status === "registered" || status === "pending_review" ? { href: `/app/events/${id}/prep`, label: t("goPrep") } : null;
   return (

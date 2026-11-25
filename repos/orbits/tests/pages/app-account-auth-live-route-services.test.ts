@@ -176,6 +176,9 @@ async function fillAuthForm(root: ReactTestRenderer, email: string, password: st
     inputById(root, "au-email").props.onChange({ target: { value: email } });
     if (password) inputById(root, "au-password").props.onChange({ target: { value: password } });
   });
+  // 注册屏要先勾同意；登录 / 找回没有这一项。
+  const consent = root.root.findAll((node) => node.type === "button" && node.props.role === "checkbox")[0];
+  if (consent && consent.props["aria-checked"] === false) await act(async () => { consent.props.onClick(); });
 }
 
 async function submitAuthForm(root: ReactTestRenderer) {
