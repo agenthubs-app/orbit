@@ -1,3 +1,4 @@
+import { appRouteParams } from "./app-routes";
 import { taskListHref } from "./task-list-scope";
 
 const PRIVATE_ROUTE_PREFIXES = [
@@ -24,25 +25,6 @@ const PRIVATE_ROUTE_PREFIXES = [
 ] as const;
 
 const PUBLIC_ROUTE_EXCEPTIONS = new Set(["/admin/access", "/settings/help", "/settings/terms", "/settings/privacy"]);
-const NO_PATH_PARAM_KEYS = new Set<string>();
-const ID_PATH_PARAM_KEYS = new Set(["id"]);
-const CODE_PATH_PARAM_KEYS = new Set(["code"]);
-const SLUG_PATH_PARAM_KEYS = new Set(["slug"]);
-const INTAKE_PATH_PARAM_KEYS = new Set(["intakeId"]);
-const DRAFT_PATH_PARAM_KEYS = new Set(["draftId"]);
-const PLAN_TYPE_PATH_PARAM_KEYS = new Set(["planId", "itemId"]);
-const PLAN_PATH_PARAM_KEYS = new Set(["planId"]);
-const BATCH_PATH_PARAM_KEYS = new Set(["batchId"]);
-const STATIC_CONTACT_ROUTES = new Set([
-  "all-actions",
-  "dashboard",
-  "graph",
-  "list",
-  "new",
-  "pipeline"
-]);
-const STATIC_EVENT_ROUTES = new Set(["center"]);
-
 function appRelativePath(pathname: string): string {
   const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
 
@@ -57,80 +39,6 @@ function appRelativePath(pathname: string): string {
 
 function matchesPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
-}
-
-function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
-  const segments = appRelativePath(pathname).split("/").filter(Boolean);
-  const [root, detail, leaf] = segments;
-  if (root === "events" && detail && leaf === "participants" && segments.length === 4) return new Set(["id", "participantId"]);
-  // R23: the plan flow and the draft editor keep their id in the path.
-  if (root === "plans" && detail === "flow" && segments.length === 3) return INTAKE_PATH_PARAM_KEYS;
-  if (root === "plans" && detail === "drafts" && segments.length === 4 && segments[3] === "edit") return DRAFT_PATH_PARAM_KEYS;
-  // R24: the person-type page keeps both ids in the path.
-  if (root === "plans" && detail !== "flow" && detail !== "drafts" && leaf === "types" && segments.length === 4) return PLAN_TYPE_PATH_PARAM_KEYS;
-  // R25: 見直し, 完了 and 以前のプラン keep the plan id in the path.
-  if (root === "plans" && detail !== "flow" && detail !== "drafts" && detail !== "legacy" && (leaf === "review" || leaf === "done") && segments.length === 3) return PLAN_PATH_PARAM_KEYS;
-  if (root === "plans" && detail === "legacy" && segments.length === 3) return PLAN_PATH_PARAM_KEYS;
-
-  if ((root === "tasks" && detail !== undefined && detail !== "personal" && segments.length === 2) ||
-    (root === "tasks" && detail === "relationship" && leaf !== undefined && segments.length === 3) ||
-    (root === "schedule" && detail === "personal" && leaf !== undefined && leaf !== "new" && (segments.length === 3 || (segments.length === 4 && segments[3] === "edit")))) return ID_PATH_PARAM_KEYS;
-
-  // R12: the 名刺 batch page keeps the batch id in the path.
-  if (root === "contacts" && detail === "new" && leaf === "scan" && segments.length === 4) {
-    return BATCH_PATH_PARAM_KEYS;
-  }
-
-  if (
-    segments.length === 2 &&
-    (root === "ai" ||
-      root === "chat" ||
-      (root === "contacts" &&
-        detail !== undefined &&
-        !STATIC_CONTACT_ROUTES.has(detail)))
-  ) {
-    return ID_PATH_PARAM_KEYS;
-  }
-
-  if (
-    root === "events" &&
-    detail !== undefined &&
-    !STATIC_EVENT_ROUTES.has(detail) &&
-    (segments.length === 2 ||
-      (segments.length === 3 &&
-        (leaf === "analytics" || leaf === "attendees" || leaf === "edit" || leaf === "live" || leaf === "register" || leaf === "operations")) ||
-      (segments.length === 4 &&
-        segments[2] === "operations" &&
-        (segments[3] === "admission" ||
-          segments[3] === "check-in" ||
-          segments[3] === "experience" ||
-          segments[3] === "roles")))
-  ) {
-    return ID_PATH_PARAM_KEYS;
-  }
-
-  if (
-    root === "schedule" &&
-    (detail === "events" || detail === "meetings") &&
-    leaf !== undefined &&
-    segments.length === 3
-  ) {
-    return ID_PATH_PARAM_KEYS;
-  }
-
-  // R17: 主催者ページ編集 keeps the profile id in the path; 共同運営に参加 keeps the invite code.
-  if (root === "events" && detail === "center" && leaf === "profiles" && segments.length === 4) return ID_PATH_PARAM_KEYS;
-  if (root === "host" && detail === "join" && segments.length === 3) return CODE_PATH_PARAM_KEYS;
-
-  if (root === "register" && detail !== undefined && segments.length === 2) {
-    return CODE_PATH_PARAM_KEYS;
-  }
-
-  if ((root === "o" || root === "e") && detail !== undefined && segments.length === 2) {
-    return SLUG_PATH_PARAM_KEYS;
-  }
-
-  return NO_PATH_PARAM_KEYS;
 }
 
 export function isPrivateMobileRoute(pathname: string): boolean {
@@ -157,7 +65,7 @@ export function mobileAuthReturnHref(
   params: Record<string, string | string[] | undefined> = {}
 ): string {
   const route = appRelativePath(pathname);
-  const pathParamKeys = pathParamKeysForMobileRoute(route);
+  const pathParamKeys = new Set(appRouteParams(route) ?? []);
   if (route === "/tasks") return taskListHref(params);
   if (route === "/followups") return taskListHref({ scope: "relationship", view: params.view });
   const search = new URLSearchParams();
@@ -189,31 +97,7 @@ export function mobileAuthReturnHref(
     : `${href}#${encodeURIComponent(fragment)}`;
 }
 
-/**
- * Event and invite links are usually opened by people without an account: signed out they land on signup.
- * Every other private page goes to login. (Web has public event pages instead: their register buttons open signup, its proxy stays on login.)
- */
-export function isSignupFirstRoute(
-  pathname: string,
-  params: Record<string, string | string[] | undefined> = {}
-): boolean {
-  const route = appRelativePath(pathname).replace(/(?<=.)\/+$/u, "");
-  // 参加コード入力: what `/register` without a code opens.
-  if (route === "/events/assess") return [params.mode].flat()[0] === "code";
-  return /^\/events\/(?!center$)[^/]+(?:\/register)?$/u.test(route) ||
-    /^\/register(?:\/[^/]+)?$/u.test(route) ||
-    /^\/host\/join\/[^/]+$/u.test(route);
-}
-
-/** Where a signed-out person is sent from a private route, keeping the way back in `next`. */
-export function mobileSignInHref(
-  pathname: string,
-  params: Record<string, string | string[] | undefined> = {}
-): string {
-  if (!isSignupFirstRoute(pathname, params)) return mobileLoginHref(pathname, params);
-  return `/account/signup?next=${encodeURIComponent(mobileAuthReturnHref(pathname, params))}`;
-}
-
+/** Where a signed-out person is sent from a private page, keeping the way back in `next`. Sign-up is one tap from there and keeps it too. */
 export function mobileLoginHref(
   pathname: string,
   params: Record<string, string | string[] | undefined> = {}

@@ -1,4 +1,4 @@
-import { resolveSupportedInitialRouteHref } from "./initial-route";
+import { DEFAULT_RETURN_HREF, returnHref } from "./return-href";
 import { createTranslator, type MessageKey, type OrbitTranslator } from "../i18n/messages";
 
 export type AccountAuthMode = "forgot" | "login" | "signup";
@@ -42,7 +42,7 @@ interface AccountAuthOptions {
   t?: OrbitTranslator;
 }
 
-const defaultNext = "/home";
+const defaultNext = DEFAULT_RETURN_HREF;
 /** One-use, in-process hand-over of the typed email between login and signup; never in the URL. */
 let signupFallback: { email: string; next: string; expiresAt: number } | null = null;
 
@@ -70,13 +70,6 @@ export function accountAuthPasswordError(password: string): "too-short" | "too-l
   if (new TextEncoder().encode(password).byteLength > 72) return "too-long";
   return null;
 }
-const authEntryPaths = new Set([
-  "/account/forgot-password",
-  "/account/reset-password",
-  "/account/login",
-  "/account/signup"
-]);
-
 function modeCopy(t: OrbitTranslator): Record<
   AccountAuthMode,
   Omit<
@@ -151,15 +144,15 @@ function oauthActionsForMode(
   return [{ id: "google", label: t("auth.google") }];
 }
 
+/** Where signing in or up leads back to: the page the person came from, or Home. */
 export function normalizedNext(next: string | undefined): string {
-  const supported = resolveSupportedInitialRouteHref(next?.trim());
-  const pathname = supported?.split(/[?#]/u, 1)[0];
+  return returnHref(next) ?? defaultNext;
+}
 
-  if (!supported || !pathname || authEntryPaths.has(pathname)) {
-    return defaultNext;
-  }
-
-  return supported;
+/** The login page that comes back to `href` (Home when there is nothing to come back to). */
+export function loginHrefReturningTo(href: string | null | undefined): string {
+  const next = returnHref(href);
+  return next && next !== defaultNext ? `/account/login?next=${encodeURIComponent(next)}` : "/account/login";
 }
 
 export function accountAuthToView(

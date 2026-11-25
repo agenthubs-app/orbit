@@ -15,6 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { reportRegisterOpened, signupSourceOf, signupVisitorId } from "../../api/signup-funnel";
+import { authReturnStorage } from "../../storage/auth-return-storage";
+import { profileOnboardingStorage } from "../../storage/profile-onboarding-storage";
 import { LinkedTerms } from "../../email-verification/LinkedTerms";
 import { MailSentDialog } from "../../email-verification/MailSentDialog";
 import type { PasswordResetResponse } from "../../api/contract/password-reset";
@@ -153,6 +155,11 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   // Once per opening of the page, not per change of `next`.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, server.baseUrl, server.ready]);
+  // The popup is the only thing between the new account and onboarding: closing the App there keeps the way back.
+  const returnScope = mailSent && auth.actorId ? auth.actorId : null;
+  useEffect(() => {
+    if (returnScope) void profileOnboardingStorage.writeReturn({ actorId: returnScope, baseUrl: server.baseUrl }, next);
+  }, [next, returnScope, server.baseUrl]);
   const accepted = mode === "forgot" && notice !== null;
 
   if (authScopeRef.current !== authScopeKey) {
@@ -218,7 +225,10 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         if (!result.success) setError(result.status >= 500 ? locale.t("auth.forgotUnavailable") : result.error.code === "ORBIT_APP_NETWORK_ERROR" ? locale.t("auth.networkFailure") : locale.t("auth.pendingUnconfirmed"));
         else if (typeof result.data?.message !== "string" || !result.data.message.trim() || result.status >= 400) {
           setError(locale.t("auth.pendingUnconfirmed"));
-        } else setNotice(locale.t("auth.forgotAccepted"));
+        } else {
+          setNotice(locale.t("auth.forgotAccepted"));
+          void authReturnStorage.remember(next);
+        }
       } catch {
         if (isCurrent()) setError(locale.t("auth.networkFailure"));
       } finally {
@@ -314,6 +324,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     setError(null);
 
     try {
+      await authReturnStorage.remember(next);
       const result = await auth.startGoogleSignIn({ redirectTo: next, signup: { source: signupSourceOf(next), visitorId: await signupVisitorId() } });
 
       if (!isCurrent()) return;

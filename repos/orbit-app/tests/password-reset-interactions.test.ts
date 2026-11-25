@@ -139,6 +139,18 @@ test("request form sends email only, locks same-tick duplicates and stays on gen
   assert.ok(await page.evaluate(() => (window as any).fixture.navigation.at(-1) === "/account/login?next=%2Fhome"));
 });
 
+test("the way back survives the mail: asked for with it, the reset page's login carries it; a link in the address wins", async t => {
+  const page = await open(t);
+  await page.evaluate(() => (window as any).fixture.update({ params: { next: "/events/event-1?tab=people" } }));
+  await fill(page, "邮箱", "account@example.test");
+  await duplicate(page, "申请重置密码");
+  await reply(page, 0);
+  await page.getByText(acceptedMessage, { exact: true }).waitFor();
+  await page.evaluate(() => (window as any).fixture.update({ mode: "reset", params: { next: "/task?seg=memo" } }));
+  await page.getByRole("link", { name: "返回登录" }).click();
+  assert.equal(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), "/account/login?next=%2Ftask%3Fseg%3Dmemo");
+});
+
 test("request unavailable and malformed successes stay retryable with visible failures", async t => {
   const page = await open(t);
   await fill(page, "邮箱", "unknown@example.test");

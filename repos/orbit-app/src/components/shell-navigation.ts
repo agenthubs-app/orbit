@@ -33,6 +33,17 @@ export function trackRootNavigationState(state: unknown): void {
   latestRootState = state as NavState;
 }
 
+let latestHref: string | null = null;
+
+/** The page being looked at, with its query (OnboardingGateRedirect mirrors it): where a sign-in forced from outside the pages comes back to. */
+export function trackCurrentHref(href: string): void {
+  latestHref = href;
+}
+
+export function currentHref(): string | null {
+  return latestHref;
+}
+
 type ResetRouter = { dismissAll?: () => void; replace: (href: never) => void };
 
 /**

@@ -6,7 +6,7 @@ import * as React from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 import ts from "typescript";
 import { onboardingExemptRoute } from "../src/onboarding/onboarding-gate";
-import { mobileSignInHref } from "../src/view-models/mobile-route-access";
+import { mobileLoginHref } from "../src/view-models/mobile-route-access";
 import { renderToHtml } from "./helpers/render";
 
 function privateAccountHtml(auth: { ready: boolean; signedIn: boolean }, pathname = "/settings/integrations", params: Record<string, string> = {}, gate = auth.signedIn ? "clear" : "off"): string {
@@ -24,7 +24,7 @@ function privateAccountHtml(auth: { ready: boolean; signedIn: boolean }, pathnam
     if (name.endsWith("/AuthSessionProvider")) return { useOrbitAuthSession: () => auth };
     if (name.endsWith("/tokens")) return { spacing: { md: 12, sm: 8 }, typography: { body: 14 } };
     if (name.endsWith("/theme")) return { useOrbitTheme: () => ({ colors }), createThemedStyles: (factory: (value: unknown) => unknown) => () => ({ colors, styles: factory(colors) }) };
-    if (name.endsWith("/mobile-route-access")) return { mobileSignInHref };
+    if (name.endsWith("/mobile-route-access")) return { mobileLoginHref };
     if (name.endsWith("/OnboardingGateProvider")) return { useOnboardingGate: () => ({ status: gate }) };
     if (name.endsWith("/onboarding-gate")) return { onboardingExemptRoute };
     if (name.endsWith("/shell-navigation")) return { rootStackScreenOptions: () => ({}) };
@@ -42,9 +42,9 @@ test("R18a private account surfaces redirect signed-out users without rendering 
   assert.ok(!html.includes("PRIVATE_ACCOUNT_CONTENT"));
   assert.ok(!html.includes("checkingSignIn"));
 });
-test("a signed-out event link lands on signup with the way back; the event's workspace still goes to login", () => {
+test("a signed-out event link lands on login with the way back, like every other private page", () => {
   const signedOut = { ready: true, signedIn: false };
-  assert.ok(privateAccountHtml(signedOut, "/events/event-1/register", { id: "event-1" }).includes('data-redirect="/account/signup?next=%2Fevents%2Fevent-1%2Fregister"'));
+  assert.ok(privateAccountHtml(signedOut, "/events/event-1/register", { id: "event-1" }).includes('data-redirect="/account/login?next=%2Fevents%2Fevent-1%2Fregister"'));
   assert.ok(privateAccountHtml(signedOut, "/events/event-1/operations", { id: "event-1" }).includes('data-redirect="/account/login?next=%2Fevents%2Fevent-1%2Foperations"'));
   assert.ok(privateAccountHtml({ ready: true, signedIn: true }, "/events/event-1/register", { id: "event-1" }).includes("PRIVATE_ACCOUNT_CONTENT"));
 });

@@ -99,7 +99,7 @@ test("mobile Google broker route falls back to the native login screen", () => {
 
   const routeSource = readFileSync(mobileGoogleRoutePath, "utf8");
   assert.match(routeSource, /Redirect/u);
-  assert.match(routeSource, /href="\/account\/login"/u);
+  assert.match(routeSource, /authReturnStorage\.read\(\).*loginHrefReturningTo\(next\)/u);
 });
 
 test("account auth screen is brand-first without explainer or status cards", () => {

@@ -7,8 +7,7 @@ import test from "node:test";
 import {
   isPrivateMobileRoute,
   mobileAuthReturnHref,
-  mobileLoginHref,
-  mobileSignInHref
+  mobileLoginHref
 } from "../src/view-models/mobile-route-access";
 import {
   nextHrefForAccountAuthSubmit,
@@ -220,7 +219,7 @@ test("root navigator stays mounted while grouped and root-level private entries 
     boundarySource,
     /export function OrbitRouteAccessBoundary\(\) \{\s*const \{ colors \} = useOrbitTheme\(\);\s*return <Stack screenOptions=/u
   );
-  assert.match(boundarySource, /return <Redirect href=\{mobileSignInHref/u);
+  assert.match(boundarySource, /return <Redirect href=\{mobileLoginHref/u);
   assert.match(boundarySource, /withOrbitPrivateRoute/u);
   assert.match(appGroupSource, /return <Stack screenOptions=/u);
   assert.doesNotMatch(appGroupSource, /OrbitPrivateRouteBoundary/u);
@@ -384,35 +383,30 @@ test("every root-level private entry uses the shared render gate", () => {
     assert.match(source, /withOrbitPrivateRoute/u, path);
   }
 });
-test("event and invite entries send signed-out people to signup; other private pages to login", () => {
+test("every private page sends signed-out people to login with the way back, which survives sign-in and onboarding", () => {
   for (const [pathname, params, next] of [
     ["/events/event-1", { id: "event-1", tab: "details" }, "/events/event-1?tab=details"],
     ["/app/events/event-1", { id: "event-1" }, "/events/event-1"],
     ["/events/event-1/register", { id: "event-1", step: "questions" }, "/events/event-1/register?step=questions"],
+    ["/events/event-1/people", { id: "event-1", q: "a b" }, "/events/event-1/people?q=a+b"],
     ["/register/invite-1", { code: "invite-1", source: "qr" }, "/register/invite-1?source=qr"],
     ["/events/assess", { mode: "code" }, "/events/assess?mode=code"],
-    ["/host/join/H7KQ-M2TR", { code: "H7KQ-M2TR" }, "/host/join/H7KQ-M2TR"]
+    ["/events/assessments/a1", { id: "a1" }, "/events/assessments/a1"],
+    ["/host/join/H7KQ-M2TR", { code: "H7KQ-M2TR" }, "/host/join/H7KQ-M2TR"],
+    ["/events/center/profiles/p1", { id: "p1" }, "/events/center/profiles/p1"],
+    ["/contacts/edit/c1", { id: "c1" }, "/contacts/edit/c1"],
+    ["/notes/n1/edit", { id: "n1" }, "/notes/n1/edit"],
+    ["/inbox/notifications/n1", { id: "n1" }, "/inbox/notifications/n1"],
+    ["/plans/flow/i1", { intakeId: "i1" }, "/plans/flow/i1"],
+    ["/settings/schedule", {}, "/settings/schedule"],
+    ["/settings/privacy-center", { section: "privacy-center" }, "/settings/privacy-center"],
+    ["/profile/edit", {}, "/profile/edit"],
+    ["/account/exports", {}, "/account/exports"],
+    ["/search", { q: "VC" }, "/search?q=VC"]
   ] as const) {
-    assert.equal(mobileSignInHref(pathname, params), `/account/signup?next=${encodeURIComponent(next)}`, pathname);
-    // …and the way back survives signup and onboarding.
+    assert.equal(mobileLoginHref(pathname, params), `/account/login?next=${encodeURIComponent(next)}`, pathname);
     assert.equal(normalizedNext(next), next, pathname);
     assert.equal(onboardingDestination(next), next, pathname);
-  }
-  for (const [pathname, params] of [
-    ["/events/center", {}],
-    ["/events/center/new", {}],
-    ["/events/assess", {}],
-    ["/events/assessments/a1", { id: "a1" }],
-    ["/events/event-1/live", { id: "event-1" }],
-    ["/events/event-1/attendees", { id: "event-1" }],
-    ["/events/event-1/operations", { id: "event-1" }],
-    ["/host/join", {}],
-    ["/party/checkin", { code: "event-1" }],
-    ["/contacts/contact-1", { id: "contact-1" }],
-    ["/home", {}]
-  ] as const) {
-    assert.equal(mobileSignInHref(pathname, params), mobileLoginHref(pathname, params), pathname);
-    assert.match(mobileSignInHref(pathname, params), /^\/account\/login\?next=/u, pathname);
   }
 });
 
@@ -440,5 +434,6 @@ test("compatibility routes stay actor-private and retain deep-link context throu
     `/account/login?next=${encodeURIComponent(profileContinue)}`
   );
   assert.equal(normalizedNext(agentEntry), agentEntry);
-  assert.equal(normalizedNext(profileContinue), profileContinue);
+  // A page of the flow is never the target: what it carries is.
+  assert.equal(normalizedNext(profileContinue), "/events/event-1?tab=details");
 });

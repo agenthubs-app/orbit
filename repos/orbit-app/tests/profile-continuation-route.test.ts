@@ -31,7 +31,7 @@ test("profile continuation rejects external, unknown and authentication destinat
     "https://untrusted.test/path",
     "//untrusted.test/path",
     "/not-a-native-route",
-    "/account/login?next=%2Fhome",
+    "/account/login",
     "/account/signup",
     "/account/reset-password#token=secret",
     "/login-admin"
@@ -40,16 +40,15 @@ test("profile continuation rejects external, unknown and authentication destinat
   }
 });
 
-test("profile continuation rejects direct, nested, and recursive profile cycles", () => {
-  for (const next of [
-    "/profile",
-    "/profile/continue?next=%2Fhome",
-    "/app/profile?complete=1&next=%2Fprofile%2Fcontinue",
-    "/events/event-1?next=%2Fprofile%2Fcontinue",
-    "/events/event-1?next=%2Fprofile%3Fcomplete%3D1%26next%3D%252Fevents%252Fevent-1",
-    "/home?next=%2Fevents%2Fevent-1%3Fnext%3D%252Fprofile%252Fcontinue",
-    "/events/event-1?next=https%3A%2F%2Funtrusted.test"
-  ]) {
-    assert.equal(safeProfileContinuationNext(next), "/home", next);
-  }
+test("profile continuation unwraps the flow's own pages and never loops into them", () => {
+  for (const [next, target] of [
+    ["/profile", "/profile"],
+    ["/profile/edit", "/profile/edit"],
+    ["/profile/continue?next=%2Ftask", "/task"],
+    ["/account/login?next=%2Fprofile%2Fonboarding%3Fnext%3D%252Fevents%252Fevent-1", "/events/event-1"],
+    ["/app/profile?complete=1&next=%2Fevents%2Fevent-1", "/events/event-1"],
+    ["/app/profile?complete=1&next=%2Fprofile%2Fcontinue", "/home"],
+    ["/profile/onboarding?next=%2Fprofile%2Fonboarding", "/home"],
+    ["/account/login?next=https%3A%2F%2Funtrusted.test", "/home"]
+  ] as const) assert.equal(safeProfileContinuationNext(next), target, next);
 });

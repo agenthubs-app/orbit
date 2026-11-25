@@ -78,12 +78,12 @@ test("goals of earlier lists have no card: their text stays in the one line", ()
   assert.deepEqual(onboardingGoals("自由文字"), { goals: [], focus: "自由文字", horizon: "" });
 });
 
-test("destination keeps a safe next, allows the profile page and rejects loops", () => {
+test("destination keeps a safe next, allows the profile page and never loops", () => {
   assert.equal(onboardingDestination("/events/e1?tab=details"), "/events/e1?tab=details");
   assert.equal(onboardingDestination(["/events/a", "/events/b"]), "/events/a");
   assert.equal(onboardingDestination("/profile"), "/profile");
   assert.equal(onboardingDestination(undefined), "/home");
-  for (const next of ["/profile/onboarding?next=%2Fhome", "/profile/continue", "/profile?complete=1&next=%2Fprofile", "https://evil.test", "/account/login"]) {
+  for (const next of ["/profile/onboarding?next=%2Fhome", "/profile/continue", "/profile?complete=1", "https://evil.test", "/account/login"]) {
     assert.equal(onboardingDestination(next), "/home", next);
   }
 });

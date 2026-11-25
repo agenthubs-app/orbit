@@ -83,11 +83,11 @@ test("accountSessionToView gives a clear signed-out state", () => {
   assert.doesNotMatch(flattenedText(view), /小雨|创始人|Orbit Founder/u);
   assert.deepEqual(view.authActions, [
     {
-      href: "/account/login",
+      href: "/account/login?next=%2Faccount",
       label: "登录"
     },
     {
-      href: "/account/signup",
+      href: "/account/signup?next=%2Faccount",
       label: "创建账号"
     }
   ]);

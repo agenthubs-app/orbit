@@ -1,77 +1,9 @@
-import {
-  resolveSupportedInitialRouteHref,
-  type InitialRouteHref
-} from "./initial-route";
+import { DEFAULT_RETURN_HREF, returnHref } from "./return-href";
 
-const FALLBACK_DESTINATION = "/home" as const;
-const AUTH_ENTRY_PATHS = new Set([
-  "/account/forgot-password",
-  "/account/login",
-  "/account/reset-password",
-  "/account/signup",
-  "/login-admin"
-]);
-const MAX_NESTED_NEXT_DEPTH = 8;
-
-function routeParts(href: string): { pathname: string; query: string } {
-  const hashIndex = href.indexOf("#");
-  const withoutHash = hashIndex === -1 ? href : href.slice(0, hashIndex);
-  const queryIndex = withoutHash.indexOf("?");
-  return {
-    pathname: queryIndex === -1 ? withoutHash : withoutHash.slice(0, queryIndex),
-    query: queryIndex === -1 ? "" : withoutHash.slice(queryIndex + 1)
-  };
+export function safeProfileContinuationNext(next: string | string[] | undefined): string {
+  return returnHref(next) ?? DEFAULT_RETURN_HREF;
 }
 
-function safeDestination(
-  candidate: string | undefined,
-  ancestry: ReadonlySet<string> = new Set(),
-  depth = 0
-): InitialRouteHref | null {
-  if (depth > MAX_NESTED_NEXT_DEPTH) {
-    return null;
-  }
-
-  const resolved = resolveSupportedInitialRouteHref(candidate?.trim());
-  if (!resolved) {
-    return null;
-  }
-
-  const { pathname, query } = routeParts(resolved);
-  if (
-    pathname === "/profile" ||
-    pathname.startsWith("/profile/") ||
-    AUTH_ENTRY_PATHS.has(pathname)
-  ) {
-    return null;
-  }
-
-  if (ancestry.has(resolved)) {
-    return null;
-  }
-
-  const nextAncestry = new Set(ancestry);
-  nextAncestry.add(resolved);
-  for (const nestedNext of new URLSearchParams(query).getAll("next")) {
-    if (!safeDestination(nestedNext, nextAncestry, depth + 1)) {
-      return null;
-    }
-  }
-
-  return resolved;
-}
-
-export function safeProfileContinuationNext(
-  next: string | string[] | undefined
-): InitialRouteHref | typeof FALLBACK_DESTINATION {
-  const first = Array.isArray(next) ? next[0] : next;
-  return safeDestination(first) ?? FALLBACK_DESTINATION;
-}
-
-export function profileContinuationHref(
-  next: string | string[] | undefined
-): string {
-  return `/profile/onboarding?next=${encodeURIComponent(
-    safeProfileContinuationNext(next)
-  )}`;
+export function profileContinuationHref(next: string | string[] | undefined): string {
+  return `/profile/onboarding?next=${encodeURIComponent(safeProfileContinuationNext(next))}`;
 }

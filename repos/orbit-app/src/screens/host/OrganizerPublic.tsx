@@ -8,7 +8,9 @@ import { Share, View } from "react-native";
 
 import type { OrganizerPublicResponse, OrganizerPublicUpcoming } from "../../api/contract/organizer-profile";
 import { UiText, useToast } from "../../components/ui";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { mobileLoginHref } from "../../view-models/mobile-route-access";
 import { JourneyPage } from "../events/v2/JourneyPage";
 import { useHostApi } from "./host-api";
 import { useHostStyles } from "./host-ui";
@@ -21,6 +23,7 @@ export function OrganizerPublicPage() {
   const toast = useToast();
   const api = useHostApi();
   const client = useOrbitApiClient();
+  const auth = useOrbitAuthSession();
   const { slug } = useLocalSearchParams<{ slug?: string }>();
   const [data, setData] = useState<OrganizerPublicResponse | null>(null);
   const [missing, setMissing] = useState(false);
@@ -41,6 +44,7 @@ export function OrganizerPublicPage() {
   }, [api, slug]);
   const follow = async () => {
     if (!data || busy) return;
+    if (auth.ready && !auth.signedIn) { router.push(mobileLoginHref(`/o/${encodeURIComponent(String(slug ?? ""))}`) as Href); return; }
     const next = !following;
     setBusy(true); setFollowing(next);
     const res = await api.follow(data.organizerKey, next);

@@ -1,5 +1,5 @@
 import { clearInitialURL, useLinkingURL } from "expo-linking";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,6 +10,9 @@ import { createThemedStyles } from "../../design/theme";
 import { layout, spacing, typography } from "../../design/tokens";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { authReturnStorage } from "../../storage/auth-return-storage";
+import { loginHrefReturningTo } from "../../view-models/account-auth";
+import { returnHref } from "../../view-models/return-href";
 import { passwordResetFragmentFromAppLink, passwordResetTokenFromFragment, passwordResetTokenFromLink, passwordResetValidation } from "../../view-models/password-reset";
 
 export function PasswordResetScreen() {
@@ -19,7 +22,11 @@ export function PasswordResetScreen() {
   const server = useOrbitApiBaseUrl();
   const locale = useOrbitLocale();
   const router = useRouter();
-  const params = useLocalSearchParams<{ "#"?: string | string[] }>();
+  const params = useLocalSearchParams<{ "#"?: string | string[]; next?: string | string[] }>();
+  // Opened from the login page it knows where that came from; opened from the mail, this device remembers it.
+  const [remembered, setRemembered] = useState<string | null>(null);
+  useEffect(() => { void authReturnStorage.read().then(setRemembered); }, []);
+  const loginHref = loginHrefReturningTo(returnHref(params.next) ?? remembered);
   const fragment = typeof params["#"] === "string" ? params["#"] : undefined;
   const linkingUrl = useLinkingURL();
   const nativeFragment = passwordResetFragmentFromAppLink(linkingUrl);
@@ -139,7 +146,7 @@ export function PasswordResetScreen() {
     <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
       <View style={styles.header}>
         <View style={styles.brand}><Text allowFontScaling={false} style={styles.brandMark}>O</Text><Text style={styles.brandText}>Orbit</Text></View>
-        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("auth.backLabel")} onPress={() => router.canGoBack() ? router.back() : router.replace("/account/login")} style={styles.back}><Text style={styles.backText}>{locale.t("auth.backLabel")}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("auth.backLabel")} onPress={() => router.canGoBack() ? router.back() : router.replace(loginHref as Href)} style={styles.back}><Text style={styles.backText}>{locale.t("auth.backLabel")}</Text></Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <View style={styles.hero}>
@@ -160,15 +167,15 @@ export function PasswordResetScreen() {
         {error && token ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
         {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
         <View style={styles.actions}>
-        {notice ? <Pressable accessibilityRole="button" onPress={() => router.replace("/account/login")} style={styles.primary}><Text style={styles.primaryText}>{locale.t("reset.backLogin")}</Text></Pressable> : (
-          <Pressable accessibilityRole="button" accessibilityLabel={token ? locale.t("reset.submit") : error ? locale.t("auth.resetReapply") : locale.t("reset.useLink")} disabled={!ready || pending} onPress={token ? submit : error ? () => router.push("/account/forgot-password") : captureLink} style={({ pressed }) => [styles.primary, (!ready || pending) && styles.disabled, pressed && styles.pressed]}>
+        {notice ? <Pressable accessibilityRole="button" onPress={() => router.replace(loginHref as Href)} style={styles.primary}><Text style={styles.primaryText}>{locale.t("reset.backLogin")}</Text></Pressable> : (
+          <Pressable accessibilityRole="button" accessibilityLabel={token ? locale.t("reset.submit") : error ? locale.t("auth.resetReapply") : locale.t("reset.useLink")} disabled={!ready || pending} onPress={token ? submit : error ? () => router.push(loginHref.replace("/account/login", "/account/forgot-password") as Href) : captureLink} style={({ pressed }) => [styles.primary, (!ready || pending) && styles.disabled, pressed && styles.pressed]}>
             <Text style={styles.primaryText}>{pending ? locale.t("reset.pending") : token ? locale.t("auth.resetSubmit") : error ? locale.t("auth.resetReapply") : locale.t("reset.useLink")}</Text>
           </Pressable>
         )}
-        {!token && !error && !notice ? <Pressable accessibilityRole="link" onPress={() => router.push("/account/forgot-password")} style={styles.link}>
+        {!token && !error && !notice ? <Pressable accessibilityRole="link" onPress={() => router.push(loginHref.replace("/account/login", "/account/forgot-password") as Href)} style={styles.link}>
           <Text style={styles.linkText}>{locale.t("reset.reapply")}</Text>
         </Pressable> : null}
-        {!token && !notice && !error ? <Pressable accessibilityRole="link" onPress={() => router.replace("/account/login")} style={styles.link}>
+        {!token && !notice && !error ? <Pressable accessibilityRole="link" onPress={() => router.replace(loginHref as Href)} style={styles.link}>
           <Text style={styles.linkText}>{locale.t("reset.backLogin")}</Text>
         </Pressable> : null}
         </View>

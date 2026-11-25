@@ -394,6 +394,25 @@ test("with no next, finishing lands on Home as a tab page", async t => {
   assert.deepEqual((await fx(page)).navigation, ["replace:/home"]);
 });
 
+test("left half way and opened again from Home, finishing still leads to where it was first asked for, once", async t => {
+  const half = { ...withProfile({ ...complete, ...blank, relationshipGoal: "获取客户", bio: "已有介绍" }), ...flowAt(4) };
+  const first = await open(t, { ...half, next: "/events/e1?tab=people" });
+  await first.getByText("已有介绍", { exact: true }).waitFor();
+  const storage = await first.evaluate(() => (window as any).fixture.storage);
+  const again = await open(t, { ...half, next: "/home", storage });
+  await again.getByText("已有介绍", { exact: true }).waitFor();
+  await next(again).click();
+  await again.waitForFunction(() => (window as any).fixture.navigation.length === 1);
+  assert.deepEqual((await fx(again)).navigation, ["replace:/events/e1?tab=people"]);
+  assert.ok(!(await again.evaluate(() => Object.keys((window as any).fixture.storage).some(key => key.includes("onboarding-return")))));
+  // Another page asked for meanwhile wins over the remembered one.
+  const other = await open(t, { ...half, next: "/inbox/notifications/n1", storage });
+  await other.getByText("已有介绍", { exact: true }).waitFor();
+  await next(other).click();
+  await other.waitForFunction(() => (window as any).fixture.navigation.length === 1);
+  assert.deepEqual((await fx(other)).navigation, ["replace:/inbox/notifications/n1"]);
+});
+
 test("a load failure offers retry and log out, and no way past", async t => {
   const page = await open(t, { network: true });
   await page.getByText("资料暂时读取不了，请重试。", { exact: true }).waitFor();

@@ -4,7 +4,8 @@ import { currentTranslator } from "../i18n/messages";
 import { currentStandardCopy } from "../i18n/standard-copy";
 import { presentActionSheet, presentConfirm } from "../components/ui/feedback-requests";
 import { router, type Href } from "expo-router";
-import { resetStackTo } from "../components/shell-navigation";
+import { currentHref, resetStackTo } from "../components/shell-navigation";
+import { loginHrefReturningTo } from "../view-models/account-auth";
 import * as WebBrowser from "expo-web-browser";
 import { AppState, Platform } from "react-native";
 import {
@@ -877,7 +878,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       setUser(null);
       const handoff = takeDeletionRedirect();
       if (handoff) resetStackTo(router, handoff);
-      else resetStackTo(router, "/account/login");
+      else resetStackTo(router, loginHrefReturningTo(currentHref()));
     })().catch(() => console.warn("SYNC_SESSION_CLEANUP_FAILED"));
   }, [baseUrl, cookieHeader]);
 
@@ -962,7 +963,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
           setCookieHeader("");
           setOffline(false);
           setUser(null);
-          resetStackTo(router, "/account/login");
+          resetStackTo(router, loginHrefReturningTo(currentHref()));
         }
       } catch {
         // A failed check changes nothing; the next tick or foreground tries again.

@@ -118,7 +118,7 @@ test("account guest and resource failures never show stale private identity", as
   }
   await shot(page, "account-guest");
   for (const name of [/^服务器设置/, /^登录$/, /^创建账号$/]) await page.getByRole("button", { name }).click();
-  assert.deepEqual(await navigation(page), ["/settings/api", "/account/login", "/account/signup"]);
+  assert.deepEqual(await navigation(page), ["/settings/api", "/account/login?next=%2Faccount", "/account/signup?next=%2Faccount"]);
   await page.evaluate(() => (window as any).fixture.update({ signedIn: true, kind: "failure" }));
   await page.getByText("账号读取失败，请重试。", { exact: true }).waitFor();
   assert.equal(await page.getByText(/星野工作室|cheng.chuan|程川/).count(), 0);

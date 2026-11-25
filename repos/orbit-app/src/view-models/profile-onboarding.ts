@@ -277,11 +277,9 @@ export function onboardingRequired(
   return !detail.profile?.relationshipGoal.trim() || !detail.profile?.bio?.trim();
 }
 
-/** Where a finished onboarding goes: a safe next, the plain profile page, or /home. */
+/** Where a finished onboarding goes: back to the page it started from, or Home. */
 export function onboardingDestination(next: string | string[] | undefined): string {
-  const first = (Array.isArray(next) ? next[0] : next)?.trim();
-  if (first === "/profile") return "/profile";
-  return safeProfileContinuationNext(first);
+  return safeProfileContinuationNext(next);
 }
 
 /** The intro-draft endpoint writes Chinese or English (web sends "en" for every non-zh language). */

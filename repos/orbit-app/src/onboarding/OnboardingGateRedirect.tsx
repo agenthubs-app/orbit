@@ -1,7 +1,7 @@
 import { useGlobalSearchParams, usePathname, useRouter } from "expo-router";
 import { useEffect } from "react";
 
-import { resetStackTo } from "../components/shell-navigation";
+import { resetStackTo, trackCurrentHref } from "../components/shell-navigation";
 import { mobileAuthReturnHref } from "../view-models/mobile-route-access";
 import { useOnboardingGate } from "./OnboardingGateProvider";
 import { onboardingExemptRoute, onboardingGateHref } from "./onboarding-gate";
@@ -13,7 +13,9 @@ export function OnboardingGateRedirect() {
   const params = useGlobalSearchParams() as Record<string, string | string[] | undefined>;
   const router = useRouter();
   const blocked = status === "required" && !onboardingExemptRoute(pathname);
-  const href = blocked ? onboardingGateHref(mobileAuthReturnHref(pathname, params)) : null;
+  const here = mobileAuthReturnHref(pathname, params);
+  trackCurrentHref(here);
+  const href = blocked ? onboardingGateHref(here) : null;
   useEffect(() => {
     if (href) resetStackTo(router, href);
   }, [href, router]);

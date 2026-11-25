@@ -3,7 +3,7 @@ import { createTranslator, type OrbitTranslator } from "../i18n/messages";
 
 export interface AccountSessionView {
   authActions: {
-    href: "/account/login" | "/account/signup";
+    href: string;
     label: string;
   }[];
   displayName: string;
@@ -69,11 +69,11 @@ function authActions(status: string, t: OrbitTranslator): AccountSessionView["au
 
   return [
     {
-      href: "/account/login",
+      href: "/account/login?next=%2Faccount",
       label: t("auth.loginPrimary")
     },
     {
-      href: "/account/signup",
+      href: "/account/signup?next=%2Faccount",
       label: t("auth.signupPrimary")
     }
   ];

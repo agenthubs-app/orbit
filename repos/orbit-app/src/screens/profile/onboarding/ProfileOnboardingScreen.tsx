@@ -37,6 +37,7 @@ import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../../i18n/messages";
 import { useOnboardingGate } from "../../../onboarding/OnboardingGateProvider";
 import { profileOnboardingStorage, type OnboardingDraft, type OnboardingMarkedField } from "../../../storage/profile-onboarding-storage";
+import { isDefaultReturnHref } from "../../../view-models/return-href";
 import { useOrbitTimeZone } from "../../../time/OrbitTimeZoneProvider";
 import { localizeAuthMessage } from "../../../view-models/account-auth";
 import {
@@ -79,6 +80,15 @@ const DRAFT_DELAY_MS = 250;
 const SEEK_DELAY_MS = 1200;
 const SEEK_REQUEST_LIMIT = 3;
 
+/** Onboarding is over: where it leads, and nothing of it stays on the device. The address asked for now wins over a remembered one. */
+async function finishedDestination(scope: { actorId: string; baseUrl: string } | null, requested: string): Promise<string> {
+  if (!scope) return requested;
+  const remembered = isDefaultReturnHref(requested) ? await profileOnboardingStorage.readReturn(scope) : null;
+  await profileOnboardingStorage.clearDraft(scope);
+  await profileOnboardingStorage.clearReturn(scope);
+  return remembered ?? requested;
+}
+
 /** Home (or another tab page) becomes the only page, with no way back to login, signup or onboarding. */
 function leaveOnboarding(router: ReturnType<typeof useRouter>, href: string): void {
   if (isTabPageHref(href)) openMainTab(router, href);
@@ -106,6 +116,8 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   const { timeZone } = useOrbitTimeZone();
   const destination = onboardingDestination(next);
   const scope = useMemo(() => (auth.actorId ? { actorId: auth.actorId, baseUrl: server.baseUrl } : null), [auth.actorId, server.baseUrl]);
+  // Left half way — the App killed, opened again from Home — it still leads back to where it was first asked for.
+  useEffect(() => { if (scope) void profileOnboardingStorage.writeReturn(scope, destination); }, [destination, scope]);
   const mounted = useRef(true);
   // Set it again on every mount: Fast Refresh re-runs effects after their cleanup.
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -176,8 +188,8 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     flowRef.current = progress.progress;
     if (!onboardingRequired(result.detail, progress.progress)) {
       await settleRef.current("clear");
-      if (scope) await profileOnboardingStorage.clearDraft(scope);
-      if (mounted.current) leaveOnboarding(routerRef.current, destinationRef.current);
+      const target = await finishedDestination(scope, destinationRef.current);
+      if (mounted.current) leaveOnboarding(routerRef.current, target);
       return;
     }
     void settleRef.current("required");
@@ -351,9 +363,9 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
       if (finishFailure) { setNotice(finishFailure); return; }
       unsaved.current = null;
       setView("loading");
-      if (scope) await profileOnboardingStorage.clearDraft(scope);
+      const target = await finishedDestination(scope, destination);
       await gate.settle("clear");
-      leaveOnboarding(router, destination);
+      leaveOnboarding(router, target);
     } catch {
       if (mounted.current) setNotice("failed");
     } finally {

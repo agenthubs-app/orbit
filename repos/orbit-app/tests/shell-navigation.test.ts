@@ -67,7 +67,7 @@ test("every auth change resets the stack instead of replacing one page", () => {
   assert.equal((read("src/screens/profile/ChangePasswordScreen.tsx").match(/resetStackTo\(router, /gu) ?? []).length, 2, "after the change (signed in again or back to login); skip");
   assert.doesNotMatch(auth, /router\.replace\([^)]*nextHrefForAccountAuthSubmit\(\{\s*mode(?!: "forgot")/u, "no plain replace after signing in");
   const provider = read("src/api/AuthSessionProvider.tsx");
-  assert.equal((provider.match(/resetStackTo\(router, "\/account\/login"\)/gu) ?? []).length, 2, "session rejected; offline window over");
+  assert.equal((provider.match(/resetStackTo\(router, loginHrefReturningTo\(currentHref\(\)\)\)/gu) ?? []).length, 2, "session rejected; offline window over: back to the same page after signing in");
   assert.doesNotMatch(provider, /router\.replace\("\/account\/login"/u);
   for (const file of ["src/screens/me/AccountSettingsScreen.tsx", "src/screens/profile/AccountScreen.tsx", "src/screens/account-rights/PendingScreen.tsx"]) {
     assert.match(read(file), /resetStackTo\(router, "\/account\/login"\)/u, file + " signs out to login as the only page");
