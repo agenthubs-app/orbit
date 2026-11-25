@@ -117,7 +117,7 @@ const sensitivePattern =
   /\b(password|passcode|credit card|bank account|social security|passport|身份证|银行卡|密码|护照)\b/i;
 
 /**
- * 报名页（join facade）的出题计划。给了就按报名页的顺序：两道核心题 → 参会目的・想聊的话题 → 其它。
+ * 报名页（join facade）的出题计划。给了就按报名页的顺序：两道核心题 → 参加目的・想聊的话题 → 其它。
  * - `skipFields`：不要再问的字段（资料已有的 positioning / industry、主办方题已覆盖的项）。
  * - `focusFields`：满 5 题后确认页「追加」只针对缺的项追问；此时题数上限放宽到 ADAPTIVE_INTERVIEW_MAX_TURNS。
  */
@@ -241,7 +241,7 @@ function remainingFieldsFor(
     (EVENT_PROFILE_CORE_FIELDS as readonly EventParticipantProfileField[]).includes(field),
   );
   if (coreRemaining.length > 0) return coreRemaining;
-  // 报名页：核心题之后先问参会目的・想聊的话题（确认资料的两项），再是其它。
+  // 报名页：核心题之后先问参加目的・想聊的话题（确认资料的两项），再是其它。
   const secondRemaining = plan ? remaining.filter((field) => JOIN_SECOND_FIELDS.includes(field)) : [];
   return secondRemaining.length > 0 ? secondRemaining : remaining;
 }

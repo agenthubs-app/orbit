@@ -377,12 +377,14 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         : { contactId: contacts.find((contact) => contact.name.normalize("NFKC").replace(/\s+/g, "") === facts.name.normalize("NFKC").replace(/\s+/g, ""))?.id ?? null, exchange: "none" as const, known: false, request: null };
       const rec = workspace?.recommendations?.recommendations.find((item) => item.targetParticipantId === facts.attendeeId);
       const ended = eventEnded(event, at);
+      const started = at.getTime() >= Date.parse(event.startsAt);
       const endsAt = event.endsAt ?? event.startsAt;
       return {
-        answers: facts.answers.slice(0, 6).map((answer) => attendeeAnswerInLanguage(answer, language)),
+        answers: facts.answers.map((answer) => attendeeAnswerInLanguage(answer, language)),
         attendeeId: facts.attendeeId,
         // 运营服务开场前不接受交换申请：开场前也不给按钮。
-        canRequestExchange: !self && relation.exchange === "none" && at.getTime() >= Date.parse(event.startsAt) && eventExchangeOpen(endsAt, at),
+        canRequestExchange: !self && relation.exchange === "none" && started && eventExchangeOpen(endsAt, at),
+        exchangeClosedReason: self || relation.exchange !== "none" ? null : !started ? "not_started" : eventExchangeOpen(endsAt, at) ? null : "ended",
         contactId: relation.contactId,
         exchange: relation.exchange,
         exchangeUntil: ended ? eventExchangeUntil(endsAt) : null,

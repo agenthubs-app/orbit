@@ -30,7 +30,7 @@ const id = (value: string) => encodeURIComponent(value);
 export function joinApiFor(language: OrbitLanguage) {
   const headers = { "x-orbit-lang": language };
   return {
-    next: (eventId: string, answers: readonly EventJoinAnswer[], more = false) => eventsCall(`/api/events/${id(eventId)}/join/next`, { body: JSON.stringify({ answers, more }), headers, method: "POST" }, eventJoinStepSchema as ZodType<EventJoinStep>),
+    next: (eventId: string, answers: readonly EventJoinAnswer[], more = false, focus?: EventJoinProfileItemKey) => eventsCall(`/api/events/${id(eventId)}/join/next`, { body: JSON.stringify({ answers, more, ...(focus ? { focus } : {}) }), headers, method: "POST" }, eventJoinStepSchema as ZodType<EventJoinStep>),
     profile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean) => eventsCall(`/api/events/${id(eventId)}/join/profile`, { body: JSON.stringify({ answers, draft }), headers, method: "POST" }, eventJoinProfileSchema as ZodType<EventJoinProfile>),
     submit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey(), ...(selfIntro ? { selfIntro } : {}) }), headers, method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
     cancel: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/cancel`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinCancelResultSchema),
@@ -167,9 +167,9 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     setBusy(false);
   };
   // 「追加」/「質問に戻る」：访谈认为够了也再问一题（live 由 AI 决定，可能仍然结束 → 留在确认页）。
-  const askMore = async () => {
+  const askMore = async (focus?: EventJoinProfileItemKey) => {
     setBusy(true);
-    const res = await joinApi.next(eventId, answers, true);
+    const res = await joinApi.next(eventId, answers, true, focus);
     setBusy(false);
     if (res.ok) showStep(res.data); else toast.error(at("genericError"));
   };
@@ -302,6 +302,8 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
           <div key={item.key} className={`${styles.row} ${r.covRow}`}>
             <span className={item.done ? r.ok : r.missing}>{item.done ? "✓" : "△"}</span>
             <span className={item.done ? r.grow : `${r.grow} ${styles.muted}`}>{t(ITEM_LABEL[item.key])}</span>
+            {item.fromProfile ? <span className={styles.lbl} data-join-from-profile={item.key}>{t("itemFromProfile")}</span> : null}
+            {item.fromProfile ? <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} onClick={() => void askMore(item.key)}>{t("edit")}</button> : null}
             {item.done ? null : <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} onClick={() => void askMore()}>{t("add")}</button>}
           </div>
         ))}

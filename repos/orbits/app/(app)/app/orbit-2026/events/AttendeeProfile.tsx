@@ -134,6 +134,8 @@ export function AttendeeProfilePanel({ eventId, seed, language, t, onClose, tone
         {profile.exchangeUntil ? <div className={`${styles.lbl} ${r.center}`}>{t("exchangeUntil", { date: tokyoMonthDay(profile.exchangeUntil) })}</div> : null}
       </div>
     );
+  } else if (profile?.exchangeClosedReason) {
+    foot = <div className={`${styles.lbl} ${r.center}`} data-person-closed={profile.exchangeClosedReason}>{t(profile.exchangeClosedReason === "not_started" ? "exchangeNotStarted" : "exchangeEnded")}</div>;
   }
 
   return (

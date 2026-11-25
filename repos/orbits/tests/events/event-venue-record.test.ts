@@ -156,7 +156,13 @@ test("attendee profile: after 30 days no new request; before the end exchangeUnt
   assert.deepEqual([profile?.canRequestExchange, profile?.exchangeUntil], [false, "2026-11-02T12:30:00.000Z"]);
   const during = venueRecordService(() => new Date("2026-10-03T11:00:00.000Z"));
   const live = await during.attendeeProfile("actor:me", VENUE_RECORD_EVENT_ID, "vr-tanaka");
-  assert.deepEqual([live?.canRequestExchange, live?.exchangeUntil], [true, null]);
+  assert.deepEqual([live?.canRequestExchange, live?.exchangeUntil, live?.exchangeClosedReason], [true, null, null]);
+  // 2026-11-26: the reason tells 「not started yet」 from 「closed」; someone with a request already has no reason.
+  assert.equal(profile?.exchangeClosedReason, "ended");
+  const before = venueRecordService(() => new Date("2026-10-01T00:00:00.000Z"));
+  const early = await before.attendeeProfile("actor:me", VENUE_RECORD_EVENT_ID, "vr-tanaka");
+  assert.deepEqual([early?.canRequestExchange, early?.exchangeUntil, early?.exchangeClosedReason], [false, null, "not_started"]);
+  assert.equal((await before.attendeeProfile("actor:me", VENUE_RECORD_EVENT_ID, "vr-liu"))?.exchangeClosedReason, null);
 });
 
 test("attendee profile: 404 for non-registrants, private profiles, unknown ids and unknown events (same answer)", async () => {

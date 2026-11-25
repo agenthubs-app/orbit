@@ -25,6 +25,7 @@ export const eventAttendeeProfileObject = z.object({
   contactId: z.string().nullable().optional(),
   memo: z.string().nullable().optional(),
   canRequestExchange: z.boolean().catch(false),
+  exchangeClosedReason: z.enum(["not_started", "ended"]).nullable().optional().catch(null),
   exchangeUntil: z.string().nullable().optional(),
 });
 export const eventAttendeeProfileSchema = eventAttendeeProfileObject as unknown as z.ZodType<EventAttendeeProfile>;

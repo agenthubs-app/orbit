@@ -48,7 +48,10 @@ const CORE_ITEMS: readonly AnswerItem[] = ["target", "offer"];
 /** 访谈没问到的核心项在提交时补成签名固定题：来自覆盖它的主办方题，或资料里的「求めていること / 提供できること」。 */
 export interface JoinDerivedAnswer { field: "targetAttendees" | "valueOffered"; answer: string; source: "host" | "profile" }
 
-/** 资料标签能补上的核心项（按当前语言，用「 · 」连接）。 */
+/**
+ * 资料标签能补上的核心项（按当前语言，用「 · 」连接）。`tags` 来自公开投影（projectPublicProfile）：本人关了
+ * 「提供・求めていること」的公开，这两项就是空的——不静默补进对参会者公开的回答，缺的核心项继续追问（2026-11-26 用户定）。
+ */
 function profileCoreAnswers(tags: JoinProfileTags | null, language: JourneyLanguage): Partial<Record<AnswerItem, string>> {
   const text = (list: readonly string[] | undefined) => localizedTags(list, language).join(" · ");
   const out: Partial<Record<AnswerItem, string>> = {};
@@ -116,7 +119,7 @@ export function profileFromAnswers(answers: readonly EventJoinAnswer[], extras: 
   return {
     coverage,
     editableUntil: extras.editableUntil ?? null,
-    items: ITEMS.map((key) => ({ done: filled.has(key), key })),
+    items: ITEMS.map((key) => ({ done: filled.has(key), key, ...(extras.profileItems?.includes(key) ? { fromProfile: true } : {}) })),
     review: extras.review,
     reviewUntil: extras.reviewUntil ?? null,
     selfIntro: extras.selfIntro ?? null,
@@ -304,16 +307,18 @@ export function createJoinService(deps: { ports: JoinPorts }) {
   const { ports } = deps;
   const profileTags = async (actorId: string, language: JourneyLanguage) => (await ports.profileTags?.(actorId, language).catch(() => null)) ?? null;
   const service = {
-    async next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more = false, actorId: string | null = null): Promise<EventJoinStep | null> {
+    async next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more = false, actorId: string | null = null, focus: EventJoinProfileItemKey | null = null): Promise<EventJoinStep | null> {
       if (!(await ports.event(eventId))) return null;
       const filled = filledItems(answers);
       // 资料：预选（主办方题库题、访谈题）、告诉访谈哪些选项已有、核心项的兜底（提交时签成固定题）。
       const tags = actorId ? await profileTags(actorId, language) : null;
       const fromProfile = profileCoreAnswers(tags, language);
-      const missing = ANSWER_ITEMS.filter((item) => !filled.has(item) && !fromProfile[item]);
+      // 确认页点「编辑」资料补上的那一项（focus）：只问这一项，本人的回答代替资料。
+      const asked = ANSWER_ITEMS.find((item) => item === focus && !filled.has(item));
+      const missing = asked ? [asked] : ANSWER_ITEMS.filter((item) => !filled.has(item) && !fromProfile[item]);
       // 满 5 题后：四项都有值就结束；还有缺项（主办方题占了名额）就只针对缺的项继续问，不受 5 题限制（上限 JOIN_ANSWER_MAX）。
       // 核心项缺了报名接口会拒绝，所以不能停在这里；目的・话题也补齐，确认资料四项都有值。
-      const extra = answers.length >= JOIN_TOTAL;
+      const extra = Boolean(asked) || answers.length >= JOIN_TOTAL;
       if (extra && (missing.length === 0 || answers.length >= JOIN_ANSWER_MAX)) return joinStep(answers.length, null, language);
       if (!extra) {
         // R17：主办方的申込質問先问（按顺序），问完再由访谈补足；访谈只看访谈自己的回答。
@@ -335,7 +340,7 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       // 资料里已有、会单独列出并预选的选项告诉访谈，免得生成同义项（「客户引荐」与「介绍人脉」）。
       const knownOptions = Object.fromEntries(["targetAttendees", "valueOffered", "experienceHighlight", "desiredOutcome"].map((field) => [field, profileOptionsFor(field, tags, language)] as const).filter(([, list]) => list.length));
       const plan: JoinInterviewPlan = { ...(extra ? { focusFields: missing.map((item) => FIELD_OF_ITEM[item]) } : { skipFields: [...PROFILE_FIELDS, ...covered] }), ...(Object.keys(knownOptions).length ? { knownOptions } : {}) };
-      const question = await ports.next(eventId, answers.filter((answer) => !isHostAnswer(answer)), language, more, plan);
+      const question = await ports.next(eventId, answers.filter((answer) => !isHostAnswer(answer)), language, more || Boolean(asked), plan);
       const step = joinStep(answers.length, question, language, extra ? answers.length + 1 : JOIN_TOTAL);
       if (!step.question) return step;
       return { ...step, question: prefillQuestion(step.question, tags, language) };

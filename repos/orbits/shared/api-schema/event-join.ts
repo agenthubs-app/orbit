@@ -28,7 +28,7 @@ export const eventJoinStepSchema = eventJoinStepObject as unknown as z.ZodType<E
 
 export const eventJoinProfileObject = z.object({
   coverage: z.number().int().min(0).max(100),
-  items: readableItems(z.object({ key: z.enum(ITEM_KEYS), done: z.boolean() })),
+  items: readableItems(z.object({ key: z.enum(ITEM_KEYS), done: z.boolean(), fromProfile: z.boolean().optional().catch(undefined) })),
   topics: z.array(z.string()).max(12),
   selfIntro: z.object({ text: z.string(), source: tolerantEnum(["ai_draft", "profile"], "profile") }).nullable().optional().catch(null),
   selfIntroBasis: z.string().nullable().optional(),
@@ -58,8 +58,8 @@ export const eventJoinAnswerObject = z.object({ field: z.string().min(1).max(40)
 export const eventJoinAnswerSchema = eventJoinAnswerObject as z.ZodType<EventJoinAnswer>;
 // 5 问；满 5 问仍缺项时确认页「追加」针对缺项追问，最多再 4 问（join.ts JOIN_ANSWER_MAX）。
 const answers = z.array(eventJoinAnswerObject).max(9);
-/** `more`: ask one more question although the interview judged it had enough (review 「追加」 / 「質問に戻る」). */
-export const eventJoinNextInputObject = z.object({ answers, more: z.boolean().default(false) }).strict();
+/** `focus`: ask this one item (the profile would fill it, the person wants to answer it). `more`: ask one more question although the interview judged it had enough (review 「追加」 / 「質問に戻る」). */
+export const eventJoinNextInputObject = z.object({ answers, focus: z.enum(ITEM_KEYS).optional(), more: z.boolean().default(false) }).strict();
 export const eventJoinProfileInputObject = z.object({ answers, draft: z.boolean().default(false) }).strict();
 /** `selfIntro`: the self-introduction as edited on the review step (kept with this registration). */
 export const eventJoinSubmitInputObject = z.object({ answers: answers.min(1), idempotencyKey: z.string().min(1).max(200), selfIntro: z.string().trim().min(1).max(400).optional() }).strict();

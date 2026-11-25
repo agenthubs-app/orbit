@@ -236,3 +236,53 @@ test("参加目的 / 会いたい人 of a new submission: stored event_attendees
     assert.deepEqual(verified.map((item) => item.visibility), ["event_attendees", "event_attendees", "event_attendees"], provider);
   }
 });
+
+test("資料の「提供・求めていること」を非公開にした人：報名で資料から静かに補わない（追加で聞く）；公開なら補い、確認画面に「プロフィールから」と出し、編集すると本人の回答に替わる", async () => {
+  const { projectPublicProfile } = await import("../../features/profile/public-projection");
+  const own = { displayName: "佐藤", headline: "", homeMarket: "", id: "p", offering: ["紹介"], organization: "A", preferredIntroChannels: [], relationshipGoal: "", role: "", seeking: ["投資家"], targetRelationshipTypes: [], topics: ["生成 AI"], updatedAt: "" };
+  const hostQuestions = ["h1", "h2", "h3", "h4", "h5"].map((id) => ({ id, kind: "free", options: [], prompt: `質問 ${id}`, required: false }));
+  const hostAnswers = hostQuestions.map((item) => ({ answer: "回答", field: `host:${item.id}`, prompt: item.prompt, questionToken: `host:${item.id}` }));
+  for (const full of [true, false]) for (const open of [true, false]) {
+    const shown = projectPublicProfile({ ...own, publicFields: { companyRole: true, intro: true, offeringSeeking: open } } as never);
+    const submitted: unknown[] = [];
+    const asked: (readonly string[] | undefined)[] = [];
+    const service = createJoinService({ ports: fakePorts({
+      hostQuestions: async () => (full ? hostQuestions : []) as never,
+      next: async (_event, _answers, _language, _more, plan) => { asked.push(plan?.focusFields); const field = plan?.focusFields?.[0] ?? "targetAttendees"; return { allowCustom: true, field, options: ["A", "B"], prompt: "どんな方に会いたいですか？", questionToken: "t" }; },
+      profileTags: async () => ({ goalIds: ["g"], offering: shown.offering ?? [], seeking: shown.seeking ?? [] }),
+      submit: async (_event, _answers, from) => { submitted.push(from?.derived ?? []); return { status: "registered", submittedAt: "2026-11-26T00:00:00.000Z" }; },
+    }) });
+    if (!full) {
+      // 枠が空いている：どちらでも会いたい人は本人に聞く（公開時だけ資料の選択肢を先に選んでおく）。
+      const step = await service.next("ev", [], "ja", false, "actor:a");
+      assert.equal(step?.question?.field, "targetAttendees");
+      assert.deepEqual(step?.question?.prefill, open ? ["投資家"] : undefined);
+      continue;
+    }
+    const rest = [{ answer: "x", field: "desiredOutcome", prompt: "?", questionToken: "t" }, { answer: "y", field: "experienceHighlight", prompt: "?", questionToken: "t" }];
+    const all = [...hostAnswers, ...rest];
+    const step = await service.next("ev", all, "ja", false, "actor:a");
+    const profile = await service.profile("actor:a", "ev", all, false, "ja");
+    const item = (key: string) => profile!.items.find((entry) => entry.key === key)!;
+    if (open) {
+      assert.equal(step?.done, true);
+      assert.deepEqual([item("target"), item("offer")], [{ done: true, fromProfile: true, key: "target" }, { done: true, fromProfile: true, key: "offer" }]);
+      assert.equal(item("purpose").fromProfile, undefined, "an answered item is not marked");
+      // 編集：その項目だけ聞き直し、答えたら印が消え、資料では補わない。
+      const again = await service.next("ev", all, "ja", true, "actor:a", "target");
+      assert.equal(again?.question?.field, "targetAttendees");
+      assert.deepEqual(asked.at(-1), ["targetAttendees"]);
+      const answered = [...all, { answer: "製造業", field: "targetAttendees", prompt: "?", questionToken: "t" }];
+      assert.equal((await service.next("ev", answered, "ja", false, "actor:a"))?.done, true);
+      assert.deepEqual((await service.profile("actor:a", "ev", answered, false, "ja"))!.items.find((entry) => entry.key === "target"), { done: true, key: "target" });
+      await service.submit("actor:a", "ev", answered, "ja");
+      assert.deepEqual(submitted.at(-1), [{ answer: "紹介", field: "valueOffered", source: "profile" }]);
+    } else {
+      assert.equal(step?.done, false, "not filled silently: the missing core items are asked");
+      assert.deepEqual(asked.at(-1), ["targetAttendees", "valueOffered"]);
+      assert.deepEqual([item("target"), item("offer")], [{ done: false, key: "target" }, { done: false, key: "offer" }]);
+      await service.submit("actor:a", "ev", all, "ja");
+      assert.deepEqual(submitted.at(-1), [], "nothing from the profile is submitted");
+    }
+  }
+});

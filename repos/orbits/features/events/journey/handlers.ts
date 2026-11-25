@@ -183,7 +183,7 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       if (parsed.ok === false) return parsed.reply;
       const service = await join();
       if (!service) return { context: { reason: "EVENT_JOIN_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Registration is unavailable.") };
-      return service.next(eventId(params), parsed.value.answers, language, parsed.value.more, actorId);
+      return service.next(eventId(params), parsed.value.answers, language, parsed.value.more, actorId, parsed.value.focus ?? null);
     }, deps),
     joinProfile: journeyRoute({ auth: "required", schema: eventJoinProfileSchema }, async ({ actorId, join, language, params, request }) => {
       const parsed = await body(request, eventJoinProfileInputObject);

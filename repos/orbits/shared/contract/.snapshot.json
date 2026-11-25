@@ -9129,6 +9129,11 @@
           "kind": "text",
           "type": "boolean"
         },
+        "exchangeClosedReason": {
+          "optional": true,
+          "kind": "text",
+          "type": "'not_started' | 'ended' | null"
+        },
         "exchangeUntil": {
           "optional": true,
           "kind": "text",
@@ -9801,6 +9806,11 @@
               },
               "done": {
                 "optional": false,
+                "kind": "text",
+                "type": "boolean"
+              },
+              "fromProfile": {
+                "optional": true,
                 "kind": "text",
                 "type": "boolean"
               }
