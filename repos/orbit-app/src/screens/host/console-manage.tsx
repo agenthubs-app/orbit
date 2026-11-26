@@ -128,7 +128,7 @@ export function CancelEventSheet({ event, t, busy, visible, onKeep, onCancelEven
         <View style={[h.row, { gap: 8 }]}>
           <Btn label={t("cfKeep")} onPress={onKeep} style={styles.half} height={44} />
           <UiPressable accessibilityRole="button" accessibilityLabel={t("cfDoCancel")} accessibilityState={{ disabled: busy || invalid }} disabled={busy || invalid} onPress={() => onCancelEvent(note.trim() || null)} style={[h.btn, styles.half, styles.danger, busy || invalid ? styles.off : null]} testID="host-cancel-confirm">
-            <UiText style={[h.btnText, { color: colors.bg }]}>{t("cfDoCancel")}</UiText>
+            <UiText style={[h.btnText, { color: colors.onAccent }]}>{t("cfDoCancel")}</UiText>
           </UiPressable>
         </View>
       </View>
@@ -151,5 +151,6 @@ const useManageStyles = createThemedStyles((colors) => StyleSheet.create({
   ta: { backgroundColor: colors.surface2, borderColor: "transparent", borderRadius: radius.tile, borderWidth: 1.5, padding: 12 },
   taBad: { borderColor: colors.coral },
   taInput: { color: colors.ink, fontSize: 16, lineHeight: 24, minHeight: 72, textAlignVertical: "top" },
-  danger: { backgroundColor: colors.coral, height: 44 },
+  // Same pair as Button variant "danger" (contrast list RD-05).
+  danger: { backgroundColor: colors.coralText, height: 44 },
 }));
