@@ -724,6 +724,90 @@
     "kiosk": "before"
    },
    "note": "HM-K8 受付 · 開場前（b13 #51）"
+  },
+  {
+   "id": "HM-S1",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 22,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "host": {
+    "setup": "many"
+   },
+   "note": "HM-S1 申込設定 · 公開中（b13 #22，CFO18 5問）"
+  },
+  {
+   "id": "HM-S2",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 24,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "host": {
+    "setup": "many"
+   },
+   "click": [
+    "[data-host-questions] button[data-host-question]:nth-of-type(2)"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-setup-sub=q1]"
+    }
+   ],
+   "note": "HM-S2 申込設定 · Q2 を編集（b13 #24）"
+  },
+  {
+   "id": "HM-S3",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 25,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "host": {
+    "setup": "many"
+   },
+   "click": [
+    "[data-host-reorder]"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-setup-sub=reorder]"
+    }
+   ],
+   "note": "HM-S3 申込設定 · 並べ替え（b13 #25）"
+  },
+  {
+   "id": "HM-S7",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 29,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "host": {
+    "setup": "many"
+   },
+   "click": [
+    "[data-host-setup-open=agenda]"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-setup-sub=agenda]"
+    }
+   ],
+   "note": "HM-S7 申込設定 · アジェンダ（b13 #29）"
   }
  ]
 }

@@ -1,0 +1,294 @@
+"use client";
+
+// < 768 申込設定（b13 HM-S1–S13，2026-11-26 用户定：手机上也能改完、发布）。
+// 主页：状态行 → 受付の設定（承認方式就地切换 · 定員就地改 · 締切底部抽屉 · 申込ページ复制）→ 質問一行一题（点进编辑页）→
+// 説明文两行摘要（点开全屏编辑）→ アジェンダ / 主催者の連絡先 / お知らせの文面 子页；底部「プレビュー」+ 唯一主按钮「公開する / 変更を公開」。
+// 子页是盖在页面上的全屏层（自带 ‹ 顶栏），数据与保存逻辑和电脑版同一套（HostSetupTab 的 draft / 自动保存 / 公開）。
+import { useState, type ReactNode } from "react";
+
+import type { HostQuestionKind, HostSetupQuestion } from "../../../../../shared/contract/host-console";
+import { BottomSheet, Icon } from "../ui";
+import {
+  KIND_LABEL, KINDS, NoticesSection, Preview, QuestionLine, SetupAgendaCard, SetupContactCard, TEMPLATES,
+  closeBeforeStart, fromLocalInput, toLocalInput, type HostSetupViewProps,
+} from "./HostSetup";
+import { ReorderList } from "./ReorderList";
+import { hostDateDay, hostDateLong, type HostT } from "./host-model";
+import { DESC_MAX, QUESTION_MAX, agoText, applyLinkText, blankQuestion, charCount, clampText, moveItem, switchKind } from "./setup-model";
+import s from "./host.module.css";
+import m from "./tabs.module.css";
+import sp from "./setup-phone.module.css";
+
+type Sub = { kind: "q"; index: number } | { kind: "reorder" } | { kind: "desc" } | { kind: "agenda" } | { kind: "contact" } | { kind: "notice" } | null;
+
+/** 盖在页面上的子页（b13 .topbar + 内容 + 可选底部按钮）。 */
+function SubPage({ title, sub, onBack, right, foot, children, testId }: { title: string; sub?: string; onBack?: () => void; right?: ReactNode; foot?: ReactNode; children: ReactNode; testId: string }) {
+  return (
+    <div className={sp.subPage} role="dialog" aria-modal="true" aria-label={title} data-host-setup-sub={testId}>
+      <div className={sp.top}>
+        {onBack ? <button type="button" className={`btn ${sp.rbtn}`} aria-label={title} onClick={onBack}><Icon name="left" size={20} /></button> : <span />}
+        <div className={sp.topT}><b>{title}</b>{sub ? <small>{sub}</small> : null}</div>
+        {right ?? <span />}
+      </div>
+      <div className={sp.subBody}>{children}</div>
+      {foot ? <div className={sp.subFoot}>{foot}</div> : null}
+    </div>
+  );
+}
+
+function QuestionEditPage({ question, index, count, t, onChange, onDelete, onBack }: { question: HostSetupQuestion; index: number; count: number; t: HostT; onChange: (question: HostSetupQuestion) => void; onDelete: () => void; onBack: () => void }) {
+  const [optReorder, setOptReorder] = useState(false);
+  const choice = question.kind !== "free";
+  const marker = question.kind === "multiple" ? sp.cbx : sp.rad;
+  return (
+    <SubPage testId={`q${index}`} title={t("suEditQ", { n: index + 1 })} sub={t("suQEditSub", { i: index + 1, n: count })} onBack={onBack}
+      foot={<button type="button" className={`btn ${s.btn} ${s.primary} ${sp.block}`} onClick={onBack} data-host-q-done="">{t("roDone")}</button>}>
+      <label className={sp.fld}>
+        <span className={sp.fldL}>{t("suFieldPrompt")}</span>
+        <span className={sp.in}><input value={question.prompt} maxLength={120} placeholder={t("suPromptPh")} onChange={(event) => onChange({ ...question, prompt: event.target.value })} /></span>
+      </label>
+      <div className={sp.fld}>
+        <span className={sp.fldL}>{t("suFieldKind")}</span>
+        <div className={sp.tseg} role="radiogroup" aria-label={t("suFieldKind")}>
+          {KINDS.map((kind) => <button key={kind} type="button" role="radio" aria-checked={question.kind === kind} className={`btn ${question.kind === kind ? sp.tsegOn : ""}`} onClick={() => onChange(switchKind(question, kind))}>{t(KIND_LABEL[kind])}</button>)}
+        </div>
+      </div>
+      <div className={`${s.card} ${sp.req}`}>
+        <b id={`preq-${question.id}`}>{t("suRequired")}</b>
+        <button type="button" role="switch" aria-checked={question.required} aria-labelledby={`preq-${question.id}`} className={`btn ${m.tgl} ${question.required ? m.tglOn : ""}`} onClick={() => onChange({ ...question, required: !question.required })} />
+      </div>
+      {choice ? (
+        <>
+          <div className={sp.optHead}>
+            <b>{t("suFieldOptions")}</b>
+            {question.options.length > 1 ? <button type="button" className={`btn ${s.btn} ${s.sm} ${s.ghost}`} onClick={() => setOptReorder((on) => !on)} data-host-opt-reorder="">{t(optReorder ? "roDone" : "roReorder")}</button> : null}
+          </div>
+          {optReorder ? (
+            <div className={`${s.card} ${sp.roCard}`}>
+              <ReorderList items={question.options} t={t} keyOf={(_, j) => `${j}`} labelOf={(option, j) => option || String(j + 1)} onMove={(from, to) => onChange({ ...question, options: moveItem(question.options, from, to) })}
+                render={(option) => <><span className={marker} /><b className={sp.optT}>{option || t("suOptionPh")}</b></>} />
+            </div>
+          ) : (
+            <div data-host-opts="">
+              {question.options.map((option, j) => (
+                <div key={j} className={sp.opt}>
+                  <span className={marker} />
+                  <input value={option} maxLength={60} placeholder={t("suOptionPh")} aria-label={t("suOptionPh")} onChange={(event) => onChange({ ...question, options: question.options.map((item, k) => (k === j ? event.target.value : item)) })} />
+                  <button type="button" className={`btn ${sp.optX}`} aria-label={t("suDeleteOpt", { o: option || String(j + 1) })} onClick={() => onChange({ ...question, options: question.options.filter((_, k) => k !== j) })}><Icon name="x" size={16} /></button>
+                </div>
+              ))}
+              {question.options.length < 12 ? <button type="button" className={`btn ${sp.opt} ${sp.optAdd}`} onClick={() => onChange({ ...question, options: [...question.options, ""] })}><Icon name="plus" size={16} />{t("suAddOption")}</button> : null}
+            </div>
+          )}
+        </>
+      ) : question.options.length ? <div className={`${s.lbl} ${sp.kept}`}>{t("suKept")}</div> : null}
+      <button type="button" className={`btn ${s.btn} ${s.ghost} ${sp.block} ${sp.del}`} onClick={onDelete} data-host-q-delete="">{t("suDeleteThisQ")}</button>
+    </SubPage>
+  );
+}
+
+export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eventVersion: number; onEventVersion: (version: number) => void }) {
+  const { data, draft, t, language, now = new Date(), saveState = "saved", busy = false, host = "", noteDraft = data.hostNote ?? "", ended } = props;
+  const [sub, setSub] = useState<Sub>(null);
+  const [editCap, setEditCap] = useState(false);
+  const [closeSheet, setCloseSheet] = useState(false);
+  const [addSheet, setAddSheet] = useState(false);
+  const [preview, setPreview] = useState(false);
+  const change = (next: typeof draft) => props.onChange?.(next);
+  const questions = draft.questions;
+  const setQuestions = (next: HostSetupQuestion[]) => change({ ...draft, questions: next });
+  const full = questions.length >= QUESTION_MAX;
+  const link = applyLinkText(host, data.applyPath);
+  const ago = agoText(data.savedAt, now, t, (iso) => hostDateDay(iso, t, language));
+  const status = saveState === "saving" ? t("suSaving") : saveState === "dirty" ? t("suUnsaved") : saveState === "invalid" ? t("suInvalid") : ago ? t("suSavedAgo", { ago }) : "";
+  const contact = data.event.contact;
+  const contactSummary = [contact?.wechatId ? "WeChat" : null, contact?.lineId ? "LINE" : null].filter(Boolean).join(" · ") || (contact?.note ? t("evContactMessage") : t("suNotSet"));
+  const agendaCount = data.event.agenda?.length ?? 0;
+  const empty = questions.length === 0;
+  const pubDisabled = busy || saveState === "invalid" || saveState === "conflict" || (data.formPublished && data.unpublishedChanges === 0 && saveState === "saved");
+  const [closeDate, setCloseDate] = useState("");
+  const [closeTime, setCloseTime] = useState("");
+  const openClose = () => {
+    const local = toLocalInput(draft.registrationClosesAt) || toLocalInput(data.event.startsAt);
+    setCloseDate(local.slice(0, 10));
+    setCloseTime(local.slice(11, 16) || "23:59");
+    setCloseSheet(true);
+  };
+  const addBlank = (kind: HostQuestionKind) => { setAddSheet(false); if (full) { props.onLimit?.(); return; } setQuestions([...questions, blankQuestion(kind)]); setSub({ index: questions.length, kind: "q" }); };
+
+  if (sub?.kind === "q" && questions[sub.index]) {
+    const index = sub.index;
+    return <QuestionEditPage question={questions[index]!} index={index} count={questions.length} t={t} onBack={() => setSub(null)}
+      onChange={(next) => setQuestions(questions.map((item, k) => (k === index ? next : item)))}
+      onDelete={() => { setQuestions(questions.filter((_, k) => k !== index)); setSub(null); }} />;
+  }
+  if (sub?.kind === "reorder") {
+    return (
+      <SubPage testId="reorder" title={t("roTitleQ")} sub={t("tSetup")} right={<button type="button" className={`btn ${s.btn} ${s.sm} ${s.primary}`} onClick={() => setSub(null)} data-host-reorder-done="">{t("roDone")}</button>}>
+        <div className={`${s.card} ${sp.roCard}`}>
+          <ReorderList items={questions} t={t} keyOf={(question) => question.id} labelOf={(_, index) => `Q${index + 1}`} onMove={(from, to) => setQuestions(moveItem(questions, from, to))} render={(question, index) => <QuestionLine question={question} index={index} t={t} />} />
+        </div>
+        <div className={sp.note}>{t("roNoteQ")}</div>
+      </SubPage>
+    );
+  }
+  if (sub?.kind === "desc") {
+    const length = charCount(draft.description);
+    return (
+      <SubPage testId="desc" title={t("suDesc")} sub={t("suCounter", { n: length })} onBack={() => setSub(null)}
+        foot={<button type="button" className={`btn ${s.btn} ${s.primary} ${sp.block}`} onClick={() => setSub(null)}>{t("roDone")}</button>}>
+        <textarea className={sp.descTa} value={draft.description} maxLength={DESC_MAX} placeholder={t("suDescPh")} aria-label={t("suDesc")} readOnly={ended} onChange={(event) => change({ ...draft, description: clampText(event.target.value, DESC_MAX) })} />
+      </SubPage>
+    );
+  }
+  if (sub?.kind === "agenda") {
+    return (
+      <SubPage testId="agenda" title={t("evAgenda")} sub={t("tSetup")} onBack={() => setSub(null)}>
+        <div className={sp.embed}><SetupAgendaCard key={`${data.event.eventId}:agenda`} event={data.event} t={t} ended={ended} version={props.eventVersion} onVersion={props.onEventVersion} phone /></div>
+      </SubPage>
+    );
+  }
+  if (sub?.kind === "contact") {
+    return (
+      <SubPage testId="contact" title={t("suContactShort")} sub={t("evContactSub")} onBack={() => setSub(null)}>
+        <div className={sp.embed}><SetupContactCard key={`${data.event.eventId}:${data.event.version}`} event={data.event} t={t} disabled={ended} version={props.eventVersion} onVersion={props.onEventVersion} /></div>
+      </SubPage>
+    );
+  }
+  if (sub?.kind === "notice") {
+    return (
+      <SubPage testId="notice" title={t("ntToggle")} sub={t("ntSub")} onBack={() => setSub(null)}>
+        <div className={sp.notices}>
+          <NoticesSection data={data} t={t} open kind={props.noticeKind ?? "admission_approved"} note={noteDraft} busy={busy} readOnly={ended}
+            onOpen={() => undefined} onKind={props.onNoticeKind} onNote={props.onNoteDraft} onSave={props.onNoteSave} />
+        </div>
+      </SubPage>
+    );
+  }
+
+  return (
+    <div className={sp.col} data-host-setup={ended ? "ended" : empty ? "empty" : data.formPublished ? "published" : "draft"} data-host-setup-phone="">
+      {ended ? (
+        <div className={sp.banner} role="status" data-host-setup-ended="">
+          <span className={sp.bEmo} aria-hidden>🔒</span>
+          <div className={sp.grow}><b>{t("suEndedTitle")}</b><span className={sp.bBody}>{t("suEndedSub")}</span></div>
+        </div>
+      ) : saveState === "conflict" ? (
+        <div className={`${sp.banner} ${sp.bCoral}`} role="alert" data-host-setup-conflict="">
+          <Icon name="flag" size={16} />
+          <div className={sp.grow}><b>{t("conflictFirst")}</b><span className={sp.bBody}>{t("suReloadHint")}</span></div>
+          <button type="button" className={`btn ${s.btn} ${s.sm} ${sp.bBtn}`} onClick={props.onReload}>{t("suReload")}</button>
+        </div>
+      ) : (
+        <div className={sp.strip} data-host-setup-save={saveState}>
+          <span className={`${s.chip} ${data.formPublished ? s.c_teal : s.c_apricot}`}>{t(data.formPublished ? "suLiveChip" : "suDraftChip")}</span>
+          <span className={`${s.lbl} ${sp.ell} ${saveState === "invalid" ? sp.warn : ""}`}>{data.formPublished && data.unpublishedChanges > 0 ? t("suUnpub", { n: data.unpublishedChanges }) : ""}{status}</span>
+        </div>
+      )}
+
+      <div className={`${ended ? sp.ro : ""}`} inert={ended || undefined}>
+        <div className={`${s.card} ${sp.card}`} data-host-setup-settings="">
+          <h3 className={sp.cardH}>{t("suSettings")}</h3>
+          <div className={`${sp.srow} ${sp.first}`}>
+            <span className={sp.k}>{t("suMode")}</span>
+            <div className={`${s.seg} ${sp.right}`} role="radiogroup" aria-label={t("suMode")}>
+              {(["first_come", "review"] as const).map((mode) => <button key={mode} type="button" role="radio" aria-checked={draft.admissionMode === mode} className={`btn ${s.segBtn} ${draft.admissionMode === mode ? s.segOn : ""}`} onClick={() => change({ ...draft, admissionMode: mode })}>{t(mode === "review" ? "modeReview" : "modeFirstCome")}</button>)}
+            </div>
+          </div>
+          <div className={sp.srow}>
+            <span className={sp.k}>{t("suCapacity")}</span>
+            {editCap ? (
+              <span className={sp.v}>
+                <input autoFocus className={sp.capIn} type="number" inputMode="numeric" min={1} max={10000} aria-label={t("suEditCap")} defaultValue={draft.capacity ?? ""}
+                  onBlur={(event) => { const n = Number(event.currentTarget.value); change({ ...draft, capacity: event.currentTarget.value.trim() && Number.isInteger(n) && n > 0 ? Math.min(n, 10000) : null }); setEditCap(false); }}
+                  onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /> {t("unitPeople")}
+              </span>
+            ) : (
+              <button type="button" className={`btn ${sp.vBtn}`} aria-label={t("suEditCap")} onClick={() => setEditCap(true)}><span>{draft.capacity ? `${draft.capacity}${t("unitPeople")}` : t("suNoCap")}</span><Icon name="right" size={16} /></button>
+            )}
+          </div>
+          <div className={sp.srow}>
+            <span className={sp.k}>{t("suCloses")}</span>
+            <button type="button" className={`btn ${sp.vBtn}`} aria-label={t("suEditClose")} onClick={openClose}><span>{draft.registrationClosesAt ? hostDateLong(draft.registrationClosesAt, language, t) : t("suNoClose")}</span><Icon name="right" size={16} /></button>
+          </div>
+          <div className={sp.srow}>
+            <span className={sp.k}>{t("suPage")}</span>
+            {link ? <span className={sp.v}>{link}</span> : <span className={`${sp.v} ${s.lbl}`}>{t("suPageNone")}</span>}
+            {link ? <button type="button" className={`btn ${sp.copy}`} aria-label={t("copyLink")} onClick={() => { void navigator.clipboard?.writeText(`${window.location.protocol}//${link}`); }}><Icon name="link" size={16} /></button> : null}
+          </div>
+        </div>
+
+        {empty && !ended ? (
+          <div className={`${s.card} ${sp.card}`} data-host-setup-templates="">
+            <h3 className={sp.cardH}>{t("suTpl")}</h3>
+            <div className={sp.tpl2}>
+              {TEMPLATES.map((item) => (
+                <button key={item.key} type="button" className={`btn ${sp.tpl}`} onClick={() => props.onTemplate?.(item.key)} data-host-template={item.key}>
+                  <span className={`${s.emo} ${s.emoSm}`} aria-hidden>{item.emoji}</span><b>{t(item.label)}</b><span className={s.lbl}>{t(item.sub)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className={`${s.card} ${sp.card}`} data-host-questions={questions.length}>
+          <div className={sp.cardHRow}><h3 className={sp.cardH}>{t("suQuestions")} <span className={s.lbl}>{t("suQCountOf", { n: questions.length })}</span></h3><span className={s.lbl}>{t("suQUse")}</span></div>
+          {questions.map((question, index) => (
+            <button key={question.id} type="button" className={`btn ${sp.qr} ${!question.prompt.trim() ? sp.qrErr : ""}`} onClick={() => setSub({ index, kind: "q" })} data-host-question={question.id}>
+              <QuestionLine question={question} index={index} t={t} />
+              <Icon name="right" size={16} />
+            </button>
+          ))}
+          <div className={sp.qacts}>
+            <button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={full} onClick={() => props.onLibrary?.(true)} data-host-qlib-open=""><Icon name="book" size={16} />{t("qlOpen")}</button>
+            <button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={full} onClick={() => setAddSheet(true)} data-host-qadd-open=""><Icon name="plus" size={16} />{t("suAddQ")}</button>
+            {questions.length > 1 ? <button type="button" className={`btn ${s.btn} ${s.sm} ${s.ghost} ${sp.push}`} onClick={() => setSub({ kind: "reorder" })} data-host-reorder="">{t("roReorder")}</button> : null}
+          </div>
+          {full ? <div className={`${s.lbl} ${sp.maxNote}`}>{t("suAddMax")}</div> : null}
+        </div>
+
+        <button type="button" className={`btn ${s.card} ${sp.card} ${sp.descCard}`} onClick={() => setSub({ kind: "desc" })} data-host-setup-desc="">
+          <span className={sp.cardHRow}><b className={sp.cardH}>{t("suDesc")}</b><span className={s.lbl}>{t("suCounter", { n: charCount(draft.description) })}</span></span>
+          <span className={`${sp.desc2} ${draft.description.trim() ? "" : s.lbl}`}>{draft.description.trim() || t("suDescPh")}</span>
+        </button>
+      </div>
+
+      <div className={`${s.card} ${sp.card} ${sp.subs}`}>
+        <button type="button" className={`btn ${sp.srow} ${sp.first} ${sp.rowBtn}`} onClick={() => setSub({ kind: "agenda" })} data-host-setup-open="agenda"><span className={sp.k}>{t("evAgenda")}</span><span className={sp.v}>{t("suItems", { n: agendaCount })}</span><Icon name="right" size={16} /></button>
+        <button type="button" className={`btn ${sp.srow} ${sp.rowBtn}`} onClick={() => setSub({ kind: "contact" })} data-host-setup-open="contact"><span className={sp.k}>{t("suContactShort")}</span><span className={sp.v}>{contactSummary}</span><Icon name="right" size={16} /></button>
+        <button type="button" className={`btn ${sp.srow} ${sp.rowBtn}`} onClick={() => setSub({ kind: "notice" })} data-host-setup-open="notice"><span className={sp.k}>{t("ntToggle")}</span><span className={sp.v}>{t((data.hostNote ?? "").trim() ? "suNoticeWithNote" : "suNoticeNoNote")}</span><Icon name="right" size={16} /></button>
+      </div>
+
+      {ended ? null : (
+        <div className={sp.foot}>
+          <button type="button" className={`btn ${s.btn} ${sp.xl}`} onClick={() => setPreview(true)} data-host-setup-preview-open="">{t("pvTitle")}</button>
+          <button type="button" className={`btn ${s.btn} ${s.primary} ${sp.xl}`} disabled={pubDisabled} onClick={props.onPublish} data-host-setup-publish="">{t(data.formPublished ? "suPublishChanges" : "suPublish")}</button>
+        </div>
+      )}
+
+      <BottomSheet open={closeSheet} onClose={() => setCloseSheet(false)} label={t("suCloses")}>
+        <b className={sp.sheetT}>{t("suCloses")}</b>
+        <div className={s.lbl}>{t("suCloseHint", { t: `${hostDateLong(data.event.startsAt, language, t)}` })}</div>
+        <div className={sp.grid2}>
+          <label className={sp.fld}><span className={sp.fldL}>{t("suDate")}</span><span className={`${sp.in} ${sp.inGrey}`}><input type="date" value={closeDate} max={toLocalInput(data.event.startsAt).slice(0, 10)} onChange={(event) => setCloseDate(event.target.value)} /></span></label>
+          <label className={sp.fld}><span className={sp.fldL}>{t("suTime")}</span><span className={`${sp.in} ${sp.inGrey}`}><input type="time" value={closeTime} onChange={(event) => setCloseTime(event.target.value)} /></span></label>
+        </div>
+        <div className={sp.grid2}>
+          <button type="button" className={`btn ${s.btn} ${s.ghost}`} onClick={() => { change({ ...draft, registrationClosesAt: null }); setCloseSheet(false); }}>{t("suNoClose")}</button>
+          <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={!closeDate} onClick={() => { change({ ...draft, registrationClosesAt: closeBeforeStart(fromLocalInput(`${closeDate}T${closeTime || "23:59"}`), data.event.startsAt) }); setCloseSheet(false); }}>{t("suDecide")}</button>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet open={addSheet} onClose={() => setAddSheet(false)} label={t("suChooseKind")} tight>
+        <b className={sp.sheetT}>{t("suChooseKind")}</b>
+        {KINDS.map((kind) => <button key={kind} type="button" className={`btn ${sp.mi}`} onClick={() => addBlank(kind)}><Icon name="plus" size={16} />{t(KIND_LABEL[kind])}</button>)}
+        <button type="button" className={`btn ${s.btn} ${sp.block}`} onClick={() => setAddSheet(false)}>{t("close")}</button>
+      </BottomSheet>
+
+      <BottomSheet open={preview} onClose={() => setPreview(false)} label={t("suPreview")} className={sp.pvSheet}>
+        <div className={sp.pvBody}><Preview data={data} draft={draft} t={t} language={language} mode="phone" /></div>
+        <button type="button" className={`btn ${s.btn} ${sp.block}`} onClick={() => setPreview(false)}>{t("close")}</button>
+      </BottomSheet>
+    </div>
+  );
+}

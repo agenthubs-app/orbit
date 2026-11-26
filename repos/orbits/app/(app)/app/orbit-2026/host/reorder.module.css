@@ -1,0 +1,9 @@
+/* 並べ替え モード（b13 HM-S3 / S7b）：每行 ↑ ↓（34 圆），刚移动的行浅色底。 */
+.list { display: flex; flex-direction: column; position: relative; }
+.row { display: flex; align-items: center; gap: 6px; padding: 11px 0; position: relative; }
+.row + .row { border-top: 1px solid var(--line); }
+.mv::before { content: ""; position: absolute; inset: 2px -8px; border-radius: var(--r-md); background: var(--accent-soft); }
+.body { flex: 1 1 0%; min-width: 0; display: flex; align-items: center; gap: 10px; position: relative; }
+.arrow.arrow { width: 34px; height: 34px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); display: grid; place-items: center; color: var(--ink-2); flex: none; position: relative; }
+.arrow:disabled { opacity: .35; }
+.note { margin-top: 10px; font-size: var(--fs-label); color: var(--ink-3); line-height: var(--lh-prose); }

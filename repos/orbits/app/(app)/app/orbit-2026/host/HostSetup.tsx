@@ -9,6 +9,9 @@ import type { HostNoticeTemplateKind, HostQuestionKind, HostSetupQuestion, HostS
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { HOST_QUESTION_LIBRARY_ENTRIES, addLibraryQuestions } from "../../../../../shared/domain/host-question-library";
 import { ConfirmDialog, Icon, Segmented, useToast } from "../ui";
+import { ReorderList } from "./ReorderList";
+import { HostSetupPhone } from "./HostSetupPhone";
+import { usePhone } from "../events/EventDetail";
 import { QuestionLibraryDrawer } from "./QuestionLibrary";
 import { failureOf, hostApi, hostEventApi } from "./host-api";
 import { HostContactCard, draftContact } from "./HostEventForm";
@@ -23,10 +26,10 @@ import s from "./host.module.css";
 import m from "./tabs.module.css";
 import u from "./setup.module.css";
 
-const KIND_LABEL = { free: "qkFree", multiple: "qkMultiple", single: "qkSingle" } as const;
-const KIND_TONE = { free: "c_apricot", multiple: "c_blue", single: "c_lav" } as const;
-const KINDS: readonly HostQuestionKind[] = ["single", "multiple", "free"];
-const TEMPLATES: ReadonlyArray<{ key: TemplateKey; emoji: string; tone: string; label: "tplMixer" | "tplStudy" | "tplRound" | "tplBlank"; sub: "tplMixerSub" | "tplStudySub" | "tplRoundSub" | "tplBlankSub" }> = [
+export const KIND_LABEL = { free: "qkFree", multiple: "qkMultiple", single: "qkSingle" } as const;
+export const KIND_TONE = { free: "c_apricot", multiple: "c_blue", single: "c_lav" } as const;
+export const KINDS: readonly HostQuestionKind[] = ["single", "multiple", "free"];
+export const TEMPLATES: ReadonlyArray<{ key: TemplateKey; emoji: string; tone: string; label: "tplMixer" | "tplStudy" | "tplRound" | "tplBlank"; sub: "tplMixerSub" | "tplStudySub" | "tplRoundSub" | "tplBlankSub" }> = [
   { emoji: "🥂", key: "mixer", label: "tplMixer", sub: "tplMixerSub", tone: "m_lav" },
   { emoji: "📚", key: "study", label: "tplStudy", sub: "tplStudySub", tone: "m_blue" },
   { emoji: "🪑", key: "round", label: "tplRound", sub: "tplRoundSub", tone: "m_pink" },
@@ -42,6 +45,8 @@ const NOTICE_TITLE: Record<HostNoticeTemplateKind, "ntTitleApproved" | "ntTitleR
 export type SetupSaveState = "saved" | "dirty" | "saving" | "conflict" | "invalid";
 
 export type HostSetupViewProps = {
+  /** < 768：b13 HM-S1–S13 的手机画法（数据与保存同一套）。 */
+  phone?: boolean;
   data: HostSetupResponse;
   draft: SetupDraft;
   t: HostT;
@@ -80,23 +85,23 @@ export type HostSetupViewProps = {
 };
 
 /** 「10月20日（火）23:59」⇄ datetime-local（東京時間）。 */
-const toLocalInput = (iso: string | null) => {
+export const toLocalInput = (iso: string | null) => {
   const p = tokyoParts(iso);
   if (!p) return "";
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`;
 };
 /** Registration cannot close after the event starts (the server refuses it); a later pick becomes the start time. */
-const closeBeforeStart = (closesAt: string | null, startsAt: string) =>
+export const closeBeforeStart = (closesAt: string | null, startsAt: string) =>
   closesAt && Date.parse(closesAt) > Date.parse(startsAt) ? new Date(Date.parse(startsAt)).toISOString() : closesAt;
-const fromLocalInput = (value: string) => {
+export const fromLocalInput = (value: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
   if (!match) return null;
   const [, y, mo, d, h, mi] = match.map(Number) as [number, number, number, number, number, number];
   return new Date(Date.UTC(y, mo - 1, d, h - 9, mi)).toISOString();
 };
 
-function Preview({ data, draft, t, language, mode, onMode }: { data: HostSetupResponse; draft: SetupDraft; t: HostT; language: OrbitLanguage; mode: "phone" | "pc"; onMode?: (mode: "phone" | "pc") => void }) {
+export function Preview({ data, draft, t, language, mode, onMode }: { data: HostSetupResponse; draft: SetupDraft; t: HostT; language: OrbitLanguage; mode: "phone" | "pc"; onMode?: (mode: "phone" | "pc") => void }) {
   const event = data.event;
   const questions = mode === "phone" ? draft.questions.slice(0, 3) : draft.questions;
   const meta = [hostDateLong(event.startsAt, language, t), event.venueName].filter(Boolean).join(" · ");
@@ -186,6 +191,7 @@ const keyMove = (event: KeyboardEvent, index: number, count: number, move: (to: 
 
 function QuestionCard({ question, index, count, t, editing, onEdit, onCollapse, onChange, onDelete, onMove, onDropFrom }: QuestionProps) {
   const [over, setOver] = useState(false);
+  const [optReorder, setOptReorder] = useState(false);
   const n = index + 1;
   // 拖动排序（HTML5 DnD）；键盘：⋮⋮ 上按 ↑ / ↓。
   const drag = {
@@ -210,6 +216,7 @@ function QuestionCard({ question, index, count, t, editing, onEdit, onCollapse, 
   }
   const choice = question.kind !== "free";
   const setOption = (j: number, value: string) => onChange({ ...question, options: question.options.map((option, k) => (k === j ? value : option)) });
+  const canReorder = choice && question.options.length > 1;
   return (
     <div className={`${u.qcard} ${u.qedit} ${over ? u.dragOver : ""}`} data-host-question={question.id} data-editing="" {...drag}>
       <div className={u.qhead}>
@@ -226,7 +233,17 @@ function QuestionCard({ question, index, count, t, editing, onEdit, onCollapse, 
         <span className={`${s.lbl} ${u.reqLbl}`} id={`req-${question.id}`}>{t("suRequired")}</span>
         <button type="button" role="switch" aria-checked={question.required} aria-labelledby={`req-${question.id}`} className={`btn ${m.tgl} ${question.required ? m.tglOn : ""}`} onClick={() => onChange({ ...question, required: !question.required })} />
       </div>
-      {question.options.length ? (
+      {canReorder ? (
+        <div className={u.optHead}>
+          <button type="button" className={`btn ${s.btn} ${s.sm} ${s.ghost}`} onClick={() => setOptReorder((on) => !on)} data-host-opt-reorder="">{t(optReorder ? "roDone" : "roReorder")}</button>
+        </div>
+      ) : null}
+      {canReorder && optReorder ? (
+        <div className={u.qopts}>
+          <ReorderList items={question.options} t={t} keyOf={(_, j) => `${j}`} labelOf={(option, j) => option || String(j + 1)} onMove={(from, to) => onChange({ ...question, options: moveItem(question.options, from, to) })}
+            render={(option, j) => <><span className={question.kind === "multiple" ? u.box : u.rad} /><span className={u.optText}>{option || t("suOptionPh")}</span></>} />
+        </div>
+      ) : question.options.length ? (
         <div className={`${u.qopts} ${choice ? "" : u.kept}`} aria-hidden={!choice || undefined}>
           {question.options.map((option, j) => (
             <div key={j} className={u.qopt}>
@@ -241,6 +258,22 @@ function QuestionCard({ question, index, count, t, editing, onEdit, onCollapse, 
       ) : choice ? <div className={u.qopts}><button type="button" className={`btn ${u.qopt} ${u.addOpt}`} onClick={() => onChange({ ...question, options: [""] })}><Icon name="plus" size={16} />{t("suAddOption")}</button></div> : null}
       {!choice && question.options.length ? <div className={`${s.lbl} ${u.keptNote}`}>{t("suKept")}</div> : null}
     </div>
+  );
+}
+
+/** 一行表示（Q 番号・题面・题型・必須）：並べ替え と手机の一覧で使う。 */
+export function QuestionLine({ question, index, t }: { question: HostSetupQuestion; index: number; t: HostT }) {
+  return (
+    <>
+      <span className={`${s.chip} ${u.qn}`}>Q{index + 1}</span>
+      <span className={u.qm}>
+        <b>{question.prompt || t("suPromptPh")}</b>
+        <span className={u.qchips}>
+          <span className={`${s.chip} ${s[KIND_TONE[question.kind]]}`}>{t(KIND_LABEL[question.kind])}</span>
+          {question.required ? <span className={`${s.chip} ${s.c_coral}`}>{t("suRequired")}</span> : <span className={s.lbl}>{t("suOptional")}</span>}
+        </span>
+      </span>
+    </>
   );
 }
 
@@ -268,7 +301,18 @@ export function QuestionsEditor({ questions, t, language, editing, onEdit, onCha
   const open = libraryOpen ?? ownOpen;
   const setOpen = onLibrary ?? setOwnOpen;
   const full = list.length >= QUESTION_MAX;
+  const [reordering, setReordering] = useState(false);
   const move = (from: number, to: number) => { onChange(moveItem(list, from, to)); if (editing === from) onEdit(to); };
+  if (reordering && list.length > 1) {
+    // 触屏没法拖：並べ替え モード（b13 HM-S3），每行 ↑ ↓。
+    return (
+      <div data-host-qreorder="">
+        <ReorderList items={list} t={t} keyOf={(question) => question.id} labelOf={(_, index) => `Q${index + 1}`} onMove={(from, to) => { onEdit(-1); onChange(moveItem(list, from, to)); }}
+          note={t("roNoteQ")} render={(question, index) => <QuestionLine question={question} index={index} t={t} />} />
+        <div className={u.addRow}><button type="button" className={`btn ${s.btn} ${s.sm} ${s.primary} ${u.roDone}`} onClick={() => setReordering(false)} data-host-reorder-done="">{t("roDone")}</button></div>
+      </div>
+    );
+  }
   const addBlank = (kind: HostQuestionKind) => { if (full) { onLimit?.(); return; } onChange([...list, blankQuestion(kind)]); onEdit(list.length); };
   return (
     <>
@@ -283,6 +327,7 @@ export function QuestionsEditor({ questions, t, language, editing, onEdit, onCha
         <span className={s.lbl}>{t("suAddQ")}</span>
         {KINDS.map((kind) => <button key={kind} type="button" className={`btn ${s.btn} ${s.sm} ${full ? u.addFull : ""}`} disabled={full} onClick={() => addBlank(kind)}><Icon name="plus" size={16} />{t(KIND_LABEL[kind])}</button>)}
         {full ? <span className={`${s.lbl} ${u.addMax}`}>{t("suAddMax")}</span> : null}
+        {list.length > 1 ? <button type="button" className={`btn ${s.btn} ${s.sm} ${s.ghost} ${u.roBtn}`} onClick={() => { onEdit(-1); setReordering(true); }} data-host-reorder="">{t("roReorder")}</button> : null}
       </div>
       <QuestionLibraryDrawer open={open} questions={list} t={t} language={language} onClose={() => setOpen(false)}
         onAdd={(ids) => {
@@ -300,7 +345,7 @@ export function QuestionsEditor({ questions, t, language, editing, onEdit, onCha
  * pay in the group, get approved). Same field and card as 基本情報を編集; saved on its own through the event
  * update (no change preview, nobody is notified), separate from the form's autosave.
  */
-function SetupContactCard({ event, t, disabled, version, onVersion }: { event: HostSetupResponse["event"]; t: HostT; disabled: boolean; /** 议程卡也单独保存：两张卡共用最新的事件版本。 */ version: number; onVersion: (version: number) => void }) {
+export function SetupContactCard({ event, t, disabled, version, onVersion }: { event: HostSetupResponse["event"]; t: HostT; disabled: boolean; /** 议程卡也单独保存：两张卡共用最新的事件版本。 */ version: number; onVersion: (version: number) => void }) {
   const toast = useToast();
   const initial = { contactNote: event.contact?.note ?? "", lineId: event.contact?.lineId ?? "", wechatId: event.contact?.wechatId ?? "" };
   const [draft, setDraft] = useState(initial);
@@ -335,7 +380,7 @@ function SetupContactCard({ event, t, disabled, version, onVersion }: { event: H
  * 走事件更新，不通知、不出变更预览；只改议程不动报名表）。不能删到 0 行；缺时间 / 标题的行不能保存（行下红字并聚焦）。
  * 还没有议程的旧活动：顶部一行红字。活动结束后只读。
  */
-export function SetupAgendaCard({ event, t, ended, version, onVersion }: { event: HostSetupResponse["event"]; t: HostT; ended: boolean; version: number; onVersion: (version: number) => void }) {
+export function SetupAgendaCard({ event, t, ended, version, onVersion, phone = false }: { event: HostSetupResponse["event"]; t: HostT; ended: boolean; version: number; onVersion: (version: number) => void; /** < 768 子页：紧凑行 + 底部整宽「アジェンダを保存」。 */ phone?: boolean }) {
   const toast = useToast();
   const initial = event.agenda?.length ? agendaItemsToDraft(event.agenda) : [blankAgendaRow()];
   const [rows, setRows] = useState<AgendaDraftRow[]>(initial);
@@ -363,10 +408,10 @@ export function SetupAgendaCard({ event, t, ended, version, onVersion }: { event
   };
   return (
     <div ref={ref} data-host-setup-agenda="">
-      <AgendaEditor rows={rows} t={t} start={start} end={end} readOnly={ended} noneSaved={!hasSaved && !ended} showMissing={showMissing} disabled={busy} onChange={setRows} />
+      <AgendaEditor rows={rows} t={t} start={start} end={end} readOnly={ended} noneSaved={!hasSaved && !ended} showMissing={showMissing} disabled={busy} phone={phone} onChange={setRows} />
       {ended ? null : (
-        <div className={`${s.row} ${u.contactActs}`}>
-          <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={!dirty || busy} onClick={() => void save()} data-host-setup-agenda-save="">{t("evAgendaSave")}</button>
+        <div className={phone ? u.phoneFoot : `${s.row} ${u.contactActs}`}>
+          <button type="button" className={`btn ${s.btn} ${s.primary} ${phone ? u.phoneFootBtn : ""}`} disabled={!dirty || busy} onClick={() => void save()} data-host-setup-agenda-save="">{t("evAgendaSave")}</button>
         </div>
       )}
     </div>
@@ -379,7 +424,7 @@ function tokyoHm(iso: string | null | undefined): string | null {
   return p ? `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}` : null;
 }
 
-function NoticesSection({ data, t, open, kind, note, busy, readOnly, onOpen, onKind, onNote, onSave }: { data: HostSetupResponse; t: HostT; open: boolean; kind: HostNoticeTemplateKind; note: string; busy: boolean; /** 開催済み・中止・アーカイブ：ひとことも変えられない（サーバーも拒否）。 */ readOnly: boolean; onOpen?: (open: boolean) => void; onKind?: (kind: HostNoticeTemplateKind) => void; onNote?: (text: string) => void; onSave?: () => void }) {
+export function NoticesSection({ data, t, open, kind, note, busy, readOnly, onOpen, onKind, onNote, onSave }: { data: HostSetupResponse; t: HostT; open: boolean; kind: HostNoticeTemplateKind; note: string; busy: boolean; /** 開催済み・中止・アーカイブ：ひとことも変えられない（サーバーも拒否）。 */ readOnly: boolean; onOpen?: (open: boolean) => void; onKind?: (kind: HostNoticeTemplateKind) => void; onNote?: (text: string) => void; onSave?: () => void }) {
   const selected = data.notices.find((item) => item.kind === kind) ?? data.notices[0];
   const link = hasLink(note);
   const changed = (note.trim() || null) !== (data.hostNote?.trim() || null);
@@ -445,6 +490,7 @@ export function HostSetupView(props: HostSetupViewProps) {
   const [eventVersion, setEventVersion] = useState(data.event.version);
   useEffect(() => { setEventVersion(data.event.version); }, [data.event.version]);
   const status = saveState === "saving" ? t("suSaving") : saveState === "dirty" ? t("suUnsaved") : saveState === "invalid" ? t("suInvalid") : ago ? t("suSavedAgo", { ago }) : "";
+  if (props.phone) return <HostSetupPhone {...props} ended={ended} eventVersion={eventVersion} onEventVersion={setEventVersion} />;
   return (
     <>
       {ended ? (
@@ -526,6 +572,7 @@ const AUTOSAVE_MS = 1500;
 export function HostSetupTab({ eventId, language, onChanged, onHeader }: { eventId: string; language: OrbitLanguage; onChanged?: () => void; onHeader?: (formPublished: boolean) => void }) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const toast = useToast();
+  const phone = usePhone();
   const [data, setData] = useState<HostSetupResponse | null>(null);
   const [draft, setDraft] = useState<SetupDraft | null>(null);
   const [failed, setFailed] = useState(false);
@@ -642,7 +689,7 @@ export function HostSetupTab({ eventId, language, onChanged, onHeader }: { event
   if (!data || !draft) return null;
   return (
     <>
-      <HostSetupView data={data} draft={draft} t={t} language={language} editing={editing} preview={preview} suggestionOpen={suggestionOpen} saveState={saveState} busy={busy} host={host}
+      <HostSetupView phone={phone} data={data} draft={draft} t={t} language={language} editing={editing} preview={preview} suggestionOpen={suggestionOpen} saveState={saveState} busy={busy} host={host}
         notesOpen={notesOpen} noticeKind={noticeKind} noteDraft={noteDraft}
         onChange={change} onEdit={setEditing} onPreview={setPreview}
         libraryOpen={libraryOpen} onLibrary={setLibraryOpen} onAdded={(n) => toast.success(t("suAdded", { n }))}

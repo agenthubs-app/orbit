@@ -175,3 +175,15 @@ button.setVal:hover { text-decoration: underline; text-decoration-color: var(--i
   .qrow > b { flex: 1 1 calc(100% - 96px); min-width: 0; }
   .qrow > button:last-child { margin-left: auto; }
 }
+
+/* 並べ替え（b13 HM-S3）与一行表示 */
+.qn.qn { flex: none; }
+.qm { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; }
+.qm b { font-size: var(--fs-body-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qchips { display: flex; gap: 4px; margin-top: 4px; align-items: center; }
+.roBtn.roBtn { margin-left: auto; }
+.roDone.roDone { margin-left: auto; }
+.optHead { display: flex; justify-content: flex-end; margin-top: 8px; }
+.optText { min-width: 0; font-size: var(--fs-body-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.phoneFoot { position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); padding: 0 18px; z-index: var(--z-sticky); }
+.phoneFootBtn.phoneFootBtn { width: 100%; height: 52px; font-size: var(--fs-emph); }
