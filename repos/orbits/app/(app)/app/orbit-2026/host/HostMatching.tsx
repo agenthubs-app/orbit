@@ -11,12 +11,14 @@ import type { HostMatchingConditions, HostMatchingMember, HostMatchingMove, Host
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { Avatar, ConfirmDialog, ContextMenu, Icon, Modal, Segmented, useToast } from "../ui";
 import { failureOf, hostApi } from "./host-api";
+import { HostMatchingPhone } from "./HostMatchingPhone";
+import { usePhone } from "../events/EventDetail";
 import { consoleHref, hostTime, hostTranslator, type HostT } from "./host-model";
 import { matchingSampleTables } from "./matching-sample";
 import s from "./host.module.css";
 import m from "./tabs.module.css";
 
-type StandingTone = "teal" | "lav" | "blue" | "pink" | "apricot" | "";
+export type StandingTone = "teal" | "lav" | "blue" | "pink" | "apricot" | "";
 // 立場 chip 的颜色按本页首次出现的顺序取（画板：事業会社 teal / 投資家 lav / CFO blue / 士業 pink / 経営者 apricot / 金融 无色）。
 const STANDING_TONES: readonly StandingTone[] = ["teal", "lav", "blue", "pink", "apricot", ""];
 const DEFAULT_VISIBLE = 6;
@@ -49,9 +51,9 @@ export function fillSeatsMoves(data: HostMatchingResponse): HostMatchingMove[] {
   return moves;
 }
 
-type Picked = { member: HostMatchingMember; from: string | null };
+export type Picked = { member: HostMatchingMember; from: string | null };
 
-function StandingChip({ standing, tones }: { standing: string | null; tones: Map<string, StandingTone> }) {
+export function StandingChip({ standing, tones }: { standing: string | null; tones: Map<string, StandingTone> }) {
   if (!standing) return null;
   const tone = tones.get(standing) ?? "";
   return <span className={`${s.chip} ${tone ? s[`c_${tone}`] : ""}`}>{standing}</span>;
@@ -144,7 +146,7 @@ function ConditionRows({ conditions, t, onChange, onOpenSizes }: { conditions: H
   );
 }
 
-function Options({ values, value, label, render, onChange }: { values: readonly number[]; value: number; label: string; render: (n: number) => string; onChange: (n: number) => void }) {
+export function Options({ values, value, label, render, onChange }: { values: readonly number[]; value: number; label: string; render: (n: number) => string; onChange: (n: number) => void }) {
   return (
     <div className={s.seg} role="radiogroup" aria-label={label}>
       {values.map((n) => <button key={n} type="button" role="radio" aria-checked={n === value} aria-label={render(n)} className={`btn ${s.segBtn} ${n === value ? s.segOn : ""}`} onClick={() => onChange(n)}>{render(n)}</button>)}
@@ -168,7 +170,7 @@ export function ConditionsModal({ initial, t, remaining, regenerate, busy, onClo
   );
 }
 
-function ConditionRowsToggles({ conditions, t, onChange }: { conditions: HostMatchingConditions; t: HostT; onChange: (next: HostMatchingConditions) => void }) {
+export function ConditionRowsToggles({ conditions, t, onChange }: { conditions: HostMatchingConditions; t: HostT; onChange: (next: HostMatchingConditions) => void }) {
   const items = [["separateCompanies", t("cSeparate")], ["avoidPreviousTablemates", t("cAvoid")], ["investorPerTable", t("cInvestor")]] as const;
   return (
     <>
@@ -344,6 +346,7 @@ export function HostMatchingView(props: HostMatchingViewProps) {
 export function HostMatchingTab({ eventId, language, onChanged }: { eventId: string; language: OrbitLanguage; onChanged?: () => void }) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const toast = useToast();
+  const phone = usePhone();
   const router = useRouter();
   const params = useSearchParams();
   const round = Math.max(1, Number(params.get("round") ?? "1") || 1);
@@ -439,6 +442,25 @@ export function HostMatchingTab({ eventId, language, onChanged }: { eventId: str
   }
   const current = conditions ?? data.conditions;
   const remaining = Math.max(0, data.generationsLimit - data.generationsUsed);
+  const applyConditions = (next: HostMatchingConditions) => { if (data.state === "none") { setConditions(next); setModal(null); } else { setPendingConditions(next); setModal("regen"); } };
+  if (phone) {
+    return (
+      <>
+        <HostMatchingPhone data={data} t={t} language={language} busy={busy} conditions={current}
+          onRound={setRound}
+          onConditions={setConditions}
+          conditionsOpen={modal === "conditions"} onConditionsOpen={(open) => setModal(open ? "conditions" : null)} onApplyConditions={applyConditions}
+          onGenerate={() => void generate(current)}
+          onRegenerate={() => { setPendingConditions(current); setModal("regen"); }}
+          onPublish={() => setModal("publish")}
+          onFillSeats={() => { const moves = fillSeatsMoves(data); if (!moves.length) toast.info(t("mNoSeats")); else void move(moves, t("mFilled", { n: moves.length })); }}
+          onMoveTo={(member, from, to) => { if (from === to) return; void move([{ participantId: member.participantId, round: data.round, toTable: to }], to ? t("mMoved", { name: member.name, t: to }) : t("mMovedOut", { name: member.name })); }} />
+        <ConfirmDialog open={modal === "regen"} title={t("mRegenTitle")} message={t("mRegenBody", { n: remaining })} confirmLabel={t("mRegenConfirm")} cancelLabel={t("cancel")} icon="refresh"
+          onCancel={() => setModal(null)} onConfirm={() => void generate(pendingConditions ?? current)} />
+        {modal === "publish" ? <PublishConfirm data={data} t={t} busy={busy} onCancel={() => setModal(null)} onPublish={(notify) => void publish(notify)} /> : null}
+      </>
+    );
+  }
   return (
     <>
       <HostMatchingView data={data} t={t} language={language} busy={busy} conditions={current} picked={picked} openWhy={openWhy} showAll={showAll}

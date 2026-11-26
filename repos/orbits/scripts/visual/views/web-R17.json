@@ -808,6 +808,50 @@
     }
    ],
    "note": "HM-S7 申込設定 · アジェンダ（b13 #29）"
+  },
+  {
+   "id": "HM-M1",
+   "app": "/app/events/demo-host-mfg-asakai-3/operations?tab=matching",
+   "design": "b13-host-mobile.html",
+   "board-index": 11,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-matching-phone][data-host-matching=none]",
+   "note": "HM-M1 マッチング · 未生成（b13 #11，朝会 #3）"
+  },
+  {
+   "id": "HM-M3",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=matching",
+   "design": "b13-host-mobile.html",
+   "board-index": 13,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-matching-phone][data-host-matching=draft]",
+   "note": "HM-M3 マッチング · 結果（下書き）（b13 #13，CFO18）"
+  },
+  {
+   "id": "HM-M4",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=matching",
+   "design": "b13-host-mobile.html",
+   "board-index": 15,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-matching-phone][data-host-matching=draft]",
+   "click": [
+    "[data-host-table=A] [data-host-move]"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-move-list]"
+    }
+   ],
+   "note": "HM-M4 マッチング · 移動先を選ぶ（b13 #15；A 卓第 1 人「移動」）"
   }
  ]
 }

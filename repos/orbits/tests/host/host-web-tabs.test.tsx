@@ -78,14 +78,14 @@ test("空き席に入れる：未配置的人放进人数最少、未满的桌",
   assert.equal(moves.every((move) => move.round === 1), true);
 });
 
-test("公開確認（b6 #6）：两轮各 22テーブル · 109名、未配置 3名、再通知说明、共同運営者勾选", () => {
+test("公開確認（b6 #6）：两轮各 22テーブル · 109名、未配置 3名、公開後は変更できない、共同運営者勾选", () => {
   const data = hostMatching(HOST_EVENT_IDS.cfo18)!;
   const html = renderToStaticMarkup(<PublishConfirm data={data} t={t} busy={false} onCancel={() => {}} onPublish={() => {}} />);
   assert.match(html, /マッチング結果を公開しますか？/);
   assert.match(html, /参加者 112名/);
   assert.equal(count(html, "22テーブル · 109名"), 2);
   assert.match(html, /3名 · 当日受付で割り当て/);
-  assert.match(html, /影響を受ける参加者にだけ再通知/);
+  assert.match(html, /公開後はテーブルを変更できません/, "published tables are read-only (saveOverrides refuses after publishing)");
   assert.match(html, /共同運営者（3名）にも公開を知らせる/);
 });
 
