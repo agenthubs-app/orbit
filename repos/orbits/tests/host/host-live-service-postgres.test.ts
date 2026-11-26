@@ -145,8 +145,15 @@ test("live host service end to end", hostDatabaseTest, async () => {
     assert.doesNotMatch(JSON.stringify(attendeeList), /mori-line|mori@example\.com/u);
     await access.grant({ actingActorId: HOST, eventId, expectedRevision: 0, reason: "review fixture", role: "reviewer", subjectActorId: "actor:reviewer" });
     assert.equal((await service.person("actor:reviewer", eventId, "actor:p2")).contactMethods, undefined);
+    // UR-S（2026-11-27 口径）：管理者 / 运营角色的共同运营者能看；已拒绝的报名者主办方看不到；响应里没有生日。
+    await access.grant({ actingActorId: HOST, eventId, expectedRevision: 0, reason: "manager fixture", role: "manager", subjectActorId: "actor:manager" });
+    assert.deepEqual((await service.person("actor:manager", eventId, "actor:p2")).contactMethods, { lineId: "mori-line", email: "mori@example.com" });
+    assert.doesNotMatch(JSON.stringify(await service.person(HOST, eventId, "actor:p2")), /birth/iu);
     await assert.rejects(service.person(HOST, eventId, "actor:nobody"), isHost("NOT_FOUND"));
     await assert.rejects(service.person("actor:stranger", eventId, "actor:p2"), isHost("NOT_FOUND"));
+    const p2Version = (await service.person(HOST, eventId, "actor:p2")).applicationVersion ?? 0;
+    await service.decide(HOST, eventId, "actor:p2", { decision: "reject", expectedVersion: p2Version });
+    assert.equal((await service.person(HOST, eventId, "actor:p2")).contactMethods, undefined, "a rejected applicant's contacts are not shown to the host");
     assert.equal((await service.kiosk(HOST, eventId, "")).closed, false, "the event has not ended: check-in is open");
 
     // 作成時の質問（2026-11-13）：作成画面で決めた質問が申込設定の下書きに入り、イベント公開でフォームも公開される。

@@ -193,6 +193,13 @@ test(
       assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:ren", acceptedForRen.contactId),
         { lineId: "aiko-line", phone: "+81 90 1111 1111" });
       assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:mei", acceptedForAiko.contactId), {});
+      // A deleted contact on either side stops the sharing (UR-S).
+      await runtime.client.query(
+        `insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,lifecycle_state,created_at,updated_at)
+         values ($1,'contacts',$2,'actor:aiko','fixture',$2,'{}'::jsonb,'deleted',now(),now())`, [workspaceId, acceptedForAiko.contactId],
+      );
+      assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:aiko", acceptedForAiko.contactId), {});
+      await runtime.client.query(`delete from orbit_records where workspace_id = $1 and collection_name = 'contacts' and record_id = $2 and user_id = 'actor:aiko'`, [workspaceId, acceptedForAiko.contactId]);
 
       const reader = createEventRelationshipContactGraphReader({
         client: runtime.client,

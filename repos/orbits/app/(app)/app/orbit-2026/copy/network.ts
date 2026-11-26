@@ -155,7 +155,7 @@ export const networkCopy = {
   detailFieldLineId: { ja: "LINE ID", zh: "LINE ID", en: "LINE ID", kind: "label" },
   detailFieldWechatId: { ja: "WeChat ID", zh: "微信 ID", en: "WeChat ID", kind: "label" },
   detailFieldPhone: { ja: "電話", zh: "电话", en: "Phone", kind: "label" },
-  detailSharedContactMethods: { ja: "共有された連絡先", zh: "对方共享的联系方式", en: "Shared contact methods", kind: "title" },
+  detailSharedContactMethods: { ja: "連絡先", zh: "联系方式", en: "Contact", kind: "title" },
   detailFieldOffering: { ja: "提供", zh: "可提供", en: "Offers", kind: "label" },
   detailFieldSeeking: { ja: "求めている", zh: "在找", en: "Looking for", kind: "label" },
   detailConnectedVia: { ja: "つながり方", zh: "连接方式", en: "Connected via", kind: "label" },

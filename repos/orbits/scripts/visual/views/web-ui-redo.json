@@ -1,5 +1,5 @@
 {
- "_note": "五处界面重做 UR-C / R / S / P / E（onboarding-3step-proposal.html 第 49–99 块，2026-11-27 并入）。实现侧沿用 web-onboarding-3step 的浏览器桩（不调模型、不写库）；画板里卡片 / 页面滚到连絡先组的位置，门禁用同一公式（标记顶距滚动容器 off px）。 UR-C 只比「連絡先」这一组（design-clip .cg / app-clip [data-onboarding-contact]）：画板用卡片内滚动画出这一组，实现是整页滚动，组外的部分由 web-onboarding-3step 门禁管。",
+ "_note": "五处界面重做 UR-C / R / S / P / E（onboarding-3step-proposal.html 第 49–99 块，2026-11-27 并入）。实现侧沿用 web-onboarding-3step 的浏览器桩（不调模型、不写库）；画板里卡片 / 页面滚到连絡先组的位置，门禁用同一公式（标记顶距滚动容器 off px）。 UR-C 只比「連絡先」这一组（design-clip .cg / app-clip [data-onboarding-contact]）：画板用卡片内滚动画出这一组，实现是整页滚动，组外的部分由 web-onboarding-3step 门禁管。 UR-S 报名者详情在 :3017 mock（host 变体先切 BASE），只比「連絡先」这一段。",
  "defaults": {
   "app-origin": "http://localhost:3040",
   "login": "qa@orbit.test",
@@ -683,6 +683,122 @@
    ],
    "note": "UR-R9 390 · 需要改生日",
    "height": 844
+  },
+  {
+   "id": "URS2",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
+   "app-origin": "http://localhost:3017",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 76,
+   "width": 1440,
+   "height": 900,
+   "viewport": false,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-host-row]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-host-row='actor:hp-matsumoto'] button[aria-label]:not([role=checkbox])"
+    },
+    {
+     "waitFor": "[data-host-person-contacts]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "design-clip": ".k-hsec",
+   "app-clip": "[data-host-person-contacts]",
+   "note": "UR-S2 Web 1440 · 报名者详情 · 只有 LINE（mock 松本 隆）；只比「連絡先」一段"
+  },
+  {
+   "id": "URS4",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
+   "app-origin": "http://localhost:3017",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 78,
+   "width": 834,
+   "height": 1194,
+   "viewport": false,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-host-row]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-host-row]:not([data-host-row='actor:hp-matsumoto']) button[aria-label]:not([role=checkbox])"
+    },
+    {
+     "waitFor": "[data-host-person-contacts]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "design-clip": ".k-hsec",
+   "app-clip": "[data-host-person-contacts]",
+   "note": "UR-S4 Web 834 · 报名者详情 · 没有"
+  },
+  {
+   "id": "URS6",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
+   "app-origin": "http://localhost:3017",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 80,
+   "width": 390,
+   "height": 844,
+   "viewport": false,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-host-row]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-host-row='actor:hp-matsumoto'] [data-host-who]"
+    },
+    {
+     "waitFor": "[data-host-person-contacts]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "design-clip": ".k-hsec",
+   "app-clip": "[data-host-person-contacts]",
+   "note": "UR-S6 390 · 报名者详情（底部面板）"
+  },
+  {
+   "id": "URS7",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
+   "app-origin": "http://localhost:3017",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 81,
+   "width": 390,
+   "height": 844,
+   "viewport": false,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-host-row]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-host-row]:not([data-host-row='actor:hp-matsumoto']) [data-host-who]"
+    },
+    {
+     "waitFor": "[data-host-person-contacts]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "design-clip": ".k-hsec",
+   "app-clip": "[data-host-person-contacts]",
+   "note": "UR-S7 390 · 没有"
   }
  ]
 }

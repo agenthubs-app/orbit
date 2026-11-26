@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { HostAdmissionDecision, HostPersonResponse } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { localizeLibraryAnswerText, localizeLibraryPrompt } from "../../../../../shared/domain/host-question-library";
-import { Avatar, BottomSheet, Drawer, Icon } from "../ui";
+import { Avatar, BottomSheet, Drawer, Icon, ContactMethodRows } from "../ui";
 import { ScoreRing } from "./HostPeople";
 import { hostApi } from "./host-api";
 import { hostDateShort, hostTime, hostTranslator, type HostT, hostDateDay } from "./host-model";
@@ -40,7 +40,6 @@ export function HostPersonView({ data, t, language, phone = false, onClose }: { 
   const recs = data.matching?.recommendations ?? [];
   const shownRecs = allRecs ? recs : recs.slice(0, RECS_FIRST);
   const chips = ([["pdTopics", data.topics], ["pdOffers", data.offers], ["pdNeeds", data.needs]] as const).filter(([, items]) => items.length > 0);
-  const contactRows = [[t("evContactLine"), data.contactMethods?.lineId], [t("evContactWechat"), data.contactMethods?.wechatId], [t("pdEmail"), data.contactMethods?.email], [t("pdPhone"), data.contactMethods?.phone]].filter(([, value]) => Boolean(value));
   return (
     <div className={`${pd.body} ${phone ? pd.phone : ""}`} data-host-person={data.actorId}>
       {phone ? (
@@ -81,6 +80,14 @@ export function HostPersonView({ data, t, language, phone = false, onClose }: { 
         </div>
       ) : null}
 
+      {/* UR-S：报名者共享给主办方的联系方式，放在「申込時の回答」上面；没有时一行说明。 */}
+      {data.status === "rejected" ? null : (
+        <section className={pd.section} data-host-person-contacts="">
+          <h3 className={pd.h}>{t("pdContactMethods")}</h3>
+          <ContactMethodRows methods={data.contactMethods} boxed />
+        </section>
+      )}
+
       {data.hostAnswers.length ? (
         <section className={pd.section}>
           <h3 className={pd.h}>{t("pdHostAnswers")}</h3>
@@ -95,12 +102,6 @@ export function HostPersonView({ data, t, language, phone = false, onClose }: { 
         </section>
       ) : null}
 
-      {contactRows.length ? (
-        <section className={pd.section} data-host-person-contacts="">
-          <h3 className={pd.h}>{t("pdContactMethods")}</h3>
-          <dl className={pd.qa}>{contactRows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
-        </section>
-      ) : null}
       {data.profile.length || chips.length ? (
         <section className={pd.section}>
           <h3 className={pd.h}>{t("pdProfile")}</h3>

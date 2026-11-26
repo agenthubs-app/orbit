@@ -17,7 +17,7 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { scheduleWithContactHref, stashScheduleContact } from "../calendar/schedule-contact-handoff";
 import { networkCopy } from "../copy/network";
 import { pickCopy } from "../copy/types";
-import { Bone, Checkbox, ConfirmDialog, ContextMenu, Drawer, Icon, Modal, Toggle, fillCopy, useToast } from "../ui";
+import { Bone, Checkbox, ConfirmDialog, ContactMethodRows, ContextMenu, Drawer, Icon, Modal, Toggle, fillCopy, useToast } from "../ui";
 import { avatarTone, initials } from "../ui";
 import { ContactEditDrawer } from "./ContactEditDrawer";
 import { ContactLogModal, warmMyProfile } from "./ContactLogModal";
@@ -184,7 +184,6 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
 
   const contact = useMemo(() => drawerContactFrom(payload), [payload]);
   const methods = sharedMethods?.id === contactId ? sharedMethods?.fields : undefined;
-  const sharedRows = [[t("detailFieldLineId"), methods?.lineId], [t("detailFieldWechatId"), methods?.wechatId], [t("detailFieldEmail"), methods?.email], [t("detailFieldPhone"), methods?.phone]];
   const syncMoment = process.env.NODE_ENV !== "production" && contactId === "design-person-032" && designMoment === "sync";
   const fitMoment = process.env.NODE_ENV !== "production" && contactId === "design-person-032" && designMoment === "fit";
   const candidate = syncMoment ? null : fit?.fits.find((item) => item.status === "candidate") ?? null;
@@ -279,6 +278,14 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
                 </div>
               ) : <div className={styles.card} data-network-reach-card="">{reachRow}</div>}
 
+              {/* UR-S：交换过的对方共享的联系方式，放在「連絡する」下面、「提供できること」上面。 */}
+              {methods ? (
+                <div className={`${styles.card} ${styles.scCard}`} data-network-shared-contact-methods="">
+                  <div className={styles.cardH}><h3>{t("detailSharedContactMethods")}</h3></div>
+                  <ContactMethodRows methods={methods} />
+                </div>
+              ) : null}
+
               {selfUpdate.length ? (
                 <div className={`${styles.card} ${styles.syncCard}`} data-network-self-update="">
                   <div className={styles.row}><span className={`${styles.emo} ${styles.emoSm} ${styles.t_lav}`}>🔄</span>
@@ -306,12 +313,6 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
                 </div>
               ) : null}
 
-              {sharedRows.some(([, value]) => Boolean(value)) ? (
-                <div className={styles.card} data-network-shared-contact-methods="">
-                  <div className={styles.cardH}><h3>{t("detailSharedContactMethods")}</h3></div>
-                  {sharedRows.map(([label, value]) => value ? <div key={label} className={styles.frow}><span className={styles.frowKey}>{label}</span><span className={styles.frowValue}>{value}</span></div> : null)}
-                </div>
-              ) : null}
               {self && connection ? (
                 <div className={styles.card} data-network-invite="">
                   {(["organization", "role", "email", "phone", "offering", "seeking"] as const).map((field) => {

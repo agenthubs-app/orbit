@@ -1,0 +1,15 @@
+/* UR-S（kit .scr / .scbox / .scnone）：一行 ≥64 高，名称 12/700 灰，值 15/700，右侧按钮 40 高。 */
+.row { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 8px 0; }
+.row + .row { border-top: 1px solid var(--line); }
+.grow { flex: 1 1 0%; min-width: 0; }
+.grow > small { display: block; color: var(--ink-3); font-size: var(--fs-meta); font-weight: var(--fw-bold); }
+.grow > b { display: block; margin-top: 1px; font-size: var(--fs-emph); font-weight: var(--fw-bold); line-height: 1.45; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
+.acts { display: flex; flex: none; gap: 6px; }
+.act:global(.btn) { display: inline-flex; height: 40px; align-items: center; gap: 6px; padding: 0 16px; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); text-decoration: none; }
+.box { padding: 0 14px; border-radius: var(--r-tile); background: var(--surface-2); }
+.none { padding: 4px 0; color: var(--ink-3); font-size: var(--fs-body-sm); font-weight: var(--fw-semibold); }
+.phoneOnly:global(.btn) { display: none; }
+@media (max-width: 767px) {
+  .wideOnly:global(.btn) { display: none; }
+  .phoneOnly:global(.btn) { display: inline-flex; }
+}

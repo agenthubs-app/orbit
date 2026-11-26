@@ -461,6 +461,8 @@ export function hostPerson(eventId: string, actorId: string, state: HostMockStat
     // b13 HM-P6（2026-11-26）：完整度・未入力項目・自己紹介・申込の版。
     applicationVersion: row.applicationVersion, intro: `${row.org ?? ""}で${row.role ?? "財務"}を担当しています。${applicant.answer}`.slice(0, 200),
     missing: row.profileScore >= 100 ? [] : ["target"], profileScore: row.profileScore,
+    // UR-S 画板（2026-11-27）：松本 隆 只共享了 LINE；其他人没有共享。
+    ...(applicant.id === "hp-matsumoto" ? { contactMethods: { lineId: "matsumoto.t" } } : {}),
   };
 }
 

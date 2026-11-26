@@ -13,6 +13,7 @@ export { Accordion } from "./Disclosure";
 export { Table, type TableColumn } from "./Table";
 // feedback
 export { ToastProvider, useToast } from "./Toast";
+export { CONTACT_METHODS_TITLE, ContactMethodRows } from "./ContactMethodRows";
 export { BottomSheet, ConfirmDialog, ContextMenu, Drawer, Modal, ModalIcon, Popover, type MenuItem } from "./Overlay";
 // AI
 export { ConfirmCard, WhyBody, WhyButton, WhyDisclosure, type ConfirmCardAction } from "./Disclosure";

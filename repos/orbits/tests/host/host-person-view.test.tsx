@@ -25,11 +25,14 @@ test("参加者詳細: answers, profile, tables with tablemates and the first fi
   assert.match(html, /おすすめの相手/);
   assert.ok(((html.match(/<li /g) ?? []) as string[]).length <= 5, "the first five suggestions only");
   assert.doesNotMatch(html, /AI/);
-  assert.doesNotMatch(html, /連絡先/);
-  const withContacts = renderToStaticMarkup(<HostPersonView data={{ ...data, contactMethods: { wechatId: "morita-wechat", phone: "03-5555-0142" } }} t={t} />);
-  assert.match(withContacts, /連絡先/);
-  assert.match(withContacts, /morita-wechat/);
-  assert.match(withContacts, /03-5555-0142/);
+  // UR-S：没有时这一段仍在，一行「連絡先は共有されていません」；有时每行名称 + 值 + 能做的事；已拒绝的人不显示这一段。
+  assert.match(html, /連絡先は共有されていません/);
+  const withContacts = renderToStaticMarkup(<HostPersonView data={{ ...data, contactMethods: { wechatId: "morita-wechat", phone: "03-5555-0142", email: "morita@example.com" } }} t={t} />);
+  assert.match(withContacts, /data-contact-method="wechatId"[\s\S]*morita-wechat[\s\S]*コピー/u);
+  assert.match(withContacts, /href="mailto:morita@example.com"/);
+  assert.match(withContacts, /href="tel:0355550142"/, "phones call (the button shows on narrow screens)");
+  assert.doesNotMatch(withContacts, /誕生|生年月日|birth/iu);
+  assert.doesNotMatch(renderToStaticMarkup(<HostPersonView data={{ ...data, status: "rejected" }} t={t} />), /data-host-person-contacts/);
 });
 
 test("参加者詳細: library questions and their choices follow the interface language (2026-11-26)", () => {

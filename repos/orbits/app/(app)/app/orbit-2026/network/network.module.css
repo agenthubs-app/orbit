@@ -216,3 +216,5 @@
 .logEmpty { font-size: var(--fs-meta); color: var(--ink-2); background: var(--bg); border-radius: var(--r-md); padding: 12px; line-height: 1.6; }
 .logEmpty a { color: var(--ink); font-weight: var(--fw-bold); text-decoration: none; margin-left: 4px; }
 .logError { font-size: var(--fs-meta); color: var(--coral-text); margin: 0 0 10px; }
+.scCard.scCard { padding: 6px 18px 8px; }
+.scCard .cardH { margin: 12px 0 0; }
