@@ -25,5 +25,5 @@ export function UiFeedbackHost() {
     return <ConfirmDialog visible title={request.title} {...(request.message ? { message: request.message } : {})} confirmLabel={request.confirmLabel} {...(request.cancelLabel ? { cancelLabel: request.cancelLabel } : {})} destructive={Boolean(request.destructive)} {...(request.icon ? { icon: request.icon } : {})} onConfirm={() => finish(true)} onCancel={() => finish(false)} />;
   }
   const finish = (value: string | null) => { setRequest(null); request.resolve(value); };
-  return <ActionSheet visible title={request.title} effects={(request.effects ?? []).map((effect) => ({ icon: effect.icon as IconName, text: effect.text }))} options={request.options} onSelect={finish} onClose={() => finish(null)} />;
+  return <ActionSheet visible title={request.title} effects={(request.effects ?? []).map((effect) => ({ icon: effect.icon as IconName, text: effect.text }))} options={request.options} {...(request.destructiveStyle ? { destructiveStyle: request.destructiveStyle } : {})} onSelect={finish} onClose={() => finish(null)} />;
 }

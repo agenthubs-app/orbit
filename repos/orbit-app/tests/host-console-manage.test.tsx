@@ -45,6 +45,7 @@ test("every page has the same six tabs and the ⋯ menu; nothing sends the organ
     await more(page).click();
     await page.waitForTimeout(100);
     assert.deepEqual((await sheets(page))[0].options, ["cohosts", "edit", "reissue", "open", "cancel"], String(seg));
+    assert.equal((await sheets(page))[0].destructiveStyle, "text", "イベントを中止 is a red text row, not a red button");
     // マッチング 的只读说明在第 3 块换掉。
     if (seg !== "matching") assert.equal(await page.getByText(/PC/u).count(), 0, String(seg));
   }

@@ -3,6 +3,7 @@ import { AccessibilityInfo, findNodeHandle, StyleSheet, View } from "react-nativ
 
 import { createThemedStyles } from "../../design/theme";
 import { BottomSheet } from "./BottomSheet";
+import { UiPressable } from "./Pressable";
 import { Button } from "./Button";
 import { Icon, type IconName } from "./Icon";
 import { MacTile } from "./MacTile";
@@ -18,7 +19,9 @@ export type ActionSheetOption = { key: string; label: string; destructive?: bool
 // R31a: `emoji` draws the kit board header (01-system ② / b4 #19 / b12): a 40 macaron tile, the question left-aligned
 // (15 / 700, line-height 1.4; b4 uses 16 via titleSize) and an optional .lbl line, with the consequences 12 below and
 // the buttons 14 below them. Without it the question is centred above the consequences (older boards).
-export function ActionSheet({ visible, title, subtitle, emoji, emojiTone = "lav", titleSize = 15, effects = [], options, defaultFocusKey, onSelect, onClose }: {
+// 2026-11-26: `destructiveStyle: "text"` (opt-in, default unchanged) draws a destructive option as a red text row under a line
+// instead of a red button — the b13 host header ⋯ menu (「イベントを中止」, which still asks to confirm).
+export function ActionSheet({ visible, title, subtitle, emoji, emojiTone = "lav", titleSize = 15, effects = [], options, defaultFocusKey, destructiveStyle = "button", onSelect, onClose }: {
   visible: boolean;
   title: string;
   subtitle?: string;
@@ -28,6 +31,7 @@ export function ActionSheet({ visible, title, subtitle, emoji, emojiTone = "lav"
   effects?: { icon: IconName; text: string }[];
   options: ActionSheetOption[];
   defaultFocusKey?: string;
+  destructiveStyle?: "button" | "text";
   onSelect: (key: string) => void;
   onClose: () => void;
 }) {
@@ -67,7 +71,11 @@ export function ActionSheet({ visible, title, subtitle, emoji, emojiTone = "lav"
       <View style={[styles.buttons, emoji ? styles.buttonsAfterHead : null]}>
         {options.map((option) => (
           <View key={option.key} ref={option.key === focusKey ? focusTarget : undefined} collapsable={false} onLayout={option.key === focusKey ? focusOnce : undefined}>
-            <Button block size="lg" label={option.label} onPress={() => onSelect(option.key)} variant={option.destructive ? "danger" : "secondary"} />
+            {option.destructive && destructiveStyle === "text" ? (
+              <UiPressable accessibilityRole="button" accessibilityLabel={option.label} onPress={() => onSelect(option.key)} style={styles.textRow}>
+                <UiText style={styles.textRowLabel}>{option.label}</UiText>
+              </UiPressable>
+            ) : <Button block size="lg" label={option.label} onPress={() => onSelect(option.key)} variant={option.destructive ? "danger" : "secondary"} />}
           </View>
         ))}
       </View>
@@ -86,4 +94,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   headTitle: { color: colors.ink, fontWeight: "700" },
   headSub: { color: colors.ink3Text, fontSize: 13, fontWeight: "500", lineHeight: 20 },
   effects: { marginTop: 12, marginBottom: 14 },
+  textRow: { alignItems: "center", borderTopColor: colors.line, borderTopWidth: 1, justifyContent: "center", marginTop: 4, minHeight: 46 },
+  textRowLabel: { color: colors.coralText, fontSize: 17, fontWeight: "700", lineHeight: 24 },
 }));

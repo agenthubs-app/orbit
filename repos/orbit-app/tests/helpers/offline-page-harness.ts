@@ -231,7 +231,7 @@ export async function startOfflinePageHarness(screens: readonly HarnessScreen[],
         import { registerFeedbackPresenter } from "./src/components/ui/feedback-requests";
         // 2026-11-26: confirms are recorded in fixture.confirms and answered with fixture.confirmNext (default: cancel, as without a host);
         // action sheets in fixture.sheets (title + option keys), answered with fixture.sheetNext (default: dismissed).
-        registerFeedbackPresenter((request) => { const state = window.fixture; if (request.kind === "confirm") { state.confirms = [...(state.confirms ?? []), { title: request.title, message: request.message ?? null }]; request.resolve(Boolean(state.confirmNext)); } else { state.sheets = [...(state.sheets ?? []), { title: request.title, options: request.options.map((option) => option.key) }]; request.resolve(state.sheetNext ?? null); } });
+        registerFeedbackPresenter((request) => { const state = window.fixture; if (request.kind === "confirm") { state.confirms = [...(state.confirms ?? []), { title: request.title, message: request.message ?? null }]; request.resolve(Boolean(state.confirmNext)); } else { state.sheets = [...(state.sheets ?? []), { title: request.title, options: request.options.map((option) => option.key), destructiveStyle: request.destructiveStyle ?? "button" }]; request.resolve(state.sheetNext ?? null); } });
         const language = window.initialFixture?.language ?? "zh";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
         const screens = { ${table} };

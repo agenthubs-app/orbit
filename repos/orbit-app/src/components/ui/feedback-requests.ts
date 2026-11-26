@@ -5,7 +5,7 @@ import type { IconName } from "./Icon";
 // once at the root, registers itself as the presenter. Without a host a request
 // resolves as cancelled.
 export type ConfirmRequest = { title: string; message?: string; confirmLabel: string; cancelLabel?: string; destructive?: boolean; icon?: IconName };
-export type ActionSheetRequest = { title: string; effects?: { icon: string; text: string }[]; options: { key: string; label: string; destructive?: boolean }[] };
+export type ActionSheetRequest = { title: string; effects?: { icon: string; text: string }[]; options: { key: string; label: string; destructive?: boolean }[]; destructiveStyle?: "button" | "text" };
 export type FeedbackRequest =
   | ({ kind: "confirm"; resolve: (value: boolean) => void } & ConfirmRequest)
   | ({ kind: "sheet"; resolve: (value: string | null) => void } & ActionSheetRequest);

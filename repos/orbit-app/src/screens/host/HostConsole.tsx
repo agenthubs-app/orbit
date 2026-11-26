@@ -100,7 +100,7 @@ export function HostConsoleScreen() {
   };
   const openMenu = async () => {
     if (!current) return;
-    const key = await presentActionSheet({ options: hostMenuActions(current).map((action) => ({ destructive: action === "cancel", key: action, label: t(MENU_LABEL[action]) })), title: current.title });
+    const key = await presentActionSheet({ destructiveStyle: "text", options: hostMenuActions(current).map((action) => ({ destructive: action === "cancel", key: action, label: t(MENU_LABEL[action]) })), title: current.title });
     if (key) void pick(key as HostMenuAction);
   };
 
