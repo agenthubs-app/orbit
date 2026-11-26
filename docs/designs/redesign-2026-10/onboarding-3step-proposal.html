@@ -200,6 +200,7 @@
   <nav class="doc-nav" id="docnav"></nav>
   <div id="out"></div>
   <div class="urx" id="out-ur"></div>
+  <div class="urx2" id="out-ur2"></div>
 </div>
 <script>
 const TAGS = {};
@@ -1020,6 +1021,502 @@ h += boards([
 ]);
 
 document.getElementById('out-ur').innerHTML = h;
+document.querySelectorAll('.scrollto').forEach(m => {
+  const sc = m.closest('.phone .scroll, .cbody, .drawer .db'); if (!sc) return;
+  sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - (+m.dataset.off || 0);
+});
+docNav(''); orbitChrome();
+
+}
+</script>
+
+<!-- ===== 2026-11-27 并入：编辑资料里的「連絡先」UR-P9–P15（原 ui-redo-contact-in-profile.html，用户 11-27 确认「就按照这个实现」）；样式加 .urx2 前缀、脚本独立块 ===== -->
+<style>
+
+  .urx2 .doc { min-width: 1520px; }
+  .urx2 .web.bare { display: block; }
+  .urx2 .h1 { font-size: 24px; font-weight: 900; line-height: 1.35; letter-spacing: -.01em; }
+  .urx2 .mt { font-size: 22px; font-weight: 900; line-height: 1.4; }
+  .urx2 .grow { flex: 1; min-width: 0; }
+  .urx2 .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .urx2 .btn.xl { height: 50px; font-size: 14.5px; }
+  .urx2 .btn.dis { opacity: .55; pointer-events: none; }
+  .urx2 .lp-logo { width: 36px; height: 36px; border-radius: 12px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
+
+  /* ===== 栏位：与 onboarding-3step-proposal 同一套（48 高 · 圆角 14 · 无边框 · 卡内 surface-2） ===== */
+  .urx2 .fld { margin-top: 12px; min-width: 0; }
+  .urx2 .fld label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; }
+  .urx2 .fld .in { height: 48px; border-radius: 14px; background: var(--surface); display: flex; align-items: center; gap: 8px; padding: 0 14px; font-size: 14px; color: var(--ink); border: 1.5px solid transparent; }
+  .urx2 .card .fld .in, .urx2 .on-surface .fld .in, .urx2 .drawer .card .fld .in, .urx2 .sheet .fld .in { background: var(--surface-2); }
+  .urx2 .fld .in > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .urx2 .fld .in.ph > span { color: var(--ink-4); }
+  .urx2 .fld .in.ro { background: transparent !important; padding: 0; height: auto; color: var(--ink-2); font-weight: 600; }
+  .urx2 .fld .in .tail { font-size: 11.5px; color: var(--ink-3); font-weight: 700; flex: none; font-family: var(--font-num); }
+  .urx2 .fld.focus .in { border-color: var(--plum-500); background: var(--surface) !important; }
+  .urx2 .fld.err .in { border-color: var(--coral); background: var(--coral-soft) !important; }
+  .urx2 .fld .msg { font-size: 11.5px; margin-top: 6px; font-weight: 600; color: var(--ink-3); line-height: 1.55; }
+  .urx2 .fld.err .msg, .urx2 .fld.err .tail { color: var(--coral-text); }
+  .urx2 .fld.dim { opacity: .55; }
+  .urx2 .fld .ta { height: auto; min-height: 96px; align-items: flex-start; padding: 12px 14px; line-height: 1.75; }
+  .urx2 .fld .ta > span { white-space: normal; }
+  .urx2 .caret { display: inline-block; width: 1.5px; height: 18px; background: var(--plum-700); margin-left: -6px; animation: ur2blink 1s steps(2) infinite; flex: none; }
+  @keyframes ur2blink { 50% { opacity: 0; } }
+  .urx2 .grid2 > .fld { margin-top: 12px; }
+
+  /* 引导页框架（照抄 onboarding-3step-proposal） */
+  .urx2 .wstp { display: flex; align-items: center; gap: 10px; }
+  .urx2 .wstp > div { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+  .urx2 .wstp > div .n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font-weight: 800; font-size: 12px; }
+  .urx2 .wstp > div.n { color: var(--ink); font-weight: 800; } .urx2 .wstp > div.n .n { background: var(--accent); color: var(--on-accent); }
+  .urx2 .wstp em { width: 28px; height: 1.5px; background: var(--surface-3); }
+  .urx2 .eta { font-size: 12px; color: var(--ink-3); font-weight: 700; margin-left: 12px; white-space: nowrap; }
+  .urx2 .obw { height: 100%; display: flex; flex-direction: column; }
+  .urx2 .obw-h { height: 84px; padding: 0 40px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); flex: none; }
+  .urx2 .obw-b { flex: 1; min-height: 0; padding: 22px 120px 30px; display: flex; flex-direction: column; }
+  .urx2 .obw-b > .wgrid { flex: 1; min-height: 0; }
+  .urx2 .ocard { display: flex; flex-direction: column; min-height: 0; padding: 28px !important; position: relative; }
+  .urx2 .cbody { flex: 1; min-height: 0; overflow: hidden; position: relative; margin: 0 -6px; padding: 0 6px; }
+  .urx2 .obw-foot { display: flex; align-items: center; gap: 10px; padding-top: 18px; margin-top: 4px; border-top: 1px solid var(--line); flex: none; }
+  .urx2 .once { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 16px; background: var(--accent-soft); font-size: 12.5px; line-height: 1.65; color: var(--ink-2); font-weight: 600; }
+  .urx2 .once b { color: var(--ink); font-weight: 800; }
+  .urx2 .once .emo { flex: none; background: var(--surface); }
+  .urx2 .obw-b > .once { margin-bottom: 16px; font-size: 13.5px; padding: 14px 18px; align-items: center; flex: none; }
+  .urx2 .web.w834 { width: 834px; height: 1194px; }
+  .urx2 .w834 .obw-h { padding: 0 24px; }
+  .urx2 .w834 .obw-b { padding: 20px 28px 28px; }
+  .urx2 .w834 .obw-b > .ocard { flex: 1; }
+  .urx2 .stp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .urx2 .stp i { height: 5px; border-radius: 3px; background: var(--surface-3); }
+  .urx2 .stp i.n { background: linear-gradient(90deg, var(--plum-700) 50%, var(--surface-3) 50%); }
+  .urx2 .scanbig { border-radius: 22px; background: var(--mac-lav); padding: 14px 18px; display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+  .urx2 .scanbig b { font-size: 14px; display: block; }
+  .urx2 .scanp { border: 2px dashed var(--plum-300); border-radius: 22px; background: color-mix(in srgb, var(--accent-soft) 55%, transparent); padding: 18px 16px; text-align: center; margin-top: 12px; display: grid; gap: 10px; justify-items: center; }
+  .urx2 .scanp b { font-size: 15px; }
+  .urx2 .miss { color: var(--coral-text); font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+  .urx2 .errline { color: var(--coral-text); font-size: 12.5px; font-weight: 700; margin-top: 10px; line-height: 1.55; }
+  .urx2 .ghost-row { height: 40px; }
+
+  /* 手机：底部按钮 · Safari 栏 · 52 顶栏 */
+  .urx2 .phone .foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; padding: 22px 18px 30px; background: linear-gradient(to bottom, transparent, var(--bg) 28%); display: grid; gap: 8px; }
+  .urx2 .phone .foot .miss { justify-content: center; }
+  .urx2 .mweb .scroll { padding-bottom: 200px; }
+  .urx2 .mweb .foot { bottom: 92px; padding-bottom: 14px; }
+  .urx2 .sbar { position: absolute; left: 0; right: 0; bottom: 0; height: 92px; z-index: 34; background: var(--glass); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border-top: 1px solid var(--line); padding: 10px 14px 0; display: flex; gap: 10px; align-items: flex-start; }
+  .urx2 .sbar .url { flex: 1; height: 42px; border-radius: 14px; background: var(--surface); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; color: var(--ink-2); font-weight: 600; }
+  .urx2 .sbar .ub { width: 42px; height: 42px; display: grid; place-items: center; color: var(--ink-2); font-size: 14px; font-weight: 700; }
+  .urx2 .tb52 { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; height: 52px; margin-bottom: 8px; }
+  .urx2 .tb52 > b { text-align: center; font-size: 17px; font-weight: 800; white-space: nowrap; }
+  .urx2 .tb52.wide { grid-template-columns: 76px 1fr 76px; }
+  .urx2 .tb52 .lo { font-size: 13px; font-weight: 700; color: var(--ink-2); text-align: right; white-space: nowrap; }
+  .urx2 .mw-head { display: flex; align-items: center; gap: 8px; height: 52px; margin-bottom: 8px; }
+  .urx2 .mw-head .logo { width: 34px; height: 34px; border-radius: 11px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
+  .urx2 .mweb .sheet-scrim { bottom: 92px; }
+  .urx2 .mweb .sheet { bottom: 100px; }
+  .urx2 .mweb .toast.pos { bottom: 112px; }
+
+  /* ===== UR-C 联系方式组 ===== */
+  .urx2 .cg { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .urx2 .cg-h { display: flex; align-items: baseline; gap: 8px; font-size: 16px; font-weight: 800; color: var(--ink); }
+  .urx2 .cg-h small { font-size: 12px; font-weight: 700; color: var(--ink-3); }
+  .urx2 .cg-s { font-size: 12.5px; color: var(--ink-2); font-weight: 600; line-height: 1.6; margin-top: 4px; }
+  .urx2 .cg .chip.rec { background: var(--surface-2); color: var(--ink-3); }
+  .urx2 .card .cg .chip.rec { background: var(--surface-3); color: var(--ink-2); }
+  .urx2 .addmore { margin-top: 12px; height: 48px; width: 100%; border-radius: 14px; border: 1.5px dashed var(--ink-4); background: transparent; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: var(--ink-2); }
+  .urx2 .cg.err .addmore { border-color: var(--coral); }
+
+  /* ===== UR-R 补资料 ===== */
+  .urx2 .pop { position: absolute; left: 0; right: 0; z-index: 30; background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-float), 0 0 0 1px var(--line); padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+  .urx2 .pop .o { height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 10px; padding: 0 12px; font-size: 13.5px; font-weight: 700; color: var(--ink); min-width: 0; }
+  .urx2 .pop .o span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .urx2 .pop .o.on { background: var(--accent-soft); }
+  .urx2 .pop .o .ck, .urx2 .opt .ck { width: 20px; height: 20px; color: var(--plum-700); flex: none; display: grid; place-items: center; }
+  .urx2 .rel { position: relative; }
+  .urx2 .sheet.pick { top: 150px; display: flex; flex-direction: column; padding-bottom: 12px; }
+  .urx2 .sheet.pick .sh { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .urx2 .sheet.pick .sh b { flex: 1; font-size: 18px; font-weight: 800; }
+  .urx2 .opts { flex: 1; min-height: 0; overflow: hidden; position: relative; margin: 0 -18px; padding: 0 18px; }
+  .urx2 .opts::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(to bottom, transparent, var(--surface)); pointer-events: none; }
+  .urx2 .opts .sind { position: absolute; right: 5px; top: 8px; width: 4px; height: 38%; border-radius: 2px; background: var(--ink-4); z-index: 2; }
+  .urx2 .opt { height: 54px; display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 700; border-radius: 14px; padding: 0 12px; }
+  .urx2 .opt + .opt { margin-top: 2px; }
+  .urx2 .opt.on { background: var(--accent-soft); }
+  .urx2 .opt .rad { width: 22px; height: 22px; }
+  .urx2 .rad.on { border-color: var(--plum-700); }
+  .urx2 .rad.on::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--plum-700); }
+  .urx2 .prevc .ghost-row { margin-top: 14px; }
+  /* 电脑：行业平铺（不再下拉） */
+  .urx2 .igrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .urx2 .w834 .igrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .urx2 .igrid .opt { height: 48px; background: var(--surface-2); border: 1.5px solid transparent; font-size: 13.5px; gap: 10px; padding: 0 12px; margin: 0; }
+  .urx2 .igrid .opt { height: auto; min-height: 48px; padding: 7px 12px; line-height: 1.3; }
+  .urx2 .igrid .opt > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+  .urx2 .rp .ocard { padding: 24px 26px !important; }
+  .urx2 .rp .obw-b { padding-bottom: 16px; }
+  .urx2 .rp .obw-foot { padding-top: 14px; }
+  .urx2 .fld label .note { font-weight: 600; color: var(--ink-3); }
+  .urx2 .igrid .opt.on { background: var(--accent-soft); border-color: var(--plum-500); }
+  .urx2 .igrid .opt .rad { width: 20px; height: 20px; }
+  .urx2 .igrid.err { outline: 1.5px solid var(--coral); outline-offset: 6px; border-radius: 16px; }
+  .urx2 .igrid.dim { opacity: .55; }
+  .urx2 .ihint { height: 48px; border-radius: 14px; border: 1.5px dashed var(--surface-3); display: flex; align-items: center; padding: 0 14px; font-size: 13px; color: var(--ink-3); font-weight: 600; }
+  .urx2 .ihint.err { border-color: var(--coral); color: var(--coral-text); }
+
+  /* ===== UR-S 共享联系方式 ===== */
+  .urx2 .scr { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 8px 0; }
+  .urx2 .scr + .scr { border-top: 1px solid var(--line); }
+  .urx2 .scr .grow > small { display: block; font-size: 12px; color: var(--ink-3); font-weight: 700; }
+  .urx2 .scr .grow > b { display: block; font-size: 15px; font-weight: 700; overflow-wrap: anywhere; line-height: 1.45; margin-top: 1px; }
+  .urx2 .scr .acts { display: flex; gap: 6px; flex: none; }
+  .urx2 .scbox { background: var(--surface-2); border-radius: 16px; padding: 0 14px; }
+  .urx2 .scnone { font-size: 13px; color: var(--ink-3); font-weight: 600; padding: 4px 0; }
+  .urx2 .det-h { display: flex; gap: 12px; align-items: center; }
+  .urx2 .det-sec { margin-top: 18px; }
+  .urx2 .det-sec h5 { font-size: 12px; font-weight: 800; color: var(--ink-3); margin-bottom: 6px; }
+  .urx2 .qa { background: var(--surface-2); border-radius: 16px; padding: 4px 14px; }
+  .urx2 .qa > div { padding: 9px 0; } .urx2 .qa > div + div { border-top: 1px solid var(--line); }
+  .urx2 .qa dt { font-size: 11.5px; color: var(--ink-3); font-weight: 600; } .urx2 .qa dd { font-size: 13px; font-weight: 600; margin-top: 2px; line-height: 1.55; }
+  .urx2 .meta-l { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .urx2 .sheet.full { top: 58px; display: flex; flex-direction: column; padding-bottom: 14px; }
+  .urx2 .sheet.full .sb { flex: 1; min-height: 0; overflow: hidden; margin: 0 -18px; padding: 0 18px 8px; }
+  .urx2 .fadeout { opacity: .45; }
+
+  /* ===== Web 抽屉（kit .drawer）+ 标准头尾 ===== */
+  .urx2 .drawer.ed { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+  .urx2 .drawer.ed .dh { display: flex; align-items: center; gap: 10px; padding: 20px 22px 14px; flex: none; }
+  .urx2 .drawer.ed .dh b { flex: 1; font-size: 18px; font-weight: 800; }
+  .urx2 .drawer.ed .db { flex: 1; min-height: 0; overflow: hidden; padding: 0 22px 16px; }
+  .urx2 .drawer.ed .df { display: flex; align-items: center; gap: 8px; padding: 14px 22px 18px; border-top: 1px solid var(--line); flex: none; background: var(--bg); }
+  .urx2 .drawer.ed .df .btn { height: 46px; padding: 0 22px; }
+  .urx2 .drawer .card + .card { margin-top: 14px; }
+  .urx2 .gh { font-size: 13px; font-weight: 800; color: var(--ink); margin-bottom: 2px; display: flex; align-items: center; gap: 8px; }
+  .urx2 .gh small { margin-left: auto; font-size: 11.5px; color: var(--ink-3); font-weight: 700; font-family: var(--font-num); }
+  .urx2 .tagin { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+  .urx2 .tagx { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px 0 13px; height: 36px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+  .urx2 .tagx.lav { background: var(--mac-lav); color: var(--mac-lav-ink); } .urx2 .tagx.pink { background: var(--mac-pink); color: var(--mac-pink-ink); }
+  .urx2 .tagx i { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--surface) 60%, transparent); font-style: normal; }
+  .urx2 .tagadd { display: inline-flex; align-items: center; gap: 5px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1.5px dashed var(--ink-4); color: var(--ink-3); font-size: 13px; font-weight: 700; }
+  .urx2 .tagadd.focus { border: 1.5px solid var(--plum-500); color: var(--ink); background: var(--surface); min-width: 180px; }
+  .urx2 .vrow { display: flex; align-items: center; gap: 12px; min-height: 52px; }
+  .urx2 .vrow + .vrow { border-top: 1px solid var(--line); }
+  .urx2 .vrow .grow b { display: block; font-size: 13.5px; font-weight: 700; }
+  .urx2 .vrow .grow span { display: block; font-size: 11.5px; color: var(--ink-3); font-weight: 600; }
+  .urx2 .vrow .fix { font-size: 12px; font-weight: 700; color: var(--ink-3); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .urx2 .ng-card { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; font-weight: 700; color: var(--coral-text); line-height: 1.55; }
+  .urx2 .seg.full { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .urx2 .seg.full button { height: 40px; }
+  .urx2 .met { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); margin-top: 12px; }
+
+  /* Web 背景页（设置 / 人脉 / 主催）· 834 */
+  .urx2 .setgrid { display: grid; grid-template-columns: 220px 1fr; gap: 22px; align-items: start; }
+  .urx2 .smenu { background: var(--surface); border-radius: 22px; padding: 8px; display: grid; gap: 2px; }
+  .urx2 .smenu a { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+  .urx2 .smenu a.on { background: var(--surface-2); color: var(--ink); }
+  .urx2 .web.wt { width: 834px; height: 1194px; }
+  .urx2 .web.wt .drawer { width: 560px; }
+  .urx2 .web .drawer.ed { width: 600px; }
+  .urx2 .web.wt .drawer.ed { width: 560px; }
+  .urx2 .web .wmodal { z-index: 30; }
+
+  /* 顶部三格 */
+  .urx2 .decide { display: grid; grid-template-columns: 1fr 1.5fr .9fr; gap: 18px; margin-bottom: 18px; max-width: 1480px; }
+  .urx2 .decide .box { background: var(--surface); border-radius: 22px; padding: 20px 22px; font-size: 13px; line-height: 1.75; color: var(--ink-2); }
+  .urx2 .decide .box h3 { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 10px; }
+  .urx2 .decide .box b { color: var(--ink); }
+  .urx2 .decide ol { padding-left: 18px; display: grid; gap: 8px; }
+  .urx2 .decide table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.55; }
+  .urx2 .decide th, .urx2 .decide td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .urx2 .decide th { color: var(--ink-3); font-weight: 700; }
+  .urx2 .decide tr.gp td { background: var(--surface-2); font-weight: 800; color: var(--ink); }
+  .urx2 .decide .s { font-size: 12px; color: var(--ink-3); }
+
+/* UR-E6：手机确认框跟站内手机版确认框（与 b13 同，4f9eb2a48 定）：图标在左、按钮靠右 */
+.urx2 .mweb .dialog { top: 50%; width: calc(100% - 32px) !important; text-align: left !important; padding: 24px; border-radius: 28px; display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 14px; align-items: start; z-index: 53; }
+.urx2 .mweb .dialog .dic { grid-row: 1 / span 2; margin: 0 !important; }
+.urx2 .mweb .dialog .dt { font-size: 17px; font-weight: 700; line-height: 1.5; }
+.urx2 .mweb .dialog .dd { margin: 6px 0 0 !important; font-size: 12.5px; line-height: 1.65; }
+.urx2 .mweb .dialog .dacts { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px !important; }
+.urx2 .mweb .dialog .dacts .btn { height: 40px; padding: 0 16px; font-size: 13px; font-weight: 700; flex: none; width: auto; }
+
+/* 手机网页输入框 16px：iOS Safari / Chrome 聚焦小于 16px 的输入框会自动放大页面（2026-11-27 定，不用禁止缩放绕开）。App 原生输入框不受影响。 */
+.urx2 .mweb .fld .in, .urx2 .mweb .tagadd.k-typing { font-size: 16px; }
+  /* ===== 本稿（UR-P9 起）===== */
+  .urx2 .phone .fld .in { font-size: 16px; }   /* 手机输入框字号 ≥ 16px（iOS 聚焦不放大） */
+  .urx2 .phone .fld .in.ta { font-size: 16px; } /* 多行框也 16px（2026-11-27 定：面板里所有输入控件手机上不小于 16px） */
+  .urx2 .drawer .card .cg-s, .urx2 .phone .card .cg-s { margin-top: 2px; }
+  .urx2 .card .addmore { border-color: var(--ink-4); }
+  .urx2 .pcard-me { min-height: 168px; background: linear-gradient(135deg, var(--mac-lav), var(--surface) 62%); }
+
+</style>
+<script>
+{
+
+/* ===================== 通用 ===================== */
+const NOTES = [];
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+/* pins: [[selector, note, nth?]] —— 针与注释一一对应 */
+const mk = (frame, pins) => frame(pins.map(([s, , n], k) => pin(k + 1, s, n || 0)).join(''));
+const notes = (pins, wide) => `<ul class="note-list" ${wide ? 'style="max-width:1440px;grid-template-columns:repeat(3,1fr);display:grid"' : ''}>${pins.map(([, t], k) => `<li><b>${k + 1}</b><span>${t}</span></li>`).join('')}</ul>`;
+const board = (label, tag, frame, pins) => `<div class="board" style="margin-bottom:34px"><div class="board-label">${label}<span class="tag">${tag}</span></div>${mk(frame, pins)}${notes(pins, true)}</div>`;
+const boards = (items) => `<div class="boards" style="margin-bottom:34px">${items.map(([label, tag, frame, pins]) => `<div class="board"><div class="board-label">${label}<span class="tag">${tag}</span></div>${mk(frame, pins)}${notes(pins)}</div>`).join('')}</div>`;
+
+const bare = (body, overlay = '') => (p) => `<div class="web no-rail bare">${body}${overlay}${p}</div>`;
+const T = (body, overlay = '') => (p) => `<div class="web no-rail bare w834">${body}${overlay}${p}</div>`;
+const sbar = `<div class="sbar"><span class="ub">aA</span><div class="url">${ic('search', 'sm')}orbit.app</div><span class="ub">${ic('refresh', 'sm')}</span></div>`;
+/* 底部按钮（.foot）从滚动内容里拿出来，固定在画框底部 */
+const splitFoot = (body) => { const i = body.lastIndexOf('<div class="foot">'); return i < 0 ? [body, ''] : [body.slice(0, i), body.slice(i)]; };
+const M = (body, overlay = '') => (p) => { const [b, f] = splitFoot(body); return phone({ tab: -1, body: b, overlay: f + overlay + sbar, pins: p }).replace('class="phone"', 'class="phone mweb"'); };
+const A = (body, overlay = '') => (p) => { const [b, f] = splitFoot(body); return phone({ tab: -1, body: b, overlay: f + overlay, pins: p }); };
+const W = (o, overlay = '') => (p) => webFrame({ ...o, pins: overlay + p });
+const WT = (o, overlay = '') => (p) => webFrame({ ...o, pins: overlay + p }).replace('class="web no-rail"', 'class="web no-rail wt"');
+
+const fld = (label, val, o = {}) => `<div class="fld ${o.cls || ''} ${o.k || ''}"><label>${label}${o.hint ? `<span class="chip ${o.hc || 'lav'}">${o.hint}</span>` : ''}${o.lt || ''}</label><div class="in ${o.ph ? 'ph' : ''} ${o.ta ? 'ta' : ''} ${o.ro ? 'ro' : ''}">${o.icon ? ic(o.icon, 'sm') : ''}<span>${val}</span>${o.caret ? '<i class="caret"></i>' : ''}${o.end || ''}</div>${o.msg ? `<div class="msg">${o.msg}</div>` : ''}</div>`;
+const down = ic('down', 'sm');
+const CARD = { hint: '名刺から' };
+const AI = { hint: 'AI 推定', hc: 'blue' };
+const miss = (t) => `<span class="miss">${ic('flag', 'sm')}${t}</span>`;
+const foot = (h) => `<div class="foot">${h}</div>`;
+const rb = (n, cls = '') => `<button class="rbtn ${cls}">${ic(n)}</button>`;
+const tb52 = (title, l = '<span></span>', r = '<span></span>') => `<div class="tb52">${l}<b>${title}</b>${r}</div>`;
+const tg = (on) => `<span class="tgl ${on ? 'on' : ''}"></span>`;
+const toast = (t, undo) => `<div class="toast pos notab k-toast"><span class="tk">${ic('check', 'sm')}</span><span class="tmsg">${t}</span>${undo ? `<button class="undo"><span class="lic i-undo sm"></span>${undo}</button>` : ''}</div>`;
+const SEE = '人脈の相手と、申し込んだイベントの主催者だけに表示されます。';
+const SEE_BOTH = '生年月日はだれにも公開されません。連絡先は、人脈の相手と申し込んだイベントの主催者だけに表示されます。';
+
+/* ===================== UR-C 联系方式 ===================== */
+/* s: empty | one | card | miss | fmt */
+function cgroup(s, two) {
+  const err = s === 'miss', open = s === 'card' || s === 'fmt';
+  const rec = { lt: '<span class="chip rec">おすすめ</span>' };
+  const line = s === 'one' ? fld('LINE', 'sato.kenichi', { ...rec, k: 'k-line' })
+    : fld('LINE', 'LINE ID', { ...rec, ph: true, cls: err ? 'err' : '', k: 'k-line' });
+  const wc = fld('WeChat', 'WeChat ID', { ...rec, ph: true, cls: err ? 'err' : '', k: 'k-wc' });
+  const mail = s === 'fmt' ? fld('メール', 'sato@minatolink', { cls: 'err focus', k: 'k-mail', caret: true, msg: 'メールアドレスの形式を確認してください（例：name@example.com）' })
+    : fld('メール', 'sato@minatolink.example', { ...CARD, k: 'k-mail' });
+  const tel = s === 'fmt' ? fld('電話', '例）090-1234-5678', { ph: true, k: 'k-tel' }) : fld('電話', '03-5555-0142', { ...CARD, k: 'k-tel' });
+  const pair = (a, b) => two ? `<div class="grid2" style="gap:0 14px">${a}${b}</div>` : a + b;
+  return `<div class="cg ${err ? 'err' : ''} scrollto" data-off="${two ? 12 : 150}"><div class="cg-h">連絡先<small>1つ以上</small></div><div class="cg-s k-see">${SEE}</div>
+    ${pair(line, wc)}${open ? pair(mail, tel) : `<button class="addmore k-more">${ic('plus', 'sm')}メール・電話を入れる</button>`}
+    ${err ? `<div class="errline k-errline">どれか 1 つを入力してください</div>` : ''}</div>`;
+}
+const BIRTH = (o = {}) => fld('生年月日（任意）', '年 / 月 / 日', { ph: true, end: ic('calendar', 'sm'), msg: 'だれにも公開されません', k: 'k-birth', ...o });
+function basicsWeb(scanned) {
+  return `<div class="mt">まずは、あなたのことを</div>
+    ${scanned ? `<div class="scanbig"><span class="emo lav" style="background:var(--surface)">📇</span><div class="grow"><b>名刺から 6 項目、AI の推定で 3 項目を入力しました</b><div class="lbl">内容を確認して、違うところだけ直してください</div></div><button class="btn sm" style="background:var(--surface)">別の画像にする</button></div>` : `<div class="scanbig" style="background:transparent;border:2px dashed var(--plum-300)"><span style="font-size:34px">📇</span><div class="grow"><b>名刺の画像をここにドロップ</b><div class="lbl">JPG・PNG・HEIC · 画像は保存されません</div></div><button class="btn primary">ファイルを選ぶ</button></div>`}
+    <div class="grid2" style="gap:0 14px">
+      ${scanned ? fld('氏名', '佐藤 健一', CARD) : fld('氏名', '例）佐藤 健一', { ph: true })}
+      ${scanned ? fld('会社', '株式会社ミナトリンク', CARD) : fld('会社（任意）', '例）株式会社ミナトリンク', { ph: true })}
+      ${scanned ? fld('役職', '代表取締役 CEO', CARD) : fld('役職（任意）', '例）代表取締役', { ph: true })}
+      ${BIRTH()}
+      ${scanned ? fld('業界', 'IT・ソフトウェア', { ...AI, end: down }) : fld('業界', '選択してください', { ph: true, end: down })}
+      ${scanned ? fld('業界の詳細', 'SaaS', { ...AI, end: down }) : fld('業界の詳細', '先に業界を選択', { ph: true, end: down })}
+      ${scanned ? fld('役職層', '経営層（C レベル）', { ...AI, end: down }) : fld('役職層（任意）', '選択してください', { ph: true, end: down })}
+      ${scanned ? fld('所在地', '日本 · 東京', CARD) : fld('所在地（任意）', '例）東京', { ph: true })}
+    </div>`;
+}
+const meCard = (full) => `<div class="lbl" style="margin-bottom:10px">相手から見えるあなた</div><div class="card"><div class="row" style="gap:14px"><div class="av lg c1">${full ? '佐' : ''}</div><div>${full ? `<div style="font-size:19px;font-weight:800">佐藤 健一</div><div class="sub">株式会社ミナトリンク · 代表取締役 CEO</div>` : `<div class="ghost-row" style="width:220px;height:34px"><i></i>氏名 · 会社 · 役職</div>`}</div></div><div class="ghost-row" style="margin-top:14px"><i></i>提供できること · 求めていること</div><div class="ghost-row"><i></i>自己紹介（ステップ3で作成）</div></div>
+  <div class="card flat k-priv" style="margin-top:14px"><div class="row" style="gap:10px;align-items:flex-start"><span class="emo sm lav">🔒</span><div class="sub" style="line-height:1.7">${SEE_BOTH}</div></div></div>`;
+const wstepper = `<div class="row" style="gap:0"><div class="wstp"><div class="n"><span class="n">1</span>名刺・基本情報</div><em></em><div><span class="n">2</span>目標と強み</div><em></em><div><span class="n">3</span>自己紹介</div></div><span class="eta">約1分</span></div>`;
+const ONCE = `<div class="once"><span class="emo sm lav">🪪</span><div>このプロフィールは<b>一度入力すれば、今後参加するすべてのイベントで使われます</b>。名刺を読み取ると、ほとんどの項目が自動で入ります。</div></div>`;
+const footW = (warn = '', label = `次へ ${ic('right', 'sm')}`, cls = '') => `<div class="obw-foot"><span class="lbl">${warn ? '' : ic('check', 'sm') + ' 自動保存済み'}</span><span style="flex:1"></span>${warn}<button class="btn primary xl k-next ${cls}">${label}</button></div>`;
+function obWebC(s, tablet) {
+  const scanned = s === 'card';
+  const main = `<div class="cbody">${basicsWeb(scanned)}${cgroup(s, true)}<div style="height:24px"></div></div>${footW(s === 'miss' ? miss('あと 1 項目：連絡先') : s === 'fmt' ? miss('メールの形式') : '')}`;
+  const grid = tablet ? `<div class="card ocard">${main}</div>` : `<div class="wgrid"><div class="card span7 ocard">${main}</div><div class="span5">${meCard(scanned)}</div></div>`;
+  return `<div class="obw"><div class="obw-h"><div class="row" style="gap:10px"><span class="lp-logo" style="width:34px;height:34px">O</span><b>Orbit</b></div>${wstepper}<button class="btn ghost">ログアウト</button></div><div class="obw-b">${ONCE}${grid}</div></div>`;
+}
+function obPhoneC(s, web) {
+  const head = web ? `<div class="mw-head"><div class="logo">O</div><b style="font-size:16px">Orbit</b><div style="flex:1"></div><button class="btn sm ghost" style="padding:0">ログアウト</button></div>`
+    : `<div class="tb52 wide"><span></span><b>プロフィール設定</b><span class="lo">ログアウト</span></div>`;
+  const scanned = s === 'card';
+  const body = head + `<div class="stp"><i class="n"></i><i></i><i></i></div><div class="row between lbl" style="margin:7px 0 12px"><span>ステップ 1 / 3 · 名刺・基本情報</span><span>約1分</span></div>` +
+    (scanned ? `<div class="mac lav row" style="gap:12px;padding:12px 14px"><span class="emo" style="background:var(--surface)">📇</span><div class="grow"><b style="font-size:13.5px">名刺から 6 項目、AI の推定で 3 項目</b><div class="lbl">違うところだけ直してください</div></div></div>` : `<div class="scanp"><span style="font-size:30px">📇</span><b>自分の名刺${web ? 'の画像' : 'を撮って'}で自動入力</b><button class="btn primary">${ic(web ? 'image' : 'scan', 'sm')}${web ? '写真を選ぶ' : '名刺を撮る'}</button></div>`) +
+    (scanned ? fld('氏名', '佐藤 健一', CARD) + fld('会社', '株式会社ミナトリンク', CARD) + fld('役職', '代表取締役 CEO', CARD) : fld('氏名', '例）佐藤 健一', { ph: true }) + fld('会社（任意）', '例）株式会社ミナトリンク', { ph: true }) + fld('役職（任意）', '例）代表取締役', { ph: true })) +
+    `<div class="grid2" style="gap:8px">${scanned ? fld('業界', 'IT・ソフトウェア', { ...AI, end: down }) + fld('詳細', 'SaaS', { ...AI, end: down }) : fld('業界', '選択', { ph: true, end: down }) + fld('詳細', '—', { ph: true, end: down })}</div>` +
+    (scanned ? fld('所在地', '日本 · 東京', CARD) : fld('所在地（任意）', '例）東京', { ph: true })) + BIRTH() + cgroup(s, false) + `<div style="height:150px"></div>` +
+    foot(`${s === 'miss' ? miss('あと 1 項目：連絡先') : s === 'fmt' ? miss('メールの形式を確認してください') : ''}<button class="btn primary block xl k-next">次へ</button>`);
+  return body;
+}
+
+/* ===================== UR-R 补资料 ===================== */
+const IND = ['飲食・食品', 'テクノロジー・インターネット', '金融・投資', 'プロフェッショナルサービス', '製造・サプライチェーン', '小売・消費財', '貿易・物流', '不動産・建設', '医療・ヘルスケア', '教育・研究', 'メディア・クリエイティブ', 'コミュニティ・非営利', '政府・公共政策', 'その他'];
+const SUB = ['銀行・融資', 'ベンチャー投資', 'プライベートエクイティ投資', '証券・資産運用', '保険', 'フィンテック', 'その他'];
+const R_ONCE = `<div class="once k-why"><span class="emo sm apricot">📦</span><div><b>以前のイベント登録の内容を引き継ぎました。</b>足りない項目を入れて保存すると、開いていたページに戻ります。</div></div>`;
+const popInd = (sel) => `<div class="pop k-pop" style="top:76px">${IND.map((t, i) => `<div class="o ${i === sel ? 'on' : ''}"><span>${t}</span>${i === sel ? `<span class="ck">${ic('check', 'sm')}</span>` : ''}</div>`).join('')}</div>`;
+/* s: def | open | miss | save | birth */
+function repairFields(s, two) {
+  const ind = s === 'def' || s === 'miss';
+  const iF = ind ? fld('業界', s === 'open' ? '選択してください' : '選択してください', { ph: true, end: down, cls: s === 'miss' ? 'err' : s === 'open' ? 'focus' : '', msg: s === 'miss' ? '業界を選んでください' : '', k: 'k-ind' })
+    : fld('業界', '金融・投資', { end: down, k: 'k-ind', cls: s === 'save' ? 'dim' : '' });
+  const dF = ind ? fld('業界の詳細', '先に業界を選択', { ph: true, end: down, cls: s === 'miss' ? 'err' : '', msg: s === 'miss' ? '業界の詳細を選んでください' : '', k: 'k-sub' })
+    : fld('業界の詳細', 'ベンチャー投資', { end: down, k: 'k-sub', cls: s === 'save' ? 'dim' : '' });
+  const name = fld('氏名', '陳 明華', { hint: '引き継ぎ', k: 'k-name', cls: s === 'save' ? 'dim' : '' });
+  const birth = s === 'birth' ? fld('生年月日', '2068 / 04 / 12', { cls: 'err', end: ic('calendar', 'sm'), k: 'k-birth', msg: '未来の日付になっています。直すか、消してください。' }) + `<button class="btn sm ghost k-clear" style="margin-top:6px;padding:0 4px">${ic('x', 'sm')}生年月日を消す</button>` : '';
+  const pair = two ? `<div class="grid2 rel" style="gap:0 14px">${iF}${dF}</div>` : iF + dF;
+  return name + pair + birth;
+}
+const prevR = (s) => { const done = s !== 'def' && s !== 'miss'; const full = s === 'save' || s === 'birth'; return `<div class="lbl" style="margin-bottom:10px">相手から見えるあなた</div><div class="card prevc"><div class="row" style="gap:14px"><div class="av lg c3">陳</div><div><div style="font-size:19px;font-weight:800">陳 明華</div><div class="sub">東和キャピタル · 代表</div></div></div>${done ? `<div class="chips" style="margin-top:12px"><span class="chip blue">${full ? '金融・投資 › ベンチャー投資' : '金融・投資'}</span></div>` : '<div class="ghost-row"><i></i>業界（選ぶとここに出ます）</div>'}</div>
+  <div class="card flat" style="margin-top:14px"><div class="row" style="gap:10px;align-items:flex-start"><span class="emo sm lav">🔒</span><div class="sub" style="line-height:1.7">${SEE_BOTH}</div></div></div>`; };
+const saveLabel = (s) => s === 'save' ? '保存しています…' : '保存して続ける';
+/* 电脑版：s = def | pick（已选行业）| miss | save | birth */
+function repairFieldsWeb(s) {
+  const indSel = s === 'def' || s === 'miss' ? -1 : 2, subSel = s === 'save' || s === 'birth' ? 1 : -1;
+  const opt = (t, on) => `<div class="opt ${on ? 'on' : ''}"><span class="rad ${on ? 'on' : ''}"></span><span>${t}</span></div>`;
+  const dim = s === 'save' ? 'dim' : '';
+  const name = fld('氏名', '陳 明華', { hint: '引き継ぎ', k: 'k-name', cls: dim });
+  const ind = `<div class="fld k-ind"><label>業界<span class="note">· イベントで話の合う人を探すのに使います</span></label><div class="igrid ${s === 'miss' ? 'err' : ''} ${dim}">${IND.map((t, i) => opt(t, i === indSel)).join('')}</div>${s === 'miss' ? '<div class="errline">業界を選んでください</div>' : ''}</div>`;
+  const sub = `<div class="fld k-sub" style="margin-top:18px"><label>業界の詳細</label>${indSel < 0 ? `<div class="ihint ${s === 'miss' ? 'err' : ''}">業界を選ぶと、ここに出ます</div>` : `<div class="igrid ${dim}">${SUB.map((t, i) => opt(t, i === subSel)).join('')}</div>`}</div>`;
+  const birth = s === 'birth' ? `<div class="grid2" style="gap:0 14px;align-items:end">${fld('生年月日', '2068 / 04 / 12', { cls: 'err', end: ic('calendar', 'sm'), k: 'k-birth', msg: '未来の日付になっています。直すか、消してください。' })}<button class="btn k-clear" style="margin-bottom:26px;justify-self:start">${ic('x', 'sm')}生年月日を消す</button></div>` : '';
+  return name + ind + sub + birth;
+}
+function repairWeb(s, tablet) {
+  const warn = s === 'miss' ? miss('あと 2 項目：業界、業界の詳細') : '';
+  const main = `<div class="cbody" style="overflow:visible"><div class="mt">プロフィールの確認</div>${repairFieldsWeb(s)}</div>
+    <div class="obw-foot"><span style="flex:1"></span>${warn}<button class="btn primary xl k-next ${s === 'save' ? 'dis' : ''}">${saveLabel(s)}${s === 'save' ? '' : ' ' + ic('right', 'sm')}</button></div>`;
+  const grid = tablet ? `<div class="card ocard" style="flex:none">${main}</div><div style="margin-top:18px">${prevR(s)}</div>` : `<div class="wgrid" style="flex:none"><div class="card span7 ocard">${main}</div><div class="span5">${prevR(s)}</div></div>`;
+  return `<div class="obw rp"><div class="obw-h"><div class="row" style="gap:10px"><span class="lp-logo" style="width:34px;height:34px">O</span><b>Orbit</b></div><button class="btn ghost">ログアウト</button></div><div class="obw-b">${R_ONCE}${grid}</div></div>`;
+}
+function repairPhone(s, web) {
+  const head = web ? `<div class="mw-head"><div class="logo">O</div><b style="font-size:16px">Orbit</b><div style="flex:1"></div><button class="btn sm ghost" style="padding:0">ログアウト</button></div>`
+    : `<div class="tb52 wide"><span></span><b>プロフィールの確認</b><span class="lo">ログアウト</span></div>`;
+  const warn = s === 'miss' ? miss('あと 2 項目：業界、業界の詳細') : '';
+  return head + R_ONCE + `<div class="h1" style="margin-top:16px;font-size:20px">プロフィールの確認</div><div class="sub" style="margin-top:2px">業界は、イベントで話の合う人を探すのに使います。</div>` + repairFields(s === 'open' ? 'def' : s, false) + `<div style="height:150px"></div>` +
+    foot(`${warn}<button class="btn primary block xl k-next ${s === 'save' ? 'dis' : ''}">${saveLabel(s)}</button>`);
+}
+const sheetInd = `<div class="sheet-scrim"></div><div class="sheet pick k-sheet"><div class="grab"></div><div class="sh"><b>業界を選ぶ</b><span class="lbl">14 件</span><button class="lbtn">${ic('x', 'sm')}</button></div>
+  <div class="opts k-opts"><span class="sind"></span>${IND.map((t, i) => `<div class="opt ${i === 2 ? 'on' : ''}"><span class="rad ${i === 2 ? 'on' : ''}"></span>${t}</div>`).join('')}</div></div>`;
+
+/* ===================== UR-S 对方的联系方式 ===================== */
+const P1 = { n: '高橋 美咲', i: '高', c: 'c2', co: '青葉ベンチャーズ', role: 'パートナー', line: 'misaki_aoba', wc: 'misaki-tk', mail: 'm.takahashi@aoba-vc.example', tel: '090-0000-1234' };
+const P2 = { n: '松本 隆', i: '松', c: 'c3', co: '松本精機', role: '経営企画部長', line: 'matsumoto.t' };
+const cpy = `<button class="btn">コピー</button>`;
+/* o: {tel:true 能打电话} */
+function scRows(p, o = {}) {
+  const r = [];
+  if (p.line) r.push(['LINE', p.line, cpy, 'k-sline']);
+  if (p.wc) r.push(['WeChat', p.wc, cpy, 'k-swc']);
+  if (p.mail) r.push(['メール', p.mail, `<button class="btn">${ic('mail', 'sm')}メール</button>${o.narrow ? '' : cpy}`, 'k-smail']);
+  if (p.tel) r.push(['電話', p.tel, o.tel ? `<button class="btn">${ic('phone', 'sm')}電話</button>` : cpy, 'k-stel']);
+  if (!r.length) return `<div class="scnone k-snone">連絡先は共有されていません</div>`;
+  return r.map(([k, v, a, c]) => `<div class="scr ${c}"><div class="grow"><small>${k}</small><b>${v}</b></div>${a ? `<div class="acts">${a}</div>` : ''}</div>`).join('');
+}
+const scCard = (p, o = {}) => `<div class="card k-sc" style="padding:6px 18px 8px"><div class="card-h" style="margin:12px 0 0"><h3>連絡先</h3></div>${scRows(p, o)}</div>`;
+const fadedCards = (p) => `<div class="card fadeout" style="margin-top:14px"><div class="lbl">提供できること</div><b style="font-size:13.5px">SaaS 領域のシリーズA 投資 · 資本政策の壁打ち</b></div>`;
+const netHead = (p) => `<div class="row" style="gap:14px"><div class="av lg ${p.c}">${p.i}</div><div class="grow"><div style="font-size:20px;font-weight:800">${p.n}</div><div class="sub">${p.co} · ${p.role}</div><div class="chips" style="margin-top:6px"><span class="chip lav">関係構築</span><span class="chip">金融・投資</span><span class="chip">東京</span></div></div></div>`;
+const reachCard = `<div class="card" style="margin-top:14px"><div class="row" style="gap:10px"><span class="emo sm pink">🎯</span><b class="grow" style="font-size:13.5px">9/18 に名刺交換</b><button class="btn primary">${ic('send', 'sm')}連絡する</button></div></div>`;
+const netDrawer = (p, o = {}) => `<div class="overlay"></div><div class="drawer"><div class="row between" style="margin-bottom:14px">${rb('x')}<div class="row" style="gap:8px">${rb('more')}<button class="btn">${ic('pen', 'sm')}編集</button></div></div>${netHead(p)}${reachCard}<div style="margin-top:14px">${scCard(p, o)}</div>${fadedCards(p)}</div>`;
+const NETLIST = D.contacts.slice(0, 7);
+const netBody = `<div class="card"><div class="list">${NETLIST.map(c => `<div class="li"><div class="av ${c.c}">${c.i}</div><div class="meta"><b>${c.n}</b><span>${c.co} · ${c.role}</span></div><span class="chip ${c.st}">${c.stage}</span></div>`).join('')}</div></div>`;
+const netPage = { nav: 1, head: mainhead('人脈', '218人'), body: netBody };
+const hostAns = `<div class="det-sec fadeout"><h5>申込時の回答</h5><dl class="qa"><div><dt>あなたの立場に近いものを選んでください</dt><dd>事業会社</dd></div><div><dt>今回いちばん話したいテーマ</dt><dd>財務チームの採用 · 上場準備</dd></div></dl></div>`;
+const hostSec = (p, o = {}) => `<div class="det-sec k-hsec"${o.narrow ? '' : ' style="padding-top:16px;border-top:1px solid var(--line)"'}>${o.narrow ? '<h5>連絡先</h5>' : '<h5 style="font-size:13px;color:var(--ink);margin-bottom:10px">連絡先</h5>'}<div class="scbox">${scRows(p, o)}</div></div>`;
+const hostHead = (p, close) => `<div class="det-h"><div class="av lg ${p.c}">${p.i}</div><div class="grow"><b style="font-size:18px;display:block">${p.n}</b><div class="lbl">${p.co} · ${p.role}</div><div class="meta-l"><span class="chip teal">承認済み</span><span class="chip">申込 10月3日</span><span class="chip">2回目</span></div></div>${close ? `<button class="lbtn">${ic('x', 'sm')}</button>` : ''}</div>`;
+const hostDrawer = (p) => `<div class="overlay"></div><div class="drawer" style="background:var(--surface)"><div class="row between" style="margin-bottom:14px">${rb('x', 'soft')}<button class="btn">見送り</button></div>${hostHead(p)}${hostSec(p)}${hostAns}<div class="det-sec fadeout"><h5>自己紹介</h5><div class="qa" style="padding:10px 14px;font-size:13px;line-height:1.7">松本精機で経営企画を担当しています。</div></div></div>`;
+const hostBody = `<div class="card"><div class="list">${['松本 隆', '中村 由紀', '加藤 健太', '山本 彩', '小林 誠'].map((n, k) => `<div class="li"><div class="av c${k % 5 + 1}">${n[0]}</div><div class="meta"><b>${n}</b><span>申込 10月${k + 2}日</span></div><span class="chip ${k ? 'apricot' : 'teal'}">${k ? '審査待ち' : '承認済み'}</span></div>`).join('')}</div></div>`;
+const hostPage = { nav: 'host', head: mainhead('CFO Night Tokyo vol.18', '申込 42名'), body: hostBody };
+const netPhone = (p, o = {}) => tb52('', rb('left'), rb('more')) + netHead(p) + reachCard + `<div style="margin-top:14px">${scCard(p, { ...o, narrow: true })}</div>` + fadedCards(p);
+const hostSheet = (p, o = {}) => `<div class="sheet-scrim"></div><div class="sheet full"><div class="grab"></div><div class="sb">${hostHead(p, true)}${hostSec(p, { ...o, narrow: true })}${hostAns}</div></div>`;
+const hostListPhone = tb52('申込者', rb('left')) + hostBody;
+
+/* ===================== UR-P 编辑资料 ===================== */
+const GIVE = ['製造業 DX の導入事例', 'SaaS の営業組織づくり', '中部の製造業ネットワーク'];
+const SEEK = ['シリーズA のリード投資家', '製造業の決裁者'];
+const INTRO = '工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。';
+const tags = (arr, tone, o = {}) => `<div class="tagin">${arr.map(t => `<span class="tagx ${tone}">${t}<i>${ic('x', 'sm')}</i></span>`).join('')}${arr.length < 5 ? (o.typing ? `<span class="tagadd focus k-typing">CFO 候補<i class="caret" style="margin-left:0"></i></span>` : `<span class="tagadd">${ic('plus', 'sm')}追加</span>`) : ''}</div>`;
+/* s: def | edit | save | err */
+function profForm(s, two) {
+  const d = s === 'save' ? 'dim' : '';
+  const bio = s === 'err' ? INTRO + '名古屋と東京を行き来しながら、工場の現場を回っています。' : INTRO;
+  const bioLen = s === 'err' ? 86 : 52;
+  return `<div class="card k-pco"><div class="gh">会社・役職</div>${two ? '<div class="grid2" style="gap:0 12px">' : ''}${fld('会社', '株式会社ミナトリンク', { cls: d })}${fld('役職', '代表取締役 CEO', { cls: d })}${two ? '</div>' : ''}</div>
+    <div class="card k-ptags ${d ? 'fadeout' : ''}"><div class="gh">提供できること<small>${GIVE.length} / 5</small></div>${tags(GIVE, 'lav')}
+      <div class="gh" style="margin-top:18px">求めていること<small>${s === 'edit' ? 3 : 2} / 5</small></div>${tags(SEEK, 'pink', { typing: s === 'edit' })}</div>
+    <div class="card k-pbio">${fld('自己紹介', bio, { ta: true, k: 'k-bio', cls: (s === 'err' ? 'err ' : '') + d, msg: s === 'err' ? 'あと 6 文字減らしてください' : '', lt: `<span class="lbl" style="margin-left:auto;font-family:var(--font-num);${s === 'err' ? 'color:var(--coral-text)' : ''}">${bioLen} / 80</span>` })}</div>
+    <div class="card k-pvis" style="padding:12px 18px 6px"><div class="gh" style="margin:4px 0 4px">公開する項目</div>
+      ${[['会社・役職', 1], ['提供・求めていること', 1], ['自己紹介', 1]].map(([t, on]) => `<div class="vrow"><div class="grow"><b>${t}</b></div>${tg(on)}</div>`).join('')}
+      <div class="vrow k-pfix"><div class="grow"><b>連絡先</b><span>人脈にいない人には表示されません</span></div><span class="fix">${ic('users', 'sm')}人脈と主催者のみ</span></div></div>`;
+}
+const pErr = `<div class="ng-card k-perr" style="margin-top:14px"><span class="ngmark"><span class="lic sm i-alert"></span></span><span>保存できませんでした。通信を確認して、もう一度お試しください。</span></div>`;
+const profDrawer = (s, scroll) => `<div class="overlay"></div><div class="drawer ed k-drawer"><div class="dh"><b>プロフィールを編集</b>${rb('x', 'soft')}</div><div class="db">${scroll ? `<div class="scrollto" data-off="${scroll}"></div>` : ''}${profForm(s, true)}${s === 'err' ? pErr : ''}</div>
+  <div class="df"><span class="lbl">${s === 'save' ? '' : ''}</span><span style="flex:1"></span><button class="btn">キャンセル</button><button class="btn primary k-psave ${s === 'save' ? 'dis' : ''}">${s === 'save' ? '保存しています…' : '保存'}</button></div></div>`;
+const SMENU = [['user', 'プロフィール'], ['settings', 'アカウント'], ['sparkle', 'iOrbit が使う情報'], ['link', '連携'], ['bell', '通知'], ['grid', '言語と外観'], ['share', 'データの書き出し'], ['book', 'ヘルプ']];
+const setBody = `<div class="setgrid"><div class="smenu">${SMENU.map(([i, l], k) => `<a class="${k ? '' : 'on'}">${ic(i, 'sm')}${l}</a>`).join('')}</div><div><div style="margin:0 0 16px"><b style="font-size:19px">プロフィール</b><div class="lbl">Orbit 名刺と公開プロフィール。</div></div>
+  <div class="card" style="min-height:200px;background:linear-gradient(135deg,var(--mac-lav),var(--surface) 62%)"><div class="lbl">Orbit 名刺</div><div class="row" style="gap:14px;margin-top:60px"><div class="av lg c1">佐</div><div><div style="font-size:24px;font-weight:800">佐藤 健一</div><div class="sub">株式会社ミナトリンク · 代表取締役 CEO</div></div></div></div>
+  <div class="card" style="margin-top:18px"><div class="lbl">提供できること</div><div class="chips" style="margin-top:6px">${GIVE.map(t => `<span class="chip lav">${t}</span>`).join('')}</div></div></div></div>`;
+const setPage = { nav: 'settings', head: mainhead('設定', ''), body: setBody };
+const profPhone = (s) => tb52('プロフィールを編集', rb('x')) + profForm(s) + (s === 'err' ? pErr : '') + `<div style="height:140px"></div>` +
+  foot(`<button class="btn primary block xl k-psave ${s === 'save' ? 'dis' : ''}">${s === 'save' ? '保存しています…' : '保存'}</button>`);
+
+/* ===================== UR-E 编辑联系人 ===================== */
+const C1 = P1;
+function editForm(two, s = 'def') {
+  const g = (a, b) => two ? `<div class="grid2" style="gap:0 12px">${a}${b}</div>` : a + b;
+  const d = s === 'save' ? { cls: 'dim' } : {};
+  return `<div class="card k-ebase"><div class="gh">基本情報</div>${fld('氏名', C1.n, d)}${g(fld('会社', C1.co, d), fld('役職', C1.role, d))}</div>
+    <div class="card k-ecls"><div class="gh">分類</div>${g(fld('業界', '金融・投資 › ベンチャー投資', { end: down, ...d }), fld('役職層', '経営層', { end: down, ...d }))}
+      <div class="fld k-stage"><label>段階</label><div class="seg full"><button>知り合い</button><button class="on">関係構築</button></div></div></div>
+    <div class="card k-econ"><div class="gh">連絡先</div>${g(fld('メール', C1.mail, d), fld('電話', '03-0000-0000', d))}${fld('地域', '東京', { end: down, ...d })}
+      <div class="met k-met">${ic('pin', 'sm')}出会った場所：9/18 Japan Startup Night</div></div>`;
+}
+const editDrawer = (s = 'def') => `<div class="overlay"></div><div class="drawer ed k-drawer"><div class="dh">${rb('x', 'soft')}<b>連絡先を編集</b><button class="btn">キャンセル</button><button class="btn primary k-esave">保存</button></div>
+  <div class="db"><div class="scrollto" data-off="-60"></div><div class="row" style="gap:14px;margin-bottom:14px"><div class="av lg ${C1.c}">${C1.i}</div><div class="lbl">最終更新 10/6</div></div>${editForm(true, s)}
+  <button class="btn danger-ghost block k-edel" style="margin-top:14px;height:46px">${ic('x', 'sm')}この連絡先を削除</button></div></div>`;
+const delW = `<div class="overlay" style="z-index:29"></div><div class="wmodal k-dlg"><div class="row" style="gap:14px;align-items:flex-start"><div class="dic"><span class="lic lg i-trash"></span></div><div style="min-width:0"><b style="font-size:17px">高橋 美咲さんを削除しますか？</b><div class="sub" style="margin-top:6px;line-height:1.65">やりとり 3件・メモ 2件は消えません。削除したあとも「元に戻す」で取り消せます。</div></div></div><div class="macts"><span class="lbl hint"><span class="kbd">Esc</span> キャンセル</span><button class="btn focus">キャンセル</button><button class="btn danger">削除する</button></div></div>`;
+const delP = `<div class="sheet-scrim"></div><div class="dialog k-dlg"><div class="dic"><span class="lic lg i-trash"></span></div><b class="dt">高橋 美咲さんを削除しますか？</b><div class="dd">やりとり 3件・メモ 2件は消えません。削除したあとも「元に戻す」で取り消せます。</div><div class="dacts"><button class="btn">キャンセル</button><button class="btn danger">削除する</button></div></div>`;
+const editPhone = (s = 'def', scroll) => tb52('連絡先を編集', rb('x')) + `<div class="row" style="gap:14px;margin-bottom:14px"><div class="av lg ${C1.c}">${C1.i}</div><div class="lbl">最終更新 10/6</div></div>` + editForm(false, s).replace('<div class="card k-econ">', `<div class="card k-econ ${scroll ? 'scrollto' : ''}" data-off="302">`) +
+  `<button class="btn danger-ghost block k-edel" style="margin-top:14px;height:48px">${ic('x', 'sm')}この連絡先を削除</button><div style="height:140px"></div>` +
+  foot(`<button class="btn primary block xl k-esave ${s === 'save' ? 'dis' : ''}">${s === 'save' ? '保存しています…' : '保存'}</button>`);
+
+/* ===================== UR-P9 起：编辑资料里的「連絡先」 ===================== */
+/* c: empty | two（LINE + メール）| fmt（メール格式错） */
+function conCard(c, two) {
+  const v = { line: c === 'empty' ? '' : 'sato.kenichi', wc: '', mail: c === 'two' ? 'k.sato@minatolink.example' : c === 'fmt' ? 'k.sato@minatolink' : '', tel: '' };
+  /* 空栏位带与引导第①步相同的占位（2026-11-27 定：两处一致） */
+  const PH = { 'LINE': 'LINE ID', 'WeChat': 'WeChat ID', 'メール': '例）name@example.com', '電話': '例）090-1234-5678' };
+  const f = (label, val, o = {}) => val ? fld(label, val, o) : fld(label, PH[label], { ...o, ph: true });
+  const pair = (a, b) => two ? `<div class="grid2" style="gap:0 12px">${a}${b}</div>` : a + b;
+  const open = !!v.mail;
+  return `<div class="card k-pcon"><div class="gh">連絡先</div><div class="cg-s k-see">人脈の相手と、申し込んだイベントの主催者だけに表示されます。</div>
+    ${pair(f('LINE', v.line, { k: 'k-line' }), f('WeChat', v.wc, { k: 'k-wc' }))}
+    ${open ? pair(f('メール', v.mail, c === 'fmt' ? { k: 'k-mail', cls: 'err focus', caret: true, msg: 'メールアドレスの形式を確認してください（例：name@example.com）' } : { k: 'k-mail' }), f('電話', v.tel, { k: 'k-tel' }))
+      : `<button class="addmore k-more">${ic('plus', 'sm')}メール・電話を入れる</button>`}</div>`;
+}
+const visCard = `<div class="card k-pvis" style="padding:12px 18px 6px"><div class="gh" style="margin:4px 0 4px">公開する項目</div>
+  ${[['会社・役職', 1], ['提供・求めていること', 1], ['自己紹介', 1]].map(([t, on]) => `<div class="vrow"><div class="grow"><b>${t}</b></div>${tg(on)}</div>`).join('')}</div>`;
+/* 在 UR-P 的表单里：自己紹介 之后插入 連絡先，公開する項目 去掉固定行 */
+const profFormC = (c, two) => profForm('def', two).replace(/<div class="card k-pvis"[\s\S]*$/, conCard(c, two) + visCard);
+const SCROLL = '<div class="scrollto" data-off="12"></div>';
+const profDrawerC = (c) => `<div class="overlay"></div><div class="drawer ed k-drawer"><div class="dh"><b>プロフィールを編集</b>${rb('x', 'soft')}</div><div class="db">${profFormC(c, true).replace('<div class="card k-pbio">', SCROLL + '<div class="card k-pbio">')}</div>
+  <div class="df"><span style="flex:1"></span><button class="btn">キャンセル</button><button class="btn primary k-psave">保存</button></div></div>`;
+const profPhoneC = (c) => tb52('プロフィールを編集', rb('x')) + profFormC(c, false).replace('<div class="card k-pcon">', '<div class="scrollto" data-off="70"></div><div class="card k-pcon">') + `<div style="height:140px"></div>` +
+  foot(`${c === 'fmt' ? miss('メールの形式を確認してください') : ''}<button class="btn primary block xl k-psave">保存</button>`);
+const meProfPhone = tb52('プロフィール', rb('left')) + `<div class="card pcard-me"><div class="lbl">Orbit 名刺</div><div class="row" style="gap:14px;margin-top:44px"><div class="av lg c1">佐</div><div><div style="font-size:21px;font-weight:800">佐藤 健一</div><div class="sub">株式会社ミナトリンク · 代表取締役 CEO</div></div></div></div>
+  <div class="card" style="margin-top:14px"><div class="lbl">提供できること</div><div class="chips" style="margin-top:6px">${GIVE.map(t => `<span class="chip lav">${t}</span>`).join('')}</div></div>`;
+const MD = (body, overlay = '') => (p) => M(body, overlay)(p).replace('class="phone mweb"', 'class="phone mweb" data-theme="dark"');
+
+let h = '';
+h += sec('UR-P9 起 · 编辑资料里的「連絡先」', '位置：自己紹介 之后、公開する項目 之前。选填；做法同 UR-C。图为面板滚到这一组');
+h += board('UR-P9 · Web 1440 · 空', '提案', W(setPage, profDrawerC('empty')), [
+  ['.k-pcon .gh', '新分组「連絡先」：与上面几张卡同一写法（卡 + 小标题）。选填，不写「1つ以上」'],
+  ['.k-see', '一句谁能看。zh：只给人脉里的人和你报名活动的主办方看。en: Only people in your network and hosts of events you apply to can see this.'],
+  ['.k-line', 'LINE、WeChat 两栏直接给出；空栏位不放占位（标签已说明）'],
+  ['.k-more', 'メール・電話收在「＋」里，点一下原位展开两栏；有值时默认展开'],
+  ['.k-pvis', '「公開する項目」去掉原来那行固定的「連絡先 · 人脈と主催者のみ」，只留三个开关——谁能看已写在上面的分组里，不说两遍'],
+]);
+h += board('UR-P10 · Web 1440 · 已填两种（LINE + メール）', '状态', W(setPage, profDrawerC('two')), [
+  ['.k-mail', '有邮箱 → メール・電話自动展开；電話空着就是空栏位'],
+  ['.k-psave', '保存照旧：底部 キャンセル + 保存。联系方式不拦保存，只校验格式'],
+]);
+h += boards([
+  ['UR-P11 · 390 · 空', '提案', M(profPhoneC('empty')), [['.k-line', '手机单列，输入框字号 16px（小于 16px 时 iOS 聚焦会放大页面）'], ['.k-more', '「＋」整行可点，48 高'], ['.k-psave', '「保存」在 Safari 栏之上']]],
+  ['UR-P12 · 390 · 已填', '状态', M(profPhoneC('two')), [['.k-mail', '有值时展开'], ['.k-see', '谁能看：同电脑一句']]],
+  ['UR-P13 · 390 · 邮箱格式错误', '状态', M(profPhoneC('fmt')), [['.k-mail', '只标这一栏，说明里给例子；键盘停在这里。电话格式错同理「電話番号の形式を確認してください」'], ['.foot .miss', '点「保存」后按钮上方一句；改对前不提交']]],
+]);
+h += boards([
+  ['UR-P14 · 390 · 保存成功', '状态', M(meProfPhone, toast('保存しました')), [['.k-toast', '沿用 UR-P3：关闭全屏面板，回到プロフィール，底部提示「保存しました」2 秒。zh：已保存 / en: Saved']]],
+  ['UR-P15 · 390 · 深色样张（已填）', '状态', MD(profPhoneC('two')), [['.k-pcon', '深色：卡 surface、栏位 surface-2、标签 ink-2，全部用 kit token，无新颜色'], ['.k-more, .k-mail', '展开后的栏位与上面同色']]],
+]);
+
+document.getElementById('out-ur2').innerHTML = h;
 document.querySelectorAll('.scrollto').forEach(m => {
   const sc = m.closest('.phone .scroll, .cbody, .drawer .db'); if (!sc) return;
   sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - (+m.dataset.off || 0);
