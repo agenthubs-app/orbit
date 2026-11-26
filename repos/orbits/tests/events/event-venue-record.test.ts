@@ -68,6 +68,36 @@ test("venue record: during the event the exchanged are still filtered out of rec
   assert.equal(venue.rounds![0]!.title, null, "no agenda → no round title");
 });
 
+test("venue route: ended records show the saved check-in without allocating a reception number", async () => {
+  const workspace = venueRecordWorkspace();
+  const cutoff = new Date(workspace.configuration.eventEndsAt);
+  let at = new Date(cutoff.getTime() - 1);
+  let passes = 0;
+  const service = createJourneyService({
+    now: () => at,
+    ports: {
+      ...venueRecordPorts(),
+      checkInPass: async () => {
+        passes += 1;
+        return { qrPayload: null, receptionNumber: "007" };
+      },
+    },
+    records: venueRecordRecords(),
+  });
+  const read = () => routes(service).venue(get("/x?view=record"), params({ id: VENUE_RECORD_EVENT_ID }));
+
+  const live = (await (await read()).json()).data;
+  assert.equal(live.checkIn.receptionNumber, "007");
+  assert.equal(passes, 1);
+
+  at = cutoff;
+  const record = (await (await read()).json()).data;
+  assert.equal(record.readOnly, true);
+  assert.equal(record.checkedIn, true);
+  assert.equal("checkIn" in record, false);
+  assert.equal(passes, 1, "the record read does not issue another check-in pass");
+});
+
 test("venue record: a round I was not seated in is left out; no workspace after the end → readOnly, not checked in, no rounds", () => {
   const ws = venueRecordWorkspace();
   const venue = buildVenue({ agenda: [], event: { endsAt: null, eventId: "e", startsAt: "2026-10-03T19:00:00+09:00", title: "t" }, myContacts: [], now: NOW, registered: true, wantedParticipantIds: new Set(), workspace: { ...ws, roundTwoTable: null } });
@@ -109,6 +139,29 @@ test("overview: not registered → no venueRecord and no workspace read", async 
   const view = await service.overview("actor:other", VENUE_RECORD_EVENT_ID, "ja");
   assert.equal(view?.venueRecord, undefined);
   assert.equal(reads, 0);
+});
+
+test("ended overview and summary show an older member's own check-in outside the activity window", async () => {
+  const ports = venueRecordPorts();
+  const older = createJourneyService({
+    now: () => new Date("2027-06-01T00:00:00.000Z"),
+    ports: {
+      ...ports,
+      myEvents: async () => [],
+      registered: async (actorId) => actorId === "actor:me",
+      venueWorkspace: async (actorId, eventId, language) => {
+        assert.equal(actorId, "actor:me", "only the confirmed attendee can read the workspace");
+        return ports.venueWorkspace(actorId, eventId, language);
+      },
+    },
+    records: venueRecordRecords(),
+  });
+  const overview = await older.overview("actor:me", VENUE_RECORD_EVENT_ID, "ja");
+  assert.equal(overview?.registration.status, "attended");
+  assert.equal(overview?.venueRecord?.checkedIn, true);
+  assert.equal((await older.summary("actor:me", VENUE_RECORD_EVENT_ID, "ja"))?.status, "attended");
+  assert.equal((await older.overview("actor:other", VENUE_RECORD_EVENT_ID, "ja"))?.registration.status, "none");
+  assert.equal((await older.summary("actor:other", VENUE_RECORD_EVENT_ID, "ja"))?.status, "none");
 });
 
 // ── 参加者の詳細 ─────────────────────────────────────────────────────────

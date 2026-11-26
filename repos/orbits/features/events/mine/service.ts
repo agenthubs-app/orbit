@@ -40,9 +40,11 @@ export interface MyEventsSelfRecords {
   related?(privateEventId: string): Promise<MyEventRelatedRecord[]>;
 }
 
+type MyEventsReadWindow = { from: string; until: string; limit: number; includeOlderParticipation?: boolean };
+
 export interface MyEventsReader {
-  /** 本人相关的全部活动行（各来源分别给，可重复；调用方合并）。`from` / `until` 是开始时间的有界窗口。 */
-  rows(actorId: string, window: { from: string; until: string; limit: number }): Promise<MyEventSourceRow[]>;
+  /** 本人相关的活动行。历史列表也读取常规窗口以前本人已确认报名或签到的活动，仍受 limit 限制。 */
+  rows(actorId: string, window: MyEventsReadWindow): Promise<MyEventSourceRow[]>;
   /** AG13：私人活动与自己记的「我去过」（可选；没有就和以前一样）。 */
   selfRecords?(actorId: string): Promise<MyEventsSelfRecords>;
   /** 会いたい人：计划人物类型匹配的预计人数与头像首字（可选）。 */
@@ -95,7 +97,8 @@ export function createMyEventsService(deps: { reader: MyEventsReader; now?: () =
       const self = deps.reader.selfRecords ? await deps.reader.selfRecords(actorId).catch(() => null) : null;
       const privateRows: MyEventSourceRow[] = (self?.privateEvents ?? []).filter((event) => event.startsAt >= from && event.startsAt < until).map((event) => ({ endsAt: event.endsAt ?? null, eventId: event.id, startsAt: event.startsAt, status: "planned" as const, title: event.title, venue: event.venue ?? null, ...(event.allDay === true ? { allDay: true } : {}) }));
       const privateIds = new Set(privateRows.map((row) => row.eventId));
-      const merged = [...mergeMyEvents(await deps.reader.rows(actorId, { from, limit: 200, until })).filter((row) => !privateIds.has(row.eventId)), ...privateRows];
+      const window = { from, limit: 200, until, ...(input.range === "past" ? { includeOlderParticipation: true } : {}) };
+      const merged = [...mergeMyEvents(await deps.reader.rows(actorId, window)).filter((row) => !privateIds.has(row.eventId)), ...privateRows];
       const selfOf = (eventId: string): MyEventSelfAttendance | null => {
         const note = (self?.attendance ?? []).find((item) => item.eventRef.id === eventId && (item.eventRef.kind === "private") === privateIds.has(eventId));
         return note ? { attendedOn: note.attendedOn, ...(note.dayParts?.length ? { dayParts: [...note.dayParts] } : {}), ...(note.selfNote ? { selfNote: note.selfNote } : {}) } : null;
@@ -140,6 +143,11 @@ const iso = (value: unknown): string | null => (value === null || value === unde
 export function createPostgresMyEventsReader(input: { query: Query; workspaceId: string; assessmentsReady?: () => Promise<void>; strict?: boolean }): MyEventsReader {
   return {
     async rows(actorId, window) {
+      const olderParticipation = window.includeOlderParticipation ? " or m.status = 'rsvped' or c.event_id is not null" : "";
+      // Preserve the regular window for the upcoming count. Use its remaining row budget for the newest older events.
+      const sort = window.includeOlderParticipation
+        ? "case when e.starts_at >= $3::timestamptz then e.starts_at end asc nulls last, e.starts_at desc, e.event_id"
+        : "e.starts_at";
       const registrations = await input.query(
         `with mine as (
            select event_id, status from event_ops_membership_heads where workspace_id = $1 and actor_id = $2
@@ -161,8 +169,8 @@ export function createPostgresMyEventsReader(input: { query: Query; workspaceId:
          left join apps a on a.event_id = ids.event_id
          left join checked c on c.event_id = ids.event_id
          left join planned pl on pl.event_id = ids.event_id
-         where e.lifecycle_state_v2 in ('published', 'cancelled') and e.starts_at >= $3::timestamptz and e.starts_at < $4::timestamptz
-         order by e.starts_at limit $5`,
+         where e.lifecycle_state_v2 in ('published', 'cancelled') and (e.starts_at >= $3::timestamptz${olderParticipation}) and e.starts_at < $4::timestamptz
+         order by ${sort} limit $5`,
         [input.workspaceId, actorId, window.from, window.until, window.limit],
       ).catch((error: { code?: string }) => (error?.code === "42P01" && !input.strict ? { rows: [] } : Promise.reject(error)));
       const out: MyEventSourceRow[] = registrations.rows.flatMap((row) => {

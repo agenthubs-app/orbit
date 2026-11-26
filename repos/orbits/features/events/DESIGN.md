@@ -15,6 +15,10 @@ Events 负责活动前、中、后的关系工作流。它不是日历系统本�
 - `want-connect`：想认识某人的意图记录和匹配视图。
 - `post-event-review`：活动后联系人草稿、复核和确认决策。
 
+### 本人活动历史与会后回顾
+
+Web 和 App 共用 `GET /api/events/mine?range=past`。历史列表按当前账号的活动归属读取，已确认报名或已签到的活动可以超出常规 180 天窗口。签到和仅报名分别显示。已结束活动的回顾使用保存的签到及已发布的分组、推荐和议程，打开会场回顾不会分配现场签到编号。历史列表仍使用各客户端传入的条数。
+
 ## 契约与数据边界
 
 契约位于各子能力目录的 `contract.ts`。核心 DTO 包括 event record、attendee、goal、readiness checklist、encounter note、want-connect intent、post-event review 和 provenance。Events 不直接写正式联系人库，活动后联系人先成为 post-event contact draft，确认后再进入 Acquisition 或 Contacts 的确认边界。

@@ -42,6 +42,31 @@ test("upcoming：升序、含待审核 / 加入计划 / 取消（取消不计数
   assert.equal(one.upcomingCount, 3, "the badge count ignores limit");
 });
 
+test("past opts into older participation without expanding other reads or the response limit", async () => {
+  const older = { ...rows[5]!, eventId: "older-registration", startsAt: "2026-01-15T10:00:00.000Z" };
+  const service = createMyEventsService({
+    now: () => NOW,
+    reader: {
+      rows: async (actorId, window) => {
+        assert.equal(window.limit, 200);
+        if (actorId !== "actor:a") return [];
+        return window.includeOlderParticipation ? [...rows, older] : rows;
+      },
+    },
+  });
+  const list = (actorId: string, range: "past" | "upcoming", limit: number) => service.list(actorId, { range, limit, platform: "web" });
+  const past = await list("actor:a", "past", 3);
+  assert.deepEqual(past.items.map((item) => [item.eventId, item.status, item.href]), [
+    ["e-past", "attended", "/app/events/e-past"],
+    ["e-past2", "registered", "/app/events/e-past2"],
+    ["older-registration", "registered", "/app/events/older-registration"],
+  ]);
+  assert.equal(past.upcomingCount, 3);
+  assert.equal((await list("actor:a", "past", 2)).items.length, 2);
+  assert.equal((await list("actor:a", "upcoming", 3)).items.some((item) => item.eventId === older.eventId), false);
+  assert.deepEqual((await list("actor:b", "past", 3)).items, []);
+});
+
 test("路由：未登录 401（live）；mock 返回演示世界并带 sample；参数不合法 400", async () => {
   const previous = process.env.ORBIT_FEATURE_MODE;
   // The route reads the real clock; keep its rows in the far future so the test does not expire with the calendar

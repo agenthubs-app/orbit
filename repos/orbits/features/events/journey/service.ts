@@ -28,7 +28,7 @@ import { attendeeAnswerInLanguage } from "./attendee-answer-language";
 import { buildPrep, meetingSlotsAfter, type JourneyLanguage, type PrepAttendee } from "./prep-core";
 import { searchEvents } from "./search-core";
 import { buildEventSummary, metPeople } from "./summary-core";
-import { buildVenue, venueExchangeRelation, venueRecordFrom, venueSharedRounds } from "./venue-core";
+import { buildVenue, isVenueEnded, venueExchangeRelation, venueRecordFrom, venueSharedRounds } from "./venue-core";
 
 export interface JourneyRecords {
   feedback: ReturnType<typeof createEventFeedbackService>;
@@ -252,7 +252,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         knownAttendees: rosterVisible ? known.slice(0, 5).map((item) => ({ initial: item.name.trim().charAt(0), name: item.name.split(" ")[0] ?? item.name, speaker: item.speaker })) : [],
         ...(rosterVisible ? {} : { rosterLocked: true }),
         organizer: { ...base.organizer, following: event.organizerKey ? followed.has(event.organizerKey) : false, myAttendance: event.organizerKey ? mine.filter((item) => item.organizerKey === event.organizerKey && item.status === "attended").length : null },
-        registration: { href: `/events/${eventId}/register`, status },
+        registration: { href: `/events/${eventId}/register`, status: recordWorkspace?.checkIn ? "attended" : status },
         // 主催者の連絡先：只给本场已报名的人（服务端按我的报名状态决定；未报名 / 未登录 / 公开页都不带这个字段）。
         ...(canSeeHostContact(status) ? { hostContact: event.hostContact ?? null } : {}),
         hosting,
@@ -293,7 +293,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         ...(ended && !went ? { next: nextEvent && nextOpen ? { coverUrl: nextEvent.coverUrl ?? null, emoji: nextEvent.emoji, eventId: nextEvent.eventId, startsAt: nextEvent.startsAt, title: nextEvent.title, venue: nextEvent.venue } : null } : {}),
         now: at,
         organizer: { following: event.organizerKey ? followed.has(event.organizerKey) : false, name: event.organizerName ?? "", organizerId: actorId ? event.organizerKey : null, ...(isCanonicalPublicOrganizerLabel(event.organizerName) ? { unnamed: true } : {}) },
-        status,
+        status: workspace?.checkIn ? "attended" : status,
       });
     },
 
@@ -353,7 +353,8 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       const directory = workspace?.directory ?? [];
       const [types, checkInPass] = await Promise.all([
         ports.planTypesFor(actorId, directory.map((item) => ({ attendeeId: item.participantId, name: item.displayName, org: item.company, role: item.role }))),
-        workspace && ports.checkInPass ? ports.checkInPass(actorId, eventId, workspace.me.participantId, event.endsAt ?? workspace.configuration.eventEndsAt).catch(() => null) : Promise.resolve(null),
+        // Loading the pass can allocate a reception number. Ended records use the saved check-in only.
+        workspace && ports.checkInPass && !isVenueEnded(event, at, workspace) ? ports.checkInPass(actorId, eventId, workspace.me.participantId, event.endsAt ?? workspace.configuration.eventEndsAt).catch(() => null) : Promise.resolve(null),
       ]);
       const wanted = new Set(directory.filter((item) => types[item.participantId]).map((item) => item.participantId));
       const slots = meetingSlotsAfter(event.startsAt);
