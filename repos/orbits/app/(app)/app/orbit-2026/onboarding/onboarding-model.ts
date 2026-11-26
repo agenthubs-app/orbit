@@ -53,8 +53,8 @@ export function missingBasics(input: { name: string; birthValid: boolean; primar
   return [
     ...(input.name.trim() ? [] : ["name" as const]),
     ...(input.birthValid ? [] : ["birthDate" as const]),
-    // 没选一级时细分还不能选，只算一项。
-    ...(!input.primaryIndustryId ? ["industry" as const] : input.industryValid ? [] : ["industryDetail" as const]),
+    // 没选一级时细分还不能选：引导里只算一项；补资料页（UR-R3 / R8）两项都列出（「あと 2 項目：業界、業界の詳細」）。
+    ...(!input.primaryIndustryId ? (input.legacyRepair ? ["industry" as const, "industryDetail" as const] : ["industry" as const]) : input.industryValid ? [] : ["industryDetail" as const]),
     ...(input.legacyRepair || profileContactMethodsValid(input.contacts) ? [] : ["contact" as const]),
   ];
 }

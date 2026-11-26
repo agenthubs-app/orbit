@@ -981,13 +981,19 @@ export const ONBOARDING_PREVIEW_PEOPLE = [
 ] as const;
 
 export const LEGACY_REPAIR_COPY = {
-  title: { kind: "pageTitle", ja: "基本プロフィールを補完", zh: "补齐基本资料", en: "Complete your basic profile" },
-  hint: {
-    kind: "sentence",
-    ja: "保存済みの情報は引き継がれます。必須項目を入力して続けてください。",
-    zh: "已保存的资料会保留。补齐标出的必填项即可继续。",
-    en: "Your saved information is kept. Fill in the marked fields to continue.",
-  },
+  // UR-R（2026-11-27 定稿）：与引导 ① 同一版式；顶部一句来由与去向。
+  title: { kind: "pageTitle", ja: "プロフィールの確認", zh: "确认资料", en: "Check your profile" },
+  carriedLead: { kind: "sentence", ja: "以前のイベント登録の内容を引き継ぎました。", zh: "已沿用你之前活动报名的资料。", en: "We carried over your earlier event registration." },
+  carriedRest: { kind: "sentence", ja: "足りない項目を入れて保存すると、開いていたページに戻ります。", zh: "补上缺的项目并保存后，回到刚才打开的页面。", en: " Fill in what's missing and save to go back to the page you were on." },
+  carriedChip: { kind: "chip", ja: "引き継ぎ", zh: "沿用", en: "Carried over" },
+  industryNote: { kind: "label", ja: "· イベントで話の合う人を探すのに使います", zh: "· 用来在活动中找到聊得来的人", en: "· Used to find people you'll get along with at events" },
+  phoneSub: { kind: "sentence", ja: "業界は、イベントで話の合う人を探すのに使います。", zh: "行业用来在活动中帮你找到聊得来的人。", en: "Your industry helps us find people you'll get along with at events." },
+  detailHint: { kind: "label", ja: "業界を選ぶと、ここに出ます", zh: "选了行业后会显示在这里", en: "Appears once you pick an industry" },
+  pickIndustry: { kind: "title", ja: "業界を選ぶ", zh: "选择行业", en: "Choose an industry" },
+  pickDetail: { kind: "title", ja: "業界の詳細を選ぶ", zh: "选择细分行业", en: "Choose the industry detail" },
+  count: { kind: "label", ja: "{n} 件", zh: "{n} 项", en: "{n}" },
+  previewEmpty: { kind: "label", ja: "業界（選ぶとここに出ます）", zh: "行业（选择后显示在这里）", en: "Industry (shows once picked)" },
+  birthFuture: { kind: "sentence", ja: "未来の日付になっています。直すか、消してください。", zh: "这是未来的日期，请改正或清除。", en: "This date is in the future. Fix it or clear it." },
   save: { kind: "button", ja: "保存して続ける", zh: "保存并继续", en: "Save and continue" },
-  clearBirth: { kind: "button", ja: "生年月日を削除", zh: "清除生日", en: "Clear birthday" },
+  clearBirth: { kind: "button", ja: "生年月日を消す", zh: "清除生日", en: "Clear birthday" },
 } as const;

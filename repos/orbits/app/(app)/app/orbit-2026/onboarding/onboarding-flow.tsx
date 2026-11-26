@@ -66,6 +66,8 @@ import {
   OnceNote,
   ProfileAside,
   ProfileStep,
+  RepairAside,
+  RepairNote,
   StrengthGroups,
   missingSummary,
   type BasicDraft,
@@ -123,7 +125,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const t: T = (copy: Copy) => siteText(copy as { ja: string; zh: string; en: string });
   // Which step it is comes with the first read: until then the page draws its skeleton, never a step it may have to leave.
   const [view, setView] = useState<OnboardingView>("basics");
-  const [repair, setRepair] = useState<{ birthDate: boolean } | null>(null);
+  const [repair, setRepair] = useState<{ birthDate: boolean; carriedName?: boolean } | null>(null);
   const persistedBasicRef = useRef<BasicDraft>(EMPTY_BASIC);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -194,7 +196,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         const complete = payload.onboarding?.status === "complete";
         const savedBasic = basicFromPayload(payload);
         persistedBasicRef.current = savedBasic;
-        setRepair(legacyRepair ? { birthDate: Boolean(savedBasic.birthDate && !isValidProfileBirthDate(savedBasic.birthDate, todayIso)) } : null);
+        setRepair(legacyRepair ? { birthDate: Boolean(savedBasic.birthDate && !isValidProfileBirthDate(savedBasic.birthDate, todayIso)), carriedName: Boolean(savedBasic.name.trim()) } : null);
         const draft = legacyRepair ? null : readOnboardingDraft(actorKey);
         const fields = draft?.fields;
         const draftBasic = done < 1 || !complete ? basicFromDraft(fields?.basic) : null;
@@ -268,7 +270,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     ? missingBasics({ birthValid, industryValid, name: basic.name, primaryIndustryId: basic.primaryIndustryId, contacts: basic, legacyRepair: Boolean(repair) })
     : view === "goals" ? (goalChoices.length ? [] : ["goal"])
       : missingIntro({ bio, bioOver: bioCount.over, generating: introStatus === "generating", headlineOver: visibleCharacterCount(headline.trim()) > HEADLINE_LIMIT });
-  const shown = repair || attempted === view ? missing : [];
+  // 缺项点「次へ / 保存」之后才标；补资料页的旧生日无效（如未来日期）一进来就标（UR-R5）。
+  const shown = attempted === view ? missing : repair ? missing.filter(item => item === "birthDate") : [];
 
   function focusMissing(first: OnboardingMissing) {
     if (first === "introEmpty") setEditingIntro(true);
@@ -633,7 +636,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         {logoutButton}
       </header>
 
-      <div className={styles.body} data-onboarding-view={view}>
+      <div className={repair ? `${styles.body} ${styles.repairBody}` : styles.body} data-onboarding-view={view}>
         <div className={styles.phoneHead}>
           <div className={styles.phoneTop}>
             {stepIndex > 0 ? <button aria-label={back} className={`btn ${styles.round}`} disabled={saving} onClick={onBack} type="button"><Icon name="left" size={20} /></button> : <span className={styles.logo} aria-hidden>O</span>}
@@ -645,8 +648,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
           <div className={styles.barLabel}><span>{t({ ja: `ステップ ${stepIndex + 1} / 3 · ${stepLabel}`, zh: `第 ${stepIndex + 1} / 3 步 · ${stepLabel}`, en: `Step ${stepIndex + 1} / 3 · ${stepLabel}` })}</span><span>{eta}</span></div>
           </>}
         </div>
-        {repair ? null : <OnceNote t={t} withScan={view === "basics" && cardScanAvailable} />}
-        <div className={repair ? styles.repairGrid : styles.grid}>
+        {repair ? <RepairNote t={t} /> : <OnceNote t={t} withScan={view === "basics" && cardScanAvailable} />}
+        <div className={repair ? `${styles.grid} ${styles.gridFit}` : styles.grid}>
           <section className={styles.card}>
             {view === "basics" ? <ProfileStep basic={basic} cameraRef={cameraRef} cardScanAvailable={cardScanAvailable} disabled={saving} fileRef={fileRef} language={language} missing={shown}
               onCardDrop={(file) => void scanCard(file)} onCardFile={(event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; event.target.value = ""; void scanCard(file); }} onQr={() => setQrOpen(true)}
@@ -667,13 +670,13 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
               {!repair && shown.length === 0 && (confirmed > 0 || draftSaved) ? <span className={styles.saved}><Icon name="check" size={16} /> {t({ zh: "已自动保存", en: "Saved automatically", ja: "自動保存済み" })}</span> : null}
               <span className={styles.spacer} />
               {shown.length && attempted === view ? <span className={styles.miss} role="alert"><Icon name="flag" size={16} />{missingSummary(shown, t, language, shown.includes("contact") ? invalidProfileContactMethods({ email: basic.email, lineId: basic.lineId ?? "", phone: basic.phone, wechatId: basic.wechatId ?? "" }) : [])}</span> : null}
-              <button aria-busy={saving || undefined} className={`btn ${styles.primary}`} data-onboarding-next="" onClick={() => void onNext()} type="button">
-                {nextLabel}{view === "goals" && goalChoices.length ? <span className={styles.goalCount}>{t({ ja: ` · 目標 ${goalChoices.length} / 2`, zh: ` · 目标 ${goalChoices.length} / 2`, en: ` · Goals ${goalChoices.length} / 2` })}</span> : null}<Icon name="right" size={16} />
+              <button aria-busy={saving || undefined} className={`btn ${styles.primary} ${repair && saving ? styles.saving : ""}`} data-onboarding-next="" onClick={() => void onNext()} type="button">
+                {nextLabel}{view === "goals" && goalChoices.length ? <span className={styles.goalCount}>{t({ ja: ` · 目標 ${goalChoices.length} / 2`, zh: ` · 目标 ${goalChoices.length} / 2`, en: ` · Goals ${goalChoices.length} / 2` })}</span> : null}{repair && saving ? null : <Icon name="right" size={16} />}
               </button>
             </div>
           </section>
 
-          {repair ? null : <aside className={styles.aside}>
+          {repair ? <aside className={styles.aside}><RepairAside basic={basic} initial={initial} language={language} t={t} /></aside> : <aside className={styles.aside}>
             {view === "basics" ? <ProfileAside basic={basic} initial={initial} language={language} t={t} /> : null}
             {view === "goals" ? <div className={styles.sideCard}><StrengthGroups {...groups} /></div> : null}
             {view === "intro" ? <IntroAside bio={bio} t={t} /> : null}

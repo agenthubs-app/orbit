@@ -374,6 +374,315 @@
    "app-clip": "[data-onboarding-contact]",
    "viewport": false,
    "design-scroll-anchor": ".cg"
+  },
+  {
+   "id": "URR1",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 63,
+   "width": 1440,
+   "init-script": "(() => {\n  if (!location.pathname.startsWith(\"/app/profile/onboarding\")) return;\n  try { Object.keys(localStorage).filter(k => k.startsWith(\"orbit.onboarding\")).forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}\n  const real = window.fetch.bind(window);\n  const ok = (data) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  const birth = new URLSearchParams(location.search).get(\"ur\") === \"birth\" ? \"2068-04-12\" : \"\";\n  let flow = { version: 1, revision: \"r1\", lastConfirmedScreen: 5, currentScreen: null, deferred: false, finishedAt: \"2026-01-10T00:00:00.000Z\" };\n  let profile = { displayName: \"陳 明華\", organization: \"東和キャピタル\", role: \"代表\", headline: \"\", bio: \"以前の登録から\", relationshipGoal: \"\", handles: { wechatId: \"chen_mh\" }, offering: [], seeking: [], topics: [], birthDate: birth || null, updatedAt: \"2026-11-25T00:00:00.000Z\" };\n  const payload = () => ({ state: \"success\", profile, onboarding: { policyVersion: 2, status: \"incomplete\", missingFields: [] } });\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.includes(\"/api/profile/onboarding-progress\")) {\n      if ((init.method || \"GET\") === \"POST\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); flow = { ...flow, revision: \"r2\" }; return ok(flow); }\n      return url.includes(\"view=setup\") ? ok({ progress: flow, legacyRepair: true }) : ok(flow);\n    }\n    if (/\\/api\\/profile(\\?|$)/.test(url)) {\n      if (init.method === \"PUT\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); const { expectedUpdatedAt, mutationId, ...f } = JSON.parse(String(init.body || \"{}\")); profile = { ...profile, ...f, updatedAt: \"2026-11-25T00:00:01.000Z\" }; }\n      return ok(payload());\n    }\n    return real(input, init);\n  };\n})();",
+   "viewport": true,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-repair]"
+    },
+    {
+     "wait": 900
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 900
+    }
+   ],
+   "note": "UR-R1 Web 1440 · 默认（旧值预填：姓名「引き継ぎ」）",
+   "height": 960
+  },
+  {
+   "id": "URR2",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 64,
+   "width": 1440,
+   "init-script": "(() => {\n  if (!location.pathname.startsWith(\"/app/profile/onboarding\")) return;\n  try { Object.keys(localStorage).filter(k => k.startsWith(\"orbit.onboarding\")).forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}\n  const real = window.fetch.bind(window);\n  const ok = (data) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  const birth = new URLSearchParams(location.search).get(\"ur\") === \"birth\" ? \"2068-04-12\" : \"\";\n  let flow = { version: 1, revision: \"r1\", lastConfirmedScreen: 5, currentScreen: null, deferred: false, finishedAt: \"2026-01-10T00:00:00.000Z\" };\n  let profile = { displayName: \"陳 明華\", organization: \"東和キャピタル\", role: \"代表\", headline: \"\", bio: \"以前の登録から\", relationshipGoal: \"\", handles: { wechatId: \"chen_mh\" }, offering: [], seeking: [], topics: [], birthDate: birth || null, updatedAt: \"2026-11-25T00:00:00.000Z\" };\n  const payload = () => ({ state: \"success\", profile, onboarding: { policyVersion: 2, status: \"incomplete\", missingFields: [] } });\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.includes(\"/api/profile/onboarding-progress\")) {\n      if ((init.method || \"GET\") === \"POST\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); flow = { ...flow, revision: \"r2\" }; return ok(flow); }\n      return url.includes(\"view=setup\") ? ok({ progress: flow, legacyRepair: true }) : ok(flow);\n    }\n    if (/\\/api\\/profile(\\?|$)/.test(url)) {\n      if (init.method === \"PUT\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); const { expectedUpdatedAt, mutationId, ...f } = JSON.parse(String(init.body || \"{}\")); profile = { ...profile, ...f, updatedAt: \"2026-11-25T00:00:01.000Z\" }; }\n      return ok(payload());\n    }\n    return real(input, init);\n  };\n})();",
+   "viewport": true,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-repair]"
+    },
+    {
+     "wait": 900
+    },
+    {
+     "click": "#onb-industry button[data-onboarding-option='finance_investment']"
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 900
+    }
+   ],
+   "note": "UR-R2 Web 1440 · 选了行业（金融・投資 → 细分摊开）",
+   "height": 960
+  },
+  {
+   "id": "URR3",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 65,
+   "width": 1440,
+   "init-script": "(() => {\n  if (!location.pathname.startsWith(\"/app/profile/onboarding\")) return;\n  try { Object.keys(localStorage).filter(k => k.startsWith(\"orbit.onboarding\")).forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}\n  const real = window.fetch.bind(window);\n  const ok = (data) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  const birth = new URLSearchParams(location.search).get(\"ur\") === \"birth\" ? \"2068-04-12\" : \"\";\n  let flow = { version: 1, revision: \"r1\", lastConfirmedScreen: 5, currentScreen: null, deferred: false, finishedAt: \"2026-01-10T00:00:00.000Z\" };\n  let profile = { displayName: \"陳 明華\", organization: \"東和キャピタル\", role: \"代表\", headline: \"\", bio: \"以前の登録から\", relationshipGoal: \"\", handles: { wechatId: \"chen_mh\" }, offering: [], seeking: [], topics: [], birthDate: birth || null, updatedAt: \"2026-11-25T00:00:00.000Z\" };\n  const payload = () => ({ state: \"success\", profile, onboarding: { policyVersion: 2, status: \"incomplete\", missingFields: [] } });\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.includes(\"/api/profile/onboarding-progress\")) {\n      if ((init.method || \"GET\") === \"POST\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); flow = { ...flow, revision: \"r2\" }; return ok(flow); }\n      return url.includes(\"view=setup\") ? ok({ progress: flow, legacyRepair: true }) : ok(flow);\n    }\n    if (/\\/api\\/profile(\\?|$)/.test(url)) {\n      if (init.method === \"PUT\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); const { expectedUpdatedAt, mutationId, ...f } = JSON.parse(String(init.body || \"{}\")); profile = { ...profile, ...f, updatedAt: \"2026-11-25T00:00:01.000Z\" }; }\n      return ok(payload());\n    }\n    return real(input, init);\n  };\n})();",
+   "viewport": true,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-repair]"
+    },
+    {
+     "wait": 900
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "wait": 500
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 900
+    }
+   ],
+   "note": "UR-R3 Web 1440 · 缺项",
+   "height": 960
+  },
+  {
+   "id": "URR4",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 66,
+   "width": 834,
+   "init-script": "(() => {\n  if (!location.pathname.startsWith(\"/app/profile/onboarding\")) return;\n  try { Object.keys(localStorage).filter(k => k.startsWith(\"orbit.onboarding\")).forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}\n  const real = window.fetch.bind(window);\n  const ok = (data) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  const birth = new URLSearchParams(location.search).get(\"ur\") === \"birth\" ? \"2068-04-12\" : \"\";\n  let flow = { version: 1, revision: \"r1\", lastConfirmedScreen: 5, currentScreen: null, deferred: false, finishedAt: \"2026-01-10T00:00:00.000Z\" };\n  let profile = { displayName: \"陳 明華\", organization: \"東和キャピタル\", role: \"代表\", headline: \"\", bio: \"以前の登録から\", relationshipGoal: \"\", handles: { wechatId: \"chen_mh\" }, offering: [], seeking: [], topics: [], birthDate: birth || null, updatedAt: \"2026-11-25T00:00:00.000Z\" };\n  const payload = () => ({ state: \"success\", profile, onboarding: { policyVersion: 2, status: \"incomplete\", missingFields: [] } });\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.includes(\"/api/profile/onboarding-progress\")) {\n      if ((init.method || \"GET\") === \"POST\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); flow = { ...flow, revision: \"r2\" }; return ok(flow); }\n      return url.includes(\"view=setup\") ? ok({ progress: flow, legacyRepair: true }) : ok(flow);\n    }\n    if (/\\/api\\/profile(\\?|$)/.test(url)) {\n      if (init.method === \"PUT\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); const { expectedUpdatedAt, mutationId, ...f } = JSON.parse(String(init.body || \"{}\")); profile = { ...profile, ...f, updatedAt: \"2026-11-25T00:00:01.000Z\" }; }\n      return ok(payload());\n    }\n    return real(input, init);\n  };\n})();",
+   "viewport": true,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-repair]"
+    },
+    {
+     "wait": 900
+    },
+    {
+     "click": "#onb-industry button[data-onboarding-option='finance_investment']"
+    },
+    {
+     "wait": 300
+    },
+    {
+     "click": "#onb-industry-detail button[data-onboarding-option='finance_investment.venture_capital']"
+    },
+    {
+     "eval": "localStorage.setItem('ur.hold','1')"
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "wait": 500
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 900
+    }
+   ],
+   "note": "UR-R4 Web 834 · 保存中（桩把保存挂起）",
+   "height": 1194
+  },
+  {
+   "id": "URR5",
+   "app": "/app/profile/onboarding?lang=ja&ur=birth",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 67,
+   "width": 834,
+   "init-script": "(() => {\n  if (!location.pathname.startsWith(\"/app/profile/onboarding\")) return;\n  try { Object.keys(localStorage).filter(k => k.startsWith(\"orbit.onboarding\")).forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}\n  const real = window.fetch.bind(window);\n  const ok = (data) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  const birth = new URLSearchParams(location.search).get(\"ur\") === \"birth\" ? \"2068-04-12\" : \"\";\n  let flow = { version: 1, revision: \"r1\", lastConfirmedScreen: 5, currentScreen: null, deferred: false, finishedAt: \"2026-01-10T00:00:00.000Z\" };\n  let profile = { displayName: \"陳 明華\", organization: \"東和キャピタル\", role: \"代表\", headline: \"\", bio: \"以前の登録から\", relationshipGoal: \"\", handles: { wechatId: \"chen_mh\" }, offering: [], seeking: [], topics: [], birthDate: birth || null, updatedAt: \"2026-11-25T00:00:00.000Z\" };\n  const payload = () => ({ state: \"success\", profile, onboarding: { policyVersion: 2, status: \"incomplete\", missingFields: [] } });\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.includes(\"/api/profile/onboarding-progress\")) {\n      if ((init.method || \"GET\") === \"POST\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); flow = { ...flow, revision: \"r2\" }; return ok(flow); }\n      return url.includes(\"view=setup\") ? ok({ progress: flow, legacyRepair: true }) : ok(flow);\n    }\n    if (/\\/api\\/profile(\\?|$)/.test(url)) {\n      if (init.method === \"PUT\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); const { expectedUpdatedAt, mutationId, ...f } = JSON.parse(String(init.body || \"{}\")); profile = { ...profile, ...f, updatedAt: \"2026-11-25T00:00:01.000Z\" }; }\n      return ok(payload());\n    }\n    return real(input, init);\n  };\n})();",
+   "viewport": true,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-repair]"
+    },
+    {
+     "wait": 900
+    },
+    {
+     "click": "#onb-industry button[data-onboarding-option='finance_investment']"
+    },
+    {
+     "wait": 300
+    },
+    {
+     "click": "#onb-industry-detail button[data-onboarding-option='finance_investment.venture_capital']"
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 900
+    }
+   ],
+   "note": "UR-R5 Web 834 · 需要改生日（旧值 2068-04-12，桩 ?ur=birth）",
+   "height": 1194
+  },
+  {
+   "id": "URR6",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 68,
+   "width": 390,
+   "init-script": "(() => {\n  if (!location.pathname.startsWith(\"/app/profile/onboarding\")) return;\n  try { Object.keys(localStorage).filter(k => k.startsWith(\"orbit.onboarding\")).forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}\n  const real = window.fetch.bind(window);\n  const ok = (data) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  const birth = new URLSearchParams(location.search).get(\"ur\") === \"birth\" ? \"2068-04-12\" : \"\";\n  let flow = { version: 1, revision: \"r1\", lastConfirmedScreen: 5, currentScreen: null, deferred: false, finishedAt: \"2026-01-10T00:00:00.000Z\" };\n  let profile = { displayName: \"陳 明華\", organization: \"東和キャピタル\", role: \"代表\", headline: \"\", bio: \"以前の登録から\", relationshipGoal: \"\", handles: { wechatId: \"chen_mh\" }, offering: [], seeking: [], topics: [], birthDate: birth || null, updatedAt: \"2026-11-25T00:00:00.000Z\" };\n  const payload = () => ({ state: \"success\", profile, onboarding: { policyVersion: 2, status: \"incomplete\", missingFields: [] } });\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.includes(\"/api/profile/onboarding-progress\")) {\n      if ((init.method || \"GET\") === \"POST\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); flow = { ...flow, revision: \"r2\" }; return ok(flow); }\n      return url.includes(\"view=setup\") ? ok({ progress: flow, legacyRepair: true }) : ok(flow);\n    }\n    if (/\\/api\\/profile(\\?|$)/.test(url)) {\n      if (init.method === \"PUT\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); const { expectedUpdatedAt, mutationId, ...f } = JSON.parse(String(init.body || \"{}\")); profile = { ...profile, ...f, updatedAt: \"2026-11-25T00:00:01.000Z\" }; }\n      return ok(payload());\n    }\n    return real(input, init);\n  };\n})();",
+   "viewport": true,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-repair]"
+    },
+    {
+     "wait": 900
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 900
+    }
+   ],
+   "note": "UR-R6 390 · 默认",
+   "height": 844
+  },
+  {
+   "id": "URR7",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 69,
+   "width": 390,
+   "init-script": "(() => {\n  if (!location.pathname.startsWith(\"/app/profile/onboarding\")) return;\n  try { Object.keys(localStorage).filter(k => k.startsWith(\"orbit.onboarding\")).forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}\n  const real = window.fetch.bind(window);\n  const ok = (data) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  const birth = new URLSearchParams(location.search).get(\"ur\") === \"birth\" ? \"2068-04-12\" : \"\";\n  let flow = { version: 1, revision: \"r1\", lastConfirmedScreen: 5, currentScreen: null, deferred: false, finishedAt: \"2026-01-10T00:00:00.000Z\" };\n  let profile = { displayName: \"陳 明華\", organization: \"東和キャピタル\", role: \"代表\", headline: \"\", bio: \"以前の登録から\", relationshipGoal: \"\", handles: { wechatId: \"chen_mh\" }, offering: [], seeking: [], topics: [], birthDate: birth || null, updatedAt: \"2026-11-25T00:00:00.000Z\" };\n  const payload = () => ({ state: \"success\", profile, onboarding: { policyVersion: 2, status: \"incomplete\", missingFields: [] } });\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.includes(\"/api/profile/onboarding-progress\")) {\n      if ((init.method || \"GET\") === \"POST\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); flow = { ...flow, revision: \"r2\" }; return ok(flow); }\n      return url.includes(\"view=setup\") ? ok({ progress: flow, legacyRepair: true }) : ok(flow);\n    }\n    if (/\\/api\\/profile(\\?|$)/.test(url)) {\n      if (init.method === \"PUT\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); const { expectedUpdatedAt, mutationId, ...f } = JSON.parse(String(init.body || \"{}\")); profile = { ...profile, ...f, updatedAt: \"2026-11-25T00:00:01.000Z\" }; }\n      return ok(payload());\n    }\n    return real(input, init);\n  };\n})();",
+   "viewport": true,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-repair]"
+    },
+    {
+     "wait": 900
+    },
+    {
+     "click": "#onb-industry-pick"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "[role=dialog] button[data-onboarding-option='finance_investment']"
+    },
+    {
+     "wait": 200
+    },
+    {
+     "click": "#onb-industry-pick"
+    },
+    {
+     "wait": 700
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 900
+    }
+   ],
+   "note": "UR-R7 390 · 行业底部面板（金融・投資 已选）",
+   "height": 844
+  },
+  {
+   "id": "URR8",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 70,
+   "width": 390,
+   "init-script": "(() => {\n  if (!location.pathname.startsWith(\"/app/profile/onboarding\")) return;\n  try { Object.keys(localStorage).filter(k => k.startsWith(\"orbit.onboarding\")).forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}\n  const real = window.fetch.bind(window);\n  const ok = (data) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  const birth = new URLSearchParams(location.search).get(\"ur\") === \"birth\" ? \"2068-04-12\" : \"\";\n  let flow = { version: 1, revision: \"r1\", lastConfirmedScreen: 5, currentScreen: null, deferred: false, finishedAt: \"2026-01-10T00:00:00.000Z\" };\n  let profile = { displayName: \"陳 明華\", organization: \"東和キャピタル\", role: \"代表\", headline: \"\", bio: \"以前の登録から\", relationshipGoal: \"\", handles: { wechatId: \"chen_mh\" }, offering: [], seeking: [], topics: [], birthDate: birth || null, updatedAt: \"2026-11-25T00:00:00.000Z\" };\n  const payload = () => ({ state: \"success\", profile, onboarding: { policyVersion: 2, status: \"incomplete\", missingFields: [] } });\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.includes(\"/api/profile/onboarding-progress\")) {\n      if ((init.method || \"GET\") === \"POST\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); flow = { ...flow, revision: \"r2\" }; return ok(flow); }\n      return url.includes(\"view=setup\") ? ok({ progress: flow, legacyRepair: true }) : ok(flow);\n    }\n    if (/\\/api\\/profile(\\?|$)/.test(url)) {\n      if (init.method === \"PUT\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); const { expectedUpdatedAt, mutationId, ...f } = JSON.parse(String(init.body || \"{}\")); profile = { ...profile, ...f, updatedAt: \"2026-11-25T00:00:01.000Z\" }; }\n      return ok(payload());\n    }\n    return real(input, init);\n  };\n})();",
+   "viewport": true,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-repair]"
+    },
+    {
+     "wait": 900
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "wait": 500
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 900
+    }
+   ],
+   "note": "UR-R8 390 · 缺项",
+   "height": 844
+  },
+  {
+   "id": "URR9",
+   "app": "/app/profile/onboarding?lang=ja&ur=birth",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 71,
+   "width": 390,
+   "init-script": "(() => {\n  if (!location.pathname.startsWith(\"/app/profile/onboarding\")) return;\n  try { Object.keys(localStorage).filter(k => k.startsWith(\"orbit.onboarding\")).forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}\n  const real = window.fetch.bind(window);\n  const ok = (data) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  const birth = new URLSearchParams(location.search).get(\"ur\") === \"birth\" ? \"2068-04-12\" : \"\";\n  let flow = { version: 1, revision: \"r1\", lastConfirmedScreen: 5, currentScreen: null, deferred: false, finishedAt: \"2026-01-10T00:00:00.000Z\" };\n  let profile = { displayName: \"陳 明華\", organization: \"東和キャピタル\", role: \"代表\", headline: \"\", bio: \"以前の登録から\", relationshipGoal: \"\", handles: { wechatId: \"chen_mh\" }, offering: [], seeking: [], topics: [], birthDate: birth || null, updatedAt: \"2026-11-25T00:00:00.000Z\" };\n  const payload = () => ({ state: \"success\", profile, onboarding: { policyVersion: 2, status: \"incomplete\", missingFields: [] } });\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.includes(\"/api/profile/onboarding-progress\")) {\n      if ((init.method || \"GET\") === \"POST\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); flow = { ...flow, revision: \"r2\" }; return ok(flow); }\n      return url.includes(\"view=setup\") ? ok({ progress: flow, legacyRepair: true }) : ok(flow);\n    }\n    if (/\\/api\\/profile(\\?|$)/.test(url)) {\n      if (init.method === \"PUT\") { if (localStorage.getItem(\"ur.hold\")) return new Promise(() => {}); const { expectedUpdatedAt, mutationId, ...f } = JSON.parse(String(init.body || \"{}\")); profile = { ...profile, ...f, updatedAt: \"2026-11-25T00:00:01.000Z\" }; }\n      return ok(payload());\n    }\n    return real(input, init);\n  };\n})();",
+   "viewport": true,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-repair]"
+    },
+    {
+     "wait": 900
+    },
+    {
+     "click": "#onb-industry-pick"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "[role=dialog] button[data-onboarding-option='finance_investment']"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "#onb-industry-detail-pick"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "[role=dialog] button[data-onboarding-option='finance_investment.venture_capital']"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur(); window.scrollTo(0,0)"
+    },
+    {
+     "wait": 900
+    }
+   ],
+   "note": "UR-R9 390 · 需要改生日",
+   "height": 844
   }
  ]
 }
