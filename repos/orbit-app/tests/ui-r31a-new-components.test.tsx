@@ -101,11 +101,13 @@ test("Chip draws a 12pt leading icon before the label; SearchField keeps a trail
   assert.ok(renderToHtml(<IconButton icon="check" solid accessibilityLabel="保存" onPress={() => undefined} />).includes('aria-label="保存"'));
 });
 
-test("FormScreen is AppScreen on the kit inset with ✕ cancel and a solid ✓ save", () => {
+// UR-E (2026-11-27): 「保存」 moved from the ✓ in the corner to a text button at the bottom, the same as the phone web page.
+test("FormScreen is AppScreen on the kit inset with ✕ cancel and 「保存」 at the bottom", () => {
   const source = readFileSync(new URL("../src/components/FormScreen.tsx", import.meta.url), "utf8");
   assert.match(source, /inset="kit"/u);
   assert.match(source, /backIcon="x"/u);
-  assert.match(source, /icon="check" solid/u);
+  assert.doesNotMatch(source, /icon="check"/u);
+  assert.match(source, /testID="form-save"/u);
 });
 
 // R31a (RD-28): the gate's mid-state switch (`?design=`) never exists outside a dev build with open-path.

@@ -1,6 +1,6 @@
 /** The three onboarding pages as drawn (A1–A7); state, saving and AI calls live in ProfileOnboardingScreen. */
-import { useState, type RefObject } from "react";
-import { Platform, StyleSheet, TextInput, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
+import { useEffect, useState, type ReactNode, type RefObject } from "react";
+import { Platform, TextInput, View, type LayoutChangeEvent } from "react-native";
 
 import { BottomSheet, Icon, UiPressable, UiText } from "../../../components/ui";
 import { faceFor } from "../../../components/ui/Text";
@@ -10,6 +10,7 @@ import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import type { OnboardingMark, OnboardingMarkedField } from "../../../storage/profile-onboarding-storage";
 import {
   basicIndustryValid,
+  contactFormatProblem,
   GOAL_LIMIT,
   GOAL_OPTIONS,
   OFFER_LIMIT,
@@ -47,16 +48,14 @@ export interface ProfileStepProps {
   onPick: (which: "primary" | "secondary" | "seniority") => void;
   onScan: (source: "camera" | "library") => void;
   onText: (key: TextKey, value: string) => void;
-  repair?: { birthDate: boolean } | null;
+  /** 迁移账号补资料（UR-R10–R12）：birthDate = 旧生日无效要改；carriedName = 旧系统带来的姓名（没改时带「引き継ぎ」）。 */
+  repair?: { birthDate: boolean; carriedName?: string } | null;
   scan: ScanState;
 }
 
 export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inputs, marks, onBirth, onClearBirth, onFieldLayout, onPick, onScan, onText, repair, scan }: ProfileStepProps) {
   const { styles, colors } = useOnboardingStyles();
   const { t, language } = useOrbitLocale();
-  const { fontScale, width } = useWindowDimensions();
-  const [contactWidth, setContactWidth] = useState<number>();
-  const useContactColumns = (contactWidth ?? width - 36) - 32 > 256 * fontScale;
   const busy = scan.kind === "scanning";
   const done = scan.kind === "done";
   const primary = industry?.primary ?? (basic.primaryIndustryId ? industryLabel(basic.primaryIndustryId, language) : null);
@@ -68,6 +67,10 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
   return (
     <>
       {repair ? <>
+        <View style={[styles.once, styles.repairNotice]} testID="onboarding-repair-notice">
+          <View style={[styles.emo, styles.emoSurface]}><UiText maxFontSizeMultiplier={1.2} style={styles.emoText}>📦</UiText></View>
+          <UiText style={styles.onceText}><UiText style={styles.onceStrong}>{t("onboarding.v3.repairNoticeStrong")}</UiText>{t("onboarding.v3.repairNoticeRest")}</UiText>
+        </View>
         <UiText accessibilityRole="header" style={styles.h1}>{t("onboarding.v3.repairTitle")}</UiText>
         <UiText style={styles.sub}>{t("onboarding.v3.repairHint")}</UiText>
       </> : done ? (
@@ -90,17 +93,17 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
       )}
       {scan.kind === "failed" ? <UiText accessibilityRole="alert" style={styles.errLine}>{scan.message}</UiText> : null}
       <View onLayout={event => onFieldLayout("name", event)}>
-        {text("name", t("onboarding.v3.name"), errors.has("name") ? "" : t("onboarding.v3.namePlaceholder"), { inputRef: inputs.name, error: errors.has("name") ? t("onboarding.v3.missName") : undefined, autoComplete: "name", textContentType: "name" })}
+        {text("name", t("onboarding.v3.name"), errors.has("name") ? "" : t("onboarding.v3.namePlaceholder"), { inputRef: inputs.name, error: errors.has("name") ? t("onboarding.v3.missName") : undefined, autoComplete: "name", textContentType: "name", ...(repair?.carriedName && basic.name === repair.carriedName ? { mark: "carried" } : {}) })}
       </View>
       {repair ? null : <>
       {text("company", optional("company", done || Boolean(marks.company)), t("onboarding.v3.companyPlaceholder"))}
       {text("title", optional("role", done || Boolean(marks.title)), t("onboarding.v3.rolePlaceholder"))}
       </>}
-      <View onLayout={event => { onFieldLayout("primaryIndustry", event); onFieldLayout("secondaryIndustry", event); }} style={styles.fieldRow}>
+      <View onLayout={event => { onFieldLayout("primaryIndustry", event); onFieldLayout("secondaryIndustry", event); }} style={repair ? undefined : styles.fieldRow}>
         <SelectField accessibilityLabel={`${t("onboarding.v3.primaryIndustry")}：${primary ?? t("onboarding.v3.select")}`} disabled={disabled} error={errors.has("primaryIndustry") ? t("onboarding.v3.missIndustry") : undefined} icon="down" label={t("onboarding.v3.primaryIndustry")}
-          mark={marks.primaryIndustryId} onPress={() => onPick("primary")} placeholder={t("onboarding.v3.select")} pressRef={inputs.primary} style={styles.fieldHalf} value={primary} />
+          mark={marks.primaryIndustryId} onPress={() => onPick("primary")} placeholder={t("onboarding.v3.select")} pressRef={inputs.primary} style={repair ? {} : styles.fieldHalf} value={primary} />
         <SelectField accessibilityLabel={`${t("onboarding.v3.secondaryIndustry")}：${secondary ?? t("onboarding.v3.select")}`} disabled={disabled || !basic.primaryIndustryId} error={errors.has("secondaryIndustry") ? t("onboarding.v3.missDetail") : undefined} icon="down" label={t("onboarding.v3.secondaryIndustry")}
-          mark={marks.secondaryIndustryId} onPress={() => onPick("secondary")} placeholder={basic.primaryIndustryId ? t("onboarding.v3.select") : t("onboarding.v3.none")} pressRef={inputs.secondary} style={styles.fieldHalf} value={secondary} />
+          mark={marks.secondaryIndustryId} onPress={() => onPick("secondary")} placeholder={basic.primaryIndustryId ? t("onboarding.v3.select") : t("onboarding.v3.none")} pressRef={inputs.secondary} style={repair ? {} : styles.fieldHalf} value={secondary} />
       </View>
       {repair ? null : <>
       <SelectField accessibilityLabel={`${t("onboarding.v3.seniority")}：${basic.seniorityLevel ? SENIORITY_LEVEL_LABELS[basic.seniorityLevel][language] : t("onboarding.v3.select")}`} disabled={disabled} icon="down" label={t(marks.seniorityLevel ? "onboarding.v3.seniority" : "onboarding.v3.seniorityOptional")}
@@ -111,37 +114,51 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
       <SelectField error={errors.has("birthDate") ? t("onboarding.v3.missBirthDate") : undefined} accessibilityLabel={`${t("onboarding.v3.birthDate")}：${birthLabel ?? t("onboarding.v3.birthDatePlaceholder")}`} disabled={disabled} hint={t("onboarding.v3.birthDateHelp")} icon="calendar" label={t("onboarding.v3.birthDate")} onPress={onBirth} placeholder={t("onboarding.v3.birthDatePlaceholder")} value={birthLabel}
         trailing={basic.birthDate ? <UiPressable accessibilityLabel={t("onboarding.v3.birthDateClear")} accessibilityRole="button" disabled={disabled} hitSlop={10} onPress={onClearBirth} style={styles.clear}><Icon color={colors.ink3Text} name="x" size={16} /></UiPressable> : null} />
       </View> : null}
-      {repair ? null : <View
-        onLayout={event => {
-          setContactWidth(event.nativeEvent.layout.width);
-          onFieldLayout("contact", event);
-        }}
-        style={[contactLayout.card, { backgroundColor: colors.surface2, borderColor: colors.line }]}
-        testID="onboarding-contact-methods"
-      >
-        <UiText accessibilityRole="header" style={styles.scanDoneTitle}>{t("onboarding.v3.contactTitle")}</UiText>
-        <View style={[styles.once, contactLayout.hint]}>
-          <View style={[styles.emo, styles.emoSurface]}><Icon color={colors.ink2} name="info" size={16} /></View>
-          <UiText style={styles.onceText}>{t("onboarding.v3.contactHint")}</UiText>
-        </View>
-        <View style={useContactColumns ? styles.fieldRow : undefined}>
-          <View style={useContactColumns ? styles.fieldHalf : undefined}>{text("lineId", t("onboarding.v3.lineId"), "", { autoCapitalize: "none" })}</View>
-          <View style={useContactColumns ? styles.fieldHalf : undefined}>{text("wechatId", t("onboarding.v3.wechatId"), "", { autoCapitalize: "none" })}</View>
-        </View>
-        <View style={useContactColumns ? styles.fieldRow : undefined}>
-          <View style={useContactColumns ? styles.fieldHalf : undefined}>{text("email", t("onboarding.v3.email"), "", { autoCapitalize: "none", autoComplete: "email", keyboardType: "email-address", textContentType: "emailAddress" })}</View>
-          <View style={useContactColumns ? styles.fieldHalf : undefined}>{text("phone", t("onboarding.v3.phone"), "", { autoComplete: "tel", keyboardType: "phone-pad", textContentType: "telephoneNumber" })}</View>
-        </View>
-        {errors.has("contact") ? <UiText accessibilityRole="alert" style={styles.errLine}>{t("onboarding.v3.missContact")}</UiText> : null}
-      </View>}
+      {repair ? null : <ContactGroup basic={basic} disabled={disabled} errors={errors} marks={marks} onLayout={event => onFieldLayout("contact", event)} text={text} />}
     </>
   );
 }
 
-const contactLayout = StyleSheet.create({
-  card: { marginTop: 18, padding: 16, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth },
-  hint: { marginTop: 10 },
-});
+/**
+ * UR-C 引导 ① 的联系方式（C11–C14）：和上面的栏位同一种样式，不再套卡。LINE、WeChat 直接给出并带「おすすめ」；
+ * メール・電話 收在「＋」里，名片读到或已经有值时自动展开（带「名刺から」）。至少一种；缺项时 LINE・WeChat 标红、组下一句；
+ * 格式不对只标那一栏并在栏下说明。
+ */
+function ContactGroup({ basic, disabled, errors, marks, onLayout, text }: {
+  basic: BasicDraft; disabled: boolean; errors: ReadonlySet<OnboardingMissingField>; marks: Marks; onLayout: (event: LayoutChangeEvent) => void;
+  text: (key: TextKey, label: string, placeholder: string, extra?: object) => ReactNode;
+}) {
+  const { styles, colors } = useOnboardingStyles();
+  const { t } = useOrbitLocale();
+  const filled = Boolean(basic.email?.trim() || basic.phone?.trim() || marks.email || marks.phone);
+  const [expanded, setExpanded] = useState(filled);
+  useEffect(() => { if (filled) setExpanded(true); }, [filled]);
+  const shown = errors.has("contact");
+  const format = shown ? contactFormatProblem(basic) : null;
+  const missing = shown && !format;
+  const recommended = t("onboarding.v3.contactRecommended");
+  return (
+    <View onLayout={onLayout} style={styles.cg} testID="onboarding-contact-methods">
+      <View style={styles.cgHead}>
+        <UiText accessibilityRole="header" style={styles.cgTitle}>{t("onboarding.v3.contactName")}</UiText>
+        <UiText style={styles.cgSmall}>{t("onboarding.v3.contactAtLeastOne")}</UiText>
+      </View>
+      <UiText style={styles.cgSee}>{t("onboarding.v3.contactSee")}</UiText>
+      {text("lineId", t("onboarding.v3.lineId"), t("onboarding.v3.lineIdPlaceholder"), { autoCapitalize: "none", autoCorrect: false, badge: recommended, flagged: missing })}
+      {text("wechatId", t("onboarding.v3.wechatId"), t("onboarding.v3.wechatIdPlaceholder"), { autoCapitalize: "none", autoCorrect: false, badge: recommended, flagged: missing })}
+      {expanded ? <>
+        {text("email", t("onboarding.v3.email"), t("onboarding.v3.emailPlaceholder"), { autoCapitalize: "none", autoComplete: "email", autoCorrect: false, keyboardType: "email-address", textContentType: "emailAddress", error: format === "email" ? t("onboarding.v3.badEmail") : undefined })}
+        {text("phone", t("onboarding.v3.phone"), t("onboarding.v3.phonePlaceholder"), { autoComplete: "tel", keyboardType: "phone-pad", textContentType: "telephoneNumber", error: format === "phone" ? t("onboarding.v3.badPhone") : undefined })}
+      </> : (
+        <UiPressable accessibilityLabel={t("onboarding.v3.contactMore")} accessibilityRole="button" disabled={disabled} onPress={() => setExpanded(true)} pressedScale={0.98} style={[styles.addMore, missing ? styles.addMoreError : null]} testID="onboarding-contact-more">
+          <Icon color={colors.ink2} name="plus" size={16} />
+          <UiText style={styles.addMoreText}>{t("onboarding.v3.contactMore")}</UiText>
+        </UiPressable>
+      )}
+      {missing ? <UiText accessibilityLiveRegion="polite" accessibilityRole="alert" style={styles.errLine}>{t("onboarding.v3.missContactOne")}</UiText> : null}
+    </View>
+  );
+}
 
 export interface GoalsStepProps {
   disabled: boolean;

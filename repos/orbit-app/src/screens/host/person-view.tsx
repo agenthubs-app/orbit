@@ -6,6 +6,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import type { HostPeopleBucket, HostPersonResponse } from "../../api/contract/host-console";
+import { ContactMethodRows } from "../../components/ContactMethodRows";
 import { UiText } from "../../components/ui";
 import { avatarTone } from "../../components/ui/Avatar";
 import { createThemedStyles } from "../../design/theme";
@@ -39,7 +40,6 @@ export function HostPersonView({ data, t }: { data: HostPersonResponse; t: HostT
   const recs = data.matching?.recommendations ?? [];
   const shownRecs = allRecs ? recs : recs.slice(0, RECS_FIRST);
   const chips = ([["pdTopics", data.topics], ["pdOffers", data.offers], ["pdNeeds", data.needs]] as const).filter(([, items]) => items.length > 0);
-  const contactRows = [[t("evContactLine"), data.contactMethods?.lineId], [t("evContactWechat"), data.contactMethods?.wechatId], [t("pdEmail"), data.contactMethods?.email], [t("pdPhone"), data.contactMethods?.phone]] as const;
   const tone = STATUS_TONE[data.status];
   return (
     <View style={styles.body} testID={`host-person-${data.actorId}`}>
@@ -67,6 +67,12 @@ export function HostPersonView({ data, t }: { data: HostPersonResponse; t: HostT
         </View>
       ) : null}
 
+      {/* UR-S10：报名者共享给主办方的联系方式；一个都没有时这一段仍在，一行说明（主办方知道不是漏看）。 */}
+      <View style={styles.section} testID="host-person-contacts">
+        <UiText style={styles.h} accessibilityRole="header">{t("pdContactMethods")}</UiText>
+        <View style={styles.scbox}><ContactMethodRows methods={data.contactMethods ?? {}} /></View>
+      </View>
+
       {data.hostAnswers.length ? (
         <View style={styles.section} testID="host-person-answers">
           <UiText style={styles.h} accessibilityRole="header">{t("pdHostAnswers")}</UiText>
@@ -81,12 +87,6 @@ export function HostPersonView({ data, t }: { data: HostPersonResponse; t: HostT
         </View>
       ) : null}
 
-      {contactRows.some(([, value]) => Boolean(value)) ? (
-        <View style={styles.section} testID="host-person-contacts">
-          <UiText style={styles.h} accessibilityRole="header">{t("pdContactMethods")}</UiText>
-          {contactRows.map(([label, value]) => value ? <QA key={label} label={label} value={value} /> : null)}
-        </View>
-      ) : null}
       {data.profile.length || chips.length ? (
         <View style={styles.section} testID="host-person-profile">
           <UiText style={styles.h} accessibilityRole="header">{t("pdProfile")}</UiText>
@@ -176,6 +176,8 @@ const usePersonStyles = createThemedStyles((colors) => StyleSheet.create({
   orgLine: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22, marginTop: 2 },
   meta: { alignItems: "center", columnGap: 10, flexDirection: "row", flexWrap: "wrap", marginTop: 8, rowGap: 6 },
   section: { borderTopColor: colors.line, borderTopWidth: 1, gap: 10, paddingTop: 16 },
+  // UR-S10 .scbox：surface-2、圆角 16、左右 14。
+  scbox: { backgroundColor: colors.surface2, borderRadius: 16, paddingHorizontal: 14 },
   h: { color: colors.ink, fontSize: 15, fontWeight: "800", lineHeight: 22 },
   dt: { color: colors.ink3, fontSize: 12, fontWeight: "700", lineHeight: 18 },
   dd: { color: colors.ink, fontSize: 15, lineHeight: 24, marginTop: 2 },

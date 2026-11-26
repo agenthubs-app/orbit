@@ -12,7 +12,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
 import { whenNotImplemented } from "../../api/compute/not-implemented";
-import { profileContactMethods, type ProfileContactMethods } from "../../api/compute/profile-contact-methods";
+import type { ProfileContactMethods } from "../../api/compute/profile-contact-methods";
+import { ContactMethodRows } from "../../components/ContactMethodRows";
 import type { InviteConnectionView } from "../../api/contract/invite-codes";
 import type { PlanContactFit } from "../../api/contract/plan-v2";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
@@ -75,8 +76,6 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
     { scopeKey: `${auth.actorId ?? ""}:${contactId}`, cachePolicy: "network-only",
       enabled: !fixture.enabled && Boolean(auth.actorId) && contactId.startsWith("contact:event-consent:") },
   );
-  const methods = sharedMethods.kind === "success" ? profileContactMethods(sharedMethods.data) : {};
-  const sharedRows = [[t("network.detail.fieldLineId"), methods.lineId], [t("network.detail.fieldWechatId"), methods.wechatId], [t("network.detail.fieldEmail"), methods.email], [t("network.detail.fieldPhone"), methods.phone]] as const;
   const row = useMemo(() => localRows.find((candidate) => candidate.card?.id === contactId || candidate.id === contactId) ?? null, [localRows, contactId]);
   const card = row ? withLegacyNetworkFields(row).card : null;
   const contact: DetailContact | null = useMemo(() => {
@@ -325,12 +324,11 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
         {/* contact-reach: the invite card arrives with its own read; keep it below 「連絡する」 (same order as the Web drawer) so the button never moves. */}
         {reachCard}
 
-        {sharedRows.some(([, value]) => Boolean(value)) ? (
-          <View style={[styles.card, styles.gapTop]} testID="network-shared-contact-methods">
-            <UiText style={styles.cardTitle} accessibilityRole="header">{t("network.detail.sharedContactMethods")}</UiText>
-            {sharedRows.map(([label, value]) => value ? <View key={label} style={styles.frow}>
-              <UiText style={styles.frowKey}>{label}</UiText><UiText style={[styles.frowValue, styles.grow]}>{value}</UiText>
-            </View> : null)}
+        {/* UR-S9：对方共享给人脉的联系方式。每行名称 + 值 + 能做的事；一个都没有时一行说明。 */}
+        {sharedMethods.kind === "success" ? (
+          <View style={[styles.card, styles.gapTop, styles.contactCard]} testID="network-shared-contact-methods">
+            <UiText style={[styles.cardTitle, styles.contactTitle]} accessibilityRole="header">{t("network.contactMethods.title")}</UiText>
+            <ContactMethodRows methods={sharedMethods.data} />
           </View>
         ) : null}
         {connection ? (
@@ -533,6 +531,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   gapSmall: { marginTop: 10, marginBottom: 8 },
   gapBottom: { marginBottom: 12 },
   card: { backgroundColor: colors.surface, borderRadius: 22, padding: 18 },
+  // UR-S9 .card.k-sc：padding 6 18 8，标题上 12。
+  contactCard: { paddingBottom: 8, paddingTop: 6 },
+  contactTitle: { marginTop: 12 },
   head: { alignItems: "center", gap: 6 },
   headPerson: { paddingBottom: 24 },
   headSelf: { paddingBottom: 34 },

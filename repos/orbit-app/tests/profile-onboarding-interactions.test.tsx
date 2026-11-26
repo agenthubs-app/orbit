@@ -215,28 +215,19 @@ test("a new account goes 名片与基本信息 → 目标与强项 → 自我介
 test("「下一步」 is never greyed out: it lists what is missing, marks it, and each mark goes as soon as it is filled", async t => {
   const page = await open(t);
   await next(page).waitFor();
+  // UR-C11：同页同一种栏位，不套卡；LINE、微信 直接给出并带「推荐」，邮箱・电话收在「＋」里。
   const contacts = page.getByTestId("onboarding-contact-methods");
-  await contacts.getByText("至少填一种，推荐 LINE 或微信。完成交换的人脉和你报名活动的主办方可查看。", { exact: true }).waitFor();
-  const positions = () => contacts.getByRole("textbox").evaluateAll(inputs =>
-    inputs.map(input => ({ label: input.getAttribute("aria-label"), top: input.getBoundingClientRect().top })),
-  );
-  await page.setViewportSize({ width: 375, height: 844 });
-  const columns = await positions();
-  assert.deepEqual(columns.map(field => field.label), ["LINE", "微信", "邮箱", "电话"]);
-  assert.equal(columns[0]!.top, columns[1]!.top);
-  assert.equal(columns[2]!.top, columns[3]!.top);
-  assert.ok(columns[0]!.top < columns[2]!.top);
-  await page.setViewportSize({ width: 300, height: 844 });
-  await page.waitForFunction(() => {
-    const fields = Array.from(document.querySelectorAll('[data-testid="onboarding-contact-methods"] input'));
-    return fields.length === 4 && new Set(fields.map(field => field.getBoundingClientRect().top)).size === 4;
-  });
+  await contacts.getByText("只有人脉里的人和你报名活动的主办方能看到。", { exact: true }).waitFor();
+  assert.match(await contacts.innerText(), /^联系方式\s*至少一种/u);
+  assert.deepEqual(await contacts.getByRole("textbox").evaluateAll(inputs => inputs.map(input => input.getAttribute("aria-label"))), ["LINE", "微信"]);
+  assert.equal(await contacts.getByText("推荐", { exact: true }).count(), 2);
+  await contacts.getByRole("button", { name: "填写邮箱或电话" }).waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await next(page).isDisabled(), false);
   assert.equal(Math.round((await next(page).boundingBox())!.height), 50, "the page's main button (.btn.xl)");
   await page.evaluate(() => document.querySelector('[data-testid="onboarding-scroll"]')!.scrollTo(0, 9999));
   await next(page).click();
-  const contactError = "请至少填写一种联系方式，并检查邮箱或电话号码的格式。";
+  const contactError = "请至少填写一种";
   assert.deepEqual(await alerts(page), ["请填写姓名", "请选择行业", contactError, "还差3项：姓名、行业、联系方式"]);
   assert.equal(await page.getByRole("textbox", { name: "姓名" }).evaluate(el => el === document.activeElement), true, "focus on the first missing field");
   await page.waitForFunction(() => document.querySelector('[data-testid="onboarding-scroll"]')!.scrollTop < 500);
@@ -249,6 +240,10 @@ test("「下一步」 is never greyed out: it lists what is missing, marks it, a
   await page.getByRole("button", { name: /^细分：/u }).click();
   await page.getByRole("button", { name: "人工智能与数据", exact: true }).click();
   assert.deepEqual(await alerts(page), [contactError, "还差1项：联系方式"]);
+  // UR-C14：格式不对只标这一栏，按钮上方一句。
+  await page.getByRole("button", { name: "填写邮箱或电话" }).click();
+  await page.getByRole("textbox", { name: "邮箱" }).fill("lin@orbit");
+  assert.deepEqual(await alerts(page), ["请检查邮箱格式（例：name@example.com）", "请检查邮箱格式"]);
   await page.getByRole("textbox", { name: "邮箱" }).fill("lin@orbit.example");
   assert.deepEqual(await alerts(page), []);
   assert.equal((await fx(page)).requests.filter((r: any) => r.method === "PUT").length, 0, "nothing was sent while something was missing");
@@ -359,6 +354,7 @@ test("no industry on the card, AI unavailable or late: nothing blocks, nothing t
   const page = await open(t, { card: true, scan, inferHold: true, infer: { status: "ready", primaryIndustryId: "finance_investment", secondaryIndustryId: "finance_investment.venture_capital", offering: ["客户引荐"], topics: [] } });
   await page.getByRole("button", { name: "从相册选择" }).click();
   await page.getByText("名片读到2项", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "填写邮箱或电话" }).click();
   assert.equal(await page.getByRole("textbox", { name: "邮箱" }).inputValue(), "", "methods can be entered when a card has none");
   await pickIndustry(page);
   await page.evaluate(() => { const s = (window as any).fixture; s.inferHold = false; s.releaseInfer(); });
@@ -425,16 +421,22 @@ test("a migrated account repairs its required fields on one page, keeps saved de
     ...withProfile({ ...complete, ...blank, displayName: "", secondaryIndustryId: null, organization: "已有公司", bio: "已有简介", handles }),
     ...flowAt(3), legacyRepair: true,
   });
-  await page.getByText("补齐基本资料", { exact: true }).waitFor();
-  await page.getByText(/已保存的资料会保留/).waitFor();
+  // UR-R10：顶部一句来由；标题「确认个人资料」。
+  await page.getByText("确认个人资料", { exact: true }).first().waitFor();
+  assert.equal(await page.getByTestId("onboarding-repair-notice").innerText(), "📦\n已沿用你之前报名活动时填写的内容。补齐缺少的项目并保存后，会回到你刚才打开的页面。");
+  await page.getByText("行业用于在活动中帮你找到聊得来的人。", { exact: true }).waitFor();
   assert.equal(await page.getByTestId("onboarding-contact-methods").count(), 0);
   assert.equal(await page.getByRole("textbox", { name: "公司" }).count(), 0);
   assert.equal(await page.getByText(/第1\/3步/).count(), 0);
   await next(page).click();
   assert.equal((await fx(page)).requests.filter((request: any) => request.method === "PUT").length, 0);
   await page.getByRole("textbox", { name: "姓名" }).fill("林晓");
+  // UR-R11：行业面板标题旁写件数，选项是单选。
   await page.getByRole("button", { name: /^细分：/u }).click();
-  await page.getByRole("button", { name: "人工智能与数据", exact: true }).click();
+  const sheet = page.getByTestId("onboarding-pick-list");
+  await sheet.waitFor();
+  assert.match(await sheet.innerText(), /^选择细分行业\s*\d+ 项/u);
+  await sheet.getByRole("radio", { name: "人工智能与数据", exact: true }).click();
   await page.getByRole("button", { name: "保存并继续" }).click();
   await page.waitForFunction(() => (window as any).fixture.navigation.length === 1);
   const { aiCalls, navigation, profile, requests } = await fx(page);

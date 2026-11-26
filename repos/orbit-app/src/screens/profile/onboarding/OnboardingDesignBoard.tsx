@@ -1,15 +1,17 @@
 /** Dev builds only: boards A1–A7 with their own sample data, for the pixel gate (compare-redesign-app). Reads and writes nothing. */
 import { useEffect, useRef } from "react";
-import type { ScrollView, TextInput, View } from "react-native";
+import { View, type ScrollView, type TextInput } from "react-native";
 
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { EmailVerificationContext } from "../../../email-verification/EmailVerificationContext";
 import { EMPTY_BASIC, GOAL_LIMIT, GOAL_OPTIONS, ONBOARDING_STEPS, type OnboardingMissingField } from "../../../view-models/profile-onboarding";
-import { KitButton, MissLine, OnboardingFrame, OnboardingProgress, OnboardingTopBar, OnceNotice } from "./OnboardingParts";
+import { BottomSheet } from "../../../components/ui";
+import { INDUSTRY_CATALOG } from "../../../api/domain/industries";
+import { KitButton, MissLine, OnboardingFrame, OnboardingProgress, OnboardingTopBar, OnceNotice, PickList } from "./OnboardingParts";
 import { GoalsStep, IntroStep, ProfileStep, type Marks } from "./OnboardingSteps";
 import samples from "./onboarding-design-samples.json";
 
-const BOARDS = ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A1b", "A2b"] as const;
+const BOARDS = ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A1b", "A2b", "C11", "C12", "C13", "C14", "R10", "R11", "R12"] as const;
 type Board = (typeof BOARDS)[number];
 export const isOnboardingBoard = (value: unknown): value is Board => BOARDS.includes(value as Board);
 
@@ -26,6 +28,63 @@ export function OnboardingDesignBoard({ board, notice = false }: { board: Board;
 }
 
 function OnboardingBoard({ board }: { board: Board }) {
+  if (board.startsWith("C") || board.startsWith("R")) return <RedoBoard board={board} key={board} />;
+  return <ThreeStepBoard board={board} />;
+}
+
+/**
+ * ui-redo-proposal.html：UR-C11–C14（引导 ① 联系方式，滚到联系方式处）与 UR-R10–R12（迁移账号补资料）。示例数据照画板。
+ */
+function RedoBoard({ board }: { board: Board }) {
+  const { t, language } = useOrbitLocale();
+  const scroll = useRef<ScrollView | null>(null);
+  const inputs = { name: useRef<TextInput | null>(null), primary: useRef<View | null>(null), secondary: useRef<View | null>(null) };
+  const repair = board.startsWith("R");
+  useEffect(() => {
+    if (repair) return;
+    const timer = setTimeout(() => scroll.current?.scrollToEnd({ animated: false }), 2500);
+    return () => clearTimeout(timer);
+  }, [repair]);
+  if (repair) {
+    const saving = board === "R12";
+    const basic = { ...EMPTY_BASIC, name: samples.repairName, ...(saving ? { primaryIndustryId: "finance_investment" as const, secondaryIndustryId: "finance_investment.venture_capital" as const } : {}) };
+    const options = INDUSTRY_CATALOG.map(item => ({ id: item.id as string, label: item.labels[language] }));
+    return (
+      <>
+        <OnboardingFrame scrollRef={scroll} footer={<KitButton block disabled={saving} label={t(saving ? "onboarding.v3.repairSaving" : "onboarding.v3.repairSave")} onPress={nothing} size="xl" variant="primary" />}>
+          <OnboardingTopBar onLogout={nothing} title={t("onboarding.v3.repairBar")} />
+          <View style={saving ? { opacity: 0.55 } : undefined}>
+            <ProfileStep basic={basic} birthLabel={null} disabled={saving} errors={new Set()} inputs={inputs} marks={{}} onBirth={nothing} onClearBirth={nothing} onFieldLayout={nothing} onPick={nothing} onScan={nothing} onText={nothing}
+              repair={{ birthDate: false, carriedName: samples.repairName }} scan={{ kind: "idle" }} />
+          </View>
+        </OnboardingFrame>
+        <BottomSheet accessibilityLabel={t("onboarding.v3.pickIndustry")} onClose={nothing} scrollEnabled={false} visible={board === "R11"}>
+          <PickList count={options.length} onClose={nothing} onPick={nothing} options={options} selected="finance_investment" title={t("onboarding.v3.pickIndustry")} />
+        </BottomSheet>
+      </>
+    );
+  }
+  const card = board === "C12";
+  const fmt = board === "C14";
+  const miss = board === "C13";
+  const basic = { ...EMPTY_BASIC, ...(card ? samples.basic : fmt ? { email: "sato@minatolink" } : {}) };
+  const summary = miss ? t("onboarding.v3.missing", { count: 1, fields: t("onboarding.v3.contactName") }) : fmt ? t("onboarding.v3.checkEmailFormat") : null;
+  return (
+    <OnboardingFrame scrollRef={scroll} footer={<>
+      {summary ? <MissLine text={summary} /> : null}
+      <KitButton block label={t("onboarding.v3.next")} onPress={nothing} size="xl" variant="primary" />
+    </>}>
+      <OnboardingTopBar onLogout={nothing} />
+      <OnboardingProgress eta={t("onboarding.v3.eta")} index={0} label={t("onboarding.v3.step", { step: 1, total: 3, name: t("onboarding.v3.step.profile") })} total={3} />
+      <OnceNotice scan />
+      <ProfileStep basic={basic} birthLabel={null} disabled={false} errors={new Set<OnboardingMissingField>(miss || fmt ? ["contact"] : [])} inputs={inputs} marks={card ? CARD : {}}
+        onBirth={nothing} onClearBirth={nothing} onFieldLayout={nothing} onPick={nothing} onScan={nothing} onText={nothing} scan={card ? { kind: "done", card: 6, ai: 3 } : { kind: "idle" }}
+        {...(card ? { industry: { primary: samples.industry, secondary: samples.detail } } : {})} />
+    </OnboardingFrame>
+  );
+}
+
+function ThreeStepBoard({ board }: { board: Board }) {
   const { t } = useOrbitLocale();
   const scroll = useRef<ScrollView | null>(null);
   const inputs = { name: useRef<TextInput | null>(null), primary: useRef<View | null>(null), secondary: useRef<View | null>(null) };

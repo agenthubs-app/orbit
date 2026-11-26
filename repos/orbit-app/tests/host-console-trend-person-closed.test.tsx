@@ -130,11 +130,11 @@ test("参加者詳細: header, answers, profile, chips, tables and the first fiv
   const text = renderedText(<HostPersonView data={person} t={t} />);
   for (const phrase of ["森田 拓也", "Morita Labs · CEO", "承認済み", "受付済み 19:46", "受付番号 A-012", "申込 10/1", "申込時の回答", "いちばん話したいこと", "シリーズAの資金調達", "プロフィール", "立場", "起業家", "unknownKey", "そのまま", "話したいテーマ", "資金調達", "提供できること", "SaaS の知見", "探していること", "投資家", "マッチング結果", "第1ラウンド · テーブル C", "同じ段階の起業家が集まる卓", "同じテーブル", "青木 花", "青木商事", "おすすめの相手", "相手 1", "みずほ台ベンチャーズ · パートナー", "同じ業界で資金調達を経験", "相手 5", "すべて表示（7名）"]) assert.ok(text.includes(phrase), phrase);
   assert.ok(!text.includes("相手 6"));
-  assert.doesNotMatch(text, /連絡先/);
+  // UR-S10：没有共享的联系方式时这一段仍在，一行说明；有的话每行名称 + 值 + 能做的事。
+  // (renderedText has no locale provider: the shared rows speak the default language.)
+  assert.match(text, /連絡先 对方没有共享联系方式 申込時の回答/);
   const withContacts = renderedText(<HostPersonView data={{ ...person, contactMethods: { lineId: "morita-line", email: "morita@example.com" } }} t={t} />);
-  assert.match(withContacts, /連絡先/);
-  assert.match(withContacts, /morita-line/);
-  assert.match(withContacts, /morita@example\.com/);
+  assert.match(withContacts, /連絡先 LINE morita-line 复制 邮箱 morita@example\.com 发邮件 申込時の回答/);
 });
 
 test("参加者詳細: a member without a form, unpublished matching, and published-but-not-seated", () => {

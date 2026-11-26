@@ -421,6 +421,10 @@ test("an exchanged contact shows shared methods from the live read while the cac
     await methods.getByText(value, { exact: true }).waitFor();
   }
   assert.equal(await methods.getByText("https://unused.example.test", { exact: true }).count(), 0);
+  // UR-S9：每行能做的事——LINE・WeChat コピー、メール、電話；复制后底部提示。
+  for (const method of ["lineId", "wechatId", "email", "phone"]) await methods.getByTestId(`contact-method-${method}-action`).waitFor();
+  assert.deepEqual(await Promise.all(["lineId", "wechatId", "email", "phone"].map((method) => methods.getByTestId(`contact-method-${method}-action`).innerText())), ["コピー", "コピー", "メール", "電話"]);
+  assert.match(await methods.innerText(), /^連絡先\nLINE\nyamada-line/u);
   assert.ok((await requests(page)).includes(`resource:${path}`));
 
   const offline = await open(t, { ...settings, online: false });
@@ -466,6 +470,10 @@ test("delete offline goes to the sync outbox (LF12): hidden now, sent by the nex
 test("edit (b5 #42 / #43): fields → PATCH …/fields, industry / level / stage / tags → PATCH …/:id; offline cannot save", async (t) => {
   const page = await open(t, { screen: "edit", params: { id: "c-ito" } });
   await page.getByTestId("network-edit").waitFor();
+  // UR-E：三组卡；「保存」是底部的文字按钮（不再是右上 ✓）；删除在最下面。
+  for (const [id, title] of [["network-edit-basic", "基本情報"], ["network-edit-class", "分類"], ["network-edit-contact", "連絡先"]] as const) assert.match(await page.getByTestId(id).innerText(), new RegExp(`^${title}`, "u"));
+  assert.equal(await page.getByTestId("form-save").innerText(), "保存");
+  await page.getByTestId("network-edit-delete").waitFor();
   await page.getByRole("textbox", { name: "役職" }).fill("CFO・取締役");
   await page.getByTestId("network-edit-industry").click();
   await page.getByTestId("network-industry-picker").waitFor();

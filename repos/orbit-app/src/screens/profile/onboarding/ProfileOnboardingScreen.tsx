@@ -56,6 +56,7 @@ import {
   onboardingDestination,
   onboardingGoals,
   onboardingMissing,
+  contactFormatProblem,
   onboardingRequired,
   optionLabel,
   stepForConfirmedScreen,
@@ -66,7 +67,7 @@ import {
   type OnboardingStep,
 } from "../../../view-models/profile-onboarding";
 import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
-import { KitButton, MissLine, OnboardingFrame, OnboardingProgress, OnboardingTopBar, OnceNotice, useOnboardingStyles } from "./OnboardingParts";
+import { KitButton, MissLine, OnboardingFrame, PickList, OnboardingProgress, OnboardingTopBar, OnceNotice, useOnboardingStyles } from "./OnboardingParts";
 import { regionDisplay } from "./region-display";
 import { GoalsStep, IntroStep, ProfileStep, SheetRow, type IntroStatus, type IntroTone, type Marks, type ScanState, type TextKey } from "./OnboardingSteps";
 
@@ -126,7 +127,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const [view, setView] = useState<View_>("loading");
-  const [repair, setRepair] = useState<{ birthDate: boolean } | null>(null);
+  const [repair, setRepair] = useState<{ birthDate: boolean; carriedName?: string } | null>(null);
   const [detail, setDetail] = useState<ProfileDetail | null>(null);
   const [basic, setBasic] = useState<BasicDraft>(EMPTY_BASIC);
   const [goals, setGoals] = useState<string[]>([]);
@@ -203,7 +204,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     const savedGoal = onboardingGoals(profile?.relationshipGoal ?? "");
     const saved = { basic: basicDraftFromProfile(profile), goals: [...savedGoal.goals], bio: profile?.bio ?? "" };
     if (progress.legacyRepair) {
-      setRepair({ birthDate: Boolean(saved.basic.birthDate && !isValidProfileBirthDate(saved.basic.birthDate, today)) });
+      setRepair({ birthDate: Boolean(saved.basic.birthDate && !isValidProfileBirthDate(saved.basic.birthDate, today)), carriedName: saved.basic.name });
       setDetail(result.detail);
       setBasic(saved.basic);
       setMarks({});
@@ -360,7 +361,13 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     if (introBlocked) return t("onboarding.v3.missIntroGenerating");
     return bioCount.over ? t("onboarding.v3.bioTooLong", { limit: bioCount.limit }) : t("onboarding.v3.missIntro");
   };
-  const summaryOf = (fields: readonly OnboardingMissingField[]) => t("onboarding.v3.missing", { count: fields.length, fields: fields.map(field => t(MISSING_NAME[field])).join(t("onboarding.v3.missingSeparator")) });
+  // UR-C：联系方式是格式不对（不是没填）时，汇总写「メールの形式」；只有这一项时整句「メールの形式を確認してください」。
+  const contactFormat = view === "profile" ? contactFormatProblem(basic) : null;
+  const summaryOf = (fields: readonly OnboardingMissingField[]) => {
+    if (contactFormat && fields.length === 1 && fields[0] === "contact") return t(contactFormat === "email" ? "onboarding.v3.checkEmailFormat" : "onboarding.v3.checkPhoneFormat");
+    const name = (field: OnboardingMissingField) => (field === "contact" && contactFormat ? t(contactFormat === "email" ? "onboarding.v3.emailFormatName" : "onboarding.v3.phoneFormatName") : t(MISSING_NAME[field]));
+    return t("onboarding.v3.missing", { count: fields.length, fields: fields.map(name).join(t("onboarding.v3.missingSeparator")) });
+  };
 
   /** Scroll to the first missing field and put the focus there (keyboard for text, VoiceOver for buttons). */
   function showMissing(fields: readonly OnboardingMissingField[]) {
@@ -401,7 +408,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
             if (repair && !holds(newer.detail.profile)) {
               const latest = basicDraftFromProfile(newer.detail.profile);
               setBasic(latest);
-              setRepair({ birthDate: Boolean(latest.birthDate && !isValidProfileBirthDate(latest.birthDate, today)) });
+              setRepair({ birthDate: Boolean(latest.birthDate && !isValidProfileBirthDate(latest.birthDate, today)), carriedName: latest.name });
             }
           }
           if (!newer?.ok || !holds(newer.detail.profile)) { setNotice(result.kind); return; }
@@ -625,11 +632,11 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   }
   const index = stepIndex(view);
   const noticeText = signOutError ?? (notice ? t(notice === "conflict" ? "onboarding.v3.conflict" : notice === "offline" ? "onboarding.v3.offline" : "onboarding.v3.saveFailed") : null);
-  const label = saving ? t("onboarding.v3.saving") : repair ? t("onboarding.v3.repairSave") : view === "intro" ? t("onboarding.v3.start") : t("onboarding.v3.next");
+  const label = saving ? t(repair ? "onboarding.v3.repairSaving" : "onboarding.v3.saving") : repair ? t("onboarding.v3.repairSave") : view === "intro" ? t("onboarding.v3.start") : t("onboarding.v3.next");
   const footer = (
     <>
       {shown.length && attempted ? <MissLine text={summaryOf(shown)} /> : noticeText ? <MissLine text={noticeText} /> : null}
-      <KitButton block label={label} onPress={() => void onNext(view)} size="xl" testID="onboarding-next" variant="primary"
+      <KitButton block disabled={Boolean(repair) && saving} label={label} onPress={() => void onNext(view)} size="xl" testID="onboarding-next" variant="primary"
         trailing={view === "goals" && goals.length && !saving ? t("onboarding.v3.nextGoals", { count: goals.length, limit: GOAL_LIMIT }) : undefined} />
     </>
   );
@@ -657,14 +664,15 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   return (
     <>
       <OnboardingFrame footer={footer} scrollRef={scrollRef}>
-        <OnboardingTopBar onBack={index ? () => go(ONBOARDING_STEPS[index - 1]!) : undefined} onLogout={() => void logOut()} />
+        <OnboardingTopBar onBack={index ? () => go(ONBOARDING_STEPS[index - 1]!) : undefined} onLogout={() => void logOut()} {...(repair ? { title: t("onboarding.v3.repairBar") } : {})} />
         {repair ? null : <>
         <OnboardingProgress eta={t("onboarding.v3.eta")} index={index} label={t("onboarding.v3.step", { step: index + 1, total: ONBOARDING_STEPS.length, name: t(STEP_NAME[view]) })} total={ONBOARDING_STEPS.length} />
         <OnceNotice scan={view === "profile"} />
         </>}
         {view === "profile" ? (
-          <ProfileStep basic={basic} birthLabel={birthLabel} disabled={saving} errors={errors} inputs={inputs} marks={marks} onBirth={() => { Keyboard.dismiss(); setDateOpen(true); }} onClearBirth={() => setBasic(current => ({ ...current, birthDate: "" }))} onFieldLayout={onFieldLayout}
-            onPick={key => { Keyboard.dismiss(); setPicker(key); }} onScan={source => void scanWith(source)} repair={repair} onText={(key, value) => { setBasic(current => ({ ...current, [key]: value })); unmark(key); }} scan={scan} />
+          // UR-R12：补资料保存中，栏位变淡、不可改。
+          <View style={repair && saving ? styles.dim : undefined}><ProfileStep basic={basic} birthLabel={birthLabel} disabled={saving} errors={errors} inputs={inputs} marks={marks} onBirth={() => { Keyboard.dismiss(); setDateOpen(true); }} onClearBirth={() => setBasic(current => ({ ...current, birthDate: "" }))} onFieldLayout={onFieldLayout}
+            onPick={key => { Keyboard.dismiss(); setPicker(key); }} onScan={source => void scanWith(source)} repair={repair} onText={(key, value) => { setBasic(current => ({ ...current, [key]: value })); unmark(key); }} scan={scan} /></View>
         ) : view === "goals" ? (
           <GoalsStep disabled={saving} error={errors.has("goals")} focus={focus} goals={goals} marks={marks} offer={offer} onFocus={setFocus} onGoal={(goal, selected) => setGoals(current => (selected ? current.filter(value => value !== selected) : toggleValue(current, goal, GOAL_LIMIT)))}
             onGoalsLayout={event => onFieldLayout("goals", event)} onGroup={(group, values) => { (group === "offer" ? setOffer : group === "seek" ? setSeek : setTopics)(values); if (group !== "seek") unmark(group); }} revision={fillRevision} seek={seek} seekSuggestions={goals.length ? seekSuggestions : []} topics={topics} />
@@ -673,9 +681,16 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
             onEdit={() => setEditing(open => !open)} onRegenerate={() => void generateIntro(introStatus === "error" ? "retry" : "regenerate")} onTone={onTone} regenerationsLeft={INTRO_REGENERATE_LIMIT - regenerations} status={introStatus} tone={tone} topics={topics.length} />
         )}
       </OnboardingFrame>
-      <BottomSheet accessibilityLabel={pickerTitle} header={<UiText accessibilityRole="header" style={styles.sheetTitle}>{pickerTitle}</UiText>} onClose={() => setPicker(null)} visible={picker !== null}>
-        {pickerOptions.map(option => <SheetRow key={option.id} label={option.label} on={option.id === (picker === "primary" ? basic.primaryIndustryId : picker === "seniority" ? basic.seniorityLevel : basic.secondaryIndustryId)} onPress={() => pick(option.id)} />)}
-      </BottomSheet>
+      {repair && picker !== "seniority" ? (
+        // UR-R11：迁移账号补资料的行业面板：标题旁写件数，露半行 + 渐隐，一看就知道能滚。
+        <BottomSheet accessibilityLabel={t(picker === "secondary" ? "onboarding.v3.pickDetail" : "onboarding.v3.pickIndustry")} onClose={() => setPicker(null)} scrollEnabled={false} visible={picker !== null}>
+          <PickList count={pickerOptions.length} onClose={() => setPicker(null)} onPick={pick} options={pickerOptions} selected={(picker === "primary" ? basic.primaryIndustryId : basic.secondaryIndustryId) ?? ""} title={t(picker === "secondary" ? "onboarding.v3.pickDetail" : "onboarding.v3.pickIndustry")} />
+        </BottomSheet>
+      ) : (
+        <BottomSheet accessibilityLabel={pickerTitle} header={<UiText accessibilityRole="header" style={styles.sheetTitle}>{pickerTitle}</UiText>} onClose={() => setPicker(null)} visible={picker !== null}>
+          {pickerOptions.map(option => <SheetRow key={option.id} label={option.label} on={option.id === (picker === "primary" ? basic.primaryIndustryId : picker === "seniority" ? basic.seniorityLevel : basic.secondaryIndustryId)} onPress={() => pick(option.id)} />)}
+        </BottomSheet>
+      )}
       {dateOpen ? (
         <PersonalScheduleDateTimePicker kind="date" value={isValidProfileBirthDate(basic.birthDate, today) ? basic.birthDate : ""} zone={timeZone} disabled={saving} yearJump max={today} title={t("onboarding.v3.birthDate")}
           initialMonth={`${Number(today.slice(0, 4)) - 30}-01`} onCancel={() => setDateOpen(false)} onConfirm={value => { setDateOpen(false); setBasic(current => ({ ...current, birthDate: value })); }} />
