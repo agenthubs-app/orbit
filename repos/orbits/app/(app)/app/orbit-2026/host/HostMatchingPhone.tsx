@@ -211,8 +211,8 @@ export function HostMatchingPhone(props: HostMatchingPhoneProps) {
           {data.unplaced.length > 0 && !published ? <span className={`${s.chip} ${s.c_coral}`}>{t("chipUnplaced", { n: data.unplaced.length })}</span> : null}
         </div>
         <div className={mp.acts}>
-          <button type="button" className={`btn ${s.btn} ${s.sm}`} onClick={() => props.onConditionsOpen?.(true)}><Icon name="sliders" size={16} />{t("mCond")}</button>
-          <button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={busy || remaining <= 0 || published} onClick={props.onRegenerate}><Icon name="refresh" size={16} />{t("mRegen")}<span className={`${s.lbl} ${m.remain}`}>{t("mRemaining", { n: remaining })}</span></button>
+          <button type="button" className={`btn ${s.btn} ${s.sm}`} onClick={() => props.onConditionsOpen?.(true)} data-host-cond-open=""><Icon name="sliders" size={16} />{t("mCond")}</button>
+          <button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={busy || remaining <= 0 || published} onClick={props.onRegenerate} data-host-regen=""><Icon name="refresh" size={16} />{t("mRegen")}<span className={`${s.lbl} ${m.remain}`}>{t("mRemaining", { n: remaining })}</span></button>
         </div>
         <div className={`${mp.hscroll} ${mp.tjump}`} data-host-table-jump="">
           {tables.map((table) => <button key={table.table} type="button" className={`btn ${mp.tno} ${mp.tjBtn} ${table.absent ? mp.tnoWarn : ""}`} aria-label={t("mJump", { t: table.table })} onClick={() => jump(table.table)}>{table.table}</button>)}

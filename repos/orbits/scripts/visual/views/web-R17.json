@@ -1061,6 +1061,422 @@
     }
    ],
    "note": "HM-S8b お知らせ · ひとことにリンク（b13 #32；赤框 + 「ひとことにリンクは入れられません」、保存不可）"
+  },
+  {
+   "id": "HM-P4",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
+   "design": "b13-host-mobile.html",
+   "board-index": 3,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-people-phone] [data-host-row]",
+   "click": [
+    "[data-host-select]",
+    "[data-host-row]:nth-child(2) [role=checkbox]",
+    "[data-host-row]:nth-child(4) [role=checkbox]"
+   ],
+   "steps": [
+    {
+     "click": "[data-host-bulk] button:has-text('見送り')",
+     "wait": 600
+    },
+    {
+     "waitFor": "[role=dialog]"
+    }
+   ],
+   "note": "HM-P4 参加者 · 批量見送り确认（b13 #3）"
+  },
+  {
+   "id": "HM-P6b",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
+   "design": "b13-host-mobile.html",
+   "board-index": 6,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-people-phone] [data-host-row]",
+   "click": [
+    "[data-host-row]:nth-child(3) [data-host-who]"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-person-decide]"
+    },
+    {
+     "click": "[data-host-person-decide] button:has-text('見送り')",
+     "wait": 600
+    }
+   ],
+   "note": "HM-P6b 参加者 · 详情里点「見送り」（b13 #6）"
+  },
+  {
+   "id": "HM-P8",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
+   "design": "b13-host-mobile.html",
+   "board-index": 8,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-people-phone] [data-host-row]",
+   "click": [
+    "[data-host-people-more]"
+   ],
+   "steps": [
+    {
+     "wait": 600
+    }
+   ],
+   "note": "HM-P8 参加者 · ⋯ 菜单（b13 #8；画板背后是切换区分时的加载骨架，实现背后是已加载的列表）"
+  },
+  {
+   "id": "HM-P9",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
+   "design": "b13-host-mobile.html",
+   "board-index": 9,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-people-phone] [data-host-row]",
+   "steps": [
+    {
+     "fill": [
+      "[data-host-people-phone] input[type=search]",
+      "ずんだ"
+     ],
+     "wait": 1200
+    },
+    {
+     "waitFor": "[data-host-people-nomatch]"
+    }
+   ],
+   "note": "HM-P9 参加者 · 搜索无结果（b13 #9）"
+  },
+  {
+   "id": "HM-M3b",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=matching",
+   "design": "b13-host-mobile.html",
+   "board-index": 14,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-matching-phone][data-host-matching=draft]",
+   "click": [
+    "[data-host-table-jump] button:has-text('K')"
+   ],
+   "steps": [
+    {
+     "wait": 900
+    }
+   ],
+   "note": "HM-M3b マッチング · 点桌号 K 之后（b13 #14）"
+  },
+  {
+   "id": "HM-M5",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=matching",
+   "design": "b13-host-mobile.html",
+   "board-index": 16,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-matching-phone][data-host-matching=draft]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-host-table=A] [data-host-move]"
+    },
+    {
+     "waitFor": "[data-host-move-list]"
+    },
+    {
+     "click": "[data-host-move-to=C]",
+     "wait": 900
+    },
+    {
+     "click": "[data-host-table=C] button[aria-expanded]",
+     "wait": 600
+    }
+   ],
+   "note": "HM-M5 マッチング · 移动后 + なぜ同じテーブル？（b13 #16）"
+  },
+  {
+   "id": "HM-M6",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=matching",
+   "design": "b13-host-mobile.html",
+   "board-index": 17,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-matching-phone][data-host-matching=draft]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-host-cond-open]",
+     "wait": 800
+    }
+   ],
+   "note": "HM-M6 マッチング · 編成の条件（b13 #17）"
+  },
+  {
+   "id": "HM-M7",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=matching",
+   "design": "b13-host-mobile.html",
+   "board-index": 18,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-matching-phone][data-host-matching=draft]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-host-regen]",
+     "wait": 800
+    }
+   ],
+   "note": "HM-M7 マッチング · 再生成 确认（b13 #18）"
+  },
+  {
+   "id": "HM-M9",
+   "app": "/app/events/demo-host-cfo-night-17/operations?tab=matching",
+   "design": "b13-host-mobile.html",
+   "board-index": 20,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-matching-phone]",
+   "note": "HM-M9 マッチング · 公開済み（只读，b13 #20，vol.17）"
+  },
+  {
+   "id": "HM-S1b",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 23,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "steps": [
+    {
+     "eval": "window.scrollTo(0, document.documentElement.scrollHeight)",
+     "wait": 600
+    }
+   ],
+   "note": "HM-S1b 申込設定 · 下半屏（b13 #23；滚到底）"
+  },
+  {
+   "id": "HM-S5",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 27,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "click": [
+    "[data-host-setup-desc]"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-setup-sub=desc]"
+    }
+   ],
+   "note": "HM-S5 申込設定 · 説明文（b13 #27）"
+  },
+  {
+   "id": "HM-S6",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 28,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-host-setup-phone] button[aria-label='締切を変更']",
+     "wait": 800
+    }
+   ],
+   "note": "HM-S6 申込設定 · 申込締切（b13 #28；画板同时画了「定員就地改」，两者不能同时出现——点开締切抽屉会让定員输入失焦收起）"
+  },
+  {
+   "id": "HM-S7b",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 30,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "click": [
+    "[data-host-setup-open=agenda]"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-setup-sub=agenda]"
+    },
+    {
+     "click": "[data-host-setup-sub=agenda] [data-host-reorder]",
+     "wait": 500
+    }
+   ],
+   "note": "HM-S7b 申込設定 · アジェンダを並べ替え（b13 #30）"
+  },
+  {
+   "id": "HM-S9",
+   "app": "/app/events/demo-host-mfg-asakai-3/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 33,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "note": "HM-S9 申込設定 · 空表单（下書き，b13 #33，朝会 #3）"
+  },
+  {
+   "id": "HM-S10",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 34,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "click": [
+    "[data-host-setup-preview-open]"
+   ],
+   "steps": [
+    {
+     "wait": 800
+    }
+   ],
+   "note": "HM-S10 申込設定 · プレビュー（b13 #34）"
+  },
+  {
+   "id": "HM-S11",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 35,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "click": [
+    "[data-host-setup-publish]"
+   ],
+   "steps": [
+    {
+     "wait": 800
+    }
+   ],
+   "note": "HM-S11 申込設定 · 変更を公開 确认（b13 #35）"
+  },
+  {
+   "id": "HM-S13",
+   "app": "/app/events/demo-host-founders-lunch-11/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 38,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "note": "HM-S13 申込設定 · 開催済み（只读，b13 #38，Founders Lunch #11）"
+  },
+  {
+   "id": "HM-R2",
+   "app": "/app/events/demo-host-cfo-night-17/operations?tab=report",
+   "design": "b13-host-mobile.html",
+   "board-index": 40,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-report=after]",
+   "steps": [
+    {
+     "eval": "window.scrollTo(0, document.documentElement.scrollHeight)",
+     "wait": 600
+    }
+   ],
+   "note": "HM-R2 レポート · 下半屏（b13 #40；滚到底）"
+  },
+  {
+   "id": "HM-K5",
+   "app": "/app/events/demo-event-cfo-night-18/operations/check-in",
+   "design": "b13-host-mobile.html",
+   "board-index": 48,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-kiosk-phone][data-host-kiosk=live]",
+   "steps": [
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      "もり"
+     ],
+     "wait": 1200
+    },
+    {
+     "waitFor": "[data-kiosk-results=\"3\"]"
+    },
+    {
+     "click": "[data-kiosk-undo]",
+     "wait": 700
+    }
+   ],
+   "note": "HM-K5 受付 · 取り消す 确认（b13 #48）"
+  },
+  {
+   "id": "HM-K9",
+   "app": "/app/events/demo-host-founders-lunch-11/operations/check-in",
+   "design": "b13-host-mobile.html",
+   "board-index": 52,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-kiosk-phone]",
+   "note": "HM-K9 受付 · 受付終了（b13 #52，Founders Lunch #11）"
+  },
+  {
+   "id": "HM-T2",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 55,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "note": "HM-T2 页签栏 · 滚到末尾（b13 #55，申込設定）"
   }
  ]
 }
