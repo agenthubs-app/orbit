@@ -84,9 +84,13 @@ const client = {
     return result;
   },
   async post(path, options) {
-    const result = answer("post", path);
     // Sprint 0143: every POST body is kept, so a test can read the receipt key and time zone that were sent.
     state.postBodies = [...(state.postBodies ?? []), { path, body: options?.body }];
+    // 2026-11-26: fixture.postDelays [{ prefix, contains, ms, response }] — a POST whose path starts with prefix and whose body
+    // (as JSON) contains the text waits ms, and answers with response when one is given (e.g. only the draft request is slow).
+    const rule = (state.postDelays ?? []).find((item) => path.startsWith(item.prefix) && (!item.contains || JSON.stringify(options?.body ?? null).includes(item.contains)));
+    if (rule?.ms) await new Promise(resolve => setTimeout(resolve, rule.ms));
+    const result = rule && "response" in rule ? (rule.response && rule.response.__status ? { success: false, status: rule.response.__status, error: { code: rule.response.__code ?? "FAILED", message: "fixture" }, meta: {} } : { success: true, status: 200, data: JSON.parse(JSON.stringify(rule.response)), meta: {} }) : answer("post", path);
     if (state.online && path === "/api/encounters" && state.echoEncounter) {
       state.encounterRequests = [...(state.encounterRequests ?? []), options];
       if (state.failEncounterOnce && state.encounterRequests.length === 1) return { success: false, status: 503, error: { code: "SERVICE_UNAVAILABLE", message: "test outage" }, meta: {} };

@@ -3,7 +3,7 @@
 // 门禁开发开关 open-path 下可带 `?replay=答1|答2a,答2b|答3a,答3b&to=select|review|done` 自动答到指定状态（画板从不画点击过程）。
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Platform, StyleSheet, TextInput, View } from "react-native";
+import { AccessibilityInfo, Platform, StyleSheet, TextInput, View } from "react-native";
 
 import type { EventJoinAnswer, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep } from "../../../api/contract/event-join";
 import type { EventOverviewResponse } from "../../../api/contract/event-overview";
@@ -18,6 +18,7 @@ import { useJourneyApi } from "./journey-api";
 import { contactReviewLine, HostContactCard, HostContactSheet, shouldOpenHostContact } from "./HostContact";
 import { announceEventChanged, eventRange, monthDaySlash, tokyo } from "./journey-model";
 import { JourneyPage } from "./JourneyPage";
+import { Bone, Bones } from "./loading-ui";
 import { ScoreRing } from "./ScoreRing";
 import { useJourneyT } from "./useJourneyT";
 
@@ -27,6 +28,9 @@ const ITEM_LABEL: Record<EventJoinProfileItemKey, string> = { company: "itemComp
 const REFUSAL: Readonly<Record<string, "joinCancelled" | "joinClosed" | "joinLocked" | "joinRejected">> = { JOIN_CANCELLED: "joinCancelled", JOIN_CLOSED: "joinClosed", JOIN_LOCKED: "joinLocked", JOIN_REJECTED: "joinRejected" };
 
 const ITEM_OF_FIELD: Readonly<Record<string, EventJoinProfileItemKey>> = { desiredOutcome: "purpose", experienceHighlight: "topics", targetAttendees: "target", valueOffered: "offer" };
+/** How long the self-introduction draft may take before the review offers writing one instead (TODO: Web's number). */
+export const INTRO_DRAFT_TIMEOUT_MS = 25_000;
+
 /** A question of an existing registration, and the review item its answer fills (null = its own row). */
 type AskedQuestion = { item: EventJoinProfileItemKey | null; question: EventJoinQuestion };
 
@@ -89,14 +93,43 @@ function RegisterFlow() {
   const [intro, setIntro] = useState<string | null>(null);
   const [editingIntro, setEditingIntro] = useState(false);
   const [why, setWhy] = useState(false);
+  // 自我介绍草稿：running = 正在写（不能报名、不能改介绍）；failed = 失败或超时（可以自己写，也可以直接报名）。改资料不写草稿。
+  const [drafting, setDrafting] = useState<"idle" | "running" | "failed">("idle");
+  const draftRun = useRef(0);
   const freeRef = useRef<TextInput | null>(null);
   // The API speaks the screen language: changing it asks the current question again in the new one and keeps the answers given.
-  const given = useRef({ answers, asked, mode, submitted: false });
-  given.current = { answers, asked, mode, submitted: Boolean(result) };
+  const given = useRef({ answers, asked, intro, mode, submitted: false });
+  given.current = { answers, asked, intro, mode, submitted: Boolean(result) };
   const [loadFailed, setLoadFailed] = useState(false);
   // What the profile already says is selected from the start (2026-11-25, as Web); it can be unselected like any option.
   const showStep = useCallback((next: EventJoinStep) => { setStep(next); setSelected([...(next.question?.prefill ?? [])]); }, []);
   const [attempt, setAttempt] = useState(0);
+  // Only the latest draft counts, and only within the time allowed: what arrives later is dropped, so the page never changes
+  // under the person after it has offered them to write or apply.
+  const announced = useRef<typeof drafting>("idle");
+  const tRef = useRef(t); tRef.current = t;
+  useEffect(() => {
+    // VoiceOver hears the change: started, done, or that it could not be written.
+    if (announced.current === drafting) return;
+    announced.current = drafting;
+    const said = drafting === "running" ? "introDrafting" : drafting === "failed" ? "introDraftFailed" : "introDrafted";
+    AccessibilityInfo.announceForAccessibility(tRef.current(said));
+  }, [drafting]);
+  const draftIntro = useCallback(async (answered: readonly EventJoinAnswer[]) => {
+    const run = ++draftRun.current;
+    setDrafting("running");
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Tests shorten the wait through window.orbitIntroDraftTimeoutMs.
+    const limit = (globalThis as { orbitIntroDraftTimeoutMs?: number }).orbitIntroDraftTimeoutMs ?? INTRO_DRAFT_TIMEOUT_MS;
+    const late = new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), limit); });
+    const drafted = await Promise.race([api.joinProfile(eventId, answered, true), late]);
+    clearTimeout(timer);
+    if (run !== draftRun.current) return;
+    const text = drafted?.ok ? drafted.data.selfIntro?.text?.trim() : "";
+    if (drafted?.ok) setProfile(drafted.data);
+    if (text) setIntro((current) => current ?? text);
+    setDrafting(text ? "idle" : "failed");
+  }, [api, eventId]);
   const showEdit = useCallback((list: readonly EventJoinQuestion[], answered: readonly EventJoinAnswer[], byChoice: boolean) => {
     const [first, ...rest] = list;
     setQueue(rest);
@@ -159,20 +192,22 @@ function RegisterFlow() {
           current = next.data;
         }
       }
-      const shown = await api.joinProfile(eventId, answered, Boolean(current.done));
+      const shown = await api.joinProfile(eventId, answered, false);
       // Answered on meanwhile: this answer is about an earlier question.
       if (!live || given.current.answers !== before.answers) return;
       setAnswers(answered);
       showStep(current);
       if (picked) setSelected(picked);
-      if (shown.ok) { setProfile(shown.data); setIntro((current) => current ?? shown.data.selfIntro?.text ?? null); }
+      if (shown.ok) setProfile(shown.data);
+      if (current.done) await draftIntro(answered);
+      if (!live) return;
       if (replay && params.to === "done" && current.done) {
-        const res = await api.joinSubmit(eventId, answered, (shown.ok ? shown.data.selfIntro?.text ?? "" : "").trim().slice(0, 400) || undefined);
+        const res = await api.joinSubmit(eventId, answered, given.current.intro?.trim().slice(0, 400) || undefined);
         if (live && res.ok) { setResult(res.data); setContactOpen(shouldOpenHostContact(res.data.hostContact)); }
       }
     })();
     return () => { live = false; };
-  }, [api, eventId, params.replay, params.to, attempt, showStep, openEdit]);
+  }, [api, eventId, params.replay, params.to, attempt, showStep, openEdit, draftIntro]);
 
   const question = step?.question ?? null;
   const reviewing = Boolean(step?.done) && !result;
@@ -209,11 +244,8 @@ function RegisterFlow() {
     setAnswers(next); setFree("");
     showStep(nextStep.data);
     if (nextProfile.ok) setProfile(nextProfile.data);
-    if (nextStep.ok && nextStep.data.done) {
-      const drafted = await api.joinProfile(eventId, next, true);
-      if (drafted.ok) { setProfile(drafted.data); setIntro((current) => current ?? drafted.data.selfIntro?.text ?? null); }
-    }
     setBusy(false);
+    if (nextStep.data.done) await draftIntro(next);
   };
   // 「追加」：访谈认为够了也再问一题（live 由 AI 决定，可能仍然结束 → 留在确认页）。`focus`：会用资料补上的那一项，改成自己回答。
   const askMore = async (focus?: EventJoinProfileItemKey) => {
@@ -227,7 +259,7 @@ function RegisterFlow() {
     if (list.length) showEdit(list, answers, true); else void askMore(key);
   };
   const apply = async () => {
-    if (!mode || busy) return;
+    if (!mode || busy || drafting === "running") return;
     setBusy(true);
     // The introduction on the review page goes with the registration, edited or not: the event's other attendees see it, and
     // one that is not sent is cleared on the server.
@@ -380,10 +412,17 @@ function RegisterFlow() {
             <View style={[styles.row, { gap: 8 }]}><UiText style={styles.h3}>{t("introLbl")}</UiText><UiText style={styles.lbl}>{t("introShown")}</UiText></View>
             <View style={[styles.row, { gap: 6 }]}>
               {profile?.selfIntroBasis ? <UiPressable accessibilityRole="button" accessibilityLabel={t("introWhy")} accessibilityState={{ expanded: why }} onPress={() => setWhy((value) => !value)} style={styles.why}><UiText style={styles.whyText}>?</UiText></UiPressable> : null}
-              <UiPressable accessibilityRole="button" accessibilityLabel={t("edit")} onPress={() => setEditingIntro((value) => !value)} style={styles.lbtn}><Icon name="pen" size={16} color={colors.ink2} /></UiPressable>
+              {drafting === "running" ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("edit")} onPress={() => setEditingIntro((value) => !value)} style={styles.lbtn}><Icon name="pen" size={16} color={colors.ink2} /></UiPressable>}
             </View>
           </View>
-          {editingIntro ? (
+          {drafting === "running" ? (
+            <View testID="events-join-intro-drafting">
+              <UiText style={styles.lbl}>{t("introDrafting")}</UiText>
+              <Bones style={{ marginTop: 10 }}><Bone h={14} /><Bone w="88%" h={14} style={{ marginTop: 9 }} /><Bone w="62%" h={14} style={{ marginTop: 9 }} /></Bones>
+            </View>
+          ) : drafting === "failed" && !shownIntro.trim() && !editingIntro ? (
+            <UiText style={styles.sub} testID="events-join-intro-failed">{t("introDraftFailed")}</UiText>
+          ) : editingIntro ? (
             <TextInput value={shownIntro} onChangeText={setIntro} multiline maxLength={400} accessibilityLabel={t("introLbl")} style={styles.textarea} />
           ) : <UiText style={styles.introText}>{shownIntro}</UiText>}
           {why && profile?.selfIntroBasis ? <View style={styles.whyBody}><UiText style={styles.whyBodyText}>{profile.selfIntroBasis}</UiText></View> : null}
@@ -392,8 +431,9 @@ function RegisterFlow() {
           <UiText style={[styles.lbl, { marginBottom: 8 }]}>{t("visibilityTitle")}</UiText>
           <View style={[styles.row, { gap: 8 }]}><View style={[styles.chip, { backgroundColor: colors.macTeal }]}><UiText style={[styles.chipText, { color: colors.macTealInk }]}>{t("visAll")}</UiText></View><UiText style={[styles.sub, styles.fill]}>{t("visAllFields")}</UiText></View>
         </View>
-        <UiPressable accessibilityRole="button" accessibilityLabel={t(editing ? "joinSave" : "applyNow")} disabled={busy} onPress={() => void apply()} style={styles.block48} testID="events-join-apply"><UiText style={styles.primaryText}>{t(editing ? "joinSave" : "applyNow")}</UiText></UiPressable>
-        {profile?.editableUntil ? <UiText style={[styles.lbl, { marginTop: 8, textAlign: "center" }]}>{t("editableUntil", { date: monthDaySlash(profile.editableUntil) })}</UiText> : null}
+        {drafting === "running" ? <UiText style={[styles.lbl, { marginBottom: 8, textAlign: "center" }]} testID="events-join-apply-wait">{t("applyWaitIntro")}</UiText> : null}
+        <UiPressable accessibilityRole="button" accessibilityLabel={t(editing ? "joinSave" : "applyNow")} accessibilityHint={drafting === "running" ? t("applyWaitIntro") : undefined} accessibilityState={{ disabled: busy || drafting === "running" }} disabled={busy || drafting === "running"} onPress={() => void apply()} style={[styles.block48, drafting === "running" ? styles.blockWait : null]} testID="events-join-apply"><UiText style={styles.primaryText}>{t(editing ? "joinSave" : "applyNow")}</UiText></UiPressable>
+        {drafting !== "running" && profile?.editableUntil ? <UiText style={[styles.lbl, { marginTop: 8, textAlign: "center" }]}>{t("editableUntil", { date: monthDaySlash(profile.editableUntil) })}</UiText> : null}
       </JourneyPage>
     );
   }
@@ -505,6 +545,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   whyBodyText: { color: colors.ink2, fontSize: 14, lineHeight: 23 },
   introText: { color: colors.ink, fontSize: 16, lineHeight: 28 },
   textarea: { backgroundColor: colors.surface2, borderRadius: 14, color: colors.ink, fontSize: 16, lineHeight: 28, minHeight: 96, paddingHorizontal: 12, paddingVertical: 10, textAlignVertical: "top" },
+  blockWait: { opacity: 0.45 },
   block48: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, height: 48, justifyContent: "center", marginTop: 14 },
   primaryText: { color: colors.bg, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   doneHero: { alignItems: "center", paddingHorizontal: 18, paddingVertical: 26 },

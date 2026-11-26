@@ -287,3 +287,61 @@ test("eleven last answers (five of the host's and six of the interview) are all 
   const [body] = await posts(page, "/join/submit");
   assert.deepEqual(body.answers.map((item: any) => item.field), fields);
 });
+
+// 自我介绍草稿要等一会儿（2026-11-26）：写的时候说清楚、不能报名也不能改介绍；写完自动恢复；失败或超时给出可以自己写 / 直接报名；改资料不写草稿。
+const drafted = (text: string | null) => ({ ...profile, selfIntro: text ? { source: "ai_draft", text } : null });
+const draftOnly = (ms: number, response: unknown) => [{ contains: "\"draft\":true", ms, prefix: `${base}/join/profile`, response }];
+const plain = { ...responses(null), [`${base}/join/profile`]: drafted(null) };
+
+test("while the introduction is being written the review says so, cannot be applied or edited, then opens with the draft that is sent", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: plain, postDelays: draftOnly(1200, drafted("AI 写的介绍。")) });
+  const waiting = page.getByTestId("events-join-intro-drafting");
+  await waiting.waitFor();
+  assert.match(await waiting.innerText(), /正在生成自我介绍…/u);
+  const apply = page.getByTestId("events-join-apply");
+  assert.equal(await apply.isDisabled(), true);
+  assert.equal(await page.getByTestId("events-join-apply-wait").innerText(), "自我介绍生成后就能报名");
+  assert.equal(await page.getByRole("button", { name: "编辑", exact: true }).count(), 0, "no editing while it is written");
+  await apply.click({ force: true });
+  assert.deepEqual(await posts(page, "/join/submit"), []);
+  await page.getByText("AI 写的介绍。", { exact: true }).waitFor();
+  assert.equal(await waiting.count(), 0);
+  assert.equal(await page.getByTestId("events-join-apply-wait").count(), 0);
+  await page.getByRole("button", { name: "编辑", exact: true }).waitFor();
+  await apply.click();
+  await page.getByText("已收到报名", { exact: true }).waitFor();
+  assert.equal((await posts(page, "/join/submit"))[0].selfIntro, "AI 写的介绍。");
+});
+
+test("a draft that fails says the introduction can be written or left out; nothing is sent that is not shown", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: plain, postDelays: draftOnly(300, { __status: 503 }) });
+  const failed = page.getByTestId("events-join-intro-failed");
+  await failed.waitFor();
+  assert.equal(await failed.innerText(), "没能生成自我介绍。可以自己写，也可以直接报名");
+  await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
+  await page.getByText("已收到报名", { exact: true }).waitFor();
+  assert.ok(!("selfIntro" in (await posts(page, "/join/submit"))[0]));
+});
+
+test("a draft past the time allowed gives the page back; arriving later it changes nothing", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, slowPrefix: `${base}/join/current`, slowMs: 600, responses: plain, postDelays: draftOnly(2500, drafted("迟到的介绍。")) });
+  await page.evaluate(() => { (window as any).orbitIntroDraftTimeoutMs = 400; });
+  await page.getByTestId("events-join-intro-drafting").waitFor();
+  await page.getByTestId("events-join-intro-failed").waitFor();
+  assert.equal(await page.getByTestId("events-join-apply").isDisabled(), false);
+  await page.getByRole("button", { name: "编辑", exact: true }).click();
+  await page.locator("textarea").fill("我自己写的。");
+  await page.waitForTimeout(2400);
+  assert.equal(await page.getByText("迟到的介绍。", { exact: true }).count(), 0);
+  await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
+  await page.getByText("已收到报名", { exact: true }).waitFor();
+  assert.equal((await posts(page, "/join/submit"))[0].selfIntro, "我自己写的。");
+});
+
+test("changing a registration never waits for a draft", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: editing("registered"), postDelays: draftOnly(3000, drafted("不该出现")) });
+  await save(page).waitFor();
+  assert.equal(await page.getByTestId("events-join-intro-drafting").count(), 0);
+  assert.equal(await save(page).isDisabled(), false);
+  assert.ok((await posts(page, "/join/profile")).every((body: any) => body.draft === false));
+});
