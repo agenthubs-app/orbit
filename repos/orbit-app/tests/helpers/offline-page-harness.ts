@@ -58,7 +58,8 @@ export const Redirect = ({ href }) => { state.navigation.push("redirect:" + (typ
 export const Link = ({ children }) => children;
 export const Stack = { Screen: () => null };
 export const router = { push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); }, replace(href) { state.navigation.push("replace:" + href); }, back() {} };
-export const useRouter = () => ({ canGoBack: () => false, back() {}, push: router.push, replace: router.replace, navigate: router.push, dismissTo: router.push });
+// 2026-11-26: setParams is recorded as "setParams:{json}" (the params themselves stay as the fixture gave them).
+export const useRouter = () => ({ canGoBack: () => false, back() {}, push: router.push, replace: router.replace, navigate: router.push, dismissTo: router.push, setParams(next) { state.navigation.push("setParams:" + JSON.stringify(next)); } });
 function answer(method, path) {
   state.requests.push(method + ":" + path);
   const lost = !state.online || (state.writeFailure === 0 && method !== "get" && method !== "resource");

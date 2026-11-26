@@ -1,7 +1,7 @@
 // R27 イベント参加者の動線（App）的页面骨架：kit .phone .scroll（0 18 130）里的 .topbar（‹ / ✕ 圆钮 · 居中标题 + small）跟内容一起滚，
 // 底部浮层（.ctabar / .composer：left/right 12、bottom 26）在滚动区外。参加登録 / 会う準備 / 会後 共用。
 import { useRouter, type Href } from "expo-router";
-import { useRef, type ReactNode } from "react";
+import { useRef, type ReactNode, type RefObject } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -12,7 +12,7 @@ import { GlassSurface, IconButton, type IconName } from "../../../components/ui"
 import { useOrbitTheme } from "../../../design/theme";
 import { shadows } from "../../../design/tokens";
 
-export function JourneyPage({ title, subtitle, leftIcon = "left", leftLabel, fallback, onLeft, right, footer, footerRadius = 28, children, testID, followEnd = false }: {
+export function JourneyPage({ title, subtitle, leftIcon = "left", leftLabel, fallback, onLeft, right, footer, footerRadius = 28, children, testID, followEnd = false, scrollRef }: {
   title: string;
   subtitle?: string | undefined;
   leftIcon?: IconName;
@@ -28,11 +28,14 @@ export function JourneyPage({ title, subtitle, leftIcon = "left", leftLabel, fal
   testID?: string;
   /** Chat-like pages: keep the newest content (the next question) in view as it grows. */
   followEnd?: boolean;
+  /** 页面要自己滚到某处时（运营台マッチング的桌号跳转）拿滚动区。 */
+  scrollRef?: RefObject<ScrollView | null>;
 }) {
   const router = useRouter();
   const { colors, scheme } = useOrbitTheme();
   const topGap = useShellTopGap();
-  const scroller = useRef<ScrollView>(null);
+  const own = useRef<ScrollView>(null);
+  const scroller = scrollRef ?? own;
   const back = onLeft ?? (() => (router.canGoBack() ? router.back() : router.replace(fallback as Href)));
   const topBar = <ShellTopBar title={title} subtitle={subtitle} left={<IconButton icon={leftIcon} accessibilityLabel={leftLabel} onPress={back} />} right={right} />;
   return (

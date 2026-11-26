@@ -7,7 +7,7 @@ import type { ZodType } from "zod";
 import type { OrbitApiClient } from "../../api/client";
 import type { ApiResult } from "../../api/types";
 import type { HostCheckInEventsResponse, HostCohostAcceptResult, HostCohostInvitePreview, HostCohostInviteResult, HostCohostRole, HostCohostsResponse } from "../../api/contract/host-cohosts";
-import type { HostAdmissionDecision, HostCheckInResult, HostKioskHeartbeatResult, HostKioskResponse, HostKioskRosterResponse, HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleDecisionResult, HostPeopleResponse, HostPersonResponse, HostReportResponse } from "../../api/contract/host-console";
+import type { HostAdmissionDecision, HostCheckInResult, HostKioskHeartbeatResult, HostKioskResponse, HostKioskRosterResponse, HostMatchingConditions, HostMatchingMove, HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleDecisionResult, HostPeopleResponse, HostPersonResponse, HostReportResponse } from "../../api/contract/host-console";
 import type { HostNoticePreview, HostNoticeSendResult } from "../../api/contract/host-notices";
 import type { HostCenterFilter, HostCenterResponse, HostCenterSummary, HostDesktopLinkResult, HostEventSlugResolveResult, HostEventView, HostEventWriteResult } from "../../api/contract/host-events";
 import type { OrganizerFollowResult } from "../../api/contract/organizer-follow";
@@ -72,7 +72,11 @@ export function createHostApi(client: OrbitApiClient) {
     event: (eventId: string) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}`), hostEventViewSchema as ZodType<HostEventView>),
     overview: (eventId: string) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/overview`), hostOverviewResponseSchema as ZodType<HostOverviewResponse>),
     matching: (eventId: string, round = 1) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/matching?round=${round}`), hostMatchingResponseSchema as ZodType<HostMatchingResponse>),
-    publishMatching: (eventId: string, generationId: string, overridesVersion: number) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/matching/publish`, { body: { generationId, overridesVersion } }), hostMatchingResponseSchema as ZodType<HostMatchingResponse>),
+    /** 新生成（≤3 回，条件随生成提交；可能回 generating，画面每 4 秒重读）。 */
+    generate: (eventId: string, conditions: HostMatchingConditions) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/matching/generate`, { body: { conditions, idempotencyKey: newIdempotencyKey() } }), hostMatchingResponseSchema as ZodType<HostMatchingResponse>),
+    /** 换桌只写人工调整层（带 overridesVersion；409 = 别的运营者先改了）。 */
+    overrides: (eventId: string, generationId: string, expectedVersion: number, moves: readonly HostMatchingMove[]) => hostRead(client.put<unknown>(`/api/host/events/${id(eventId)}/matching/overrides`, { body: { expectedVersion, generationId, moves } }), hostMatchingResponseSchema as ZodType<HostMatchingResponse>),
+    publishMatching: (eventId: string, generationId: string, overridesVersion: number, notifyCohosts = false) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/matching/publish`, { body: { generationId, notifyCohosts, overridesVersion } }), hostMatchingResponseSchema as ZodType<HostMatchingResponse>),
     noticePreview: (eventId: string) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/notices/preview`, { body: { kind: "profile_incomplete" } }), hostNoticePreviewSchema as ZodType<HostNoticePreview>),
     noticeSend: (eventId: string) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/notices/send`, { body: { idempotencyKey: newIdempotencyKey(), kind: "profile_incomplete" } }), hostNoticeSendResultSchema as ZodType<HostNoticeSendResult>),
     people: (eventId: string, query: HostPeopleQuery) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/people?${peopleQueryString(query)}`), hostPeopleResponseSchema as ZodType<HostPeopleResponse>),

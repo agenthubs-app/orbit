@@ -1,13 +1,12 @@
 // R17 イベント運営（App）的画面本体（无数据加载、无路由，渲染测试直接用）：段 chip、概要、レポート摘要、マッチング結果、参加者 · 審査。
 import { ScrollView, StyleSheet, View } from "react-native";
 
-import type { HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleResponse, HostPeopleRow } from "../../api/contract/host-console";
+import type { HostOverviewResponse, HostPeopleBucket, HostPeopleResponse, HostPeopleRow } from "../../api/contract/host-console";
 import type { HostEventStatus } from "../../api/contract/host-events";
-import { Icon, Segmented, UiPressable, UiText } from "../../components/ui";
-import { avatarTone } from "../../components/ui/Avatar";
+import { Icon, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { radius } from "../../design/tokens";
-import { Avatar, Chip } from "../events/v2/venue-ui";
+import { Chip } from "../events/v2/venue-ui";
 import { hostDateShort, hostTime, sameTokyoDay, type HostSeg, type HostT } from "./host-model";
 import { Bar, BtnSm, Btn, Emo, numFont, PcCard, useHostStyles } from "./host-ui";
 import { SignupTrend } from "./signup-trend";
@@ -134,35 +133,6 @@ export function ReportBody({ data, t, now, onPc }: { data: HostOverviewResponse;
 }
 
 /** マッチング結果（b12 #422，只读）。 */
-export function MatchingBody({ data, t, onRound }: { data: HostMatchingResponse; t: HostT; onRound: (round: number) => void }) {
-  const { styles } = useHostStyles();
-  const c = useConsoleStyles().styles;
-  const tables = data.tables.filter((table) => table.round === data.round);
-  return (
-    <View testID="host-matching">
-      {data.rounds.length > 1 ? (
-        <View style={c.mb12}><Segmented segments={data.rounds.map((round) => ({ key: String(round.index), label: t("mRoundShort", { n: round.index }) }))} value={String(data.round)} onChange={(key) => onRound(Number(key))} accessibilityLabel={t("mRoundsLabel")} /></View>
-      ) : null}
-      <PcCard emoji="👀" tone="lav" text={t("appMatchReadOnly")} />
-      {data.state === "none" ? <View style={[styles.card, styles.next]}><UiText style={styles.sub}>{t("appMatchNone")}</UiText></View> : null}
-      {tables.map((table) => (
-        <View key={`${table.round}-${table.table}`} style={[styles.card, styles.next]} testID={`host-table-${table.table}`}>
-          <View style={[styles.row, styles.between]}><UiText style={styles.b14}>{t("appTableName", { t: table.table })}</UiText><UiText style={styles.lbl}>{t("appPeopleN", { n: table.members.length })}</UiText></View>
-          <View style={c.mt6}>
-            {table.members.map((member, index) => (
-              <View key={member.participantId} style={c.li}>
-                {index ? <View style={c.liLine} /> : null}
-                <Avatar initial={member.initial} tone={avatarTone(member.name)} size="sm" />
-                <View style={styles.grow}><UiText style={c.metaB} numberOfLines={1}>{member.name}</UiText>{member.org ? <UiText style={c.metaS} numberOfLines={1}>{member.org}</UiText> : null}</View>
-              </View>
-            ))}
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 // kit（b6 #23 / b12 #422 #424 #430）：.carousel gap6 mb12、外扩 18 · chip 段 7/14 12.5 · .cnt3 mt0 · .li 11 0 gap12、分隔线 left 50。
 export const useConsoleStyles = createThemedStyles((colors) => StyleSheet.create({
   carousel: { flexGrow: 0, marginBottom: 12, marginHorizontal: -18 },

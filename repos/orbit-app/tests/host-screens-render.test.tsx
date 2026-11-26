@@ -15,7 +15,8 @@ import { organizerPublicResponseSchema } from "../src/api/schema/organizer-profi
 import { ja } from "../src/i18n/ja";
 import { HostCenterBody, normalizeCode } from "../src/screens/host/center-view";
 import { CheckInBody } from "../src/screens/host/check-in-view";
-import { MatchingBody, OverviewBody, ReportBody, SegChips } from "../src/screens/host/console-view";
+import { OverviewBody, ReportBody, SegChips } from "../src/screens/host/console-view";
+import { MatchingNone, MatchingResult } from "../src/screens/host/matching-view";
 import { PeoplePanel } from "../src/screens/host/people-view";
 import { JoinCard } from "../src/screens/host/join-view";
 import { OrganizerBody } from "../src/screens/host/organizer-view";
@@ -71,10 +72,10 @@ test("イベント運営 概要 (b6 #23): counts, arrival, matching draft and th
   assert.equal(consoleSubtitle(overview.event.startsAt, "live", new Date("2026-10-07T12:00:00Z"), "ja", t), "本日 19:00 · 開催中");
 });
 
-test("マッチング結果 (b12 #422, view only) and 参加者 · 審査 (b12 #424)", () => {
-  const text = renderedText(<MatchingBody data={matching} t={t} onRound={noop} />);
-  assert.match(text, /見るだけです/); assert.match(text, /テーブル A/); assert.match(text, /第1ラウンド/);
-  assert.match(renderedText(<MatchingBody data={{ ...matching, state: "none", tables: [] }} t={t} onRound={noop} />), /マッチングはまだ生成されていません/);
+test("マッチング (b13 HM-M1 / M3) and 参加者 · 審査 (b12 #424)", () => {
+  const text = renderedText(<MatchingResult data={matching} t={t} busy={false} onRound={noop} onConditions={noop} onRegenerate={noop} onFillSeats={noop} onMove={noop} onJump={noop} />);
+  assert.match(text, /下書き/); assert.match(text, /資本政策 × 投資家/); assert.match(text, /第1ラウンド/); assert.match(text, /未配置 3名/u); assert.doesNotMatch(text, /PC/);
+  assert.match(renderedText(<MatchingNone data={{ ...matching, state: "none", tables: [] }} conditions={matching.conditions} t={t} onConditions={noop} onOpenConditions={noop} onRemind={noop} />), /申込 128名/u);
   const props = { busy: false, issues: new Map(), loading: false, onBucket: noop, onDecide: noop, onIncomplete: noop, onMenu: noop, onMore: noop, onOpen: noop, onSearch: noop, onSelect: noop, onSelectAll: noop, onSelecting: noop, selected: new Set<string>(), selecting: false, t };
   const list = renderedText(<PeoplePanel {...props} data={people} rows={people.rows} query={{ bucket: "pending", incomplete: false, q: "" }} />);
   assert.match(list, /審査待ち 12/); assert.match(list, /承認/); assert.doesNotMatch(list, /PC で/);
