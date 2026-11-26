@@ -185,6 +185,41 @@ for (const operation of ["request", "reset"] as const) {
   }
 }
 
+for (const operation of ["request", "reset"] as const) {
+  test(`reset HTTP ${operation}: only the two configured Orbit production origins can act as aliases`, async () => {
+    const apex = "https://orbitailink.com";
+    const www = "https://www.orbitailink.com";
+    const cases = [
+      { configured: www, origin: apex, allowed: true },
+      { configured: apex, origin: www, allowed: true },
+      { configured: www, origin: "http://orbitailink.com", allowed: false },
+      { configured: www, origin: "https://orbitailink.com.example.com", allowed: false },
+      { configured: www, origin: "https://preview.orbitailink.com", allowed: false },
+      { configured: www, origin: "null", allowed: false },
+      { configured: "https://staging.example.com", origin: apex, allowed: false },
+      { configured: "https://staging.example.com", origin: www, allowed: false },
+    ];
+    for (const { configured, origin, allowed } of cases) {
+      const calls: string[] = [];
+      const runtime = {
+        ...httpResetRuntime({
+          request: async () => { calls.push("request"); return { success: true }; },
+          reset: async () => { calls.push("reset"); return { success: true }; },
+        }),
+        origin: configured,
+      };
+      const request = new Request(`${configured}/api/auth/password-reset/${operation === "request" ? "request" : "confirm"}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin },
+        body: JSON.stringify({ email: "member@example.com", token: "synthetic-token", password: "synthetic-password" }),
+      });
+      const result = await handlePasswordResetRequest(request, operation, () => runtime, async () => { calls.push("wake"); });
+      assert.equal(result.status, allowed ? (operation === "request" ? 202 : 200) : 403, origin);
+      assert.deepEqual(calls, allowed ? (operation === "request" ? ["request", "wake"] : ["reset"]) : [], origin);
+    }
+  });
+}
+
 test("reset HTTP rejects a multibyte body over 4096 UTF-8 bytes before service", async () => {
   const body = JSON.stringify({ email: "あ".repeat(2000) });
   assert.ok(body.length < 4096);

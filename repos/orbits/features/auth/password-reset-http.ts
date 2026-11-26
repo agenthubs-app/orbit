@@ -3,6 +3,7 @@ import type { PasswordResetResponse } from "../../shared/contract/password-reset
 
 type ResetRuntime = ReturnType<typeof createConfiguredPasswordResetRuntime>;
 const MAX_REQUEST_BYTES = 4096;
+const ORBIT_PRODUCTION_ORIGINS = new Set(["https://orbitailink.com", "https://www.orbitailink.com"]);
 
 function response(status: number, body: unknown) {
   return Response.json(body, { status, headers: { "cache-control": "no-store", "referrer-policy": "no-referrer" } });
@@ -36,7 +37,10 @@ export async function handlePasswordResetRequest(request: Request, operation: "r
     const runtime = resolve();
     if (!runtime) return response(503, { success: false, error: { code: "SERVICE_UNAVAILABLE", message: "密码恢复暂不可用，请稍后重试或联系管理员。" } });
     const origin = request.headers.get("origin");
-    if (origin && origin !== runtime.origin) return response(403, { success: false, error: { code: "FORBIDDEN", message: "请在 Orbit 页面重新提交。" } });
+    if (origin && origin !== runtime.origin &&
+        !(ORBIT_PRODUCTION_ORIGINS.has(runtime.origin) && ORBIT_PRODUCTION_ORIGINS.has(origin))) {
+      return response(403, { success: false, error: { code: "FORBIDDEN", message: "请在 Orbit 页面重新提交。" } });
+    }
     const result = operation === "request" ? await runtime.service.request(body.email) : await runtime.service.reset(body.token, body.password);
     if (result.success === false) return response(400, { success: false, error: { code: result.code, message: result.code === "INVALID_TOKEN" ? "链接已失效或已使用，请重新申请。" : "请检查邮箱；新密码至少 8 位，UTF-8 长度不超过 72 字节。" } });
     if (operation === "request" && wakeDelivery) await wakeDelivery();
