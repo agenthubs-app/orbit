@@ -12,6 +12,7 @@ import { useOrbitApiBaseUrl } from "../../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../api/contract/event-prep";
 import { Icon, IconButton, UiPressable, UiText, useToast } from "../../../components/ui";
+import { RetryCard } from "../../../components/ui/States";
 import Svg, { Circle, Path, Rect } from "../../../components/ui/svg";
 import { buildOfflineScheduleMutation } from "../../../data/sync/schedule-outbox-mutation";
 import { createThemedStyles } from "../../../design/theme";
@@ -73,7 +74,9 @@ export function PrepPage() {
   const eventId = String(params.id ?? "");
   const base = `/events/${encodeURIComponent(eventId)}`;
   const [data, setData] = useState<EventPrepResponse | null>(null);
-  const [missing, setMissing] = useState(false);
+  // 读不到时为什么（同 Web 7a5de9043）：活动不存在 / 审核中或候补 / 没报名 / 读取失败（重试）。
+  const [missing, setMissing] = useState<"not_found" | "pending" | "unregistered" | "failed" | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [nowMs, setNowMs] = useState<number | null>(null);
   const [cards, setCards] = useState<number | null>(null);
   const [editingCards, setEditingCards] = useState(false);
@@ -82,15 +85,19 @@ export function PrepPage() {
 
   useEffect(() => {
     let live = true;
+    setMissing(null);
     void api.prep(eventId).then((result) => {
       if (!live) return;
-      if (!result.ok) { setMissing(true); return; }
+      if (!result.ok) {
+        setMissing(result.reason === "not_found" ? "not_found" : result.code === "PREP_PENDING_REVIEW" ? "pending" : result.code === "PREP_NOT_REGISTERED" ? "unregistered" : "failed");
+        return;
+      }
       setData(result.data);
       setNowMs(Date.parse(result.data.now));
     });
     AsyncStorage.getItem(CARDS_KEY(eventId)).then((value) => { if (live && value !== null && Number.isFinite(Number(value))) setCards(Number(value)); }).catch(() => undefined);
     return () => { live = false; };
-  }, [api, eventId]);
+  }, [api, eventId, attempt]);
   // 倒计时从服务端时钟开始，每分钟走一格。
   const ticking = nowMs !== null;
   useEffect(() => {
@@ -150,7 +157,19 @@ export function PrepPage() {
 
   const back = { fallback: base, leftLabel: t("back") };
   if (!data || nowMs === null) {
-    return <JourneyPage title={t("prepTitle")} {...back}>{missing ? <View style={styles.card}><UiText style={styles.sub}>{t("notFound")}</UiText></View> : null}</JourneyPage>;
+    const detail = base as Href;
+    return (
+      <JourneyPage title={t("prepTitle")} {...back}>
+        {missing === "failed" ? <RetryCard title={locale.t("eventsV2.genericError")} onRetry={() => setAttempt((value) => value + 1)} />
+          : missing ? (
+            <View style={styles.card} testID={`events-prep-${missing}`}>
+              <UiText style={styles.sub}>{t(missing === "pending" ? "prepPending" : missing === "unregistered" ? "prepUnregistered" : "notFound")}</UiText>
+              {missing === "pending" ? <UiPressable accessibilityRole="button" accessibilityLabel={t("toDetail")} onPress={() => router.dismissTo(detail)} style={[styles.btnSm, styles.missingAct]}><UiText style={styles.btnSmText}>{t("toDetail")}</UiText></UiPressable>
+                : missing === "unregistered" ? <UiPressable accessibilityRole="button" accessibilityLabel={t("register")} onPress={() => router.push(`${base}/register` as Href)} style={[styles.btnSm, styles.missingAct, { backgroundColor: colors.ink }]}><UiText style={[styles.btnSmText, { color: colors.bg }]}>{t("register")}</UiText></UiPressable> : null}
+            </View>
+          ) : null}
+      </JourneyPage>
+    );
   }
   const until = countdown(data.startsAt, nowMs);
   const recommended = data.cardsRecommended;
@@ -281,6 +300,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   map: { height: 96, width: 128 },
   // svg <text x=10 y=84 font 8>，viewBox 120×90 缩放到 128×96（×16/15）：基线 89.6、字号 8.53。
   mapText: { color: colors.ink3, fontSize: 8.53, left: 10.67, lineHeight: 10, position: "absolute", top: 81.6 },
+  missingAct: { alignSelf: "flex-start", marginTop: 12, paddingHorizontal: 16 },
   btnSm: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, flexDirection: "row", gap: 6, height: 32, justifyContent: "center", paddingHorizontal: 12 },
   btnSmText: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
   primary: { backgroundColor: colors.ink },

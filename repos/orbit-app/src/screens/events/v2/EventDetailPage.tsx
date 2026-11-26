@@ -156,6 +156,8 @@ export function EventDetailPage() {
   const status = data?.registration.status ?? "none";
   // attended = checked in: still theirs (it had no CTA at all); the main button opens 会场模式 and there is nothing to cancel.
   const attended = status === "attended";
+  // 审核中 / 候补：名单要等审核通过（不再请他们「去报名」）。
+  const inReview = status === "pending_review" || status === "waitlisted";
   const holding = status === "registered" || status === "pending_review" || status === "waitlisted" || attended;
   const menu = async (key: string) => {
     setMenuOpen(false);
@@ -269,9 +271,9 @@ export function EventDetailPage() {
           <Rect x={0} y={0} width={220} height={220} fill="url(#rosterGlow)" opacity={0.9} />
         </Svg>
         <UiText style={styles.gateEmoji}>👥</UiText>
-        <UiText style={styles.gateTitle}>{t("rosterGateBody")}</UiText>
+        <UiText style={styles.gateTitle}>{t(inReview ? "rosterGatePending" : "rosterGateBody")}</UiText>
         <UiText style={[styles.lbl, styles.gateNote]}>{t("rosterGateNote")}</UiText>
-        <UiPressable accessibilityRole="button" accessibilityLabel={t("rosterGateCta")} onPress={() => router.push(`${base}/register` as Href)} style={styles.gateBtn}><UiText style={styles.gateBtnText}>{t("rosterGateCta")}</UiText></UiPressable>
+        {inReview ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("rosterGateCta")} onPress={() => router.push(`${base}/register` as Href)} style={styles.gateBtn}><UiText style={styles.gateBtnText}>{t("rosterGateCta")}</UiText></UiPressable>}
       </View>
     </View>
   );
@@ -397,7 +399,8 @@ export function EventDetailPage() {
             {holding ? (
               <>
                 {ended || attended ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("moreActions")} onPress={() => setMenuOpen(true)} style={styles.lbtn} testID="events-detail-more"><Icon name="more" size={20} color={colors.ink2} /></UiPressable>}
-                <UiPressable accessibilityRole="button" accessibilityLabel={t(ended ? "goAfter" : attended ? "goVenue" : "goPrep")} onPress={() => router.push(`${base}/${ended ? "after" : attended ? "live" : "prep"}` as Href)} style={styles.ctaMain}><UiText style={styles.ctaMainText}>{t(ended ? "goAfter" : attended ? "goVenue" : "goPrep")}</UiText></UiPressable>
+                {/* 见面准备只给已确定参加的人（审核中 / 候补不显示，同 Web）。 */}
+                {!ended && !attended && status !== "registered" ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t(ended ? "goAfter" : attended ? "goVenue" : "goPrep")} onPress={() => router.push(`${base}/${ended ? "after" : attended ? "live" : "prep"}` as Href)} style={styles.ctaMain}><UiText style={styles.ctaMainText}>{t(ended ? "goAfter" : attended ? "goVenue" : "goPrep")}</UiText></UiPressable>}
               </>
             ) : (
               <>

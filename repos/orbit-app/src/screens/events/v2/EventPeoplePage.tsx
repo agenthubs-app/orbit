@@ -55,6 +55,8 @@ export function EventPeoplePage() {
   }, [data, query, shown]);
 
   const status = data?.registration.status ?? "none";
+  // 审核中 / 候补：名单要等审核通过（不再请他们「去报名」）。
+  const inReview = status === "pending_review" || status === "waitlisted";
   const holding = status === "registered" || status === "pending_review" || status === "waitlisted" || status === "attended";
   const canOpen = holding && !data?.hosting;
   const back = { fallback: base, leftLabel: t("back") };
@@ -71,8 +73,8 @@ export function EventPeoplePage() {
     <JourneyPage title={t("peoplePageTitle", { n: data.attendeeCounts.all })} subtitle={data.title} {...back} testID="events-people">
       {data.rosterLocked ? (
         <View style={styles.card} testID="events-people-locked">
-          <UiText style={styles.sub}>{t("rosterGateBody")}</UiText>
-          <UiPressable accessibilityRole="button" accessibilityLabel={t("rosterGateCta")} onPress={() => router.push(`${base}/register` as Href)} style={styles.gateBtn}><UiText style={[styles.gateBtnText, { color: colors.bg }]}>{t("rosterGateCta")}</UiText></UiPressable>
+          <UiText style={styles.sub}>{t(inReview ? "rosterGatePending" : "rosterGateBody")}</UiText>
+          {inReview ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("rosterGateCta")} onPress={() => router.push(`${base}/register` as Href)} style={styles.gateBtn}><UiText style={[styles.gateBtnText, { color: colors.bg }]}>{t("rosterGateCta")}</UiText></UiPressable>}
         </View>
       ) : (
         <>
