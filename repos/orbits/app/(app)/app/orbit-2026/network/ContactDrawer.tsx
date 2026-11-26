@@ -203,6 +203,7 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
     const result = await networkApi.remove(contactId);
     if (!result.ok) { toast.error(t("deleteFailed")); return; }
     onChanged?.({ kind: "deleted", contactId, name: contact.displayName });
+    setEditOpen(false);
     onClose();
   };
   const self = connection !== null;
@@ -363,7 +364,7 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
           ...(connection ? [{ key: "share", label: t("detailShare"), onSelect: () => setShareOpen(true) }, { key: "unlink", label: t("detailUnlink"), destructive: true, onSelect: () => setUnlinkOpen(true) }] : []),
           { key: "delete", label: t("detailDelete"), destructive: true, onSelect: () => setDeleteOpen(true) },
         ]} />
-      {contact && editOpen ? <ContactEditDrawer contact={contact} onClose={() => setEditOpen(false)} onDelete={() => { setEditOpen(false); setDeleteOpen(true); }}
+      {contact && editOpen ? <ContactEditDrawer contact={contact} onClose={() => setEditOpen(false)} onDelete={() => setDeleteOpen(true)}
         onSaved={() => { setEditOpen(false); void load(contactId); onChanged?.({ kind: "saved", contactId, name: contact.displayName }); }} /> : null}
       {contact ? <ConfirmDialog open={deleteOpen} destructive icon="trash" title={t("deleteTitle", { name: contact.displayName })}
         message={t("deleteBody", { interactions: contact.lastInteraction ? 1 : 0, memos: contact.notes.length })}

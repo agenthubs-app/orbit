@@ -138,7 +138,7 @@ test("the contact drawer: why (value line), the type confirm card → decision, 
   await page.getByRole("menuitem", { name: "削除" }).click();
   await page.getByText("伊藤 直子さんを削除しますか？", { exact: true }).waitFor();
   await page.getByRole("button", { name: "削除する" }).click();
-  await page.getByText("削除しました", { exact: true }).waitFor();
+  await page.getByText("伊藤 直子さんを削除しました", { exact: true }).waitFor();
   assert.ok((await fetches(page)).some((call) => call.method === "DELETE" && call.url === "/api/contacts/c-ito"));
   await page.getByRole("button", { name: "元に戻す" }).click();
   await page.waitForFunction(() => (window as any).shellFixture.fetches.some((call: any) => call.method === "POST" && call.url === "/api/contacts/c-ito/restore"));

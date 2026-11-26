@@ -204,6 +204,14 @@
   .decide th { color: var(--ink-3); font-weight: 700; }
   .decide tr.gp td { background: var(--surface-2); font-weight: 800; color: var(--ink); }
   .decide .s { font-size: 12px; color: var(--ink-3); }
+
+/* UR-E6：手机确认框跟站内手机版确认框（与 b13 同，4f9eb2a48 定）：图标在左、按钮靠右 */
+.mweb .dialog { top: 50%; width: calc(100% - 32px) !important; text-align: left !important; padding: 24px; border-radius: 28px; display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 14px; align-items: start; z-index: 53; }
+.mweb .dialog .dic { grid-row: 1 / span 2; margin: 0 !important; }
+.mweb .dialog .dt { font-size: 17px; font-weight: 700; line-height: 1.5; }
+.mweb .dialog .dd { margin: 6px 0 0 !important; font-size: 12.5px; line-height: 1.65; }
+.mweb .dialog .dacts { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px !important; }
+.mweb .dialog .dacts .btn { height: 40px; padding: 0 16px; font-size: 13px; font-weight: 700; flex: none; width: auto; }
 </style>
 </head>
 <body>
@@ -301,7 +309,7 @@ const foot = (h) => `<div class="foot">${h}</div>`;
 const rb = (n, cls = '') => `<button class="rbtn ${cls}">${ic(n)}</button>`;
 const tb52 = (title, l = '<span></span>', r = '<span></span>') => `<div class="tb52">${l}<b>${title}</b>${r}</div>`;
 const tg = (on) => `<span class="tgl ${on ? 'on' : ''}"></span>`;
-const toast = (t, undo) => `<div class="toast pos notab k-toast"><span class="tk">${ic('check', 'sm')}</span><span class="tmsg">${t}</span>${undo ? `<button class="undo">${undo}</button>` : ''}</div>`;
+const toast = (t, undo) => `<div class="toast pos notab k-toast"><span class="tk">${ic('check', 'sm')}</span><span class="tmsg">${t}</span>${undo ? `<button class="undo"><span class="lic i-undo sm"></span>${undo}</button>` : ''}</div>`;
 const SEE = '人脈の相手と、申し込んだイベントの主催者だけに表示されます。';
 const SEE_BOTH = '生年月日はだれにも公開されません。連絡先は、人脈の相手と申し込んだイベントの主催者だけに表示されます。';
 
@@ -402,7 +410,7 @@ function repairPhone(s, web) {
   const head = web ? `<div class="mw-head"><div class="logo">O</div><b style="font-size:16px">Orbit</b><div style="flex:1"></div><button class="btn sm ghost" style="padding:0">ログアウト</button></div>`
     : `<div class="tb52 wide"><span></span><b>プロフィールの確認</b><span class="lo">ログアウト</span></div>`;
   const warn = s === 'miss' ? miss('あと 2 項目：業界、業界の詳細') : '';
-  return head + R_ONCE + `<div class="h1" style="margin-top:16px;font-size:21px">プロフィールの確認</div><div class="sub" style="margin-top:2px">業界は、イベントで話の合う人を探すのに使います。</div>` + repairFields(s === 'open' ? 'def' : s, false) + `<div style="height:150px"></div>` +
+  return head + R_ONCE + `<div class="h1" style="margin-top:16px;font-size:20px">プロフィールの確認</div><div class="sub" style="margin-top:2px">業界は、イベントで話の合う人を探すのに使います。</div>` + repairFields(s === 'open' ? 'def' : s, false) + `<div style="height:150px"></div>` +
     foot(`${warn}<button class="btn primary block xl k-next ${s === 'save' ? 'dis' : ''}">${saveLabel(s)}</button>`);
 }
 const sheetInd = `<div class="sheet-scrim"></div><div class="sheet pick k-sheet"><div class="grab"></div><div class="sh"><b>業界を選ぶ</b><span class="lbl">14 件</span><button class="lbtn">${ic('x', 'sm')}</button></div>
@@ -431,7 +439,7 @@ const NETLIST = D.contacts.slice(0, 7);
 const netBody = `<div class="card"><div class="list">${NETLIST.map(c => `<div class="li"><div class="av ${c.c}">${c.i}</div><div class="meta"><b>${c.n}</b><span>${c.co} · ${c.role}</span></div><span class="chip ${c.st}">${c.stage}</span></div>`).join('')}</div></div>`;
 const netPage = { nav: 1, head: mainhead('人脈', '218人'), body: netBody };
 const hostAns = `<div class="det-sec fadeout"><h5>申込時の回答</h5><dl class="qa"><div><dt>あなたの立場に近いものを選んでください</dt><dd>事業会社</dd></div><div><dt>今回いちばん話したいテーマ</dt><dd>財務チームの採用 · 上場準備</dd></div></dl></div>`;
-const hostSec = (p, o = {}) => `<div class="det-sec k-hsec"><h5>連絡先</h5><div class="scbox">${scRows(p, o)}</div></div>`;
+const hostSec = (p, o = {}) => `<div class="det-sec k-hsec"${o.narrow ? '' : ' style="padding-top:16px;border-top:1px solid var(--line)"'}>${o.narrow ? '<h5>連絡先</h5>' : '<h5 style="font-size:13px;color:var(--ink);margin-bottom:10px">連絡先</h5>'}<div class="scbox">${scRows(p, o)}</div></div>`;
 const hostHead = (p, close) => `<div class="det-h"><div class="av lg ${p.c}">${p.i}</div><div class="grow"><b style="font-size:18px;display:block">${p.n}</b><div class="lbl">${p.co} · ${p.role}</div><div class="meta-l"><span class="chip teal">承認済み</span><span class="chip">申込 10月3日</span><span class="chip">2回目</span></div></div>${close ? `<button class="lbtn">${ic('x', 'sm')}</button>` : ''}</div>`;
 const hostDrawer = (p) => `<div class="overlay"></div><div class="drawer" style="background:var(--surface)"><div class="row between" style="margin-bottom:14px">${rb('x', 'soft')}<button class="btn">見送り</button></div>${hostHead(p)}${hostSec(p)}${hostAns}<div class="det-sec fadeout"><h5>自己紹介</h5><div class="qa" style="padding:10px 14px;font-size:13px;line-height:1.7">松本精機で経営企画を担当しています。</div></div></div>`;
 const hostBody = `<div class="card"><div class="list">${['松本 隆', '中村 由紀', '加藤 健太', '山本 彩', '小林 誠'].map((n, k) => `<div class="li"><div class="av c${k % 5 + 1}">${n[0]}</div><div class="meta"><b>${n}</b><span>申込 10月${k + 2}日</span></div><span class="chip ${k ? 'apricot' : 'teal'}">${k ? '審査待ち' : '承認済み'}</span></div>`).join('')}</div></div>`;
@@ -481,11 +489,11 @@ function editForm(two, s = 'def') {
       <div class="met k-met">${ic('pin', 'sm')}出会った場所：9/18 Japan Startup Night</div></div>`;
 }
 const editDrawer = (s = 'def') => `<div class="overlay"></div><div class="drawer ed k-drawer"><div class="dh">${rb('x', 'soft')}<b>連絡先を編集</b><button class="btn">キャンセル</button><button class="btn primary k-esave">保存</button></div>
-  <div class="db"><div class="scrollto" data-off="-60"></div><div class="row" style="gap:14px;margin-bottom:14px"><div class="av lg ${C1.c}">${C1.i}</div><div class="lbl">最終更新 10月6日 · 名刺から入力</div></div>${editForm(true, s)}
+  <div class="db"><div class="scrollto" data-off="-60"></div><div class="row" style="gap:14px;margin-bottom:14px"><div class="av lg ${C1.c}">${C1.i}</div><div class="lbl">最終更新 10/6</div></div>${editForm(true, s)}
   <button class="btn danger-ghost block k-edel" style="margin-top:14px;height:46px">${ic('x', 'sm')}この連絡先を削除</button></div></div>`;
-const delW = `<div class="overlay" style="z-index:29"></div><div class="wmodal k-dlg" style="text-align:center"><div class="dic" style="margin:0 auto 10px"><span class="lic lg i-trash"></span></div><b style="font-size:17px;display:block">高橋 美咲さんを削除しますか？</b><div class="sub" style="margin:8px 0 0;line-height:1.7">やりとり 3件・メモ 2件は消えません。<br>削除したあとも「元に戻す」で取り消せます。</div><div class="macts" style="justify-content:center"><button class="btn" style="height:46px;padding:0 26px">キャンセル</button><button class="btn danger" style="height:46px;padding:0 26px">削除する</button></div></div>`;
-const delP = `<div class="sheet-scrim"></div><div class="dialog k-dlg"><div class="dic"><span class="lic lg i-trash"></span></div><b class="dt">高橋 美咲さんを削除しますか？</b><div class="dd">やりとり 3件・メモ 2件は消えません。削除したあとも「元に戻す」で取り消せます。</div><div class="dacts"><button class="btn" style="height:46px">キャンセル</button><button class="btn danger" style="height:46px">削除する</button></div></div>`;
-const editPhone = (s = 'def', scroll) => tb52('連絡先を編集', rb('x')) + `<div class="row" style="gap:14px;margin-bottom:14px"><div class="av lg ${C1.c}">${C1.i}</div><div class="lbl">最終更新 10月6日 · 名刺から入力</div></div>` + editForm(false, s).replace('<div class="card k-econ">', `<div class="card k-econ ${scroll ? 'scrollto' : ''}" data-off="10">`) +
+const delW = `<div class="overlay" style="z-index:29"></div><div class="wmodal k-dlg"><div class="row" style="gap:14px;align-items:flex-start"><div class="dic"><span class="lic lg i-trash"></span></div><div style="min-width:0"><b style="font-size:17px">高橋 美咲さんを削除しますか？</b><div class="sub" style="margin-top:6px;line-height:1.65">やりとり 3件・メモ 2件は消えません。削除したあとも「元に戻す」で取り消せます。</div></div></div><div class="macts"><span class="lbl hint"><span class="kbd">Esc</span> キャンセル</span><button class="btn focus">キャンセル</button><button class="btn danger">削除する</button></div></div>`;
+const delP = `<div class="sheet-scrim"></div><div class="dialog k-dlg"><div class="dic"><span class="lic lg i-trash"></span></div><b class="dt">高橋 美咲さんを削除しますか？</b><div class="dd">やりとり 3件・メモ 2件は消えません。削除したあとも「元に戻す」で取り消せます。</div><div class="dacts"><button class="btn">キャンセル</button><button class="btn danger">削除する</button></div></div>`;
+const editPhone = (s = 'def', scroll) => tb52('連絡先を編集', rb('x')) + `<div class="row" style="gap:14px;margin-bottom:14px"><div class="av lg ${C1.c}">${C1.i}</div><div class="lbl">最終更新 10/6</div></div>` + editForm(false, s).replace('<div class="card k-econ">', `<div class="card k-econ ${scroll ? 'scrollto' : ''}" data-off="302">`) +
   `<button class="btn danger-ghost block k-edel" style="margin-top:14px;height:48px">${ic('x', 'sm')}この連絡先を削除</button><div style="height:140px"></div>` +
   foot(`<button class="btn primary block xl k-esave ${s === 'save' ? 'dis' : ''}">${s === 'save' ? '保存しています…' : '保存'}</button>`);
 
@@ -608,8 +616,8 @@ h += boards([
 h += boards([
   ['UR-P5 · 390 · 默认', '提案', M(profPhone('def')), [['.tb52 .rbtn', '顶栏 52：左上 ✕ 关闭（有改动时先问「変更を破棄しますか？」），标题居中，不吸顶'], ['.k-pco', '单列，每栏 48 高'], ['.k-psave', '「保存」固定在 Safari 栏之上；不再有右下角挤着的两个小按钮']]],
   ['UR-P6 · 390 · 编辑中', '状态', M(profPhone('edit').replace('<div class="card k-ptags', '<div class="scrollto" data-off="40"></div><div class="card k-ptags')), [['.k-typing', '标签原位输入'], ['.k-ptags .gh small', '计数']]],
-  ['UR-P7 · 390 · 出错', '状态', M(profPhone('err').replace('<div class="card k-pbio', '<div class="scrollto" data-off="40"></div><div class="card k-pbio')), [['.k-bio', '超字数'], ['.k-perr', '保存失败']]],
-  ['UR-P8 · 390 · 公开范围（滚到底）', '状态', M(profPhone('def').replace('<div class="card k-pvis', '<div class="scrollto" data-off="200"></div><div class="card k-pvis')), [['.k-pvis', '开关整行可点'], ['.k-pfix', '联系方式固定规则']]],
+  ['UR-P7 · 390 · 出错', '状态', M(profPhone('err').replace('<div class="card k-pbio', '<div class="scrollto" data-off="84"></div><div class="card k-pbio')), [['.k-bio', '超字数'], ['.k-perr', '保存失败']]],
+  ['UR-P8 · 390 · 公开范围（滚到底）', '状态', M(profPhone('def').replace('<div class="card k-pvis', '<div class="scrollto" data-off="400"></div><div class="card k-pvis')), [['.k-pvis', '开关整行可点'], ['.k-pfix', '联系方式固定规则']]],
 ]);
 
 /* ---------- UR-E ---------- */

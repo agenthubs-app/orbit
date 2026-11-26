@@ -303,7 +303,7 @@ select.input option { color: var(--ink); }
 @media (max-width: 767px) {
   .phoneOnlyBlock { display: block; }
   .wideOnlyBlock { display: none; }
-  .repairTitle { margin-top: 16px; font-size: var(--fs-title-sm); }
+  .repairTitle { margin-top: 16px; font-size: var(--fs-title-sm); line-height: 1.35; letter-spacing: -.01em; }
   .repairTitle + .sub { margin-top: 2px; }
   .repairBody > .once { margin-top: 8px; }
   .birthRow { display: block; }

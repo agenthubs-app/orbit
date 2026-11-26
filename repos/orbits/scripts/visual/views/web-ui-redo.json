@@ -987,7 +987,8 @@
      "wait": 500
     }
    ],
-   "note": "UR-P5 390 · 默认"
+   "note": "UR-P5 390 · 默认",
+   "design-as-mweb": true
   },
   {
    "id": "URP6",
@@ -1029,7 +1030,8 @@
     }
    ],
    "note": "UR-P6 390 · 编辑中",
-   "design-scroll-anchor": ".scrollto"
+   "design-scroll-anchor": ".scrollto",
+   "design-as-mweb": true
   },
   {
    "id": "URP7",
@@ -1080,7 +1082,8 @@
     }
    ],
    "note": "UR-P7 390 · 出错；已知不过：画板可视区扣掉了状态栏与 Safari 栏（约 90px），面板滚到底也到不了画板画的位置——内容本身在 URP4（834）与 URP5 / URP6 已逐像素核对",
-   "design-scroll-anchor": ".scrollto"
+   "design-scroll-anchor": ".scrollto",
+   "design-as-mweb": true
   },
   {
    "id": "URP8",
@@ -1113,7 +1116,337 @@
     }
    ],
    "note": "UR-P8 390 · 公开范围（滚到底）；已知不过：画板可视区扣掉了状态栏与 Safari 栏（约 90px），面板滚到底也到不了画板画的位置——内容本身在 URP4（834）与 URP5 / URP6 已逐像素核对",
+   "design-scroll-anchor": ".scrollto",
+   "design-as-mweb": true
+  },
+  {
+   "id": "URE1",
+   "app": "/app/contacts?lang=ja",
+   "app-origin": "http://localhost:3017",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 93,
+   "width": 1440,
+   "height": 960,
+   "viewport": true,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-network-row]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "tr[data-network-row]"
+    },
+    {
+     "waitFor": "[data-network-contact-ready]"
+    },
+    {
+     "click": "[data-contact-drawer] button[aria-label='その他の操作']"
+    },
+    {
+     "click": "[role='menu'] button:has-text('編集')"
+    },
+    {
+     "waitFor": "[data-network-edit]"
+    },
+    {
+     "eval": "(async () => { const d = document.querySelector('[data-network-edit]'); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst setIn = (el, v) => { const s = Object.getOwnPropertyDescriptor(el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); };\nconst ins = [...d.querySelectorAll('input')]; const vals = ['高橋 美咲', '青葉ベンチャーズ', 'パートナー', 'm.takahashi@aoba-vc.example', '03-0000-0000']; ins.forEach((el, i) => setIn(el, vals[i]));\nconst pick = async (label, text) => { const s = d.querySelector(`select[aria-label='${label}']`); const o = [...s.options].find((x) => x.textContent.trim() === text || x.textContent.trim().endsWith(text)); if (o) setIn(s, o.value); await sleep(150); };\nawait pick('業界', '金融・投資'); await pick('業界', 'ベンチャー投資'); await pick('役職層', '経営層'); await pick('地域', '東京');\n[...d.querySelectorAll('[role=tab]')].find((b) => b.textContent.includes('関係構築'))?.click(); await sleep(200); })()"
+    },
+    {
+     "wait": 600
+    }
+   ],
+   "note": "UR-E1 Web 1440 · 默认（:3017 人脈第一位；示例人物不同，只比编辑面板）",
+   "design-clip": ".k-drawer",
+   "app-clip": "[data-network-edit]"
+  },
+  {
+   "id": "URE2",
+   "app": "/app/contacts?lang=ja",
+   "app-origin": "http://localhost:3017",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 94,
+   "width": 1440,
+   "height": 960,
+   "viewport": true,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-network-row]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "tr[data-network-row]"
+    },
+    {
+     "waitFor": "[data-network-contact-ready]"
+    },
+    {
+     "click": "[data-contact-drawer] button[aria-label='その他の操作']"
+    },
+    {
+     "click": "[role='menu'] button:has-text('編集')"
+    },
+    {
+     "waitFor": "[data-network-edit]"
+    },
+    {
+     "eval": "(async () => { const d = document.querySelector('[data-network-edit]'); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst setIn = (el, v) => { const s = Object.getOwnPropertyDescriptor(el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); };\nconst ins = [...d.querySelectorAll('input')]; const vals = ['高橋 美咲', '青葉ベンチャーズ', 'パートナー', 'm.takahashi@aoba-vc.example', '03-0000-0000']; ins.forEach((el, i) => setIn(el, vals[i]));\nconst pick = async (label, text) => { const s = d.querySelector(`select[aria-label='${label}']`); const o = [...s.options].find((x) => x.textContent.trim() === text || x.textContent.trim().endsWith(text)); if (o) setIn(s, o.value); await sleep(150); };\nawait pick('業界', '金融・投資'); await pick('業界', 'ベンチャー投資'); await pick('役職層', '経営層'); await pick('地域', '東京');\n[...d.querySelectorAll('[role=tab]')].find((b) => b.textContent.includes('関係構築'))?.click(); await sleep(200); })()"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "[data-network-edit-delete]"
+    },
+    {
+     "wait": 700
+    }
+   ],
+   "note": "UR-E2 Web 1440 · 删除确认（只比确认框；背后人脈页另有门禁）",
+   "design-clip": ".k-dlg",
+   "app-clip": "[role=alertdialog]"
+  },
+  {
+   "id": "URE3",
+   "app": "/app/contacts?lang=ja",
+   "app-origin": "http://localhost:3017",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 95,
+   "width": 834,
+   "height": 1194,
+   "viewport": true,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-network-row]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "tr[data-network-row]"
+    },
+    {
+     "waitFor": "[data-network-contact-ready]"
+    },
+    {
+     "click": "[data-contact-drawer] button[aria-label='その他の操作']"
+    },
+    {
+     "click": "[role='menu'] button:has-text('編集')"
+    },
+    {
+     "waitFor": "[data-network-edit]"
+    },
+    {
+     "eval": "(async () => { const d = document.querySelector('[data-network-edit]'); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst setIn = (el, v) => { const s = Object.getOwnPropertyDescriptor(el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); };\nconst ins = [...d.querySelectorAll('input')]; const vals = ['高橋 美咲', '青葉ベンチャーズ', 'パートナー', 'm.takahashi@aoba-vc.example', '03-0000-0000']; ins.forEach((el, i) => setIn(el, vals[i]));\nconst pick = async (label, text) => { const s = d.querySelector(`select[aria-label='${label}']`); const o = [...s.options].find((x) => x.textContent.trim() === text || x.textContent.trim().endsWith(text)); if (o) setIn(s, o.value); await sleep(150); };\nawait pick('業界', '金融・投資'); await pick('業界', 'ベンチャー投資'); await pick('役職層', '経営層'); await pick('地域', '東京');\n[...d.querySelectorAll('[role=tab]')].find((b) => b.textContent.includes('関係構築'))?.click(); await sleep(200); })()"
+    },
+    {
+     "wait": 600
+    }
+   ],
+   "note": "UR-E3 Web 834 · 默认",
+   "design-clip": ".k-drawer",
+   "app-clip": "[data-network-edit]"
+  },
+  {
+   "id": "URE4",
+   "app": "/app/contacts?lang=ja",
+   "app-origin": "http://localhost:3017",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 96,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-network-row]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-network-mobile-card]"
+    },
+    {
+     "waitFor": "[data-network-contact-ready]"
+    },
+    {
+     "click": "[data-contact-drawer] button[aria-label='その他の操作']"
+    },
+    {
+     "click": "[role='menu'] button:has-text('編集')"
+    },
+    {
+     "waitFor": "[data-network-edit]"
+    },
+    {
+     "eval": "(async () => { const d = document.querySelector('[data-network-edit]'); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst setIn = (el, v) => { const s = Object.getOwnPropertyDescriptor(el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); };\nconst ins = [...d.querySelectorAll('input')]; const vals = ['高橋 美咲', '青葉ベンチャーズ', 'パートナー', 'm.takahashi@aoba-vc.example', '03-0000-0000']; ins.forEach((el, i) => setIn(el, vals[i]));\nconst pick = async (label, text) => { const s = d.querySelector(`select[aria-label='${label}']`); const o = [...s.options].find((x) => x.textContent.trim() === text || x.textContent.trim().endsWith(text)); if (o) setIn(s, o.value); await sleep(150); };\nawait pick('業界', '金融・投資'); await pick('業界', 'ベンチャー投資'); await pick('役職層', '経営層'); await pick('地域', '東京');\n[...d.querySelectorAll('[role=tab]')].find((b) => b.textContent.includes('関係構築'))?.click(); await sleep(200); })()"
+    },
+    {
+     "wait": 600
+    }
+   ],
+   "note": "UR-E4 390 · 默认",
+   "design-as-mweb": true
+  },
+  {
+   "id": "URE5",
+   "app": "/app/contacts?lang=ja",
+   "app-origin": "http://localhost:3017",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 97,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-network-row]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-network-mobile-card]"
+    },
+    {
+     "waitFor": "[data-network-contact-ready]"
+    },
+    {
+     "click": "[data-contact-drawer] button[aria-label='その他の操作']"
+    },
+    {
+     "click": "[role='menu'] button:has-text('編集')"
+    },
+    {
+     "waitFor": "[data-network-edit]"
+    },
+    {
+     "eval": "(async () => { const d = document.querySelector('[data-network-edit]'); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst setIn = (el, v) => { const s = Object.getOwnPropertyDescriptor(el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); };\nconst ins = [...d.querySelectorAll('input')]; const vals = ['高橋 美咲', '青葉ベンチャーズ', 'パートナー', 'm.takahashi@aoba-vc.example', '03-0000-0000']; ins.forEach((el, i) => setIn(el, vals[i]));\nconst pick = async (label, text) => { const s = d.querySelector(`select[aria-label='${label}']`); const o = [...s.options].find((x) => x.textContent.trim() === text || x.textContent.trim().endsWith(text)); if (o) setIn(s, o.value); await sleep(150); };\nawait pick('業界', '金融・投資'); await pick('業界', 'ベンチャー投資'); await pick('役職層', '経営層'); await pick('地域', '東京');\n[...d.querySelectorAll('[role=tab]')].find((b) => b.textContent.includes('関係構築'))?.click(); await sleep(200); })()"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const p = document.querySelector('[data-network-edit]'); const c = p.querySelector('[data-network-edit-group=contact]'); p.scrollTop += c.getBoundingClientRect().top - 10; })()"
+    },
+    {
+     "wait": 400
+    }
+   ],
+   "note": "UR-E5 390 · 滚到下面",
+   "design-as-mweb": true,
    "design-scroll-anchor": ".scrollto"
+  },
+  {
+   "id": "URE6",
+   "app": "/app/contacts?lang=ja",
+   "app-origin": "http://localhost:3017",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 98,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-network-row]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-network-mobile-card]"
+    },
+    {
+     "waitFor": "[data-network-contact-ready]"
+    },
+    {
+     "click": "[data-contact-drawer] button[aria-label='その他の操作']"
+    },
+    {
+     "click": "[role='menu'] button:has-text('編集')"
+    },
+    {
+     "waitFor": "[data-network-edit]"
+    },
+    {
+     "eval": "(async () => { const d = document.querySelector('[data-network-edit]'); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst setIn = (el, v) => { const s = Object.getOwnPropertyDescriptor(el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); };\nconst ins = [...d.querySelectorAll('input')]; const vals = ['高橋 美咲', '青葉ベンチャーズ', 'パートナー', 'm.takahashi@aoba-vc.example', '03-0000-0000']; ins.forEach((el, i) => setIn(el, vals[i]));\nconst pick = async (label, text) => { const s = d.querySelector(`select[aria-label='${label}']`); const o = [...s.options].find((x) => x.textContent.trim() === text || x.textContent.trim().endsWith(text)); if (o) setIn(s, o.value); await sleep(150); };\nawait pick('業界', '金融・投資'); await pick('業界', 'ベンチャー投資'); await pick('役職層', '経営層'); await pick('地域', '東京');\n[...d.querySelectorAll('[role=tab]')].find((b) => b.textContent.includes('関係構築'))?.click(); await sleep(200); })()"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const p = document.querySelector('[data-network-edit]'); const c = p.querySelector('[data-network-edit-group=contact]'); p.scrollTop += c.getBoundingClientRect().top - 10; })()"
+    },
+    {
+     "wait": 400
+    },
+    {
+     "click": "[data-network-edit-delete]"
+    },
+    {
+     "wait": 700
+    }
+   ],
+   "note": "UR-E6 390 · 删除确认（确认框标题用原联系人名＝数据）",
+   "design-as-mweb": true,
+   "design-scroll-anchor": ".scrollto"
+  },
+  {
+   "id": "URE7",
+   "app": "/app/contacts?lang=ja",
+   "app-origin": "http://localhost:3017",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 99,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => { const orig = window.fetch.bind(window); window.fetch = (input, init) => { const url = typeof input === 'string' ? input : input.url; const method = (init && init.method) || 'GET';\nif (method === 'DELETE' && /\\/api\\/contacts\\/[^/?]+$/.test(url)) { const id = decodeURIComponent(url.split('/').pop()); const now = new Date(); return Promise.resolve(new Response(JSON.stringify({ success: true, data: { contactId: id, deletedAt: now.toISOString(), restorableUntil: new Date(now.getTime() + 30 * 86400000).toISOString() } }), { status: 200, headers: { 'content-type': 'application/json' } })); }\nreturn orig(input, init); }; })()",
+   "wait-for": "[data-network-row]",
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-network-mobile-card]"
+    },
+    {
+     "waitFor": "[data-network-contact-ready]"
+    },
+    {
+     "click": "[data-contact-drawer] button[aria-label='その他の操作']"
+    },
+    {
+     "click": "[role='menu'] button:has-text('編集')"
+    },
+    {
+     "waitFor": "[data-network-edit]"
+    },
+    {
+     "eval": "(async () => { const d = document.querySelector('[data-network-edit]'); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst setIn = (el, v) => { const s = Object.getOwnPropertyDescriptor(el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); };\nconst ins = [...d.querySelectorAll('input')]; const vals = ['高橋 美咲', '青葉ベンチャーズ', 'パートナー', 'm.takahashi@aoba-vc.example', '03-0000-0000']; ins.forEach((el, i) => setIn(el, vals[i]));\nconst pick = async (label, text) => { const s = d.querySelector(`select[aria-label='${label}']`); const o = [...s.options].find((x) => x.textContent.trim() === text || x.textContent.trim().endsWith(text)); if (o) setIn(s, o.value); await sleep(150); };\nawait pick('業界', '金融・投資'); await pick('業界', 'ベンチャー投資'); await pick('役職層', '経営層'); await pick('地域', '東京');\n[...d.querySelectorAll('[role=tab]')].find((b) => b.textContent.includes('関係構築'))?.click(); await sleep(200); })()"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const p = document.querySelector('[data-network-edit]'); const c = p.querySelector('[data-network-edit-group=contact]'); p.scrollTop += c.getBoundingClientRect().top - 10; })()"
+    },
+    {
+     "wait": 400
+    },
+    {
+     "click": "[data-network-edit-delete]"
+    },
+    {
+     "wait": 700
+    },
+    {
+     "click": "[role=alertdialog] button:has-text('削除する')"
+    },
+    {
+     "wait": 900
+    }
+   ],
+   "note": "UR-E7 390 · 删除后提示（只比提示条；列表是人脈页本身）；init-script 拦下 DELETE 直接回成功，不动本地库",
+   "design-as-mweb": true,
+   "design-clip": ".k-toast",
+   "app-clip": "[role=status]"
   }
  ]
 }

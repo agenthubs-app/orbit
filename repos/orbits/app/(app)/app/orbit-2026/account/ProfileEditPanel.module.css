@@ -57,7 +57,7 @@
   .head > b { order: 0; text-align: center; font-size: var(--fs-logo); white-space: nowrap; }
   .rbtn:global(.btn) { order: 0; }
   .headEnd { display: block; }
-  .body { padding: 0 18px 140px; }
+  .body { padding: 0 18px 176px; }
   .grid2 { grid-template-columns: minmax(0, 1fr); }
   .foot { position: fixed; left: 0; right: 0; bottom: 0; padding: 22px 18px calc(env(safe-area-inset-bottom, 0px) + 14px); border-top: 0; background: linear-gradient(to bottom, transparent, var(--bg) 28%); }
   .spacer, .cancel:global(.btn) { display: none; }
