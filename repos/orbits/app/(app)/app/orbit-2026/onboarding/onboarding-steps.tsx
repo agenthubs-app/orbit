@@ -1,14 +1,14 @@
 "use client";
 
 /** 三步引导的画面部件（onboarding-3step-proposal W / T / M）：只画与回调，状态在 onboarding-flow。 */
-import { useId, useState, type ChangeEvent, type DragEvent, type ReactNode, type RefObject } from "react";
+import { useId, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode, type RefObject } from "react";
 
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
 import type { SeniorityLevelCode } from "../../../../../shared/contract/profile";
 import { PROFILE_ONBOARDING_GOALS } from "../../../../../shared/compute/profile-onboarding-goal";
 import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel } from "../../../../../shared/domain/industries";
 import { SENIORITY_LEVELS, SENIORITY_LEVEL_LABELS } from "../../../../../shared/compute/seniority-group";
-import { Icon, MacTile, WhyBody, WhyButton } from "../ui";
+import { Button, Icon, MacTile, Popover, WhyBody, WhyButton } from "../ui";
 import type { AvatarTone } from "../ui/Basics";
 import { LEGACY_REPAIR_COPY, ONBOARDING_COPY, ONBOARDING_SCREEN_LABELS } from "../copy/onboarding";
 import {
@@ -128,6 +128,64 @@ function SelectHint({ phone, wide }: { phone: string; wide: string }) {
 
 const invalid = (id: string, error?: string) => (error ? { "aria-describedby": `${id}-msg`, "aria-invalid": true as const } : {});
 
+const REPAIR_PICKER_INSET = 8;
+const REPAIR_PICKER_MAX_ROWS = 6;
+const REPAIR_PICKER_ROW_HEIGHT = 44;
+const REPAIR_PICKER_PANEL_EDGES = 18;
+
+function RepairIndustrySelect<Key extends string>({ id, label, value, placeholder, options, disabled, error, onSelect }: {
+  id: string;
+  label: string;
+  value: Key | "";
+  placeholder: string;
+  options: readonly { id: Key; label: string }[];
+  disabled: boolean;
+  error?: string;
+  onSelect: (id: Key) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [availableHeight, setAvailableHeight] = useState<number>();
+  const anchor = useRef<HTMLButtonElement>(null);
+  const current = options.find(option => option.id === value);
+  const selectedId = `${id}-selection`;
+  const panelId = `${id}-options`;
+
+  function place(box: DOMRect) {
+    const below = window.innerHeight - box.bottom - 2 * REPAIR_PICKER_INSET;
+    const above = box.top - 2 * REPAIR_PICKER_INSET;
+    const preferredHeight = Math.min(options.length, REPAIR_PICKER_MAX_ROWS) * REPAIR_PICKER_ROW_HEIGHT;
+    const useBelow = below >= preferredHeight + REPAIR_PICKER_PANEL_EDGES || below >= above;
+    const space = Math.floor((useBelow ? below : above) - REPAIR_PICKER_PANEL_EDGES);
+    setAvailableHeight(Math.min(REPAIR_PICKER_MAX_ROWS * REPAIR_PICKER_ROW_HEIGHT, Math.max(0, space)));
+    const horizontal = { left: box.left, width: box.width };
+    return useBelow
+      ? { ...horizontal, top: box.bottom + REPAIR_PICKER_INSET }
+      : { ...horizontal, bottom: window.innerHeight - box.top + REPAIR_PICKER_INSET };
+  }
+
+  return (
+    <>
+      <button ref={anchor} id={id} type="button" className={`btn ${styles.input} ${styles.pickerTrigger}`} disabled={disabled}
+        aria-label={label} aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? panelId : undefined}
+        aria-invalid={error ? true : undefined} aria-describedby={error ? `${selectedId} ${id}-msg` : selectedId}
+        onClick={() => setOpen(currentlyOpen => !currentlyOpen)}>
+        <span id={selectedId} className={current ? styles.pickerValue : styles.pickerPlaceholder}>{current?.label ?? placeholder}</span>
+        <Icon name="down" size={16} />
+      </button>
+      {open ? <Popover open anchor={anchor} label={label} tight place={place} onClose={() => setOpen(false)}>
+        <div id={panelId} className={styles.pickerOptions} style={{ maxHeight: availableHeight }}>
+          {options.map(option => {
+            const selected = option.id === value;
+            return <Button key={option.id} label={option.label} block variant="ghost" className={styles.pickerOption}
+              aria-pressed={selected} trailing={selected ? <Icon name="check" size={16} /> : null}
+              onClick={() => { onSelect(option.id); setOpen(false); anchor.current?.focus({ preventScroll: true }); }} />;
+          })}
+        </div>
+      </Popover> : null}
+    </>
+  );
+}
+
 export function ProfileStep({
   basic, cameraRef, cardScanAvailable, disabled, fileRef, language, missing, onCardDrop, onCardFile, onQr, onUserEdit, origins, repair, scan, scanning, t, todayIso,
 }: {
@@ -224,18 +282,26 @@ export function ProfileStep({
           {repair && basic.birthDate ? <button className={`btn ${styles.ghost}`} type="button" disabled={disabled} onClick={() => onUserEdit({ birthDate: "" })}>{t(LEGACY_REPAIR_COPY.clearBirth)}</button> : null}
         </Field> : null}
         <Field className={`${styles.fIndustry} ${styles.half}`} error={errors.industry} id="onb-industry" label={{ ja: "業界", zh: "行业", en: "Industry" }} origin={origins.primaryIndustryId} t={t}>
-          <span className={styles.wrap}><select className={`${styles.input} ${basic.primaryIndustryId ? "" : styles.empty}`} disabled={disabled} id="onb-industry" value={basic.primaryIndustryId} {...invalid("onb-industry", errors.industry)}
+          {repair ? <RepairIndustrySelect id="onb-industry" label={t(MISSING_LABELS.industry)} value={basic.primaryIndustryId}
+            placeholder={t({ ja: "選択してください", zh: "请选择", en: "Select" })} disabled={disabled} error={errors.industry}
+            options={INDUSTRY_CATALOG.map(item => ({ id: item.id, label: industryLabel(item.id, language) }))}
+            onSelect={primaryIndustryId => { if (primaryIndustryId !== basic.primaryIndustryId) onUserEdit({ primaryIndustryId, secondaryIndustryId: "" }); }} />
+          : <span className={styles.wrap}><select className={`${styles.input} ${basic.primaryIndustryId ? "" : styles.empty}`} disabled={disabled} id="onb-industry" value={basic.primaryIndustryId} {...invalid("onb-industry", errors.industry)}
             onChange={event => onUserEdit({ primaryIndustryId: event.target.value as IndustryIdCode | "", secondaryIndustryId: "" })}>
             <option value="">{t({ ja: "選択してください", zh: "请选择", en: "Select" })}</option>
             {INDUSTRY_CATALOG.map(item => <option key={item.id} value={item.id}>{industryLabel(item.id, language)}</option>)}
-          </select>{basic.primaryIndustryId ? null : <SelectHint wide={t({ ja: "選択してください", zh: "请选择", en: "Select" })} phone={t({ ja: "選択", zh: "请选择", en: "Select" })} />}<Icon name="down" size={16} /></span>
+          </select>{basic.primaryIndustryId ? null : <SelectHint wide={t({ ja: "選択してください", zh: "请选择", en: "Select" })} phone={t({ ja: "選択", zh: "请选择", en: "Select" })} />}<Icon name="down" size={16} /></span>}
         </Field>
         <Field className={`${styles.fDetail} ${styles.half}`} error={errors.industryDetail} id="onb-industry-detail" label={{ ja: "業界の詳細", zh: "细分行业", en: "Industry detail" }} origin={origins.secondaryIndustryId} phoneLabel={{ ja: "詳細", zh: "细分", en: "Detail" }} t={t}>
-          <span className={styles.wrap}><select className={`${styles.input} ${basic.secondaryIndustryId ? "" : styles.empty}`} disabled={disabled || !basic.primaryIndustryId} id="onb-industry-detail" value={basic.secondaryIndustryId} {...invalid("onb-industry-detail", errors.industryDetail)}
+          {repair ? <RepairIndustrySelect id="onb-industry-detail" label={t(MISSING_LABELS.industryDetail)} value={basic.secondaryIndustryId}
+            placeholder={detailHint} disabled={disabled || !basic.primaryIndustryId} error={errors.industryDetail}
+            options={(basic.primaryIndustryId ? listSecondaryIndustries(basic.primaryIndustryId) : []).map(item => ({ id: item.id, label: secondaryIndustryLabel(item.id, language) }))}
+            onSelect={secondaryIndustryId => onUserEdit({ secondaryIndustryId })} />
+          : <span className={styles.wrap}><select className={`${styles.input} ${basic.secondaryIndustryId ? "" : styles.empty}`} disabled={disabled || !basic.primaryIndustryId} id="onb-industry-detail" value={basic.secondaryIndustryId} {...invalid("onb-industry-detail", errors.industryDetail)}
             onChange={event => onUserEdit({ secondaryIndustryId: event.target.value as SecondaryIndustryIdCode | "" })}>
             <option value="">{detailHint}</option>
             {(basic.primaryIndustryId ? listSecondaryIndustries(basic.primaryIndustryId) : []).map(item => <option key={item.id} value={item.id}>{secondaryIndustryLabel(item.id, language)}</option>)}
-          </select>{basic.secondaryIndustryId ? null : <SelectHint wide={detailHint} phone={basic.primaryIndustryId ? t({ ja: "選択", zh: "请选择", en: "Select" }) : "—"} />}<Icon name="down" size={16} /></span>
+          </select>{basic.secondaryIndustryId ? null : <SelectHint wide={detailHint} phone={basic.primaryIndustryId ? t({ ja: "選択", zh: "请选择", en: "Select" }) : "—"} />}<Icon name="down" size={16} /></span>}
         </Field>
         {repair ? null : <>
         <Field className={styles.fSeniority} id="onb-seniority" label={origins.seniorityLevel ? { ja: "役職層", zh: "职级", en: "Level" } : { ja: "役職層（任意）", zh: "职级（选填）", en: "Level (optional)" }} origin={origins.seniorityLevel} t={t}>

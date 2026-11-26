@@ -212,7 +212,7 @@ export function BottomSheet({ open, onClose, label, tight = false, children, cla
 
 // Below the anchor when it fits, otherwise above it (an anchor near the bottom —
 // the avatar at the foot of the left rail — opens upwards).
-type AnchorPosition = { top?: number; bottom?: number; left: number };
+type AnchorPosition = { top?: number; bottom?: number; left: number; width?: number };
 
 function useAnchorPosition(anchor: RefObject<HTMLElement | null>, open: boolean, width: number, custom?: (anchor: DOMRect) => AnchorPosition) {
   const [position, setPosition] = useState<AnchorPosition | null>(null);
@@ -265,7 +265,7 @@ export function Popover({ open, onClose, anchor, label, width = 360, place, tigh
   anchor: RefObject<HTMLElement | null>;
   label: string;
   width?: number;
-  /** Own placement from the anchor's box (default: below it, or above near the bottom). */
+  /** Own placement and optional width from the anchor's box (default: below it, or above near the bottom). */
   place?: (anchor: DOMRect) => AnchorPosition;
   /** 8 padding instead of 16, for a menu of full-width rows (b12 .amenu). */
   tight?: boolean;
@@ -289,7 +289,7 @@ export function Popover({ open, onClose, anchor, label, width = 360, place, tigh
   if (!open) return null;
   return (
     <Portal>
-      <div ref={panel} role="dialog" aria-label={label} tabIndex={-1} className={`${styles.popover}${tight ? ` ${styles.popoverTight}` : ""}`} style={{ width: clamped, ...placed(position) }}>
+      <div ref={panel} role="dialog" aria-label={label} tabIndex={-1} className={`${styles.popover}${tight ? ` ${styles.popoverTight}` : ""}`} style={{ width: position?.width ?? clamped, ...placed(position) }}>
         {children}
       </div>
     </Portal>

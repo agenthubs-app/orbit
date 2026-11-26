@@ -332,20 +332,44 @@ const field = (root: ReactTestRenderer, id: string) => root.root.findAll(node =>
 const output = (root: ReactTestRenderer) => JSON.stringify(root.toJSON());
 test("a migrated account completes just its missing basics and goes back to the event", async (t) => {
   const assignments = stubWindow(t, new Map());
+  for (const [name, value] of Object.entries({
+    document: { activeElement: null, addEventListener() {}, removeEventListener() {} },
+    requestAnimationFrame: () => 0,
+    cancelAnimationFrame() {},
+  })) {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, name);
+    Object.defineProperty(globalThis, name, { configurable: true, value });
+    t.after(() => {
+      if (previous) Object.defineProperty(globalThis, name, previous);
+      else Reflect.deleteProperty(globalThis, name);
+    });
+  }
   const api = stubProfileApi(t, "已有目标", {
     legacyRepair: true, assumeComplete: false, displayName: "", primaryIndustryId: "technology_internet",
     bio: "已有简介", organization: "已有公司", handles: { email: "legacy@example.test", wechatId: "existing" },
   }, 3);
   const target = "/app/events/event-a?from=mine";
-  const root = await mountFlow("u-legacy-repair", target);
+  let root!: ReactTestRenderer;
+  await act(async () => {
+    root = create(<OnboardingFlow actorKey="u-legacy-repair" cardScanAvailable next={target} todayIso="2026-09-28" />);
+  });
+  await settleFlow();
   assert.match(output(root), /补齐基本资料/);
   assert.match(textOf(nextButton(root)), /保存并继续/);
-  assert.equal(field(root, "onb-industry")?.props.value, "technology_internet");
+  assert.equal(field(root, "onb-industry")?.type, "button");
+  assert.match(textOf(field(root, "onb-industry")!), /科技与互联网/);
   assert.equal(field(root, "onb-email"), undefined);
   assert.equal(field(root, "onb-company"), undefined);
   assert.doesNotMatch(output(root), /目标与强项|扫码|把名片图片拖到这里/);
   await act(async () => { field(root, "onb-name")!.props.onChange({ target: { value: "林晓" } }); });
-  await act(async () => { field(root, "onb-industry-detail")!.props.onChange({ target: { value: "technology_internet.ai_data" } }); });
+  await click(root, field(root, "onb-industry-detail")!);
+  assert.equal(field(root, "onb-industry-detail")?.props["aria-expanded"], true);
+  await click(root, button(root, "人工智能与数据"));
+  assert.match(textOf(field(root, "onb-industry-detail")!), /人工智能与数据/);
+  assert.equal(field(root, "onb-industry-detail")?.props["aria-expanded"], false);
+  await click(root, field(root, "onb-industry")!);
+  await click(root, button(root, "科技与互联网"));
+  assert.match(textOf(field(root, "onb-industry-detail")!), /人工智能与数据/);
   await click(root, nextButton(root));
   const writes = api.puts.map(({ expectedUpdatedAt, mutationId, ...fields }) => fields);
   assert.deepEqual(writes, [{ displayName: "林晓", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" }]);
