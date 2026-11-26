@@ -4,7 +4,7 @@
  * - 数字：来自参加者私人记录的（会後フォロー、名刺交換、立場分布）按 §2.9 做 <5 抑制与差分保护。
  * - 不调付费 AI（编组生成走现有 event-ops worker，与之前相同）；不发自由文本通知。
  */
-import { joinCoverage, joinCoverageSqlParams, joinFilledItems } from "../../../shared/domain/join-coverage";
+import { JOIN_COVERAGE_ITEMS, joinCoverage, joinCoverageSqlParams, joinFilledItems, type JoinCoverageItem } from "../../../shared/domain/join-coverage";
 import { randomUUID } from "node:crypto";
 
 import { hostNextSteps, hostTodoItems, type HostTodoEventFacts } from "../../../shared/compute/host-todo";
@@ -69,6 +69,17 @@ function statusOf(facts: HostEventFacts, now: Date): HostEventStatus {
   if (Number.isFinite(end) && now.getTime() >= end) return "ended";
   if (Number.isFinite(start) && now.getTime() >= start) return "live";
   return "upcoming";
+}
+
+/** 参加者詳細の完整度：一覧（profileScore）と同じ数字 + 埋まっていない項目。 */
+export function personCoverage(found: { answers: Record<string, string>; hostAnswers: Readonly<Record<string, string>>; answeredFields: readonly string[] | null }): { profileScore: number; missing: JoinCoverageItem[] } {
+  const hostIds = Object.keys(found.hostAnswers).filter((id) => (found.hostAnswers[id] ?? "").trim());
+  const fields = found.answeredFields ?? Object.keys(found.answers).filter((key) => (found.answers[key] ?? "").trim());
+  const filled = joinFilledItems({ fields, hostQuestionIds: hostIds });
+  const score = found.answeredFields && found.answeredFields.length
+    ? joinCoverage(filled)
+    : profileScore({ answers: found.answers }, found.hostAnswers);
+  return { missing: score >= 100 ? [] : JOIN_COVERAGE_ITEMS.filter((item) => !filled.has(item)), profileScore: score };
 }
 
 /**
@@ -569,6 +580,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
         actorId: subjectActorId, attendCount: found.attendCount, checkedInAt: found.checkedInAt, eventId, hostAnswers, initial: name.charAt(0), matching, name,
         needs: list(p.needs), offers: list(p.offers), org, profile, receptionNumber: found.receptionNumber, role, source: fromApplication ? "application" : "member",
         status, submittedAt: found.submittedAt, topics: list(p.topics),
+        ...personCoverage(found), intro: found.intro, applicationVersion: found.applicationVersion,
       };
     },
     async decide(actorId, eventId, applicantActorId, input) {

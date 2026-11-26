@@ -252,6 +252,13 @@ export interface HostPersonResponse {
   needs: readonly string[];
   /** null = 見る権限なし；published=false = まだ公開していない。 */
   matching: { published: boolean; tables: readonly HostPersonTable[]; recommendations: readonly HostPersonRecommendation[] } | null;
+  /** 2026-11-26（b13 HM-P6）：一覧と同じ完整度 0–100 と、埋まっていない項目（company / purpose / topics / target / offer）。 */
+  profileScore?: number;
+  missing?: readonly ("company" | "purpose" | "topics" | "target" | "offer")[];
+  /** この回の自己紹介（参加登録の確認画面で書いたもの）。 */
+  intro?: string | null;
+  /** 決定に使う申込の版（申込なし = null）。 */
+  applicationVersion?: number | null;
   sample?: true;
 }
 

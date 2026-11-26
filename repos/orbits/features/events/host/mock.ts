@@ -209,7 +209,8 @@ export function createHostMockService(): HostService {
     async person(_actor, eventId, subjectActorId) {
       const view = hostPerson(eventId, subjectActorId, m().state);
       if (!view) throw new HostError("NOT_FOUND");
-      return view;
+      // 示例名单都是審査待ち；在示例里决定过的人照决定显示（详情底部的决定按钮跟着变）。
+      return { ...view, status: m().decisions.get(eventId)?.get(subjectActorId) ?? "pending" };
     },
     async decide(_actor, eventId, applicantActorId, input) {
       const view = hostPeople(eventId, "pending", { decided: m().decisions.get(eventId) }, m().state);

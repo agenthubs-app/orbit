@@ -43,7 +43,7 @@ test("the four people buckets scroll inside their 390px card", async () => {
   } finally { await browser.close(); }
 });
 
-test("phone rows: 承認 plus ⋯ with 待ち / 見送り, all inside 390 (2026-11-26)", async () => {
+test("phone (b13 HM-P1–P3): swipe reveals 待ち / 見送り, 選択 enters selection with a bottom bar, all inside 390", async () => {
   const code = await bundle(`
     import React from "react";
     import { createRoot } from "react-dom/client";
@@ -53,25 +53,44 @@ test("phone rows: 承認 plus ⋯ with 待ち / 見送り, all inside 390 (2026-
     import { HOST_EVENT_IDS, hostPeople } from "./shared/mock/demo-world/host-events";
     const data = hostPeople(HOST_EVENT_IDS.roundtable, "pending");
     window.decided = [];
-    createRoot(document.getElementById("root")).render(<Orbit2026Scope language="ja">
-      <div style={{width:390,padding:"0 18px",boxSizing:"border-box"}}>
-        <HostPeopleView phone language="ja" data={data} t={hostTranslator("ja")} rows={data.rows} query={{bucket:"pending",incomplete:false,q:""}} selected={new Set()}
-          onDecide={(row, decision) => window.decided.push([row.actorId, decision])} />
-      </div>
-    </Orbit2026Scope>);
+    function App() {
+      const [selecting, setSelecting] = React.useState(false);
+      const [selected, setSelected] = React.useState(new Set());
+      return <Orbit2026Scope language="ja">
+        <div style={{width:390,padding:"0 18px",boxSizing:"border-box"}}>
+          <HostPeopleView phone language="ja" data={data} t={hostTranslator("ja")} rows={data.rows} query={{bucket:"pending",incomplete:false,q:""}}
+            selected={selected} selecting={selecting} onSelecting={(on) => { setSelecting(on); if (!on) setSelected(new Set()); }}
+            onSelect={(id) => setSelected((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; })}
+            onDecide={(row, decision) => window.decided.push([row.actorId, decision])} onBulk={(decision) => window.decided.push(["bulk", decision])} />
+        </div>
+      </Orbit2026Scope>;
+    }
+    createRoot(document.getElementById("root")).render(<App />);
   `);
   const browser = await launch();
   try {
     const page = await open(browser, code, { width: 390 });
     try {
-      const more = page.locator("[data-host-row-more]").first();
-      await more.waitFor();
+      const face = page.locator("[data-host-row]").first();
+      await face.waitFor();
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 390);
-      await more.click();
-      await page.getByRole("menuitem", { name: "見送り" }).click();
-      const decided = await page.evaluate(() => (window as unknown as { decided: unknown[] }).decided);
-      assert.equal(decided.length, 1);
-      assert.equal((decided[0] as string[])[1], "reject");
+      // 左滑（鼠标拖动同一套 pointer 事件）。
+      const box = (await face.boundingBox())!;
+      await page.mouse.move(box.x + box.width - 40, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width - 140, box.y + box.height / 2, { steps: 8 });
+      await page.mouse.move(box.x + box.width - 220, box.y + box.height / 2, { steps: 8 });
+      await page.mouse.up();
+      assert.equal(await face.getAttribute("data-open"), "true");
+      await face.getByRole("button", { name: /見送りにする/ }).click();
+      const decided = await page.evaluate(() => (window as unknown as { decided: string[][] }).decided);
+      assert.deepEqual(decided[0]![1], "reject");
+      // 選択 → 勾一个 → 底部条批准。
+      await page.locator("[data-host-select]").click();
+      await page.getByRole("checkbox").first().click();
+      await page.locator("[data-host-bulk] button").first().click();
+      const after = await page.evaluate(() => (window as unknown as { decided: string[][] }).decided);
+      assert.deepEqual(after[1], ["bulk", "approve"]);
       assert.deepEqual(errorsOf(page), []);
     } finally { await page.close(); }
   } finally { await browser.close(); }

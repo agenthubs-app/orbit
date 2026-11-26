@@ -1,5 +1,5 @@
 {
- "_note": "R17 主催 Web（PLANNER 像素 SC P01–P33；b12 #396–#475 待用户过目 §38，不进本清单；例外：2026-11-26 主办方手机端按画板实现后，W-R17-01/60/61/63-390（#460/#462/#464/#466 浅色）进清单）。mock 服务器 orbits-r17（:3017，distDir .next-r17，ORBIT_REDESIGN_MOCK 含 host-operations）。每张先切 host 变体（views 的 host 字段）：node features/events/design-fixtures/switch.mjs --origin http://localhost:3017 --storage ~/orbit-sprint-evidence/redesign/.auth/qa@orbit.test.json --host '<host 字段 JSON>'，再 --only <id>。变体是服务端全局状态，不同变体的画面不要并行跑。",
+ "_note": "R17 主催 Web（PLANNER 像素 SC P01–P33；b12 #396–#475 待用户过目 §38，不进本清单；例外：2026-11-26 主办方手机端按画板实现后，W-R17-01/60/61-390（#460/#462/#464 浅色）进清单；参加者 / マッチング / 申込設定 / レポート / 受付 的手机画面改用 b13-host-mobile.html（HM-*，2026-11-26 用户定：手机上也能办完））。mock 服务器 orbits-r17（:3017，distDir .next-r17，ORBIT_REDESIGN_MOCK 含 host-operations）。每张先切 host 变体（views 的 host 字段）：node features/events/design-fixtures/switch.mjs --origin http://localhost:3017 --storage ~/orbit-sprint-evidence/redesign/.auth/qa@orbit.test.json --host '<host 字段 JSON>'，再 --only <id>。变体是服务端全局状态，不同变体的画面不要并行跑。",
  "defaults": {
   "app-origin": "http://localhost:3017",
   "login": "qa@orbit.test",
@@ -532,16 +532,66 @@
    "note": "W-R17-61-390 イベント運営 · 概要 · 手机（b12 #464，CFO18 開催中）"
   },
   {
-   "id": "W-R17-63-390",
+   "id": "HM-P1",
    "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
-   "design": "b12-missing-states.html",
-   "board-index": 466,
+   "design": "b13-host-mobile.html",
+   "board-index": 0,
    "width": 390,
    "themes": [
     "light"
    ],
-   "wait-for": "[data-host-people-phone]",
-   "note": "W-R17-63-390 参加者 · 手机（b12 #466，CFO18 審査待ち；卡片行 + 承認，批量在 PC）"
+   "wait-for": "[data-host-people-phone] [data-host-row]",
+   "note": "HM-P1 参加者 · 審査待ち（b13 #0，CFO18）"
+  },
+  {
+   "id": "HM-P3",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
+   "design": "b13-host-mobile.html",
+   "board-index": 2,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-people-phone] [data-host-row]",
+   "click": [
+    "[data-host-select]",
+    "[data-host-row]:nth-child(2) [role=checkbox]",
+    "[data-host-row]:nth-child(4) [role=checkbox]",
+    "[data-host-row]:nth-child(5) [role=checkbox]"
+   ],
+   "note": "HM-P3 参加者 · 选择模式（b13 #2；勾第 2 / 4 / 5 行）"
+  },
+  {
+   "id": "HM-P6",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
+   "design": "b13-host-mobile.html",
+   "board-index": 5,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-people-phone] [data-host-row]",
+   "click": [
+    "[data-host-row]:nth-child(3) [data-host-who]"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-person-decide]"
+    }
+   ],
+   "note": "HM-P6 参加者 · 详情（b13 #5；第 3 行）"
+  },
+  {
+   "id": "HM-P7",
+   "app": "/app/events/demo-host-mfg-asakai-3/operations?tab=people",
+   "design": "b13-host-mobile.html",
+   "board-index": 7,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-people=empty]",
+   "note": "HM-P7 参加者 · 空（b13 #7，朝会 #3）"
   }
  ]
 }

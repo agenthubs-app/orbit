@@ -10,7 +10,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { HostAdmissionDecision, HostPeopleBucket, HostPeopleResponse, HostPeopleRow } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { InviteQr } from "../add/invite/InviteQr";
-import { Avatar, ContextMenu, Icon, Modal, Segmented, useToast } from "../ui";
+import { Avatar, ConfirmDialog, Icon, Modal, Segmented, useToast } from "../ui";
+import { HostPeoplePhone, HostPeoplePhoneEmpty } from "./HostPeoplePhone";
 import { failureOf, hostApi, type HostPeopleQuery } from "./host-api";
 import { HostPersonDrawer } from "./HostPersonDrawer";
 import { consoleHref, hostTranslator, type HostT } from "./host-model";
@@ -48,7 +49,7 @@ export type HostPeopleViewProps = {
   t: HostT;
   /** 题库题的题面・回答按这个语言显示（主办方自己写的保持原文）。 */
   language?: OrbitLanguage;
-  /** < 768：画板 W-R17-63-390 的卡片行（承認だけ；まとめて審査・見送りは PC）。 */
+  /** < 768：b13 HM-P1–P9（行尾承認・左滑 待ち / 見送り・长按多选 + 底部操作条）。 */
   phone?: boolean;
   rows: readonly HostPeopleRow[];
   query: HostPeopleQuery;
@@ -71,6 +72,10 @@ export type HostPeopleViewProps = {
   onCopyLink?: () => void;
   onQr?: () => void;
   onImport?: () => void;
+  /** < 768 选择模式（b13 HM-P3）。 */
+  selecting?: boolean;
+  onSelecting?: (on: boolean) => void;
+  onClearSearch?: () => void;
 };
 
 /** 「質問 3問 · 審査制」。 */
@@ -83,27 +88,12 @@ export function peopleIsEmpty(data: HostPeopleResponse): boolean {
   return data.counts.pending + data.counts.approved + data.counts.waitlisted + data.counts.rejected === 0;
 }
 
-/** < 768：单条 候补 / 婉拒 放进行尾「⋯」（2026-11-26 用户定：手机上也要能处理，不只承認）。 */
-function PhoneRowMore({ row, t, busy, waitlisted, onDecide }: { row: HostPeopleRow; t: HostT; busy: boolean; waitlisted: boolean; onDecide?: (row: HostPeopleRow, decision: HostAdmissionDecision) => void }) {
-  const ref = useRef<HTMLButtonElement | null>(null);
-  const [open, setOpen] = useState(false);
-  const items = [
-    ...(waitlisted ? [] : [{ key: "waitlist", label: t("pWait"), onSelect: () => onDecide?.(row, "waitlist") }]),
-    { key: "reject", label: t("pReject"), destructive: true, onSelect: () => onDecide?.(row, "reject") },
-  ];
-  return (
-    <>
-      <button ref={ref} type="button" className={`btn ${m.lbtn}`} disabled={busy} aria-label={t("pRowMore", { name: row.name })} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(true)} data-host-row-more=""><Icon name="more" size={16} /></button>
-      {open ? <ContextMenu open onClose={() => setOpen(false)} anchor={ref} label={t("pRowMore", { name: row.name })} items={items} /> : null}
-    </>
-  );
-}
-
 export function HostPeopleView(props: HostPeopleViewProps) {
   const { data, t, rows, query, selected, issues = new Map<string, RowIssue>(), busy = false, origin = "" } = props;
   const eventId = data.event.eventId;
   if (peopleIsEmpty(data) && !query.q && !query.incomplete) {
     const link = data.applyPath ? `${origin}${data.applyPath}` : null;
+    if (props.phone) return <HostPeoplePhoneEmpty t={t} link={link} eventId={eventId} setupSummary={setupSummary(data, t)} onCopyLink={props.onCopyLink} onQr={props.onQr} onImport={props.onImport} />;
     return (
       <>
         <div className={`${s.card} ${s.span8} ${s.guide} ${m.emptyCard}`} data-host-people="empty">
@@ -143,40 +133,7 @@ export function HostPeopleView(props: HostPeopleViewProps) {
   const answerHead = label ? t("pColAnswer", { q: label.length > 20 ? `${label.slice(0, 20)}…` : label }) : t("pColAnswerPlain");
   const answerOf = (row: HostPeopleRow) => (row.answer ? localizeLibraryAnswerText(row.answer, language) : null);
   if (props.phone) {
-    return (
-      <div className={m.phoneCol} data-host-people={query.bucket} data-host-people-phone="">
-        <Segmented variant="seg" className={`${s.peopleSeg} ${m.phoneSeg}`} label={t("pBuckets")} value={query.bucket} onChange={(bucket) => props.onBucket?.(bucket)} segments={BUCKETS.map((bucket) => ({ key: bucket, label: t(BUCKET_LABEL[bucket], { n: data.counts[bucket] }) }))} />
-        <div className={`${s.row} ${m.phoneTools}`}>
-          <label className={`${m.input} ${m.searchSm}`}><Icon name="search" size={16} /><input type="search" aria-label={t("pSearch")} placeholder={t("pSearchPh")} defaultValue={query.q} onChange={(event) => props.onSearch?.(event.target.value)} /></label>
-          <button type="button" className={`btn ${s.btn} ${s.sm} ${query.incomplete ? m.filterOn : ""}`} aria-pressed={query.incomplete} onClick={props.onIncomplete}><Icon name="filter" size={16} />{t("pIncomplete")}</button>
-        </div>
-        <div className={`${s.card} ${m.phoneList}`}>
-          {props.loading ? [0, 1, 2].map((key) => <div key={key} className={`${m.phoneRow} ${m.ghostRow}`} aria-hidden><i /></div>) : rows.map((row) => {
-            const issue = issues.get(row.actorId);
-            const line = row.org || row.role; // 画板 W-R17-63-390 只列公司；没有公司时用职位
-            const answer = answerOf(row);
-            return (
-              <div key={row.actorId} className={m.phoneRow} data-host-row={row.actorId} data-issue={issue}>
-                <button type="button" className={`btn ${m.phoneWho}`} aria-label={t("pdOpen", { name: row.name })} onClick={() => props.onOpen?.(row)}>
-                  <Avatar name={row.name} size="sm" />
-                  <span className={m.phoneMeta}>
-                    <b className={s.clamp1}>{row.name}</b>
-                    {line ? <span className={`${s.lbl} ${s.clamp1}`}>{line}</span> : null}
-                    {answer ? <span className={`${m.phoneAnswer} ${s.clamp1}`}>{answer}</span> : null}
-                    {issue ? <span className={m.rowNote} role="status">{issue === "conflict" ? t("pRowConflict") : t("pRowFailed")}</span> : null}
-                  </span>
-                </button>
-                {decidable ? <PhoneRowMore row={row} t={t} busy={busy} waitlisted={query.bucket === "waitlisted"} onDecide={props.onDecide} /> : null}
-                {decidable ? <button type="button" className={`btn ${s.btn} ${s.sm} ${s.primary}`} disabled={busy} onClick={() => props.onDecide?.(row, "approve")}>{t("pApprove")}</button> : null}
-              </div>
-            );
-          })}
-          {rows.length === 0 && !props.loading ? <div className={s.empty}>{query.q || query.incomplete ? t("pNoMatch") : t("pNone")}</div> : null}
-        </div>
-        {data.more > 0 && data.nextCursor ? <div className={`${s.row} ${m.moreRow}`}><button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={busy} onClick={props.onMore}>{t("pMore", { n: data.more })}</button></div> : null}
-        {decidable ? <div className={`${s.lbl} ${m.phoneFoot}`}>{t("pPhonePc")}</div> : null}
-      </div>
-    );
+    return <HostPeoplePhone {...props} selecting={props.selecting ?? false} onSelecting={props.onSelecting ?? (() => undefined)} answerOf={answerOf} />;
   }
   return (
     <>
@@ -302,7 +259,10 @@ export function HostPeopleTab({ eventId, language, initialIncomplete = false, on
   const [issues, setIssues] = useState<Map<string, RowIssue>>(new Map());
   const [origin, setOrigin] = useState("");
   const [dialog, setDialog] = useState<"qr" | "import" | null>(null);
-  const [open, setOpen] = useState<{ actorId: string; name: string } | null>(null);
+  const [open, setOpen] = useState<HostPeopleRow | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  // 見送り は通知が飛び取り消せないので、単条・批量・详情とも先に確認（b13 HM-P4 / P6b，电脑版同步）。
+  const [rejecting, setRejecting] = useState<readonly HostPeopleRow[] | null>(null);
 
   useEffect(() => { setOrigin(window.location.host); }, []);
 
@@ -324,7 +284,7 @@ export function HostPeopleTab({ eventId, language, initialIncomplete = false, on
   }, [load, query]);
 
   // 切换区分时先清空行（显示占位），不让上一个区分的行带着勾选框和审核按钮闪一下。
-  const change = (patch: Partial<HostPeopleQuery>) => { setSelected(new Set()); setIssues(new Map()); if (patch.bucket !== undefined && patch.bucket !== query.bucket) setRows([]); setQuery((prev) => ({ ...prev, ...patch, cursor: null })); };
+  const change = (patch: Partial<HostPeopleQuery>) => { setSelected(new Set()); setIssues(new Map()); if (patch.bucket !== undefined && patch.bucket !== query.bucket) setSelecting(false); if (patch.bucket !== undefined && patch.bucket !== query.bucket) setRows([]); setQuery((prev) => ({ ...prev, ...patch, cursor: null })); };
 
   const more = async () => {
     if (!data?.nextCursor) return;
@@ -353,6 +313,13 @@ export function HostPeopleTab({ eventId, language, initialIncomplete = false, on
     else if ([...failedRows.values()].every((issue) => issue === "conflict") && ok === 0) toast.error(t("conflictFirst"));
     else toast.error(t("pBulkPartial", { ng: failedRows.size, ok }));
     if (ok > 0) onChanged?.();
+    if (failedRows.size === 0) setSelecting(false);
+  };
+  /** 見送り だけ先に確認を挟む。 */
+  const request = (targets: readonly HostPeopleRow[], decision: HostAdmissionDecision) => {
+    if (!targets.length) return;
+    if (decision === "reject") setRejecting(targets);
+    else void decide(targets, decision);
   };
 
   const copyLink = async () => {
@@ -374,14 +341,17 @@ export function HostPeopleTab({ eventId, language, initialIncomplete = false, on
   return (
     <>
       <HostPeopleView data={data} t={t} language={language} phone={phone} rows={visibleRows} query={query} selected={selected} issues={issues} busy={busy} origin={origin} loading={data.bucket !== query.bucket}
-        onOpen={(row) => setOpen({ actorId: row.actorId, name: row.name })}
+        selecting={selecting}
+        onSelecting={(on) => { setSelecting(on); if (!on) { setSelected(new Set()); setIssues(new Map()); } }}
+        onClearSearch={() => change({ q: "" })}
+        onOpen={(row) => setOpen(row)}
         onBucket={(bucket) => change({ bucket })}
         onSearch={(q) => change({ q })}
         onIncomplete={() => change({ incomplete: !query.incomplete })}
         onSelect={(actorId) => setSelected((prev) => { const next = new Set(prev); if (next.has(actorId)) next.delete(actorId); else next.add(actorId); return next; })}
         onSelectAll={() => setSelected((prev) => (rows.every((row) => prev.has(row.actorId)) ? new Set() : new Set(rows.map((row) => row.actorId))))}
-        onDecide={(row, decision) => void decide([row], decision)}
-        onBulk={(decision) => void decide(rows.filter((row) => selected.has(row.actorId)), decision)}
+        onDecide={(row, decision) => request([row], decision)}
+        onBulk={(decision) => request(rows.filter((row) => selected.has(row.actorId)), decision)}
         onMore={() => void more()}
         onCopyLink={() => void copyLink()}
         onQr={() => setDialog("qr")}
@@ -392,7 +362,14 @@ export function HostPeopleTab({ eventId, language, initialIncomplete = false, on
           <div className={m.qrBox}><InviteQr text={`${window.location.origin}${data.applyPath}`} label={t("pQrTitle")} /></div>
         </Modal>
       ) : null}
-      {open ? <HostPersonDrawer eventId={eventId} actorId={open.actorId} name={open.name} language={language} onClose={() => setOpen(null)} /> : null}
+      {open ? <HostPersonDrawer eventId={eventId} actorId={open.actorId} name={open.name} language={language} phone={phone} busy={busy} onClose={() => setOpen(null)}
+        onDecide={(query.bucket === "pending" || query.bucket === "waitlisted") ? (decision) => { const row = open; if (decision !== "reject") setOpen(null); request([row], decision); } : undefined} /> : null}
+      {rejecting ? (
+        <ConfirmDialog open emoji="✉️" title={rejecting.length === 1 ? t("pRejectTitleOne", { name: rejecting[0]!.name }) : t("pRejectTitleMany", { n: rejecting.length })} message={t("pRejectBody")}
+          confirmLabel={t("pRejectConfirm")} cancelLabel={t("pRejectKeep")} destructive
+          onCancel={() => setRejecting(null)}
+          onConfirm={() => { const targets = rejecting; setRejecting(null); setOpen(null); void decide(targets, "reject"); }} />
+      ) : null}
       {dialog === "import" ? (
         <Modal open onClose={() => setDialog(null)} title={t("pImport")} size={480} description={t("pImportBody")} hint={t("pImportSoon")} actions={<button type="button" className={`btn ${s.btn}`} onClick={() => setDialog(null)}>{t("close")}</button>} />
       ) : null}

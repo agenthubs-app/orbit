@@ -9,10 +9,11 @@
  */
 import { useEffect, useMemo, useState } from "react";
 
-import type { HostPersonResponse } from "../../../../../shared/contract/host-console";
+import type { HostAdmissionDecision, HostPersonResponse } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { localizeLibraryAnswerText, localizeLibraryPrompt } from "../../../../../shared/domain/host-question-library";
-import { Avatar, Drawer } from "../ui";
+import { Avatar, BottomSheet, Drawer, Icon } from "../ui";
+import { ScoreRing } from "./HostPeople";
 import { hostApi } from "./host-api";
 import { hostDateShort, hostTime, hostTranslator, type HostT } from "./host-model";
 import type { HostCopyKey } from "../copy/host";
@@ -21,7 +22,7 @@ import pd from "./person.module.css";
 
 const RECS_FIRST = 5;
 
-export function HostPersonView({ data, t, language }: { data: HostPersonResponse; t: HostT; language?: OrbitLanguage }) {
+export function HostPersonView({ data, t, language, phone = false, onClose }: { data: HostPersonResponse; t: HostT; language?: OrbitLanguage; /** < 768 底部抽屉（b13 HM-P6）：头部自带名字与 ✕，问答放灰卡。 */ phone?: boolean; onClose?: () => void }) {
   const [allRecs, setAllRecs] = useState(false);
   const meta = [
     data.checkedInAt ? t("pdCheckedIn", { time: hostTime(data.checkedInAt) }) : null,
@@ -33,8 +34,22 @@ export function HostPersonView({ data, t, language }: { data: HostPersonResponse
   const shownRecs = allRecs ? recs : recs.slice(0, RECS_FIRST);
   const chips = ([["pdTopics", data.topics], ["pdOffers", data.offers], ["pdNeeds", data.needs]] as const).filter(([, items]) => items.length > 0);
   return (
-    <div className={pd.body} data-host-person={data.actorId}>
-      <div className={`${s.row} ${pd.head}`}>
+    <div className={`${pd.body} ${phone ? pd.phone : ""}`} data-host-person={data.actorId}>
+      {phone ? (
+        <div className={pd.pHead}>
+          <Avatar name={data.name} size="lg" />
+          <div className={s.grow}>
+            <b className={pd.pName}>{data.name}</b>
+            {data.org || data.role ? <div className={s.lbl}>{[data.org, data.role].filter(Boolean).join(" · ")}</div> : null}
+            <div className={pd.pChips}>
+              <span className={`${pd.status} ${pd[`st_${data.status}`] ?? ""}`}>{t(`pdStatus_${data.status}` as HostCopyKey)}</span>
+              {meta.map((item) => <span key={item} className={pd.status}>{item}</span>)}
+            </div>
+          </div>
+          <button type="button" className={`btn ${pd.pClose}`} aria-label={t("close")} onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+      ) : null}
+      <div className={`${s.row} ${pd.head} ${phone ? pd.hidden : ""}`}>
         <Avatar name={data.name} size="lg" />
         <div className={s.minw0}>
           {/* 名字是抽屉标题，这里不再重复。 */}
@@ -46,10 +61,29 @@ export function HostPersonView({ data, t, language }: { data: HostPersonResponse
         </div>
       </div>
 
+      {data.profileScore != null ? (
+        <div className={pd.cmp} data-host-person-score={data.profileScore}>
+          <ScoreRing value={data.profileScore / 100} size={44} stroke={5} color={data.profileScore < 50 ? "var(--coral)" : "var(--plum-500)"} label={t("pProfileScore", { n: data.profileScore })}>
+            <b className={pd.cmpN}>{data.profileScore}</b>
+          </ScoreRing>
+          <div className={s.minw0}>
+            <b className={pd.cmpT}>{t("pdScore", { n: data.profileScore })}</b>
+            <div className={s.lbl}>{data.missing?.length ? t("pdMissing", { items: data.missing.map((item) => t(`cov_${item}` as HostCopyKey)).join(t("listSep")) }) : t("pdComplete")}</div>
+          </div>
+        </div>
+      ) : null}
+
       {data.hostAnswers.length ? (
         <section className={pd.section}>
           <h3 className={pd.h}>{t("pdHostAnswers")}</h3>
           <dl className={pd.qa}>{data.hostAnswers.map((item, index) => <div key={index}><dt>{language ? localizeLibraryPrompt(item.label, language) : item.label}</dt><dd>{language ? localizeLibraryAnswerText(item.value, language) : item.value}</dd></div>)}</dl>
+        </section>
+      ) : null}
+
+      {data.intro ? (
+        <section className={pd.section} data-host-person-intro="">
+          <h3 className={pd.h}>{t("pdIntro")}</h3>
+          <div className={pd.intro}>{data.intro}</div>
         </section>
       ) : null}
 
@@ -108,11 +142,16 @@ export function HostPersonView({ data, t, language }: { data: HostPersonResponse
           ) : null}
         </section>
       ) : null}
+      {phone && (data.status === "pending" || data.status === "waitlisted") ? <div className={`${s.lbl} ${pd.decideNote}`}>{t("pdDecideNote")}</div> : null}
     </div>
   );
 }
 
-export function HostPersonDrawer({ eventId, actorId, name, language, onClose }: { eventId: string; actorId: string; name: string; language: OrbitLanguage; onClose: () => void }) {
+export function HostPersonDrawer({ eventId, actorId, name, language, phone = false, busy = false, onClose, onDecide }: {
+  eventId: string; actorId: string; name: string; language: OrbitLanguage; phone?: boolean; busy?: boolean; onClose: () => void;
+  /** 審査待ち / キャンセル待ち の人：底部で 承認 / 待ち / 見送り（b13 HM-P6，电脑版同步）。見送り の確認は呼び出し側。 */
+  onDecide?: (decision: HostAdmissionDecision) => void;
+}) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const [data, setData] = useState<HostPersonResponse | null>(null);
   const [failed, setFailed] = useState(false);
@@ -123,11 +162,33 @@ export function HostPersonDrawer({ eventId, actorId, name, language, onClose }: 
     void hostApi.person(eventId, actorId).then((res) => { if (!alive) return; if (res.ok) setData(res.data); else setFailed(true); });
     return () => { alive = false; };
   }, [eventId, actorId]);
+  const acts = onDecide && data && (data.status === "pending" || data.status === "waitlisted") ? (
+    <div className={pd.decideActs}>
+      <button type="button" className={`btn ${s.btn} ${pd.ctext}`} disabled={busy} onClick={() => onDecide("reject")}>{t("pReject")}</button>
+      {data.status !== "waitlisted" ? <button type="button" className={`btn ${s.btn}`} disabled={busy} onClick={() => onDecide("waitlist")}>{t("pWait")}</button> : null}
+      <button type="button" className={`btn ${s.btn} ${s.primary} ${pd.approve}`} disabled={busy} onClick={() => onDecide("approve")}><Icon name="check" size={16} />{t("pApprove")}</button>
+    </div>
+  ) : null;
+  const content = data ? <HostPersonView data={data} t={t} language={language} phone={phone} onClose={onClose} />
+    : failed ? <div className={s.empty}>{t("loadError")}</div>
+      : <div className={pd.loading} aria-busy="true"><i /><i /><i /></div>;
+  if (phone) {
+    return (
+      <BottomSheet open onClose={onClose} label={data?.name ?? name} className={pd.psheet}>
+        <div className={pd.psBody}>{content}</div>
+        {acts ? <div className={pd.psFoot} data-host-person-decide="">{acts}</div> : null}
+      </BottomSheet>
+    );
+  }
   return (
-    <Drawer open onClose={onClose} title={data?.name ?? name} size="md">
-      {data ? <HostPersonView data={data} t={t} language={language} />
-        : failed ? <div className={s.empty}>{t("loadError")}</div>
-          : <div className={pd.loading} aria-busy="true"><i /><i /><i /></div>}
+    <Drawer open onClose={onClose} title={data?.name ?? name} size="md"
+      footer={acts ? (
+        <div className={pd.decide} data-host-person-decide="">
+          <div className={`${s.lbl} ${pd.decideNote}`}>{t("pdDecideNote")}</div>
+          {acts}
+        </div>
+      ) : undefined}>
+      {content}
     </Drawer>
   );
 }

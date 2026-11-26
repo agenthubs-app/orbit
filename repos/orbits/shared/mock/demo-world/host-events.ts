@@ -441,6 +441,9 @@ export function hostPerson(eventId: string, actorId: string, state: HostMockStat
     name: row.name, needs: ["投資家の紹介", "監査法人選びの経験"], offers: ["SaaS の財務モデル"], org: row.org,
     profile: [{ label: "positioning", value: `${row.role ?? ""} @ ${row.org ?? ""}` }, { label: "desiredOutcome", value: applicant.answer }],
     receptionNumber: null, role: row.role, sample: true, source: "application", status: "approved", submittedAt: "2026-09-28T03:12:00.000Z", topics: ["資本政策", "IPO 準備"],
+    // b13 HM-P6（2026-11-26）：完整度・未入力項目・自己紹介・申込の版。
+    applicationVersion: row.applicationVersion, intro: `${row.org ?? ""}で${row.role ?? "財務"}を担当しています。${applicant.answer}`.slice(0, 200),
+    missing: row.profileScore >= 100 ? [] : ["target"], profileScore: row.profileScore,
   };
 }
 

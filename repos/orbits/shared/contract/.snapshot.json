@@ -14310,6 +14310,26 @@
           "kind": "text",
           "type": "{ published: boolean; tables: readonly HostPersonTable[]; recommendations: readonly HostPersonRecommendation[]; } | null"
         },
+        "profileScore": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "missing": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly ('company' | 'purpose' | 'topics' | 'target' | 'offer')[]"
+        },
+        "intro": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "applicationVersion": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
         "sample": {
           "optional": true,
           "kind": "text",

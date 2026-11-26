@@ -257,9 +257,11 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
       status: string | null; submittedAt: string | null; applicationName: string | null; answers: Record<string, string>;
       participantId: string | null; memberStatus: string | null; participant: Record<string, unknown>; checkedInAt: string | null; receptionNumber: string | null;
       hostAnswers: Record<string, string>; attendCount: number; profileName: string | null;
+      /** 回答のある訪談字段（申込 → 登録済みの資料の順）。null = 訪談の回答がない（旧形式）。 */
+      answeredFields: string[] | null; intro: string | null; applicationVersion: number | null;
     } | null> {
       const result = await client.query<Row>(
-        `select a.status, a.submitted_at, a.profile_payload ->> 'displayName' as application_name, a.profile_payload -> 'answers' as answers,
+        `select a.status, a.submitted_at, a.application_version::int as application_version, a.profile_payload ->> 'displayName' as application_name, a.profile_payload -> 'answers' as answers,
                 ${profileNameSql("$1", "$3")} as profile_name,
                 m.participant_id, m.status as member_status, c.checked_in_at, r.reception_no,
                 case when v.profile_payload is null then null else jsonb_build_object(
@@ -269,6 +271,10 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
                   'experienceHighlight', v.profile_payload #> '{participant,experienceHighlight}', 'topics', v.profile_payload #> '{participant,topics}',
                   'offers', v.profile_payload #> '{participant,offers}', 'needs', v.profile_payload #> '{participant,needs}') end as participant,
                 (select h.payload -> 'answers' from orbit_records h where h.workspace_id = $1 and h.collection_name = 'eventHostAnswers' and h.user_id = $3 and h.lifecycle_state <> 'deleted' and h.payload ->> 'eventId' = $2 limit 1) as host_answers,
+                (select r.payload ->> 'text' from orbit_records r where r.workspace_id = $1 and r.collection_name = 'eventJoinIntros' and r.user_id = $3 and r.lifecycle_state <> 'deleted' and r.payload ->> 'eventId' = $2 limit 1) as intro,
+                (select case when jsonb_typeof(q.rs) = 'array' and jsonb_array_length(q.rs) > 0
+                          then (select coalesce(jsonb_agg(e ->> 'field'), '[]'::jsonb) from jsonb_array_elements(q.rs) e where coalesce(e #>> '{answer,displayText}', '') <> '') end
+                   from (select coalesce(a.profile_payload -> 'interviewResponses', v.profile_payload #> '{registrationProfile,interviewResponses}') as rs) q) as answered_fields,
                 (select count(*) from event_ops_checkins hc join event_ops_events oe on oe.workspace_id = hc.workspace_id and oe.event_id = hc.event_id
                   where hc.workspace_id = $1 and hc.actor_id = $3 and oe.organizer_actor_id = $4 and hc.event_id <> $2) as attend_count
            from (select $3::text as actor_id) x
@@ -288,6 +294,9 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
         checkedInAt: iso(row.checked_in_at), hostAnswers: strings(obj(row.host_answers)), memberStatus: (row.member_status as string | null) ?? null,
         participant: obj(row.participant), participantId: (row.participant_id as string | null) ?? null, receptionNumber: (row.reception_no as string | null) ?? null,
         status: (row.status as string | null) ?? null, submittedAt: iso(row.submitted_at),
+        answeredFields: Array.isArray(row.answered_fields) ? (row.answered_fields as unknown[]).filter((item): item is string => typeof item === "string") : null,
+        intro: typeof row.intro === "string" && row.intro.trim() ? row.intro.trim().slice(0, 1000) : null,
+        applicationVersion: row.application_version == null ? null : num(row.application_version),
       };
     },
 
