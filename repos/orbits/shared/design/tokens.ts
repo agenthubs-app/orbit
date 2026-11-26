@@ -261,6 +261,7 @@ export const designFont = {
     logo: 17,
     row: 13.5,
     dialogTitle: 16,
+    inputPhone: 16,
     control: 12.5,
     meta: 12,
     micro: 9.5,

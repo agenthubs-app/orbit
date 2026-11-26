@@ -154,7 +154,6 @@
   --fs-logo: 17px;
   --fs-row: 13.5px;
   --fs-dialog-title: 16px;
-  /* 手机网页上可输入控件的最小字号：iOS 聚焦小于 16px 的输入框会自动放大页面。 */
   --fs-input-phone: 16px;
   --fs-control: 12.5px;
   --fs-meta: 12px;
