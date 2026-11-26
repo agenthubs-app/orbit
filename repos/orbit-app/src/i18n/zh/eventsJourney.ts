@@ -190,6 +190,8 @@ export const eventsJourney = {
   "eventsJourney.stRejected": "本次未通过",
   "eventsJourney.stCancelled": "已取消",
   "eventsJourney.goPrep": "去做见面准备",
+  "eventsJourney.ctaPendingNote": "审核中 · 结果会通知你",
+  "eventsJourney.ctaWaitlistedNote": "候补中 · 有空位会通知你",
   "eventsJourney.prepPending": "审核通过后可以做见面准备",
   "eventsJourney.prepUnregistered": "报名后可以做见面准备",
   "eventsJourney.goVenue": "会场模式",

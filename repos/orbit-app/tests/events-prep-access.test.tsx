@@ -50,7 +50,15 @@ test("only a confirmed registration offers 去做见面准备; in review or wait
     const page = await harness.open(t, { screen: "detail", params: { id: eventId }, responses: { [`${path}/overview`]: withStatus(status) } });
     await page.getByTestId("events-detail-cta").waitFor();
     assert.equal(await page.getByRole("button", { name: "去做见面准备", exact: true }).count(), offered, status);
-    if (!offered) await page.getByTestId("events-detail-more").waitFor();
+    const note = page.getByTestId("events-detail-cta-status");
+    if (offered) assert.equal(await note.count(), 0);
+    else {
+      await page.getByTestId("events-detail-more").waitFor();
+      assert.equal(await note.innerText(), status === "waitlisted" ? "候补中 · 有空位会通知你" : "审核中 · 结果会通知你");
+      const [text, more] = [(await note.boundingBox())!, (await page.getByTestId("events-detail-more").boundingBox())!];
+      assert.ok(text.x + text.width <= more.x, "the status sits left of ⋯");
+      assert.equal(await page.getByTestId("events-detail-cta").getByRole("button").count(), 1, "nothing else to tap");
+    }
   }
 });
 

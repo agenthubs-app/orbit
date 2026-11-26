@@ -398,6 +398,8 @@ export function EventDetailPage() {
           <GlassSurface radius={28} style={styles.ctaGlass}>
             {holding ? (
               <>
+                {/* 审核中 / 候补：画板没画这个状态的底栏 → 左侧一行不可点的状态，右侧「⋯」（2026-11-26 主会话定）。 */}
+                {inReview && !ended ? <UiText style={[styles.lbl, styles.ctaStatus]} testID="events-detail-cta-status">{t(status === "waitlisted" ? "ctaWaitlistedNote" : "ctaPendingNote")}</UiText> : null}
                 {ended || attended ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("moreActions")} onPress={() => setMenuOpen(true)} style={styles.lbtn} testID="events-detail-more"><Icon name="more" size={20} color={colors.ink2} /></UiPressable>}
                 {/* 见面准备只给已确定参加的人（审核中 / 候补不显示，同 Web）。 */}
                 {!ended && !attended && status !== "registered" ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t(ended ? "goAfter" : attended ? "goVenue" : "goPrep")} onPress={() => router.push(`${base}/${ended ? "after" : attended ? "live" : "prep"}` as Href)} style={styles.ctaMain}><UiText style={styles.ctaMainText}>{t(ended ? "goAfter" : attended ? "goVenue" : "goPrep")}</UiText></UiPressable>}
@@ -491,6 +493,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   ctabar: { borderRadius: 28, bottom: 26, left: 12, position: "absolute", right: 12 },
   ctaGlass: { alignItems: "center", flexDirection: "row", gap: 8, padding: 8 },
   lbtn: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, height: 46, justifyContent: "center", width: 46 },
+  ctaStatus: { color: colors.ink2, flex: 1, fontSize: 14, fontWeight: "600", paddingLeft: 12 },
   ctaMain: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, flex: 1, height: 46, justifyContent: "center", paddingHorizontal: 16 },
   ctaMainText: { color: colors.bg, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   ctaSecondary: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, height: 46, justifyContent: "center", paddingHorizontal: 18 },

@@ -190,6 +190,8 @@ export const eventsJourney = {
   "eventsJourney.stRejected": "Not this time",
   "eventsJourney.stCancelled": "Cancelled",
   "eventsJourney.goPrep": "Get ready",
+  "eventsJourney.ctaPendingNote": "In review · we'll let you know the result",
+  "eventsJourney.ctaWaitlistedNote": "On the waitlist · we'll tell you if a spot opens",
   "eventsJourney.prepPending": "You can get ready once your application is approved",
   "eventsJourney.prepUnregistered": "Register to get ready for this event",
   "eventsJourney.goVenue": "Venue mode",

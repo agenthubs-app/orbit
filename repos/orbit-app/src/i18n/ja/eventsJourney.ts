@@ -190,6 +190,8 @@ export const eventsJourney = {
   "eventsJourney.stRejected": "今回は見送り",
   "eventsJourney.stCancelled": "取り消し済み",
   "eventsJourney.goPrep": "会う準備へ",
+  "eventsJourney.ctaPendingNote": "審査中 · 結果はお知らせします",
+  "eventsJourney.ctaWaitlistedNote": "キャンセル待ち · 空きが出たらお知らせします",
   "eventsJourney.prepPending": "審査に通ったら会う準備ができます",
   "eventsJourney.prepUnregistered": "参加登録すると会う準備ができます",
   "eventsJourney.goVenue": "会場モード",

@@ -1821,6 +1821,8 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["eventsJourney.stRejected", "label"],
   ["eventsJourney.stCancelled", "label"],
   ["eventsJourney.goPrep", "button"],
+  ["eventsJourney.ctaPendingNote", "label"],
+  ["eventsJourney.ctaWaitlistedNote", "label"],
   ["eventsJourney.prepPending", "label"],
   ["eventsJourney.prepUnregistered", "label"],
   ["eventsJourney.goVenue", "button"],
