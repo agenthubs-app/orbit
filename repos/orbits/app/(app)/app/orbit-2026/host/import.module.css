@@ -20,3 +20,27 @@
 .rules { display: grid; gap: 8px; margin-top: 8px; font-size: var(--fs-control); color: var(--ink-2); line-height: var(--lh-prose); }
 .rule { display: flex; gap: 8px; align-items: flex-start; }
 @media (max-width: 767px) { .stats { grid-template-columns: minmax(0, 1fr); } }
+
+/* < 768 名簿の取り込み（b13 HM-P10 .k-imsum / .k-imlink / .k-imrows）：全屏子页，统计三格并排，行改卡片行。 */
+.phCard.phCard { display: block; margin-top: 14px; padding: 18px; }
+.sum.sum { padding: 14px; margin-top: 0; }
+.pick.pick { margin-top: 0; padding: 18px; }
+.sumHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sumT { min-width: 0; font-size: var(--fs-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.imp3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.imp3 > div { background: var(--surface-2); border-radius: var(--r-tile); padding: 10px 12px; min-width: 0; }
+.imp3 b { display: block; margin-top: 4px; font-family: var(--font-num); font-size: var(--fs-number); font-weight: var(--fw-heavy); white-space: nowrap; }
+.imp3 b small { font-size: var(--fs-caption); color: var(--ink-3); font-weight: var(--fw-bold); margin-left: 2px; }
+.tChip.tChip { padding: 2px 7px; font-size: var(--fs-tab); white-space: nowrap; }
+.phNote { margin-top: 10px; line-height: var(--lh-prose); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.grid2 > :global(.btn) { min-width: 0; }
+.plist.plist { padding: 2px 14px; }
+.prow { display: flex; align-items: center; gap: 10px; padding: 11px 0; }
+.prow + .prow { border-top: 1px solid var(--line); }
+.meta { flex: 1 1 0%; min-width: 0; }
+.meta b { display: block; font-size: var(--fs-body); font-weight: var(--fw-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meta > span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prow > :last-child { flex: none; }
+.phFoot { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.linkOn.linkOn { color: var(--ink); }

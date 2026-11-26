@@ -24,7 +24,8 @@ import sp from "./setup-phone.module.css";
 type Sub = { kind: "q"; index: number } | { kind: "reorder" } | { kind: "desc" } | { kind: "agenda" } | { kind: "contact" } | { kind: "notice" } | null;
 
 /** 盖在页面上的子页（b13 .topbar + 内容 + 可选底部按钮）。 */
-function SubPage({ title, sub, onBack, right, foot, children, testId }: { title: string; sub?: string; onBack?: () => void; right?: ReactNode; foot?: ReactNode; children: ReactNode; testId: string }) {
+/** 全屏子页（b13 .topbar ← 标题 / 副标题）；导入名单也用。 */
+export function SubPage({ title, sub, onBack, right, foot, children, testId }: { title: string; sub?: string; onBack?: () => void; right?: ReactNode; foot?: ReactNode; children: ReactNode; testId: string }) {
   return (
     <div className={sp.subPage} role="dialog" aria-modal="true" aria-label={title} data-host-setup-sub={testId}>
       <div className={sp.top}>

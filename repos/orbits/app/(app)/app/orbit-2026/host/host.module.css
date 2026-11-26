@@ -259,11 +259,16 @@
 
 /* 触屏（pointer: coarse）：可点区域扩到至少 44×44，外观尺寸不变（2026-11-26 iPad 检查；只限主办方后台）。 */
 @media (pointer: coarse) {
-  .seg .segBtn.segBtn, .why.why { position: relative; }
-  .seg .segBtn.segBtn::before, .why.why::before { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+  .seg .segBtn.segBtn, .why.why, .peopleSeg > button { position: relative; }
+  .seg .segBtn.segBtn::before, .why.why::before, .peopleSeg > button::before { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
 }
 
 /* 手机触屏：页签横滑容器上下内边距加大（热区不被裁），负外边距抵消，页签位置不变（原 margin -4 / 12、padding 2 / 4）。 */
 @media (max-width: 767px) and (pointer: coarse) {
   .htabs.htabs.htabs { padding-top: 9px; padding-bottom: 9px; margin-top: -11px; margin-bottom: 7px; }
+}
+
+/* 768–1023（iPad 竖屏 834）：页头右侧放不下头像叠 +「共同運営者」+「⋯」，头像叠压住居中的活动名与副标题。头像叠在这一段隐藏（「共同運営者」按钮照旧打开名单）。 */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .headRight .avs { display: none; }
 }

@@ -594,6 +594,29 @@
    "note": "HM-P7 参加者 · 空（b13 #7，朝会 #3）"
   },
   {
+   "id": "HM-P10",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people&import=1",
+   "design": "b13-host-mobile.html",
+   "board-index": 10,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-sub=import]",
+   "steps": [
+    {
+     "upload": [
+      "input[type=file][accept*=csv]",
+      "scripts/visual/fixtures/peatix_vol2.csv"
+     ]
+    },
+    {
+     "waitFor": "[data-host-import-status=applied]"
+    }
+   ],
+   "note": "HM-P10 名簿の取り込み（b13 #10；peatix_vol2.csv 128 行，mock 照合按哈希首位 → 18 / 42 / 68）"
+  },
+  {
    "id": "HM-K1",
    "app": "/app/events/demo-event-cfo-night-18/operations/check-in",
    "design": "b13-host-mobile.html",

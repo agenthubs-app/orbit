@@ -915,6 +915,7 @@ export const hostCopy = {
   imTitle: { ja: "照合表 · {file}", zh: "核对表 · {file}", en: "Match list · {file}", kind: "title" },
   imMeta: { ja: "{n}行 · 読み込み {d}", zh: "{n}行 · 读取于{d}", en: "{n} rows · loaded {d}", kind: "label" },
   imPick: { ja: "CSV を選ぶ", zh: "选择 CSV", en: "Choose a CSV", kind: "button" },
+  imRepick: { ja: "選び直す", zh: "重新选择", en: "Choose again", kind: "button" },
   imPickTitle: { ja: "名簿の取り込み", zh: "导入名单", en: "Import a list", kind: "title" },
   imPickSub: { ja: "Peatix や connpass などの参加者 CSV（名前・メール列）。このブラウザの中で読み、照合にはメールのハッシュだけを使います", zh: "Peatix、connpass 等的参加者 CSV（姓名、邮箱列）。在本浏览器中读取，核对只使用邮箱的哈希值", en: "An attendee CSV from Peatix, connpass, etc. (name, email). Read in this browser; only email hashes are used for matching", kind: "body" },
   imApplied: { ja: "申込済み", zh: "已报名", en: "Registered", kind: "chip" },

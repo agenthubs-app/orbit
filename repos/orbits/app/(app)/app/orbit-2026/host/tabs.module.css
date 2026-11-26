@@ -243,6 +243,6 @@
 
 /* 触屏（pointer: coarse）：可点区域扩到至少 44×44，外观尺寸不变（2026-11-26 iPad 检查；只限主办方后台）。 */
 @media (pointer: coarse) {
-  .cbx.cbx, .tgl.tgl, .lbtn.lbtn, .handle.handle, .mvRow.mvRow { position: relative; }
-  .cbx.cbx::before, .tgl.tgl::before, .lbtn.lbtn::before, .handle.handle::before, .mvRow.mvRow::before { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+  .cbx.cbx, .tgl.tgl, .lbtn.lbtn, .handle.handle, .mvRow.mvRow, .chipBtn.chipBtn { position: relative; }
+  .cbx.cbx::before, .tgl.tgl::before, .lbtn.lbtn::before, .handle.handle::before, .mvRow.mvRow::before, .chipBtn.chipBtn::before { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
 }

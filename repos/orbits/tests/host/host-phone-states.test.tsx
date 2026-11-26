@@ -3,13 +3,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { HostImportView } from "../../app/(app)/app/orbit-2026/host/HostImport";
 import { HostMatchingPhone } from "../../app/(app)/app/orbit-2026/host/HostMatchingPhone";
 import { HostPeopleView } from "../../app/(app)/app/orbit-2026/host/HostPeople";
 import { HostSetupView } from "../../app/(app)/app/orbit-2026/host/HostSetup";
 import { KioskPhoneView } from "../../app/(app)/app/orbit-2026/host/KioskPhone";
 import { hostTranslator } from "../../app/(app)/app/orbit-2026/host/host-model";
 import { draftOf } from "../../app/(app)/app/orbit-2026/host/setup-model";
-import { HOST_EVENT_IDS, hostKiosk, hostMatching, hostPeople, hostSetup } from "../../shared/mock/demo-world/host-events";
+import { HOST_EVENT_IDS, hostEventView, hostKiosk, hostMatching, hostPeople, hostSetup } from "../../shared/mock/demo-world/host-events";
 
 const t = hostTranslator("ja");
 const NOW = new Date("2026-10-07T03:00:00.000Z");
@@ -57,4 +58,22 @@ test("参加者 phone: a conflicting row keeps its note in place", () => {
   const html = renderToStaticMarkup(<HostPeopleView phone language="ja" data={data} t={t} rows={data.rows} query={{ bucket: "pending", incomplete: false, q: "" }} selected={new Set([first.actorId])} selecting issues={new Map([[first.actorId, "conflict" as const]])} />);
   assert.match(html, /他の運営者が先に更新しました/);
   assert.match(html, /data-host-bulk="1"/);
+});
+
+test("名簿の取り込み phone (b13 HM-P10): full-screen sub-page, three tiles side by side, rows as list rows, export at the bottom", () => {
+  const event = hostEventView(HOST_EVENT_IDS.cfo18)!;
+  const rows = [{ email: "t.tanaka@example.com", name: "田中 健一", status: "applied" as const }, { email: "y.matsumoto@example.com", name: "松本 由紀", status: "registered" as const }, { email: "m.sasaki@example.com", name: "佐々木 恵", status: "unregistered" as const }];
+  const html = renderToStaticMarkup(<HostImportView phone event={event} language="ja" file={{ at: "2026-10-16T01:00:00.000Z", match: "done", name: "peatix_vol2.csv", rows }} origin="https://orbit.app" />);
+  assert.match(html, /data-host-setup-sub="import"/);
+  assert.match(html, /<b>名簿の取り込み<\/b><small>CFO Night Tokyo vol\.18<\/small>/);
+  assert.match(html, /選び直す/);
+  assert.deepEqual([...html.matchAll(/data-host-import-count="(\w+)"/gu)].map((m) => m[1]), ["applied", "registered", "unregistered"]);
+  assert.deepEqual([...html.matchAll(/data-host-import-status="(\w*)"[^>]*>([^<]+)</gu)].map((m) => [m[1], m[2]]), [["applied", "申込済み"], ["registered", "登録済み · 未申込"], ["unregistered", "Orbit 未登録"]]);
+  assert.doesNotMatch(html, /<table/);
+  assert.doesNotMatch(html, /example\.com/);
+  assert.match(html, /照合表を書き出す（CSV）[\s\S]*連絡先には追加されません/);
+  assert.match(html, /未申込 2名へは/);
+  const empty = renderToStaticMarkup(<HostImportView phone event={event} language="zh" file={null} origin="https://orbit.app" />);
+  assert.match(empty, /data-host-import-pick/);
+  assert.doesNotMatch(empty, /data-host-import-table/);
 });

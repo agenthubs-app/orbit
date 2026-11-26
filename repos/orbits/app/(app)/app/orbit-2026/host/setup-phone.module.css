@@ -49,7 +49,7 @@
 .block.block { width: 100%; height: 52px; }
 
 /* 子页（全屏层） */
-.subPage { position: fixed; inset: 0; z-index: var(--z-modal); background: var(--bg); overflow: hidden auto; padding: env(safe-area-inset-top, 0px) 18px calc(env(safe-area-inset-bottom, 0px) + 96px); color: var(--ink); }
+.subPage { position: fixed; inset: 0; z-index: var(--z-modal); background: radial-gradient(900px 500px at 10% -10%, var(--fog-a), transparent 70%), radial-gradient(700px 500px at 95% 0%, var(--fog-b), transparent 70%), var(--bg); background-attachment: local; overflow: hidden auto; padding: env(safe-area-inset-top, 0px) 18px calc(env(safe-area-inset-bottom, 0px) + 96px); color: var(--ink); }
 .top { position: relative; display: flex; align-items: center; justify-content: space-between; height: 52px; margin-bottom: 8px; }
 .top > :last-child { justify-self: end; }
 .topT { position: absolute; left: 44px; right: 44px; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-width: 0; pointer-events: none; }

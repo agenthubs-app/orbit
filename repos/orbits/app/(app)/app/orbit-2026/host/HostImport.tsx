@@ -16,6 +16,8 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { Icon, useToast } from "../ui";
 import { failureOf, hostApi, hostEventApi } from "./host-api";
 import { consoleHref, hostDateDay, hostTranslator } from "./host-model";
+import { SubPage } from "./HostSetupPhone";
+import { usePhone } from "../events/EventDetail";
 import i from "./import.module.css";
 import s from "./host.module.css";
 import m from "./tabs.module.css";
@@ -88,16 +90,80 @@ export type HostImportViewProps = {
   onCopyLink?: () => void;
   onCopyText?: () => void;
   onExport?: () => void;
+  /** < 768：b13 HM-P10 全屏子页（← 名簿の取り込み），行改卡片行。 */
+  phone?: boolean;
 };
 
 /** 純粋な描画（b12 #476）。 */
-export function HostImportView({ event, language, file, origin, onPick, onCopyLink, onCopyText, onExport }: HostImportViewProps) {
+export function HostImportView({ event, language, file, origin, onPick, onCopyLink, onCopyText, onExport, phone = false }: HostImportViewProps) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const link = inviteLink(origin, event);
   const rows = file?.rows ?? [];
   const matched = file?.match === "done";
   const count = (status: HostRosterMatchStatus) => rows.filter((row) => row.status === status).length;
   const rowLabel = (status: HostRosterMatchStatus | null | undefined) => (!matched || !status ? t("imPending") : status === "applied" ? t("imApplied") : status === "registered" ? t("imRowRegistered") : t("imUnregistered"));
+  const backHref = consoleHref(event.eventId, "people");
+  if (phone) {
+    const tiles: [string, string, number | null][] = matched
+      ? [[t("imApplied"), s.c_teal ?? "", count("applied")], [t("imRowRegistered"), s.c_blue ?? "", count("registered")], [t("imUnregistered"), "", count("unregistered")]]
+      : [[t("imApplied"), s.c_teal ?? "", null], [t("imRowRegistered"), s.c_blue ?? "", null], [t("imPending"), "", rows.length]];
+    return (
+      <SubPage testId="import" title={t("imPickTitle")} sub={event.title} onBack={() => { window.location.href = backHref; }}>
+        {file ? (
+          <div className={`${s.card} ${i.phCard} ${i.sum}`} data-host-import-table={rows.length}>
+            <div className={i.sumHead}><b className={i.sumT}>{t("imTitle", { file: file.name })}</b><button type="button" className={`btn ${s.btn} ${s.sm}`} onClick={onPick}>{t("imRepick")}</button></div>
+            <div className={s.lbl}>{t("imMeta", { d: hostDateDay(file.at, t, language), n: rows.length })}</div>
+            <div className={i.imp3}>
+              {tiles.map(([label, chip, value], index) => (
+                <div key={index} data-host-import-count={matched ? (["applied", "registered", "unregistered"] as const)[index] : undefined}><span className={`${s.chip} ${chip} ${i.tChip}`}>{label}</span><b>{value ?? "—"}{value != null ? <small>{t("pubPeopleUnit")}</small> : null}</b></div>
+              ))}
+            </div>
+            {file.match === "failed" || file.match === "limited" ? <div className={`${s.lbl} ${i.phNote}`}>{t(file.match === "limited" ? "imMatchLimited" : "imMatchFailed")}</div> : null}
+          </div>
+        ) : (
+          <div className={`${s.card} ${i.phCard} ${i.pick}`} data-host-import-pick="">
+            <span className={`${s.emo} ${s.e_pink}`} aria-hidden>🗂️</span>
+            <b className={i.pickTitle}>{t("imPickTitle")}</b>
+            <div className={`${s.sub} ${i.pickSub}`}>{t("imPickSub")}</div>
+            <button type="button" className={`btn ${s.btn} ${s.primary}`} onClick={onPick}><Icon name="plus" size={16} />{t("imPick")}</button>
+          </div>
+        )}
+        <div className={`${s.card} ${i.phCard}`} data-host-import-invite="">
+          <div className={s.cardH}><h3>{t("imInvite")}</h3><span className={s.lbl}>{t("imInviteSub")}</span></div>
+          <div className={`${m.input} ${i.link} ${link ? i.linkOn : ""}`}><Icon name="link" size={16} /><span className={s.clamp1}>{link ? link.replace(/^https?:\/\//u, "") : t("imNotPublished")}</span></div>
+          <div className={i.grid2}>
+            <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={!link} onClick={onCopyLink}>{t("imCopyLink")}</button>
+            <button type="button" className={`btn ${s.btn}`} disabled={!link} onClick={onCopyText}>{t("imCopyText")}</button>
+          </div>
+          {file ? <div className={`${s.lbl} ${i.hint}`}>{t("imSendHint", { n: matched ? rows.length - count("applied") : rows.length })}</div> : null}
+        </div>
+        {file ? (
+          <>
+            <div className={`${s.card} ${i.phCard} ${i.plist}`}>
+              {rows.slice(0, 50).map((row, index) => (
+                <div key={`${row.email}-${index}`} className={i.prow}>
+                  <div className={i.meta}><b>{row.name || "—"}</b><span className={s.lbl}>{maskEmail(row.email) || "—"}</span></div>
+                  <span className={`${s.chip} ${matched && row.status ? s[STATUS_CHIP[row.status]] ?? "" : ""}`} data-host-import-status={matched ? row.status ?? "" : "pending"}>{rowLabel(row.status)}</span>
+                </div>
+              ))}
+            </div>
+            <div className={i.phFoot}>
+              <button type="button" className={`btn ${s.btn} ${s.sm}`} onClick={onExport}>{t("imExport")}</button>
+              <span className={`${s.lbl} ${i.right}`}>{t("imNotContacts")}</span>
+            </div>
+          </>
+        ) : null}
+        <div className={`${s.card} ${s.flat} ${i.phCard}`} data-host-import-rules="">
+          <b className={i.rulesTitle}>{t("imRules")}</b>
+          <div className={i.rules}>
+            <div className={i.rule}><span aria-hidden>✉️</span><span>{t("imRuleMail")}</span></div>
+            <div className={i.rule}><span aria-hidden>👤</span><span>{t("imRuleContacts")}</span></div>
+            <div className={i.rule}><span aria-hidden>🗑️</span><span>{t("imRuleFile")}</span></div>
+          </div>
+        </div>
+      </SubPage>
+    );
+  }
   return (
     <>
       <div className={`${s.card} ${s.span8} ${i.blk}`} data-host-import-table={file ? rows.length : "none"}>
@@ -161,7 +227,7 @@ export function HostImportView({ event, language, file, origin, onPick, onCopyLi
             <div className={i.rule}><span aria-hidden>🗑️</span><span>{t("imRuleFile")}</span></div>
           </div>
         </div>
-        <a className={`btn ${s.btn} ${s.ghost} ${i.block}`} href={consoleHref(event.eventId, "people")}>{t("imBack")}</a>
+        <a className={`btn ${s.btn} ${s.ghost} ${i.block}`} href={backHref}>{t("imBack")}</a>
       </div>
     </>
   );
@@ -170,6 +236,7 @@ export function HostImportView({ event, language, file, origin, onPick, onCopyLi
 export function HostImportTab({ eventId, language }: { eventId: string; language: OrbitLanguage }) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const toast = useToast();
+  const phone = usePhone();
   const input = useRef<HTMLInputElement>(null);
   const [event, setEvent] = useState<HostEventView | null>(null);
   const [failed, setFailed] = useState(false);
@@ -210,7 +277,7 @@ export function HostImportTab({ eventId, language }: { eventId: string; language
     <>
       <input ref={input} type="file" accept=".csv,text/csv" hidden onChange={(ev) => { void read(ev.target.files?.[0]); ev.target.value = ""; }} />
       <HostImportView event={event} language={language} file={file} origin={origin} onPick={() => input.current?.click()}
-        onCopyLink={() => void copy(link)} onCopyText={() => void copy(t("imMessage", { title: event.title, url: link }).replace(/\\n/gu, "\n"))} onExport={exportCsv} />
+        onCopyLink={() => void copy(link)} onCopyText={() => void copy(t("imMessage", { title: event.title, url: link }).replace(/\\n/gu, "\n"))} onExport={exportCsv} phone={phone} />
     </>
   );
 }
