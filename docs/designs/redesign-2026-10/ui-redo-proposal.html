@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>五处界面重做</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<script src="kit/data.js"></script>
+<style>
+  .doc { min-width: 1520px; }
+  .web.bare { display: block; }
+  .h1 { font-size: 24px; font-weight: 900; line-height: 1.35; letter-spacing: -.01em; }
+  .mt { font-size: 22px; font-weight: 900; line-height: 1.4; }
+  .grow { flex: 1; min-width: 0; }
+  .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .btn.xl { height: 50px; font-size: 14.5px; }
+  .btn.dis { opacity: .55; pointer-events: none; }
+  .lp-logo { width: 36px; height: 36px; border-radius: 12px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
+
+  /* ===== 栏位：与 onboarding-3step-proposal 同一套（48 高 · 圆角 14 · 无边框 · 卡内 surface-2） ===== */
+  .fld { margin-top: 12px; min-width: 0; }
+  .fld label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; }
+  .fld .in { height: 48px; border-radius: 14px; background: var(--surface); display: flex; align-items: center; gap: 8px; padding: 0 14px; font-size: 14px; color: var(--ink); border: 1.5px solid transparent; }
+  .card .fld .in, .on-surface .fld .in, .drawer .card .fld .in, .sheet .fld .in { background: var(--surface-2); }
+  .fld .in > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fld .in.ph > span { color: var(--ink-4); }
+  .fld .in.ro { background: transparent !important; padding: 0; height: auto; color: var(--ink-2); font-weight: 600; }
+  .fld .in .tail { font-size: 11.5px; color: var(--ink-3); font-weight: 700; flex: none; font-family: var(--font-num); }
+  .fld.focus .in { border-color: var(--plum-500); background: var(--surface) !important; }
+  .fld.err .in { border-color: var(--coral); background: var(--coral-soft) !important; }
+  .fld .msg { font-size: 11.5px; margin-top: 6px; font-weight: 600; color: var(--ink-3); line-height: 1.55; }
+  .fld.err .msg, .fld.err .tail { color: var(--coral-text); }
+  .fld.dim { opacity: .55; }
+  .fld .ta { height: auto; min-height: 96px; align-items: flex-start; padding: 12px 14px; line-height: 1.75; }
+  .fld .ta > span { white-space: normal; }
+  .caret { display: inline-block; width: 1.5px; height: 18px; background: var(--plum-700); margin-left: -6px; animation: blink 1s steps(2) infinite; flex: none; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .grid2 > .fld { margin-top: 12px; }
+
+  /* 引导页框架（照抄 onboarding-3step-proposal） */
+  .wstp { display: flex; align-items: center; gap: 10px; }
+  .wstp > div { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+  .wstp > div .n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font-weight: 800; font-size: 12px; }
+  .wstp > div.n { color: var(--ink); font-weight: 800; } .wstp > div.n .n { background: var(--accent); color: var(--on-accent); }
+  .wstp em { width: 28px; height: 1.5px; background: var(--surface-3); }
+  .eta { font-size: 12px; color: var(--ink-3); font-weight: 700; margin-left: 12px; white-space: nowrap; }
+  .obw { height: 100%; display: flex; flex-direction: column; }
+  .obw-h { height: 84px; padding: 0 40px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); flex: none; }
+  .obw-b { flex: 1; min-height: 0; padding: 22px 120px 30px; display: flex; flex-direction: column; }
+  .obw-b > .wgrid { flex: 1; min-height: 0; }
+  .ocard { display: flex; flex-direction: column; min-height: 0; padding: 28px !important; position: relative; }
+  .cbody { flex: 1; min-height: 0; overflow: hidden; position: relative; margin: 0 -6px; padding: 0 6px; }
+  .obw-foot { display: flex; align-items: center; gap: 10px; padding-top: 18px; margin-top: 4px; border-top: 1px solid var(--line); flex: none; }
+  .once { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 16px; background: var(--accent-soft); font-size: 12.5px; line-height: 1.65; color: var(--ink-2); font-weight: 600; }
+  .once b { color: var(--ink); font-weight: 800; }
+  .once .emo { flex: none; background: var(--surface); }
+  .obw-b > .once { margin-bottom: 16px; font-size: 13.5px; padding: 14px 18px; align-items: center; flex: none; }
+  .web.w834 { width: 834px; height: 1194px; }
+  .w834 .obw-h { padding: 0 24px; }
+  .w834 .obw-b { padding: 20px 28px 28px; }
+  .w834 .obw-b > .ocard { flex: 1; }
+  .stp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .stp i { height: 5px; border-radius: 3px; background: var(--surface-3); }
+  .stp i.n { background: linear-gradient(90deg, var(--plum-700) 50%, var(--surface-3) 50%); }
+  .scanbig { border-radius: 22px; background: var(--mac-lav); padding: 14px 18px; display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+  .scanbig b { font-size: 14px; display: block; }
+  .scanp { border: 2px dashed var(--plum-300); border-radius: 22px; background: color-mix(in srgb, var(--accent-soft) 55%, transparent); padding: 18px 16px; text-align: center; margin-top: 12px; display: grid; gap: 10px; justify-items: center; }
+  .scanp b { font-size: 15px; }
+  .miss { color: var(--coral-text); font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+  .errline { color: var(--coral-text); font-size: 12.5px; font-weight: 700; margin-top: 10px; line-height: 1.55; }
+  .ghost-row { height: 40px; }
+
+  /* 手机：底部按钮 · Safari 栏 · 52 顶栏 */
+  .phone .foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; padding: 22px 18px 30px; background: linear-gradient(to bottom, transparent, var(--bg) 28%); display: grid; gap: 8px; }
+  .phone .foot .miss { justify-content: center; }
+  .mweb .scroll { padding-bottom: 200px; }
+  .mweb .foot { bottom: 92px; padding-bottom: 14px; }
+  .sbar { position: absolute; left: 0; right: 0; bottom: 0; height: 92px; z-index: 34; background: var(--glass); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border-top: 1px solid var(--line); padding: 10px 14px 0; display: flex; gap: 10px; align-items: flex-start; }
+  .sbar .url { flex: 1; height: 42px; border-radius: 14px; background: var(--surface); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; color: var(--ink-2); font-weight: 600; }
+  .sbar .ub { width: 42px; height: 42px; display: grid; place-items: center; color: var(--ink-2); font-size: 14px; font-weight: 700; }
+  .tb52 { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; height: 52px; margin-bottom: 8px; }
+  .tb52 > b { text-align: center; font-size: 17px; font-weight: 800; white-space: nowrap; }
+  .tb52.wide { grid-template-columns: 76px 1fr 76px; }
+  .tb52 .lo { font-size: 13px; font-weight: 700; color: var(--ink-2); text-align: right; white-space: nowrap; }
+  .mw-head { display: flex; align-items: center; gap: 8px; height: 52px; margin-bottom: 8px; }
+  .mw-head .logo { width: 34px; height: 34px; border-radius: 11px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
+  .mweb .sheet-scrim { bottom: 92px; }
+  .mweb .sheet { bottom: 100px; }
+  .mweb .toast.pos { bottom: 112px; }
+
+  /* ===== UR-C 联系方式组 ===== */
+  .cg { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .cg-h { display: flex; align-items: baseline; gap: 8px; font-size: 16px; font-weight: 800; color: var(--ink); }
+  .cg-h small { font-size: 12px; font-weight: 700; color: var(--ink-3); }
+  .cg-s { font-size: 12.5px; color: var(--ink-2); font-weight: 600; line-height: 1.6; margin-top: 4px; }
+  .cg .chip.rec { background: var(--surface-2); color: var(--ink-3); }
+  .card .cg .chip.rec { background: var(--surface-3); }
+  .addmore { margin-top: 12px; height: 48px; width: 100%; border-radius: 14px; border: 1.5px dashed var(--ink-4); background: transparent; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: var(--ink-2); }
+  .cg.err .addmore { border-color: var(--coral); }
+
+  /* ===== UR-R 补资料 ===== */
+  .pop { position: absolute; left: 0; right: 0; z-index: 30; background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-float), 0 0 0 1px var(--line); padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+  .pop .o { height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 10px; padding: 0 12px; font-size: 13.5px; font-weight: 700; color: var(--ink); min-width: 0; }
+  .pop .o span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pop .o.on { background: var(--accent-soft); }
+  .pop .o .ck, .opt .ck { width: 20px; height: 20px; color: var(--plum-700); flex: none; display: grid; place-items: center; }
+  .rel { position: relative; }
+  .sheet.pick { top: 150px; display: flex; flex-direction: column; padding-bottom: 12px; }
+  .sheet.pick .sh { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .sheet.pick .sh b { flex: 1; font-size: 18px; font-weight: 800; }
+  .opts { flex: 1; min-height: 0; overflow: hidden; position: relative; margin: 0 -18px; padding: 0 18px; }
+  .opts::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(to bottom, transparent, var(--surface)); pointer-events: none; }
+  .opts .sind { position: absolute; right: 5px; top: 8px; width: 4px; height: 38%; border-radius: 2px; background: var(--ink-4); z-index: 2; }
+  .opt { height: 54px; display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 700; border-radius: 14px; padding: 0 12px; }
+  .opt + .opt { margin-top: 2px; }
+  .opt.on { background: var(--accent-soft); }
+  .opt .rad { width: 22px; height: 22px; }
+  .rad.on { border-color: var(--plum-700); }
+  .rad.on::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--plum-700); }
+  .prevc .ghost-row { margin-top: 14px; }
+  /* 电脑：行业平铺（不再下拉） */
+  .igrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .w834 .igrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .igrid .opt { height: 48px; background: var(--surface-2); border: 1.5px solid transparent; font-size: 13.5px; gap: 10px; padding: 0 12px; margin: 0; }
+  .igrid .opt { height: auto; min-height: 48px; padding: 7px 12px; line-height: 1.3; }
+  .igrid .opt > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+  .rp .ocard { padding: 24px 26px !important; }
+  .rp .obw-b { padding-bottom: 16px; }
+  .rp .obw-foot { padding-top: 14px; }
+  .fld label .note { font-weight: 600; color: var(--ink-3); }
+  .igrid .opt.on { background: var(--accent-soft); border-color: var(--plum-500); }
+  .igrid .opt .rad { width: 20px; height: 20px; }
+  .igrid.err { outline: 1.5px solid var(--coral); outline-offset: 6px; border-radius: 16px; }
+  .igrid.dim { opacity: .55; }
+  .ihint { height: 48px; border-radius: 14px; border: 1.5px dashed var(--surface-3); display: flex; align-items: center; padding: 0 14px; font-size: 13px; color: var(--ink-3); font-weight: 600; }
+  .ihint.err { border-color: var(--coral); color: var(--coral-text); }
+
+  /* ===== UR-S 共享联系方式 ===== */
+  .scr { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 8px 0; }
+  .scr + .scr { border-top: 1px solid var(--line); }
+  .scr .grow > small { display: block; font-size: 12px; color: var(--ink-3); font-weight: 700; }
+  .scr .grow > b { display: block; font-size: 15px; font-weight: 700; overflow-wrap: anywhere; line-height: 1.45; margin-top: 1px; }
+  .scr .acts { display: flex; gap: 6px; flex: none; }
+  .scbox { background: var(--surface-2); border-radius: 16px; padding: 0 14px; }
+  .scnone { font-size: 13px; color: var(--ink-3); font-weight: 600; padding: 4px 0; }
+  .det-h { display: flex; gap: 12px; align-items: center; }
+  .det-sec { margin-top: 18px; }
+  .det-sec h5 { font-size: 12px; font-weight: 800; color: var(--ink-3); margin-bottom: 6px; }
+  .qa { background: var(--surface-2); border-radius: 16px; padding: 4px 14px; }
+  .qa > div { padding: 9px 0; } .qa > div + div { border-top: 1px solid var(--line); }
+  .qa dt { font-size: 11.5px; color: var(--ink-3); font-weight: 600; } .qa dd { font-size: 13px; font-weight: 600; margin-top: 2px; line-height: 1.55; }
+  .meta-l { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .sheet.full { top: 58px; display: flex; flex-direction: column; padding-bottom: 14px; }
+  .sheet.full .sb { flex: 1; min-height: 0; overflow: hidden; margin: 0 -18px; padding: 0 18px 8px; }
+  .fadeout { opacity: .45; }
+
+  /* ===== Web 抽屉（kit .drawer）+ 标准头尾 ===== */
+  .drawer.ed { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+  .drawer.ed .dh { display: flex; align-items: center; gap: 10px; padding: 20px 22px 14px; flex: none; }
+  .drawer.ed .dh b { flex: 1; font-size: 18px; font-weight: 800; }
+  .drawer.ed .db { flex: 1; min-height: 0; overflow: hidden; padding: 0 22px 16px; }
+  .drawer.ed .df { display: flex; align-items: center; gap: 8px; padding: 14px 22px 18px; border-top: 1px solid var(--line); flex: none; background: var(--bg); }
+  .drawer.ed .df .btn { height: 46px; padding: 0 22px; }
+  .drawer .card + .card { margin-top: 14px; }
+  .gh { font-size: 13px; font-weight: 800; color: var(--ink); margin-bottom: 2px; display: flex; align-items: center; gap: 8px; }
+  .gh small { margin-left: auto; font-size: 11.5px; color: var(--ink-3); font-weight: 700; font-family: var(--font-num); }
+  .tagin { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+  .tagx { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px 0 13px; height: 36px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+  .tagx.lav { background: var(--mac-lav); color: var(--mac-lav-ink); } .tagx.pink { background: var(--mac-pink); color: var(--mac-pink-ink); }
+  .tagx i { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--surface) 60%, transparent); font-style: normal; }
+  .tagadd { display: inline-flex; align-items: center; gap: 5px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1.5px dashed var(--ink-4); color: var(--ink-3); font-size: 13px; font-weight: 700; }
+  .tagadd.focus { border: 1.5px solid var(--plum-500); color: var(--ink); background: var(--surface); min-width: 180px; }
+  .vrow { display: flex; align-items: center; gap: 12px; min-height: 52px; }
+  .vrow + .vrow { border-top: 1px solid var(--line); }
+  .vrow .grow b { display: block; font-size: 13.5px; font-weight: 700; }
+  .vrow .grow span { display: block; font-size: 11.5px; color: var(--ink-3); font-weight: 600; }
+  .vrow .fix { font-size: 12px; font-weight: 700; color: var(--ink-3); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .ng-card { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; font-weight: 700; color: var(--coral-text); line-height: 1.55; }
+  .seg.full { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .seg.full button { height: 40px; }
+  .met { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); margin-top: 12px; }
+
+  /* Web 背景页（设置 / 人脉 / 主催）· 834 */
+  .setgrid { display: grid; grid-template-columns: 220px 1fr; gap: 22px; align-items: start; }
+  .smenu { background: var(--surface); border-radius: 22px; padding: 8px; display: grid; gap: 2px; }
+  .smenu a { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+  .smenu a.on { background: var(--surface-2); color: var(--ink); }
+  .web.wt { width: 834px; height: 1194px; }
+  .web.wt .drawer { width: 560px; }
+  .web .drawer.ed { width: 600px; }
+  .web.wt .drawer.ed { width: 560px; }
+  .web .wmodal { z-index: 30; }
+
+  /* 顶部三格 */
+  .decide { display: grid; grid-template-columns: 1fr 1.5fr .9fr; gap: 18px; margin-bottom: 18px; max-width: 1480px; }
+  .decide .box { background: var(--surface); border-radius: 22px; padding: 20px 22px; font-size: 13px; line-height: 1.75; color: var(--ink-2); }
+  .decide .box h3 { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 10px; }
+  .decide .box b { color: var(--ink); }
+  .decide ol { padding-left: 18px; display: grid; gap: 8px; }
+  .decide table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.55; }
+  .decide th, .decide td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .decide th { color: var(--ink-3); font-weight: 700; }
+  .decide tr.gp td { background: var(--surface-2); font-weight: 800; color: var(--ink); }
+  .decide .s { font-size: 12px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit Redesign · 2026-11-26 · 两端提案（Web 1440 / 834 / 390 · App）· 待用户确认</div>
+      <h1>五处界面重做：联系方式 · 补资料 · 对方的联系方式 · 编辑资料 · 编辑联系人</h1>
+      <p>功能和数据不变，只重做界面。栏位、按钮、抽屉、底部面板全部用 kit 现有样式，与「新用户引导三步版」同一套（栏位 48 高、无边框、卡内浅灰底）。界面文案以日语为准，标注里给中文 / 英文。示例人物与公司均为虚构。</p>
+    </div>
+    <div class="doc-tools">
+      <div class="seg" data-ctl="theme"><button data-v="light">浅色</button><button data-v="dark">深色</button></div>
+      <div class="seg" data-ctl="pins"><button data-v="on" class="on">标注 ON</button><button data-v="off">OFF</button></div>
+    </div>
+  </div>
+  <div class="decide">
+    <div class="box">
+      <h3>改了什么</h3>
+      <ol>
+        <li><b>UR-C 引导 ① 的联系方式</b>　现状：灰底大框里再套紫色提示框，四个白底输入框没有占位符，手机上仍是两栏。<br>新做法：去掉框中框，和上面的栏位同一种样式；一行小标题「連絡先 · 1つ以上」+ 一句谁能看；LINE、WeChat 直接给出，メール・電話收在「＋」里（名片读到时自动展开）；手机单列。至少一种的规则不变。<br><span class="s">原画板：三步版 W2 / A2 只画了「名刺から」的メール・電話两栏，没有这一组。</span></li>
+        <li><b>UR-R 迁移账号补资料</b>　现状：页面顶上一张小卡，没说为什么；行业下拉只露 6 行，14 个看不出能滚。<br>新做法：与引导 ① 同一版式（左表单、右「相手から見えるあなた」）；顶部一句说明来由和补完去哪；行业在电脑上一次摊开 14 个（两列不滚动），手机和 App 用底部面板。<br><span class="s">原画板：没有。</span></li>
+        <li><b>UR-S 对方的联系方式</b>　现状：只是「名前：值」的纯文本，不能复制、不能直接发邮件或打电话。<br>新做法：每行一个联系方式，右侧放能做的事（复制 / メール / 電話）；什么都没有时一行说明。生日不出现（谁都看不到）。只出现在人脉详情和主办方的报名者详情。<br><span class="s">原画板：没有（b13 HM-P6 报名者详情无此段）。</span></li>
+        <li><b>UR-P 编辑资料</b>　现状：手机上大灰「閉じる」、两个输入框占位符都是「会社・役職」、多行框带拖拽角、原生蓝色复选框。<br>新做法：标准 ✕ 关闭；会社 / 役職分开两栏；「提供 / 求めていること」改成标签输入（每项一枚，最多 5）；自我介绍带字数；公开范围用 kit 开关。<br><span class="s">原画板：b5 #18–20 / b12 W-R18a-01 没画编辑面板（设计是卡片内直接改、右栏开关），面板是实现时自加的。</span></li>
+        <li><b>UR-E 编辑联系人</b>　现状：手机沿用电脑抽屉的头部（✕ · 标题 · 取消 · 保存挤在一行），标题被挤成竖排；表单两栏。<br>新做法：电脑照原画板；手机改成 ✕ + 居中标题一行，「保存」放到底部；表单单列分三组；删除在最下面，先确认。<br><span class="s">原画板：b5 E2 有 App 全屏版和 Web 抽屉版；实现把 Web 抽屉直接搬到了手机上，没照 App 版。</span></li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>字段表</h3>
+      <table>
+        <tr><th>字段</th><th>谁填</th><th>必填</th><th>上限</th><th>缺失时</th></tr>
+        <tr class="gp"><td colspan="5">UR-C 引导 ① 联系方式</td></tr>
+        <tr><td>LINE ID</td><td>用户</td><td rowspan="4">四种至少一种</td><td>80</td><td>占位「LINE ID」</td></tr>
+        <tr><td>WeChat ID</td><td>用户</td><td>80</td><td>占位「WeChat ID」</td></tr>
+        <tr><td>メール</td><td>名片 / 用户</td><td>120</td><td>收在「＋ メール・電話」里</td></tr>
+        <tr><td>電話</td><td>名片 / 用户</td><td>40</td><td>同上</td></tr>
+        <tr class="gp"><td colspan="5">UR-R 补资料（约 223 个迁移账号）</td></tr>
+        <tr><td>氏名</td><td>旧系统带过来 / 用户</td><td>是</td><td>60</td><td>红框 +「氏名を入力してください」</td></tr>
+        <tr><td>業界</td><td>用户</td><td>是</td><td>14 选 1</td><td>红框 +「業界を選んでください」</td></tr>
+        <tr><td>業界の詳細</td><td>用户</td><td>是</td><td>按行业 5–7 选 1</td><td>先选行业前显示「先に業界を選択」</td></tr>
+        <tr><td>生年月日</td><td>旧系统 / 用户</td><td>否</td><td>不晚于今天</td><td>只在旧值无效时出现；可改可清空</td></tr>
+        <tr class="gp"><td colspan="5">UR-S 对方的联系方式（只读）</td></tr>
+        <tr><td>LINE · WeChat · メール · 電話</td><td>对方</td><td>—</td><td>—</td><td>没有的行不出；一个都没有时一行「連絡先は共有されていません」。生日不显示</td></tr>
+        <tr class="gp"><td colspan="5">UR-P 编辑资料</td></tr>
+        <tr><td>会社 · 役職</td><td>用户（引导时名片）</td><td>否</td><td>各 80</td><td>占位「例）株式会社…」「例）代表取締役」</td></tr>
+        <tr><td>提供できること · 求めていること</td><td>用户（求め 有 AI 候补，在卡片上确认）</td><td>否</td><td>各 5 项</td><td>只显示「＋ 追加」</td></tr>
+        <tr><td>自己紹介</td><td>用户（引导时 AI 起草）</td><td>否</td><td>中日文 80 / 其他 200 字</td><td>空框 + 计数 0 / 80</td></tr>
+        <tr><td>公開する項目</td><td>用户</td><td>—</td><td>三个开关</td><td>默认全开；联系方式固定「人脈と主催者のみ」</td></tr>
+        <tr class="gp"><td colspan="5">UR-E 编辑联系人</td></tr>
+        <tr><td>氏名</td><td>名片 / 用户</td><td>是</td><td>60</td><td>红框 +「氏名を入力してください」</td></tr>
+        <tr><td>会社 · 役職 · メール · 電話</td><td>名片 / 用户</td><td>否</td><td>80 / 80 / 120 / 40</td><td>空栏位，无占位例</td></tr>
+        <tr><td>業界 › 詳細 · 役職層</td><td>AI 推定 / 用户</td><td>否</td><td>选项</td><td>「未設定」</td></tr>
+        <tr><td>段階</td><td>用户</td><td>是</td><td>知り合い / 関係構築</td><td>默认知り合い</td></tr>
+        <tr><td>地域</td><td>用户</td><td>否</td><td>城市表</td><td>「未設定」</td></tr>
+        <tr><td>出会った場所</td><td>系统（只读）</td><td>—</td><td>—</td><td>「不明」</td></tr>
+      </table>
+    </div>
+    <div class="box">
+      <h3>已定与待看</h3>
+      <ol>
+        <li><b>已定 · 谁能看</b>（你已确认）：生日谁都看不到，包括人脉和主办方；联系方式只给人脉里的人（已完成交换）和你报名活动的主办方，不在人脉里的人（包括同场没交换的参会者）看不到。所有说明句都按这两句写。</li>
+        <li><b>待看 1 · LINE 要不要「LINE で開く」</b>：用 ID 打开 LINE 只对允许「ID で検索」的账号有效，打不开时用户会困惑。本稿只给「コピー」（WeChat 同理没有可靠的打开方式）。建议先不加。</li>
+        <li><b>待看 2 · App 编辑联系人跟不跟</b>：b5 E2 的 App 版右上角是 ✓ 图标保存。本稿手机网页改成底部文字「保存」，更好认。建议 App 同步改（两端一致）；不改则只改手机网页。</li>
+      </ol>
+    </div>
+  </div>
+  <nav class="doc-nav" id="docnav"></nav>
+  <div id="out"></div>
+</div>
+<script>
+/* ===================== 通用 ===================== */
+const NOTES = [];
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+/* pins: [[selector, note, nth?]] —— 针与注释一一对应 */
+const mk = (frame, pins) => frame(pins.map(([s, , n], k) => pin(k + 1, s, n || 0)).join(''));
+const notes = (pins, wide) => `<ul class="note-list" ${wide ? 'style="max-width:1440px;grid-template-columns:repeat(3,1fr);display:grid"' : ''}>${pins.map(([, t], k) => `<li><b>${k + 1}</b><span>${t}</span></li>`).join('')}</ul>`;
+const board = (label, tag, frame, pins) => `<div class="board" style="margin-bottom:34px"><div class="board-label">${label}<span class="tag">${tag}</span></div>${mk(frame, pins)}${notes(pins, true)}</div>`;
+const boards = (items) => `<div class="boards" style="margin-bottom:34px">${items.map(([label, tag, frame, pins]) => `<div class="board"><div class="board-label">${label}<span class="tag">${tag}</span></div>${mk(frame, pins)}${notes(pins)}</div>`).join('')}</div>`;
+
+const bare = (body, overlay = '') => (p) => `<div class="web no-rail bare">${body}${overlay}${p}</div>`;
+const T = (body, overlay = '') => (p) => `<div class="web no-rail bare w834">${body}${overlay}${p}</div>`;
+const sbar = `<div class="sbar"><span class="ub">aA</span><div class="url">${ic('search', 'sm')}orbit.app</div><span class="ub">${ic('refresh', 'sm')}</span></div>`;
+/* 底部按钮（.foot）从滚动内容里拿出来，固定在画框底部 */
+const splitFoot = (body) => { const i = body.lastIndexOf('<div class="foot">'); return i < 0 ? [body, ''] : [body.slice(0, i), body.slice(i)]; };
+const M = (body, overlay = '') => (p) => { const [b, f] = splitFoot(body); return phone({ tab: -1, body: b, overlay: f + overlay + sbar, pins: p }).replace('class="phone"', 'class="phone mweb"'); };
+const A = (body, overlay = '') => (p) => { const [b, f] = splitFoot(body); return phone({ tab: -1, body: b, overlay: f + overlay, pins: p }); };
+const W = (o, overlay = '') => (p) => webFrame({ ...o, pins: overlay + p });
+const WT = (o, overlay = '') => (p) => webFrame({ ...o, pins: overlay + p }).replace('class="web no-rail"', 'class="web no-rail wt"');
+
+const fld = (label, val, o = {}) => `<div class="fld ${o.cls || ''} ${o.k || ''}"><label>${label}${o.hint ? `<span class="chip ${o.hc || 'lav'}">${o.hint}</span>` : ''}${o.lt || ''}</label><div class="in ${o.ph ? 'ph' : ''} ${o.ta ? 'ta' : ''} ${o.ro ? 'ro' : ''}">${o.icon ? ic(o.icon, 'sm') : ''}<span>${val}</span>${o.caret ? '<i class="caret"></i>' : ''}${o.end || ''}</div>${o.msg ? `<div class="msg">${o.msg}</div>` : ''}</div>`;
+const down = ic('down', 'sm');
+const CARD = { hint: '名刺から' };
+const AI = { hint: 'AI 推定', hc: 'blue' };
+const miss = (t) => `<span class="miss">${ic('flag', 'sm')}${t}</span>`;
+const foot = (h) => `<div class="foot">${h}</div>`;
+const rb = (n, cls = '') => `<button class="rbtn ${cls}">${ic(n)}</button>`;
+const tb52 = (title, l = '<span></span>', r = '<span></span>') => `<div class="tb52">${l}<b>${title}</b>${r}</div>`;
+const tg = (on) => `<span class="tgl ${on ? 'on' : ''}"></span>`;
+const toast = (t, undo) => `<div class="toast pos notab k-toast"><span class="tk">${ic('check', 'sm')}</span><span class="tmsg">${t}</span>${undo ? `<button class="undo">${undo}</button>` : ''}</div>`;
+const SEE = '人脈の相手と、申し込んだイベントの主催者だけに表示されます。';
+const SEE_BOTH = '生年月日はだれにも公開されません。連絡先は、人脈の相手と申し込んだイベントの主催者だけに表示されます。';
+
+/* ===================== UR-C 联系方式 ===================== */
+/* s: empty | one | card | miss | fmt */
+function cgroup(s, two) {
+  const err = s === 'miss', open = s === 'card' || s === 'fmt';
+  const rec = { lt: '<span class="chip rec">おすすめ</span>' };
+  const line = s === 'one' ? fld('LINE', 'sato.kenichi', { ...rec, k: 'k-line' })
+    : fld('LINE', 'LINE ID', { ...rec, ph: true, cls: err ? 'err' : '', k: 'k-line' });
+  const wc = fld('WeChat', 'WeChat ID', { ...rec, ph: true, cls: err ? 'err' : '', k: 'k-wc' });
+  const mail = s === 'fmt' ? fld('メール', 'sato@minatolink', { cls: 'err focus', k: 'k-mail', caret: true, msg: 'メールアドレスの形式を確認してください（例：name@example.com）' })
+    : fld('メール', 'sato@minatolink.example', { ...CARD, k: 'k-mail' });
+  const tel = s === 'fmt' ? fld('電話', '例）090-1234-5678', { ph: true, k: 'k-tel' }) : fld('電話', '03-5555-0142', { ...CARD, k: 'k-tel' });
+  const pair = (a, b) => two ? `<div class="grid2" style="gap:0 14px">${a}${b}</div>` : a + b;
+  return `<div class="cg ${err ? 'err' : ''} scrollto" data-off="${two ? 12 : 150}"><div class="cg-h">連絡先<small>1つ以上</small></div><div class="cg-s k-see">${SEE}</div>
+    ${pair(line, wc)}${open ? pair(mail, tel) : `<button class="addmore k-more">${ic('plus', 'sm')}メール・電話を入れる</button>`}
+    ${err ? `<div class="errline k-errline">どれか 1 つを入力してください</div>` : ''}</div>`;
+}
+const BIRTH = (o = {}) => fld('生年月日（任意）', '年 / 月 / 日', { ph: true, end: ic('calendar', 'sm'), msg: 'だれにも公開されません', k: 'k-birth', ...o });
+function basicsWeb(scanned) {
+  return `<div class="mt">まずは、あなたのことを</div>
+    ${scanned ? `<div class="scanbig"><span class="emo lav" style="background:var(--surface)">📇</span><div class="grow"><b>名刺から 6 項目、AI の推定で 3 項目を入力しました</b><div class="lbl">内容を確認して、違うところだけ直してください</div></div><button class="btn sm" style="background:var(--surface)">別の画像にする</button></div>` : `<div class="scanbig" style="background:transparent;border:2px dashed var(--plum-300)"><span style="font-size:34px">📇</span><div class="grow"><b>名刺の画像をここにドロップ</b><div class="lbl">JPG・PNG・HEIC · 画像は保存されません</div></div><button class="btn primary">ファイルを選ぶ</button></div>`}
+    <div class="grid2" style="gap:0 14px">
+      ${scanned ? fld('氏名', '佐藤 健一', CARD) : fld('氏名', '例）佐藤 健一', { ph: true })}
+      ${scanned ? fld('会社', '株式会社ミナトリンク', CARD) : fld('会社（任意）', '例）株式会社ミナトリンク', { ph: true })}
+      ${scanned ? fld('役職', '代表取締役 CEO', CARD) : fld('役職（任意）', '例）代表取締役', { ph: true })}
+      ${BIRTH()}
+      ${scanned ? fld('業界', 'IT・ソフトウェア', { ...AI, end: down }) : fld('業界', '選択してください', { ph: true, end: down })}
+      ${scanned ? fld('業界の詳細', 'SaaS', { ...AI, end: down }) : fld('業界の詳細', '先に業界を選択', { ph: true, end: down })}
+      ${scanned ? fld('役職層', '経営層（C レベル）', { ...AI, end: down }) : fld('役職層（任意）', '選択してください', { ph: true, end: down })}
+      ${scanned ? fld('所在地', '日本 · 東京', CARD) : fld('所在地（任意）', '例）東京', { ph: true })}
+    </div>`;
+}
+const meCard = (full) => `<div class="lbl" style="margin-bottom:10px">相手から見えるあなた</div><div class="card"><div class="row" style="gap:14px"><div class="av lg c1">${full ? '佐' : ''}</div><div>${full ? `<div style="font-size:19px;font-weight:800">佐藤 健一</div><div class="sub">株式会社ミナトリンク · 代表取締役 CEO</div>` : `<div class="ghost-row" style="width:220px;height:34px"><i></i>氏名 · 会社 · 役職</div>`}</div></div><div class="ghost-row" style="margin-top:14px"><i></i>提供できること · 求めていること</div><div class="ghost-row"><i></i>自己紹介（ステップ3で作成）</div></div>
+  <div class="card flat k-priv" style="margin-top:14px"><div class="row" style="gap:10px;align-items:flex-start"><span class="emo sm lav">🔒</span><div class="sub" style="line-height:1.7">${SEE_BOTH}</div></div></div>`;
+const wstepper = `<div class="row" style="gap:0"><div class="wstp"><div class="n"><span class="n">1</span>名刺・基本情報</div><em></em><div><span class="n">2</span>目標と強み</div><em></em><div><span class="n">3</span>自己紹介</div></div><span class="eta">約1分</span></div>`;
+const ONCE = `<div class="once"><span class="emo sm lav">🪪</span><div>このプロフィールは<b>一度入力すれば、今後参加するすべてのイベントで使われます</b>。名刺を読み取ると、ほとんどの項目が自動で入ります。</div></div>`;
+const footW = (warn = '', label = `次へ ${ic('right', 'sm')}`, cls = '') => `<div class="obw-foot"><span class="lbl">${warn ? '' : ic('check', 'sm') + ' 自動保存済み'}</span><span style="flex:1"></span>${warn}<button class="btn primary xl k-next ${cls}">${label}</button></div>`;
+function obWebC(s, tablet) {
+  const scanned = s === 'card';
+  const main = `<div class="cbody">${basicsWeb(scanned)}${cgroup(s, true)}<div style="height:24px"></div></div>${footW(s === 'miss' ? miss('あと 1 項目：連絡先') : s === 'fmt' ? miss('メールの形式') : '')}`;
+  const grid = tablet ? `<div class="card ocard">${main}</div>` : `<div class="wgrid"><div class="card span7 ocard">${main}</div><div class="span5">${meCard(scanned)}</div></div>`;
+  return `<div class="obw"><div class="obw-h"><div class="row" style="gap:10px"><span class="lp-logo" style="width:34px;height:34px">O</span><b>Orbit</b></div>${wstepper}<button class="btn ghost">ログアウト</button></div><div class="obw-b">${ONCE}${grid}</div></div>`;
+}
+function obPhoneC(s, web) {
+  const head = web ? `<div class="mw-head"><div class="logo">O</div><b style="font-size:16px">Orbit</b><div style="flex:1"></div><button class="btn sm ghost" style="padding:0">ログアウト</button></div>`
+    : `<div class="tb52 wide"><span></span><b>プロフィール設定</b><span class="lo">ログアウト</span></div>`;
+  const scanned = s === 'card';
+  const body = head + `<div class="stp"><i class="n"></i><i></i><i></i></div><div class="row between lbl" style="margin:7px 0 12px"><span>ステップ 1 / 3 · 名刺・基本情報</span><span>約1分</span></div>` +
+    (scanned ? `<div class="mac lav row" style="gap:12px;padding:12px 14px"><span class="emo" style="background:var(--surface)">📇</span><div class="grow"><b style="font-size:13.5px">名刺から 6 項目、AI の推定で 3 項目</b><div class="lbl">違うところだけ直してください</div></div></div>` : `<div class="scanp"><span style="font-size:30px">📇</span><b>自分の名刺${web ? 'の画像' : 'を撮って'}で自動入力</b><button class="btn primary">${ic(web ? 'image' : 'scan', 'sm')}${web ? '写真を選ぶ' : '名刺を撮る'}</button></div>`) +
+    (scanned ? fld('氏名', '佐藤 健一', CARD) + fld('会社', '株式会社ミナトリンク', CARD) + fld('役職', '代表取締役 CEO', CARD) : fld('氏名', '例）佐藤 健一', { ph: true }) + fld('会社（任意）', '例）株式会社ミナトリンク', { ph: true }) + fld('役職（任意）', '例）代表取締役', { ph: true })) +
+    `<div class="grid2" style="gap:8px">${scanned ? fld('業界', 'IT・ソフトウェア', { ...AI, end: down }) + fld('詳細', 'SaaS', { ...AI, end: down }) : fld('業界', '選択', { ph: true, end: down }) + fld('詳細', '—', { ph: true, end: down })}</div>` +
+    (scanned ? fld('所在地', '日本 · 東京', CARD) : fld('所在地（任意）', '例）東京', { ph: true })) + BIRTH() + cgroup(s, false) + `<div style="height:150px"></div>` +
+    foot(`${s === 'miss' ? miss('あと 1 項目：連絡先') : s === 'fmt' ? miss('メールの形式を確認してください') : ''}<button class="btn primary block xl k-next">次へ</button>`);
+  return body;
+}
+
+/* ===================== UR-R 补资料 ===================== */
+const IND = ['飲食・食品', 'テクノロジー・インターネット', '金融・投資', 'プロフェッショナルサービス', '製造・サプライチェーン', '小売・消費財', '貿易・物流', '不動産・建設', '医療・ヘルスケア', '教育・研究', 'メディア・クリエイティブ', 'コミュニティ・非営利', '政府・公共政策', 'その他'];
+const SUB = ['銀行・融資', 'ベンチャー投資', 'プライベートエクイティ投資', '証券・資産運用', '保険', 'フィンテック', 'その他'];
+const R_ONCE = `<div class="once k-why"><span class="emo sm apricot">📦</span><div><b>以前のイベント登録の内容を引き継ぎました。</b>足りない項目を入れて保存すると、開いていたページに戻ります。</div></div>`;
+const popInd = (sel) => `<div class="pop k-pop" style="top:76px">${IND.map((t, i) => `<div class="o ${i === sel ? 'on' : ''}"><span>${t}</span>${i === sel ? `<span class="ck">${ic('check', 'sm')}</span>` : ''}</div>`).join('')}</div>`;
+/* s: def | open | miss | save | birth */
+function repairFields(s, two) {
+  const ind = s === 'def' || s === 'miss';
+  const iF = ind ? fld('業界', s === 'open' ? '選択してください' : '選択してください', { ph: true, end: down, cls: s === 'miss' ? 'err' : s === 'open' ? 'focus' : '', msg: s === 'miss' ? '業界を選んでください' : '', k: 'k-ind' })
+    : fld('業界', '金融・投資', { end: down, k: 'k-ind', cls: s === 'save' ? 'dim' : '' });
+  const dF = ind ? fld('業界の詳細', '先に業界を選択', { ph: true, end: down, cls: s === 'miss' ? 'err' : '', msg: s === 'miss' ? '業界の詳細を選んでください' : '', k: 'k-sub' })
+    : fld('業界の詳細', 'ベンチャー投資', { end: down, k: 'k-sub', cls: s === 'save' ? 'dim' : '' });
+  const name = fld('氏名', '陳 明華', { hint: '引き継ぎ', k: 'k-name', cls: s === 'save' ? 'dim' : '' });
+  const birth = s === 'birth' ? fld('生年月日', '2068 / 04 / 12', { cls: 'err', end: ic('calendar', 'sm'), k: 'k-birth', msg: '未来の日付になっています。直すか、消してください。' }) + `<button class="btn sm ghost k-clear" style="margin-top:6px;padding:0 4px">${ic('x', 'sm')}生年月日を消す</button>` : '';
+  const pair = two ? `<div class="grid2 rel" style="gap:0 14px">${iF}${dF}</div>` : iF + dF;
+  return name + pair + birth;
+}
+const prevR = (s) => { const done = s !== 'def' && s !== 'miss'; const full = s === 'save' || s === 'birth'; return `<div class="lbl" style="margin-bottom:10px">相手から見えるあなた</div><div class="card prevc"><div class="row" style="gap:14px"><div class="av lg c3">陳</div><div><div style="font-size:19px;font-weight:800">陳 明華</div><div class="sub">東和キャピタル · 代表</div></div></div>${done ? `<div class="chips" style="margin-top:12px"><span class="chip blue">${full ? '金融・投資 › ベンチャー投資' : '金融・投資'}</span></div>` : '<div class="ghost-row"><i></i>業界（選ぶとここに出ます）</div>'}</div>
+  <div class="card flat" style="margin-top:14px"><div class="row" style="gap:10px;align-items:flex-start"><span class="emo sm lav">🔒</span><div class="sub" style="line-height:1.7">${SEE_BOTH}</div></div></div>`; };
+const saveLabel = (s) => s === 'save' ? '保存しています…' : '保存して続ける';
+/* 电脑版：s = def | pick（已选行业）| miss | save | birth */
+function repairFieldsWeb(s) {
+  const indSel = s === 'def' || s === 'miss' ? -1 : 2, subSel = s === 'save' || s === 'birth' ? 1 : -1;
+  const opt = (t, on) => `<div class="opt ${on ? 'on' : ''}"><span class="rad ${on ? 'on' : ''}"></span><span>${t}</span></div>`;
+  const dim = s === 'save' ? 'dim' : '';
+  const name = fld('氏名', '陳 明華', { hint: '引き継ぎ', k: 'k-name', cls: dim });
+  const ind = `<div class="fld k-ind"><label>業界<span class="note">· イベントで話の合う人を探すのに使います</span></label><div class="igrid ${s === 'miss' ? 'err' : ''} ${dim}">${IND.map((t, i) => opt(t, i === indSel)).join('')}</div>${s === 'miss' ? '<div class="errline">業界を選んでください</div>' : ''}</div>`;
+  const sub = `<div class="fld k-sub" style="margin-top:18px"><label>業界の詳細</label>${indSel < 0 ? `<div class="ihint ${s === 'miss' ? 'err' : ''}">業界を選ぶと、ここに出ます</div>` : `<div class="igrid ${dim}">${SUB.map((t, i) => opt(t, i === subSel)).join('')}</div>`}</div>`;
+  const birth = s === 'birth' ? `<div class="grid2" style="gap:0 14px;align-items:end">${fld('生年月日', '2068 / 04 / 12', { cls: 'err', end: ic('calendar', 'sm'), k: 'k-birth', msg: '未来の日付になっています。直すか、消してください。' })}<button class="btn k-clear" style="margin-bottom:26px;justify-self:start">${ic('x', 'sm')}生年月日を消す</button></div>` : '';
+  return name + ind + sub + birth;
+}
+function repairWeb(s, tablet) {
+  const warn = s === 'miss' ? miss('あと 2 項目：業界、業界の詳細') : '';
+  const main = `<div class="cbody" style="overflow:visible"><div class="mt">プロフィールの確認</div>${repairFieldsWeb(s)}</div>
+    <div class="obw-foot"><span style="flex:1"></span>${warn}<button class="btn primary xl k-next ${s === 'save' ? 'dis' : ''}">${saveLabel(s)}${s === 'save' ? '' : ' ' + ic('right', 'sm')}</button></div>`;
+  const grid = tablet ? `<div class="card ocard" style="flex:none">${main}</div><div style="margin-top:18px">${prevR(s)}</div>` : `<div class="wgrid" style="flex:none"><div class="card span7 ocard">${main}</div><div class="span5">${prevR(s)}</div></div>`;
+  return `<div class="obw rp"><div class="obw-h"><div class="row" style="gap:10px"><span class="lp-logo" style="width:34px;height:34px">O</span><b>Orbit</b></div><button class="btn ghost">ログアウト</button></div><div class="obw-b">${R_ONCE}${grid}</div></div>`;
+}
+function repairPhone(s, web) {
+  const head = web ? `<div class="mw-head"><div class="logo">O</div><b style="font-size:16px">Orbit</b><div style="flex:1"></div><button class="btn sm ghost" style="padding:0">ログアウト</button></div>`
+    : `<div class="tb52 wide"><span></span><b>プロフィールの確認</b><span class="lo">ログアウト</span></div>`;
+  const warn = s === 'miss' ? miss('あと 2 項目：業界、業界の詳細') : '';
+  return head + R_ONCE + `<div class="h1" style="margin-top:16px;font-size:21px">プロフィールの確認</div><div class="sub" style="margin-top:2px">業界は、イベントで話の合う人を探すのに使います。</div>` + repairFields(s === 'open' ? 'def' : s, false) + `<div style="height:150px"></div>` +
+    foot(`${warn}<button class="btn primary block xl k-next ${s === 'save' ? 'dis' : ''}">${saveLabel(s)}</button>`);
+}
+const sheetInd = `<div class="sheet-scrim"></div><div class="sheet pick k-sheet"><div class="grab"></div><div class="sh"><b>業界を選ぶ</b><span class="lbl">14 件</span><button class="lbtn">${ic('x', 'sm')}</button></div>
+  <div class="opts k-opts"><span class="sind"></span>${IND.map((t, i) => `<div class="opt ${i === 2 ? 'on' : ''}"><span class="rad ${i === 2 ? 'on' : ''}"></span>${t}</div>`).join('')}</div></div>`;
+
+/* ===================== UR-S 对方的联系方式 ===================== */
+const P1 = { n: '高橋 美咲', i: '高', c: 'c2', co: '青葉ベンチャーズ', role: 'パートナー', line: 'misaki_aoba', wc: 'misaki-tk', mail: 'm.takahashi@aoba-vc.example', tel: '090-0000-1234' };
+const P2 = { n: '松本 隆', i: '松', c: 'c3', co: '松本精機', role: '経営企画部長', line: 'matsumoto.t' };
+const cpy = `<button class="btn">コピー</button>`;
+/* o: {tel:true 能打电话} */
+function scRows(p, o = {}) {
+  const r = [];
+  if (p.line) r.push(['LINE', p.line, cpy, 'k-sline']);
+  if (p.wc) r.push(['WeChat', p.wc, cpy, 'k-swc']);
+  if (p.mail) r.push(['メール', p.mail, `<button class="btn">${ic('mail', 'sm')}メール</button>${o.narrow ? '' : cpy}`, 'k-smail']);
+  if (p.tel) r.push(['電話', p.tel, o.tel ? `<button class="btn">${ic('phone', 'sm')}電話</button>` : cpy, 'k-stel']);
+  if (!r.length) return `<div class="scnone k-snone">連絡先は共有されていません</div>`;
+  return r.map(([k, v, a, c]) => `<div class="scr ${c}"><div class="grow"><small>${k}</small><b>${v}</b></div>${a ? `<div class="acts">${a}</div>` : ''}</div>`).join('');
+}
+const scCard = (p, o = {}) => `<div class="card k-sc" style="padding:6px 18px 8px"><div class="card-h" style="margin:12px 0 0"><h3>連絡先</h3></div>${scRows(p, o)}</div>`;
+const fadedCards = (p) => `<div class="card fadeout" style="margin-top:14px"><div class="lbl">提供できること</div><b style="font-size:13.5px">SaaS 領域のシリーズA 投資 · 資本政策の壁打ち</b></div>`;
+const netHead = (p) => `<div class="row" style="gap:14px"><div class="av lg ${p.c}">${p.i}</div><div class="grow"><div style="font-size:20px;font-weight:800">${p.n}</div><div class="sub">${p.co} · ${p.role}</div><div class="chips" style="margin-top:6px"><span class="chip lav">関係構築</span><span class="chip">金融・投資</span><span class="chip">東京</span></div></div></div>`;
+const reachCard = `<div class="card" style="margin-top:14px"><div class="row" style="gap:10px"><span class="emo sm pink">🎯</span><b class="grow" style="font-size:13.5px">9/18 に名刺交換</b><button class="btn primary">${ic('send', 'sm')}連絡する</button></div></div>`;
+const netDrawer = (p, o = {}) => `<div class="overlay"></div><div class="drawer"><div class="row between" style="margin-bottom:14px">${rb('x')}<div class="row" style="gap:8px">${rb('more')}<button class="btn">${ic('pen', 'sm')}編集</button></div></div>${netHead(p)}${reachCard}<div style="margin-top:14px">${scCard(p, o)}</div>${fadedCards(p)}</div>`;
+const NETLIST = D.contacts.slice(0, 7);
+const netBody = `<div class="card"><div class="list">${NETLIST.map(c => `<div class="li"><div class="av ${c.c}">${c.i}</div><div class="meta"><b>${c.n}</b><span>${c.co} · ${c.role}</span></div><span class="chip ${c.st}">${c.stage}</span></div>`).join('')}</div></div>`;
+const netPage = { nav: 1, head: mainhead('人脈', '218人'), body: netBody };
+const hostAns = `<div class="det-sec fadeout"><h5>申込時の回答</h5><dl class="qa"><div><dt>あなたの立場に近いものを選んでください</dt><dd>事業会社</dd></div><div><dt>今回いちばん話したいテーマ</dt><dd>財務チームの採用 · 上場準備</dd></div></dl></div>`;
+const hostSec = (p, o = {}) => `<div class="det-sec k-hsec"><h5>連絡先</h5><div class="scbox">${scRows(p, o)}</div></div>`;
+const hostHead = (p, close) => `<div class="det-h"><div class="av lg ${p.c}">${p.i}</div><div class="grow"><b style="font-size:18px;display:block">${p.n}</b><div class="lbl">${p.co} · ${p.role}</div><div class="meta-l"><span class="chip teal">承認済み</span><span class="chip">申込 10月3日</span><span class="chip">2回目</span></div></div>${close ? `<button class="lbtn">${ic('x', 'sm')}</button>` : ''}</div>`;
+const hostDrawer = (p) => `<div class="overlay"></div><div class="drawer" style="background:var(--surface)"><div class="row between" style="margin-bottom:14px">${rb('x', 'soft')}<button class="btn">見送り</button></div>${hostHead(p)}${hostSec(p)}${hostAns}<div class="det-sec fadeout"><h5>自己紹介</h5><div class="qa" style="padding:10px 14px;font-size:13px;line-height:1.7">松本精機で経営企画を担当しています。</div></div></div>`;
+const hostBody = `<div class="card"><div class="list">${['松本 隆', '中村 由紀', '加藤 健太', '山本 彩', '小林 誠'].map((n, k) => `<div class="li"><div class="av c${k % 5 + 1}">${n[0]}</div><div class="meta"><b>${n}</b><span>申込 10月${k + 2}日</span></div><span class="chip ${k ? 'apricot' : 'teal'}">${k ? '審査待ち' : '承認済み'}</span></div>`).join('')}</div></div>`;
+const hostPage = { nav: 'host', head: mainhead('CFO Night Tokyo vol.18', '申込 42名'), body: hostBody };
+const netPhone = (p, o = {}) => tb52('', rb('left'), rb('more')) + netHead(p) + reachCard + `<div style="margin-top:14px">${scCard(p, { ...o, narrow: true })}</div>` + fadedCards(p);
+const hostSheet = (p, o = {}) => `<div class="sheet-scrim"></div><div class="sheet full"><div class="grab"></div><div class="sb">${hostHead(p, true)}${hostSec(p, { ...o, narrow: true })}${hostAns}</div></div>`;
+const hostListPhone = tb52('申込者', rb('left')) + hostBody;
+
+/* ===================== UR-P 编辑资料 ===================== */
+const GIVE = ['製造業 DX の導入事例', 'SaaS の営業組織づくり', '中部の製造業ネットワーク'];
+const SEEK = ['シリーズA のリード投資家', '製造業の決裁者'];
+const INTRO = '工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。';
+const tags = (arr, tone, o = {}) => `<div class="tagin">${arr.map(t => `<span class="tagx ${tone}">${t}<i>${ic('x', 'sm')}</i></span>`).join('')}${arr.length < 5 ? (o.typing ? `<span class="tagadd focus k-typing">CFO 候補<i class="caret" style="margin-left:0"></i></span>` : `<span class="tagadd">${ic('plus', 'sm')}追加</span>`) : ''}</div>`;
+/* s: def | edit | save | err */
+function profForm(s, two) {
+  const d = s === 'save' ? 'dim' : '';
+  const bio = s === 'err' ? INTRO + '名古屋と東京を行き来しながら、工場の現場を回っています。' : INTRO;
+  const bioLen = s === 'err' ? 86 : 52;
+  return `<div class="card k-pco"><div class="gh">会社・役職</div>${two ? '<div class="grid2" style="gap:0 12px">' : ''}${fld('会社', '株式会社ミナトリンク', { cls: d })}${fld('役職', '代表取締役 CEO', { cls: d })}${two ? '</div>' : ''}</div>
+    <div class="card k-ptags ${d ? 'fadeout' : ''}"><div class="gh">提供できること<small>${GIVE.length} / 5</small></div>${tags(GIVE, 'lav')}
+      <div class="gh" style="margin-top:18px">求めていること<small>${s === 'edit' ? 3 : 2} / 5</small></div>${tags(SEEK, 'pink', { typing: s === 'edit' })}</div>
+    <div class="card k-pbio">${fld('自己紹介', bio, { ta: true, k: 'k-bio', cls: (s === 'err' ? 'err ' : '') + d, msg: s === 'err' ? 'あと 6 文字減らしてください' : '', lt: `<span class="lbl" style="margin-left:auto;font-family:var(--font-num);${s === 'err' ? 'color:var(--coral-text)' : ''}">${bioLen} / 80</span>` })}</div>
+    <div class="card k-pvis" style="padding:12px 18px 6px"><div class="gh" style="margin:4px 0 4px">公開する項目</div>
+      ${[['会社・役職', 1], ['提供・求めていること', 1], ['自己紹介', 1]].map(([t, on]) => `<div class="vrow"><div class="grow"><b>${t}</b></div>${tg(on)}</div>`).join('')}
+      <div class="vrow k-pfix"><div class="grow"><b>連絡先</b><span>人脈にいない人には表示されません</span></div><span class="fix">${ic('users', 'sm')}人脈と主催者のみ</span></div></div>`;
+}
+const pErr = `<div class="ng-card k-perr" style="margin-top:14px"><span class="ngmark"><span class="lic sm i-alert"></span></span><span>保存できませんでした。通信を確認して、もう一度お試しください。</span></div>`;
+const profDrawer = (s, scroll) => `<div class="overlay"></div><div class="drawer ed k-drawer"><div class="dh"><b>プロフィールを編集</b>${rb('x', 'soft')}</div><div class="db">${scroll ? `<div class="scrollto" data-off="${scroll}"></div>` : ''}${profForm(s, true)}${s === 'err' ? pErr : ''}</div>
+  <div class="df"><span class="lbl">${s === 'save' ? '' : ''}</span><span style="flex:1"></span><button class="btn">キャンセル</button><button class="btn primary k-psave ${s === 'save' ? 'dis' : ''}">${s === 'save' ? '保存しています…' : '保存'}</button></div></div>`;
+const SMENU = [['user', 'プロフィール'], ['settings', 'アカウント'], ['sparkle', 'iOrbit が使う情報'], ['link', '連携'], ['bell', '通知'], ['grid', '言語と外観'], ['share', 'データの書き出し'], ['book', 'ヘルプ']];
+const setBody = `<div class="setgrid"><div class="smenu">${SMENU.map(([i, l], k) => `<a class="${k ? '' : 'on'}">${ic(i, 'sm')}${l}</a>`).join('')}</div><div><div style="margin:0 0 16px"><b style="font-size:19px">プロフィール</b><div class="lbl">Orbit 名刺と公開プロフィール。</div></div>
+  <div class="card" style="min-height:200px;background:linear-gradient(135deg,var(--mac-lav),var(--surface) 62%)"><div class="lbl">Orbit 名刺</div><div class="row" style="gap:14px;margin-top:60px"><div class="av lg c1">佐</div><div><div style="font-size:24px;font-weight:800">佐藤 健一</div><div class="sub">株式会社ミナトリンク · 代表取締役 CEO</div></div></div></div>
+  <div class="card" style="margin-top:18px"><div class="lbl">提供できること</div><div class="chips" style="margin-top:6px">${GIVE.map(t => `<span class="chip lav">${t}</span>`).join('')}</div></div></div></div>`;
+const setPage = { nav: 'settings', head: mainhead('設定', ''), body: setBody };
+const profPhone = (s) => tb52('プロフィールを編集', rb('x')) + profForm(s) + (s === 'err' ? pErr : '') + `<div style="height:140px"></div>` +
+  foot(`<button class="btn primary block xl k-psave ${s === 'save' ? 'dis' : ''}">${s === 'save' ? '保存しています…' : '保存'}</button>`);
+
+/* ===================== UR-E 编辑联系人 ===================== */
+const C1 = P1;
+function editForm(two, s = 'def') {
+  const g = (a, b) => two ? `<div class="grid2" style="gap:0 12px">${a}${b}</div>` : a + b;
+  const d = s === 'save' ? { cls: 'dim' } : {};
+  return `<div class="card k-ebase"><div class="gh">基本情報</div>${fld('氏名', C1.n, d)}${g(fld('会社', C1.co, d), fld('役職', C1.role, d))}</div>
+    <div class="card k-ecls"><div class="gh">分類</div>${g(fld('業界', '金融・投資 › ベンチャー投資', { end: down, ...d }), fld('役職層', '経営層', { end: down, ...d }))}
+      <div class="fld k-stage"><label>段階</label><div class="seg full"><button>知り合い</button><button class="on">関係構築</button></div></div></div>
+    <div class="card k-econ"><div class="gh">連絡先</div>${g(fld('メール', C1.mail, d), fld('電話', '03-0000-0000', d))}${fld('地域', '東京', { end: down, ...d })}
+      <div class="met k-met">${ic('pin', 'sm')}出会った場所：9/18 Japan Startup Night</div></div>`;
+}
+const editDrawer = (s = 'def') => `<div class="overlay"></div><div class="drawer ed k-drawer"><div class="dh">${rb('x', 'soft')}<b>連絡先を編集</b><button class="btn">キャンセル</button><button class="btn primary k-esave">保存</button></div>
+  <div class="db"><div class="scrollto" data-off="-60"></div><div class="row" style="gap:14px;margin-bottom:14px"><div class="av lg ${C1.c}">${C1.i}</div><div class="lbl">最終更新 10月6日 · 名刺から入力</div></div>${editForm(true, s)}
+  <button class="btn danger-ghost block k-edel" style="margin-top:14px;height:46px">${ic('x', 'sm')}この連絡先を削除</button></div></div>`;
+const delW = `<div class="overlay" style="z-index:29"></div><div class="wmodal k-dlg" style="text-align:center"><div class="dic" style="margin:0 auto 10px"><span class="lic lg i-trash"></span></div><b style="font-size:17px;display:block">高橋 美咲さんを削除しますか？</b><div class="sub" style="margin:8px 0 0;line-height:1.7">やりとり 3件・メモ 2件は消えません。<br>削除したあとも「元に戻す」で取り消せます。</div><div class="macts" style="justify-content:center"><button class="btn" style="height:46px;padding:0 26px">キャンセル</button><button class="btn danger" style="height:46px;padding:0 26px">削除する</button></div></div>`;
+const delP = `<div class="sheet-scrim"></div><div class="dialog k-dlg"><div class="dic"><span class="lic lg i-trash"></span></div><b class="dt">高橋 美咲さんを削除しますか？</b><div class="dd">やりとり 3件・メモ 2件は消えません。削除したあとも「元に戻す」で取り消せます。</div><div class="dacts"><button class="btn" style="height:46px">キャンセル</button><button class="btn danger" style="height:46px">削除する</button></div></div>`;
+const editPhone = (s = 'def', scroll) => tb52('連絡先を編集', rb('x')) + `<div class="row" style="gap:14px;margin-bottom:14px"><div class="av lg ${C1.c}">${C1.i}</div><div class="lbl">最終更新 10月6日 · 名刺から入力</div></div>` + editForm(false, s).replace('<div class="card k-econ">', `<div class="card k-econ ${scroll ? 'scrollto' : ''}" data-off="10">`) +
+  `<button class="btn danger-ghost block k-edel" style="margin-top:14px;height:48px">${ic('x', 'sm')}この連絡先を削除</button><div style="height:140px"></div>` +
+  foot(`<button class="btn primary block xl k-esave ${s === 'save' ? 'dis' : ''}">${s === 'save' ? '保存しています…' : '保存'}</button>`);
+
+/* ===================== 画板 ===================== */
+let h = '';
+/* ---------- UR-C ---------- */
+h += sec('UR-C 引导 ① 的联系方式', '去掉框中框：同页同一种栏位；LINE、WeChat 在前，メール・電話收在「＋」里；手机单列。图为页面滚到联系方式处');
+h += board('UR-C1 · Web 1440 · 空', '提案', bare(obWebC('empty')), [
+  ['.cg-h', '小标题与上面的栏位之间只用一条细线分开，不再套灰框和紫色提示框。「1つ以上」写在标题旁，不另起一句说明。zh：联系方式 · 至少一种 / en: Contact · at least one'],
+  ['.k-see', '一句话写清谁能看。zh：只有人脉里的人和你报名活动的主办方能看到。en: Only people in your network and hosts of events you apply to can see this.'],
+  ['.k-line label .chip', '「おすすめ」标在 LINE 和 WeChat 上（灰色小签，与「名刺から」的紫色、「AI 推定」的蓝色区分）。占位写「LINE ID」「WeChat ID」'],
+  ['.k-more', 'メール・電話默认收起：点一下在原位展开两栏，不跳页。名片读到时自动展开（见 UR-C2）'],
+  ['.k-priv', '右栏原来一句「生年月日と連絡先は相手に公開されません」与事实矛盾（联系方式会给人脉和主办方看），拆成两句：生日谁都看不到；联系方式只给人脉和主办方。zh：生日不会公开给任何人。联系方式只给人脉里的人和你报名活动的主办方看。en: Your birthday is never shown to anyone. Only people in your network and hosts of events you apply to can see your contact details.'],
+  ['.k-birth .msg', '生日栏下口径不变，措辞对齐：「だれにも公開されません」。zh：不会公开给任何人 / en: Never shown to anyone'],
+]);
+h += board('UR-C2 · Web 1440 · 从名片读到', '状态', bare(obWebC('card')), [
+  ['.k-mail label .chip', '名片上印着邮箱、电话时直接填好，带「名刺から」标记；改过后标记消失'],
+  ['.k-mail', '有值的那组自动展开，不再显示「＋ メール・電話を入れる」。此时已满足「至少一种」'],
+  ['.k-line', 'LINE、WeChat 仍在最前，空着也不拦（已经有邮箱）'],
+]);
+h += board('UR-C3 · Web 1440 · 一种都没填点「次へ」', '状态', bare(obWebC('miss')), [
+  ['.k-line', 'LINE、WeChat 两栏标红（与本页其它缺项同一做法：红框 + 浅珊瑚底），滚到这一组'],
+  ['.k-errline', '组下面一句说清要做什么。标签已写明四种，这里只说「どれか 1 つを入力してください」。zh：填写其中一种即可 / en: Fill in any one'],
+  ['.k-next', '按钮左侧的汇总写「あと 1 項目：連絡先」，与其它缺项合在一句里；按钮不置灰'],
+]);
+h += boards([
+  ['UR-C4 · Web 834 · 填了一种', '状态', T(obWebC('one', true)), [['.k-line', '填了 LINE 即满足；其它不再提示'], ['.cg-h', '834 单卡，组内仍两栏']]],
+  ['UR-C5 · Web 834 · 邮箱格式错误', '状态', T(obWebC('fmt', true)), [['.k-mail', '格式错只标这一栏，说明里给例子。zh：请检查邮箱格式（例：name@example.com）'], ['.k-next', '汇总写「メールの形式」；电话格式错同理「電話番号の形式」']]],
+]);
+h += boards([
+  ['UR-C6 · 390 · 空', '提案', M(obPhoneC('empty', true)), [['.cg-h', '单列；每栏整行宽，48 高'], ['.k-more', '「＋」整行可点，48 高'], ['.k-next', '「次へ」固定在 Safari 工具栏上方']]],
+  ['UR-C7 · 390 · 填了一种', '状态', M(obPhoneC('one', true)), [['.k-line', '填一种即可'], ['.k-see', '谁能看：同桌面一句']]],
+  ['UR-C8 · 390 · 从名片读到', '状态', M(obPhoneC('card', true)), [['.k-mail', '名片读到的自动展开并带标记'], ['.k-tel', '电话同理']]],
+  ['UR-C9 · 390 · 缺项', '状态', M(obPhoneC('miss', true)), [['.k-errline', '组下一句说明'], ['.foot .miss', '按钮上方汇总']]],
+  ['UR-C10 · 390 · 格式错误', '状态', M(obPhoneC('fmt', true)), [['.k-mail', '只标出错的一栏，键盘停在这里'], ['.foot .miss', '按钮上方汇总']]],
+]);
+h += boards([
+  ['UR-C11 · App · 空', '提案', A(obPhoneC('empty')), [['.cg-h', '与网页同一组件、同一文案'], ['.k-more', '展开后两栏竖排']]],
+  ['UR-C12 · App · 从名片读到', '状态', A(obPhoneC('card')), [['.k-mail', '「名刺から」标记'], ['.k-line', 'LINE、WeChat 仍在最前']]],
+  ['UR-C13 · App · 缺项', '状态', A(obPhoneC('miss')), [['.k-line', '两栏标红'], ['.k-errline', '组下一句说明']]],
+  ['UR-C14 · App · 格式错误', '状态', A(obPhoneC('fmt')), [['.k-mail', '只标这一栏'], ['.foot .miss', '按钮上方汇总']]],
+]);
+
+/* ---------- UR-R ---------- */
+h += sec('UR-R 迁移账号补资料', '与引导 ① 同一版式，不再是顶上一张小卡；行业：电脑上 14 个直接平铺成单选块（不用下拉），手机和 App 用底部面板。只出现在从旧系统迁来、资料不全的账号登录时');
+h += board('UR-R1 · Web 1440 · 默认（已有的值预填）', '提案', bare(repairWeb('def')), [
+  ['.k-why', '一句说明为什么出现这一页、补完去哪。zh：已沿用你之前活动报名的资料。补上缺的项目并保存后，回到刚才打开的页面。en: We carried over your earlier event registration. Fill in what\'s missing and save to return to the page you opened.'],
+  ['.k-name', '旧系统带来的值直接填好，标「引き継ぎ」（沿用）；可以改'],
+  ['.k-ind', '行业不再是下拉：14 个直接平铺（3 列 × 5 行，每块 48 高），一眼看全、点一下就选，不存在「看不出能滚」。右栏实时显示「相手から見えるあなた」'],
+  ['.k-next', '只有一个按钮「保存して続ける」（保存并继续）。没有步骤条、没有「次へ」'],
+]);
+h += board('UR-R2 · Web 1440 · 选了行业', '状态', bare(repairWeb('pick')), [
+  ['.k-sub .igrid', '选了行业后，「業界の詳細」在下面摊开（金融・投資 有 7 个）。换行业时细分清空'],
+  ['.k-ind .opt.on', '选中：灰紫描边 + 浅紫底 + 实心圆点（kit 单选样式）'],
+]);
+h += board('UR-R3 · Web 1440 · 缺项', '状态', bare(repairWeb('miss')), [
+  ['.k-ind .igrid', '与引导同一做法：选项区红色描边 + 下方一句说明'],
+  ['.k-next', '按钮左侧汇总还差哪几项；按钮不置灰'],
+]);
+h += boards([
+  ['UR-R4 · Web 834 · 保存中', '状态', T(repairWeb('save', true)), [['.k-next', '按钮变「保存しています…」，期间选项变淡不可改；失败时在按钮上方一句「保存できませんでした。もう一度お試しください。」'], ['.k-sub', '834 行业两列平铺；预览在表单下面']]],
+  ['UR-R5 · Web 834 · 需要改生日', '状态', T(repairWeb('birth', true)), [['.k-birth', '只在旧生日无效（如未来日期）时出现，直接标红说明原因'], ['.k-clear', '可以改，也可以「生年月日を消す」（清除生日）。生日不是必填，谁都看不到']]],
+]);
+h += boards([
+  ['UR-R6 · 390 · 默认', '提案', M(repairPhone('def', true)), [['.k-why', '同桌面一句'], ['.k-ind', '点开是底部面板（UR-R7）'], ['.k-next', '按钮在 Safari 栏之上']]],
+  ['UR-R7 · 390 · 行业底部面板', '状态', M(repairPhone('def', true), sheetInd), [['.k-sheet .sh', '标题旁写总数「14 件」'], ['.k-opts', '每行 54 高；最后一行露出一半 + 右侧滚动条 + 底部渐隐，一看就知道还有'], ['.k-sheet .lbtn', '点选即关闭；✕ 或点外面不改']]],
+  ['UR-R8 · 390 · 缺项', '状态', M(repairPhone('miss', true)), [['.k-ind', '红框 + 说明'], ['.foot .miss', '按钮上方汇总']]],
+  ['UR-R9 · 390 · 需要改生日', '状态', M(repairPhone('birth', true)), [['.k-birth', '标红说明原因'], ['.k-clear', '可清除']]],
+]);
+h += boards([
+  ['UR-R10 · App · 默认', '提案', A(repairPhone('def')), [['.k-why', '文案与网页相同'], ['.k-next', '底部一个按钮']]],
+  ['UR-R11 · App · 行业底部面板', '状态', A(repairPhone('def'), sheetInd), [['.k-opts', '同网页：露半行 + 滚动条'], ['.k-sheet .sh', '「14 件」']]],
+  ['UR-R12 · App · 保存中', '状态', A(repairPhone('save')), [['.k-next', '「保存しています…」，完成后回到原来要去的页面'], ['.k-ind', '保存中栏位变淡、不可改']]],
+]);
+
+/* ---------- UR-S ---------- */
+h += sec('UR-S 对方的联系方式', '只在两处出现：人脉详情（已完成交换的人）、主办方的报名者详情。不出现在参会者互看的资料页。每行右侧是能做的事');
+h += board('UR-S1 · Web 1440 · 人脉详情 · 四种都有', '提案', W(netPage, netDrawer(P1)), [
+  ['.k-sc .card-h', '标题「連絡先」。放在「连络する」卡下面、「提供できること」上面'],
+  ['.k-sline', 'LINE、WeChat 只给「コピー」（复制后提示「LINE ID をコピーしました」）。不画「LINE で開く」，见待看 1'],
+  ['.k-smail', 'メール：「メール」打开邮件软件新建邮件（mailto），旁边可复制'],
+  ['.k-stel', '電話：电脑上只给复制；手机和 App 上换成「電話」直接拨号。生日不出现在这里（谁都看不到）'],
+]);
+h += board('UR-S2 · Web 1440 · 主办方报名者详情 · 只有一种', '提案', W(hostPage, hostDrawer(P2)), [
+  ['.k-hsec h5', '与报名者详情其它段同一写法（小标题 + 浅灰底块），放在「申込時の回答」上面'],
+  ['.k-sline', '只有一种时只出这一行'],
+]);
+h += boards([
+  ['UR-S3 · Web 834 · 人脉详情 · 复制后', '状态', WT(netPage, netDrawer({ ...P1, mail: '', tel: '', bd: '' }) + `<div class="toast-stack" style="z-index:40">${toast('LINE ID をコピーしました').replace('toast pos notab', 'toast')}</div>`), [['.k-sline', '复制后右下角提示 2 秒'], ['.k-toast', '提示里写复制了什么。zh：已复制 LINE ID / en: LINE ID copied']]],
+  ['UR-S4 · Web 834 · 报名者详情 · 没有', '状态', WT(hostPage, hostDrawer({ ...P2, line: '', bd: '' })), [['.k-snone', '一个都没有时这一段仍在，写一行「連絡先は共有されていません」，主办方知道不是漏看。zh：对方没有共享联系方式']]],
+]);
+h += boards([
+  ['UR-S5 · 390 · 人脉详情', '提案', M(netPhone(P1, { tel: true })), [['.k-sc', '整行 64 高，按钮 40 高'], ['.k-smail', '窄屏只留主动作（メール），复制在长按值上'], ['.k-stel', '手机上「電話」直接拨号']]],
+  ['UR-S6 · 390 · 报名者详情', '提案', M(hostListPhone, hostSheet(P2, { tel: true })), [['.k-hsec', '底部面板里的同一段'], ['.k-sline', '整行 64 高，「コピー」40 高']]],
+  ['UR-S7 · 390 · 没有', '状态', M(hostListPhone, hostSheet({ ...P2, line: '', bd: '' })), [['.k-snone', '一行说明']]],
+  ['UR-S8 · 390 · 复制后', '状态', M(netPhone({ ...P1, mail: '', tel: '', bd: '' }), toast('LINE ID をコピーしました')), [['.k-toast', '底部提示 2 秒，在 Safari 栏之上']]],
+]);
+h += boards([
+  ['UR-S9 · App · 人脉详情', '提案', A(netPhone(P1, { tel: true }), toast('LINE ID をコピーしました')), [['.k-sc', '与网页同一张卡'], ['.k-toast', '复制后底部提示']]],
+  ['UR-S10 · App · 报名者详情 · 只有一种', '提案', A(hostListPhone, hostSheet(P2, { tel: true })), [['.k-sline', '只出这一行'], ['.k-hsec h5', '标题与其它段同一写法']]],
+]);
+
+/* ---------- UR-P ---------- */
+h += sec('UR-P 编辑资料', '原画板没有编辑面板（b5 #18–20 / b12 W-R18a-01 是卡片内直接改 + 右栏开关）。保留实现的面板，按 kit 标准重画：电脑右侧抽屉，手机全屏');
+h += board('UR-P1 · Web 1440 · 默认', '提案', W(setPage, profDrawer('def', -90)), [
+  ['.k-drawer .dh .rbtn', '标准关闭：右上角圆形 ✕（kit .rbtn），不再是大灰「閉じる」按钮'],
+  ['.k-pco .fld', '会社、役職分成两栏，各自的标签。原来两个输入框占位符都写「会社・役職」'],
+  ['.k-ptags', '「提供 / 求めていること」从「每行一项」的多行框改成标签输入：每项一枚、点 ✕ 去掉、「＋ 追加」加一项；标题旁显示 3 / 5'],
+  ['.k-pvis', '公开范围用 kit 开关（44×26，开 = 灰紫），一行一项。与右栏「公開プレビュー」的开关是同一份数据'],
+  ['.k-pfix', '联系方式不能关，写明给谁看。zh：联系方式　仅人脉和主办方 / en: Contact details — network and hosts only。生日谁都看不到，不列在这里'],
+]);
+h += board('UR-P2 · Web 1440 · 编辑中', '状态', W(setPage, profDrawer('edit')), [
+  ['.k-typing', '点「＋ 追加」原位变输入框，回车加入；满 5 项后「追加」消失'],
+  ['.k-psave', '底部固定：キャンセル + 保存。只有一个主按钮'],
+]);
+h += boards([
+  ['UR-P3 · Web 834 · 保存中', '状态', WT(setPage, profDrawer('save')), [['.k-psave', '「保存しています…」，栏位变淡不可改；成功后关闭抽屉并提示「保存しました」'], ['.k-pco', '变淡']]],
+  ['UR-P4 · Web 834 · 出错', '状态', WT(setPage, profDrawer('err', -200)), [['.k-bio', '自我介绍超字数：计数变红 + 一句「あと 6 文字減らしてください」，此时保存不提交'], ['.k-perr', '保存失败：面板底部一张错误卡，内容不丢']]],
+]);
+h += boards([
+  ['UR-P5 · 390 · 默认', '提案', M(profPhone('def')), [['.tb52 .rbtn', '顶栏 52：左上 ✕ 关闭（有改动时先问「変更を破棄しますか？」），标题居中，不吸顶'], ['.k-pco', '单列，每栏 48 高'], ['.k-psave', '「保存」固定在 Safari 栏之上；不再有右下角挤着的两个小按钮']]],
+  ['UR-P6 · 390 · 编辑中', '状态', M(profPhone('edit').replace('<div class="card k-ptags', '<div class="scrollto" data-off="40"></div><div class="card k-ptags')), [['.k-typing', '标签原位输入'], ['.k-ptags .gh small', '计数']]],
+  ['UR-P7 · 390 · 出错', '状态', M(profPhone('err').replace('<div class="card k-pbio', '<div class="scrollto" data-off="40"></div><div class="card k-pbio')), [['.k-bio', '超字数'], ['.k-perr', '保存失败']]],
+  ['UR-P8 · 390 · 公开范围（滚到底）', '状态', M(profPhone('def').replace('<div class="card k-pvis', '<div class="scrollto" data-off="200"></div><div class="card k-pvis')), [['.k-pvis', '开关整行可点'], ['.k-pfix', '联系方式固定规则']]],
+]);
+
+/* ---------- UR-E ---------- */
+h += sec('UR-E 编辑联系人', '电脑照 b5 E2 抽屉；手机不再沿用电脑头部：✕ + 居中标题一行，「保存」放底部；单列三组；删除先确认');
+h += board('UR-E1 · Web 1440 · 默认', '提案', W(netPage, editDrawer()), [
+  ['.k-drawer .dh', '照 b5 E2：✕ · 標題 · キャンセル · 保存一行（抽屉 600 宽放得下）'],
+  ['.k-ebase', '分三组卡：基本情報 / 分類 / 連絡先。栏位与全站同一种（48 高，卡内浅灰底），不再一组两栏挤四个'],
+  ['.k-stage', '段階用 kit 分段控件，两项（知り合い / 関係構築，沿用代定 12）'],
+  ['.k-met', '出会った場所只读，写成一行文字，不做成灰掉的输入框'],
+  ['.k-edel', '删除在最下面整行，珊瑚色文字；点了先确认（UR-E2）'],
+]);
+h += board('UR-E2 · Web 1440 · 删除确认', '状态', W(netPage, editDrawer() + delW), [
+  ['.k-dlg', '居中确认框。zh：要删除高桥美咲吗？往来 3 条、笔记 2 条不会丢失，删除后也可以「撤销」。en: Delete Misaki Takahashi? 3 interactions and 2 notes are kept. You can undo right after.'],
+]);
+h += boards([
+  ['UR-E3 · Web 834 · 默认', '提案', WT(netPage, editDrawer()), [['.k-drawer .dh', '834 抽屉 560 宽，头部一行仍放得下'], ['.k-econ', '两栏仅限短字段']]],
+]);
+h += boards([
+  ['UR-E4 · 390 · 默认', '提案', M(editPhone()), [['.tb52', '顶栏 52：✕ + 居中标题，标题不再被挤'], ['.k-ebase', '单列'], ['.k-esave', '「保存」在底部，Safari 栏之上；没有「キャンセル」（✕ 就是取消）']]],
+  ['UR-E5 · 390 · 滚到下面', '状态', M(editPhone('def', true)), [['.k-econ', '連絡先一组'], ['.k-edel', '删除整行 48 高']]],
+  ['UR-E6 · 390 · 删除确认', '状态', M(editPhone('def', true), delP), [['.k-dlg', 'kit 确认框；「削除する」珊瑚底']]],
+  ['UR-E7 · 390 · 删除后', '状态', M(tb52('人脈') + `<div class="card"><div class="list">${D.contacts.slice(1, 8).map(c => `<div class="li"><div class="av ${c.c}">${c.i}</div><div class="meta"><b>${c.n}</b><span>${c.co} · ${c.role}</span></div><span class="chip ${c.st}">${c.stage}</span></div>`).join('')}</div></div>`, toast('高橋 美咲さんを削除しました', '元に戻す')), [['.k-toast', '回到人脉列表，底部提示带「元に戻す」（撤销）']]],
+]);
+
+document.getElementById('out').innerHTML = h;
+document.querySelectorAll('.scrollto').forEach(m => {
+  const sc = m.closest('.phone .scroll, .cbody, .drawer .db'); if (!sc) return;
+  sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - (+m.dataset.off || 0);
+});
+docNav(''); orbitChrome();
+</script>
+</body>
+</html>
