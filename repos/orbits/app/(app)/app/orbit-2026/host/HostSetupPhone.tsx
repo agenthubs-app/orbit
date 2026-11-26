@@ -4,7 +4,7 @@
 // 主页：状态行 → 受付の設定（承認方式就地切换 · 定員就地改 · 締切底部抽屉 · 申込ページ复制）→ 質問一行一题（点进编辑页）→
 // 説明文两行摘要（点开全屏编辑）→ アジェンダ / 主催者の連絡先 / お知らせの文面 子页；底部「プレビュー」+ 唯一主按钮「公開する / 変更を公開」。
 // 子页是盖在页面上的全屏层（自带 ‹ 顶栏），数据与保存逻辑和电脑版同一套（HostSetupTab 的 draft / 自动保存 / 公開）。
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import type { HostNoticeTemplateKind, HostQuestionKind, HostSetupQuestion } from "../../../../../shared/contract/host-console";
 import { BottomSheet, Icon } from "../ui";
@@ -13,9 +13,10 @@ import {
   closeBeforeStart, fromLocalInput, toLocalInput, type HostSetupViewProps,
 } from "./HostSetup";
 import { ReorderList } from "./ReorderList";
+import { SubPage } from "./SubPage";
 import { QuestionLibraryDrawer } from "./QuestionLibrary";
 import { addLibraryQuestions } from "../../../../../shared/domain/host-question-library";
-import { eventTone, hostDateDay, hostDateLong, type HostT } from "./host-model";
+import { eventTone, hostDateDay, hostDateLong, hostTime, type HostT } from "./host-model";
 import { DESC_MAX, NOTE_MAX, QUESTION_MAX, agoText, applyLinkText, blankQuestion, charCount, clampText, hasLink, inertWhen, moveItem, switchKind } from "./setup-model";
 import s from "./host.module.css";
 import m from "./tabs.module.css";
@@ -23,21 +24,7 @@ import sp from "./setup-phone.module.css";
 
 type Sub = { kind: "q"; index: number } | { kind: "reorder" } | { kind: "desc" } | { kind: "agenda" } | { kind: "contact" } | { kind: "notice" } | null;
 
-/** 盖在页面上的子页（b13 .topbar + 内容 + 可选底部按钮）。 */
-/** 全屏子页（b13 .topbar ← 标题 / 副标题）；导入名单也用。 */
-export function SubPage({ title, sub, onBack, right, foot, children, testId }: { title: string; sub?: string; onBack?: () => void; right?: ReactNode; foot?: ReactNode; children: ReactNode; testId: string }) {
-  return (
-    <div className={sp.subPage} role="dialog" aria-modal="true" aria-label={title} data-host-setup-sub={testId}>
-      <div className={sp.top}>
-        {onBack ? <button type="button" className={`btn ${sp.rbtn}`} aria-label={title} onClick={onBack}><Icon name="left" size={20} /></button> : <span />}
-        <div className={sp.topT}><b>{title}</b>{sub ? <small>{sub}</small> : null}</div>
-        {right ?? <span />}
-      </div>
-      <div className={sp.subBody}>{children}</div>
-      {foot ? <div className={sp.subFoot}>{foot}</div> : null}
-    </div>
-  );
-}
+export { SubPage } from "./SubPage";
 
 function QuestionEditPage({ question, index, count, t, onChange, onDelete, onBack, readOnly = false }: { question: HostSetupQuestion; index: number; count: number; t: HostT; onChange: (question: HostSetupQuestion) => void; onDelete: () => void; onBack: () => void; /** 開催済み：只看不改（b13 HM-S13）。 */ readOnly?: boolean }) {
   const [optReorder, setOptReorder] = useState(false);
@@ -102,7 +89,7 @@ export function NoticesPhone({ data, t, kind, note, readOnly, onKind, onNote }: 
         {data.notices.map((item) => {
           const on = item.kind === selected?.kind;
           return (
-            <button key={item.kind} type="button" className={`${sp.ntr} ${on ? sp.ntrOn : ""}`} aria-pressed={on} onClick={() => onKind?.(item.kind)}>
+            <button key={item.kind} type="button" className={`btn ${sp.ntr} ${on ? sp.ntrOn : ""}`} aria-pressed={on} onClick={() => onKind?.(item.kind)}>
               <span className={sp.grow}><b>{t(NOTICE_LABEL[item.kind])}</b><span>{item.text}</span></span>
               <Icon name={on ? "down" : "right"} size={16} />
             </button>
@@ -132,8 +119,8 @@ export function NoticesPhone({ data, t, kind, note, readOnly, onKind, onNote }: 
   );
 }
 
-export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eventVersion: number; onEventVersion: (version: number) => void }) {
-  const { data, draft, t, language, now = new Date(), saveState = "saved", busy = false, host = "", noteDraft = data.hostNote ?? "", ended } = props;
+export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; event: HostSetupViewProps["data"]["event"]; onEventSaved: (event: HostSetupViewProps["data"]["event"]) => void }) {
+  const { data, draft, t, language, now = new Date(), saveState = "saved", busy = false, host = "", noteDraft = data.hostNote ?? "", ended, event, onEventSaved } = props;
   const [sub, setSub] = useState<Sub>(null);
   const [editCap, setEditCap] = useState(false);
   const [closeSheet, setCloseSheet] = useState(false);
@@ -146,9 +133,9 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
   const link = applyLinkText(host, data.applyPath);
   const ago = agoText(data.savedAt, now, t, (iso) => hostDateDay(iso, t, language));
   const status = saveState === "saving" ? t("suSaving") : saveState === "dirty" ? t("suUnsaved") : saveState === "invalid" ? t("suInvalid") : ago ? t("suSavedAgo", { ago }) : "";
-  const contact = data.event.contact;
+  const contact = event.contact;
   const contactSummary = [contact?.wechatId ? "WeChat" : null, contact?.lineId ? "LINE" : null].filter(Boolean).join(" · ") || (contact?.note ? t("evContactMessage") : t("suNotSet"));
-  const agendaCount = data.event.agenda?.length ?? 0;
+  const agendaCount = event.agenda?.length ?? 0;
   const empty = questions.length === 0;
   const pubDisabled = busy || saveState === "invalid" || saveState === "conflict" || (data.formPublished && data.unpublishedChanges === 0 && saveState === "saved");
   const [closeDate, setCloseDate] = useState("");
@@ -180,23 +167,22 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
   if (sub?.kind === "desc") {
     const length = charCount(draft.description);
     return (
-      <SubPage testId="desc" title={t("suDesc")} sub={t("suCounter", { n: length })} onBack={() => setSub(null)}
-        foot={<button type="button" className={`btn ${s.btn} ${s.primary} ${sp.block}`} onClick={() => setSub(null)}>{t("roDone")}</button>}>
-        <textarea className={sp.descTa} value={draft.description} maxLength={DESC_MAX} placeholder={t("suDescPh")} aria-label={t("suDesc")} readOnly={ended} onChange={(event) => change({ ...draft, description: clampText(event.target.value, DESC_MAX) })} />
+      <SubPage testId="desc" title={t("suDesc")} sub={t("tSetup")} right={<button type="button" className={`btn ${s.btn} ${s.sm} ${s.primary}`} onClick={() => setSub(null)} data-host-desc-done="">{t("roDone")}</button>}>
+        <div className={sp.descBox}>
+          <textarea className={sp.descTa} value={draft.description} maxLength={DESC_MAX} placeholder={t("suDescPh")} aria-label={t("suDesc")} readOnly={ended} onChange={(event) => change({ ...draft, description: clampText(event.target.value, DESC_MAX) })} />
+          <span className={sp.descCnt}>{t("suCounter", { n: length })}</span>
+        </div>
+        {ended ? null : <div className={`${s.lbl} ${sp.descNote}`}>{t("suDescNote")}</div>}
       </SubPage>
     );
   }
   if (sub?.kind === "agenda") {
-    return (
-      <SubPage testId="agenda" title={t("evAgenda")} sub={t("tSetup")} onBack={() => setSub(null)}>
-        <div className={sp.embed}><SetupAgendaCard key={`${data.event.eventId}:agenda`} event={data.event} t={t} ended={ended} version={props.eventVersion} onVersion={props.onEventVersion} phone /></div>
-      </SubPage>
-    );
+    return <SetupAgendaCard key={`${event.eventId}:agenda`} event={event} t={t} ended={ended} onSaved={onEventSaved} onBack={() => setSub(null)} />;
   }
   if (sub?.kind === "contact") {
     return (
       <SubPage testId="contact" title={t("suContactShort")} sub={t("evContactSub")} onBack={() => setSub(null)}>
-        <div className={sp.embed}><SetupContactCard key={`${data.event.eventId}:${data.event.version}`} event={data.event} t={t} disabled={ended} version={props.eventVersion} onVersion={props.onEventVersion} /></div>
+        <div className={sp.embed}><SetupContactCard key={`${data.event.eventId}:${data.event.version}`} event={event} t={t} disabled={ended} onSaved={onEventSaved} /></div>
       </SubPage>
     );
   }
@@ -241,7 +227,7 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
           <div className={sp.srow}>
             <span className={sp.k}>{t("suCapacity")}</span>
             {ended ? <span className={sp.v}>{draft.capacity ? `${draft.capacity}${t("unitPeople")}` : t("suNoCap")}</span> : editCap ? (
-              <span className={sp.v}>
+              <span className={`${sp.v} ${sp.capEdit}`}>
                 <input autoFocus className={sp.capIn} type="number" inputMode="numeric" min={1} max={10000} aria-label={t("suEditCap")} defaultValue={draft.capacity ?? ""}
                   onBlur={(event) => { const n = Number(event.currentTarget.value); change({ ...draft, capacity: event.currentTarget.value.trim() && Number.isInteger(n) && n > 0 ? Math.min(n, 10000) : null }); setEditCap(false); }}
                   onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /> {t("unitPeople")}
@@ -287,7 +273,7 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
             <button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={full} onClick={() => setAddSheet(true)} data-host-qadd-open=""><Icon name="plus" size={16} />{t("suAddQ")}</button>
             {questions.length > 1 ? <button type="button" className={`btn ${s.btn} ${s.sm} ${s.ghost} ${sp.push}`} onClick={() => setSub({ kind: "reorder" })} data-host-reorder="">{t("roReorder")}</button> : null}
           </div>}
-          {full ? <div className={`${s.lbl} ${sp.maxNote} ${ended ? sp.maxNoteRo : ""}`}>{t("suAddMax")}</div> : null}
+          {full ? <div className={`${s.lbl} ${sp.maxNote}`}>{t("suAddMax")}</div> : null}
         </div>
 
         <button type="button" className={`btn ${s.card} ${sp.card} ${sp.descCard}`} onClick={() => setSub({ kind: "desc" })} data-host-setup-desc="">
@@ -318,13 +304,15 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
         }} />
 
       <BottomSheet open={closeSheet} onClose={() => setCloseSheet(false)} label={t("suCloses")}>
-        <b className={sp.sheetT}>{t("suCloses")}</b>
-        <div className={s.lbl}>{t("suCloseHint", { t: `${hostDateLong(data.event.startsAt, language, t)}` })}</div>
-        <div className={sp.grid2}>
-          <label className={sp.fld}><span className={sp.fldL}>{t("suDate")}</span><span className={`${sp.in} ${sp.inGrey}`}><input type="date" value={closeDate} max={toLocalInput(data.event.startsAt).slice(0, 10)} onChange={(event) => setCloseDate(event.target.value)} /></span></label>
-          <label className={sp.fld}><span className={sp.fldL}>{t("suTime")}</span><span className={`${sp.in} ${sp.inGrey}`}><input type="time" value={closeTime} onChange={(event) => setCloseTime(event.target.value)} /></span></label>
+        <div className={sp.closeHead}>
+          <b className={sp.sheetT}>{t("suCloses")}</b>
+          <span className={s.lbl}>{t("suCloseHint", { t: `${hostDateDay(data.event.startsAt, t, language)} ${hostTime(data.event.startsAt)}` })}</span>
         </div>
-        <div className={sp.grid2}>
+        <div className={`${sp.grid2} ${sp.closeFlds}`}>
+          <label className={sp.fld}><span className={sp.fldL}>{t("suDate")}</span><span className={`${sp.in} ${sp.inGrey} ${sp.pick}`}><input type="date" value={closeDate} max={toLocalInput(data.event.startsAt).slice(0, 10)} onChange={(event) => setCloseDate(event.target.value)} /><Icon name="calendar" size={16} /></span></label>
+          <label className={sp.fld}><span className={sp.fldL}>{t("suTime")}</span><span className={`${sp.in} ${sp.inGrey} ${sp.pick}`}><input type="time" value={closeTime} onChange={(event) => setCloseTime(event.target.value)} /><Icon name="clock" size={16} /></span></label>
+        </div>
+        <div className={`${sp.grid2} ${sp.sheetActs}`}>
           <button type="button" className={`btn ${s.btn} ${s.ghost}`} onClick={() => { change({ ...draft, registrationClosesAt: null }); setCloseSheet(false); }}>{t("suNoClose")}</button>
           <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={!closeDate} onClick={() => { change({ ...draft, registrationClosesAt: closeBeforeStart(fromLocalInput(`${closeDate}T${closeTime || "23:59"}`), data.event.startsAt) }); setCloseSheet(false); }}>{t("suDecide")}</button>
         </div>

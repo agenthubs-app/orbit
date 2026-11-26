@@ -106,9 +106,14 @@ test("mock service: agenda saved on create and replaced on update of a published
   const created = await service.createEvent("actor", { endsAt: "2026-11-28T08:30:00.000Z", feeKind: "free", organizerProfileId: "x", startsAt: "2026-11-28T05:00:00.000Z", title: "交流会", agenda: [{ at: "14:00", title: " 签到 " }] });
   assert.deepEqual(created.event.agenda, [{ at: "14:00", title: "签到" }]);
   const live = await service.event("actor", HOST_EVENT_IDS.roundtable);
+  await service.saveHostNote("actor", HOST_EVENT_IDS.roundtable, { hostNote: "受付で名刺をご用意ください" });
   const updated = await service.updateEvent("actor", HOST_EVENT_IDS.roundtable, { agenda: [{ at: "18:30", title: "开场" }], expectedVersion: live!.version });
   assert.deepEqual(updated.event.agenda, [{ at: "18:30", title: "开场" }]);
   assert.equal(updated.notified, 0); assert.equal(updated.changePreview ?? null, null);
+  const setup = await service.setup("actor", HOST_EVENT_IDS.roundtable);
+  assert.deepEqual(setup?.event.agenda, updated.event.agenda);
+  assert.equal(setup?.event.version, updated.event.version);
+  assert.equal(setup?.hostNote, "受付で名刺をご用意ください");
 });
 
 test("create form: 议程 * card after 介绍 with one empty row, count and drag hint, preview shows 3 rows + 还有 N 项", () => {

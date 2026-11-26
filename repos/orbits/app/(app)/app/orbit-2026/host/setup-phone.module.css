@@ -11,28 +11,37 @@
 .bEmo { width: 32px; height: 32px; border-radius: var(--r-sm); background: var(--surface); display: grid; place-items: center; font-size: var(--fs-emoji-sm); flex: none; }
 .banner b { display: block; font-size: var(--fs-row); color: var(--ink); }
 .bBody { display: block; font-size: var(--fs-label); color: var(--ink-2); line-height: var(--lh-prose); }
+.banner[data-host-setup-ended] b { font-size: var(--fs-body-sm); line-height: var(--lh-prose); }
+.banner[data-host-setup-ended] .bBody { color: var(--ink); font-size: var(--fs-control); line-height: var(--lh-prose); }
 .bBtn.bBtn { background: var(--surface); flex: none; }
 
 .card.card { display: block; margin-top: 14px; padding: 18px; }
 .cardH { margin: 0 0 12px; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); display: block; }
-.cardHRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.cardHRow .cardH { margin-bottom: 12px; }
+.cardHRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.cardHRow .cardH { margin-bottom: 0; }
+/* 卡头标题里的计数（b13 .card-h h3 flex gap 8 · .lbl 500） */
+.cardH:has(> span) { display: flex; align-items: center; gap: 8px; }
 
 .srow { display: flex; align-items: center; gap: 10px; padding: 13px 0; border-top: 1px solid var(--line); min-width: 0; }
 .first.first { border-top: 0; padding-top: 4px; }
 .k { font-size: var(--fs-body-sm); font-weight: var(--fw-bold); flex: none; color: var(--ink); }
 .v { margin-left: auto; color: var(--ink-2); font-size: var(--fs-body-sm); font-weight: var(--fw-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; text-align: right; }
 .right.right { margin-left: auto; }
-.vBtn.vBtn { all: unset; box-sizing: border-box; margin-left: auto; display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--ink-2); font-size: var(--fs-body-sm); font-weight: var(--fw-semibold); cursor: pointer; }
+.vBtn.vBtn { all: unset; box-sizing: border-box; margin-left: auto; display: inline-flex; align-items: center; gap: 10px; min-width: 0; color: var(--ink-2); font-size: var(--fs-body-sm); font-weight: var(--fw-semibold); cursor: pointer; }
 .vBtn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vBtn svg, .rowBtn svg, .qr svg { color: var(--ink-3); flex: none; }
-.capIn { width: 76px; height: 36px; padding: 0 12px; border-radius: var(--r-row); border: 0; background: var(--surface-2); box-shadow: var(--shadow-ring-select); font: inherit; font-size: var(--fs-body-sm); color: var(--ink); text-align: right; }
+.capIn { width: 76px; height: 36px; padding: 0 12px; border-radius: var(--r-row); border: 0; background: var(--surface-2); box-shadow: inset 0 0 0 1.5px var(--plum-500); font: inherit; font-size: var(--fs-body-sm); color: var(--ink); text-align: right; appearance: textfield; }
+.capEdit.capEdit { overflow: visible; }
+.capIn:focus-visible { outline: none; /* The inset selection ring above remains visible. */ }
+.capIn::-webkit-inner-spin-button, .capIn::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .copy.copy { width: 30px; height: 30px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); display: grid; place-items: center; color: var(--ink-2); flex: none; }
 
 .qr.qr { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid var(--line); width: 100%; cursor: pointer; }
 /* 卡头下第一题不画分隔线、上内边距 2（b13 .card-h + .qr）。 */
 .cardHRow + .qr.qr { border-top: 0; padding-top: 2px; }
 .qrErr b { color: var(--coral-text); }
+/* 题目行右箭头贴 22px 行框顶（b13 .qr > .muted 是 22px 高的行内框），比整行居中高 3px。 */
+.qr.qr > svg { margin-bottom: 6px; }
 .qacts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
 .push.push { margin-left: auto; }
 .maxNote { margin-top: 8px; }
@@ -41,12 +50,13 @@
 .tpl b { font-size: var(--fs-body-sm); }
 
 .descCard.descCard { all: unset; box-sizing: border-box; display: block; width: 100%; margin-top: 14px; padding: 18px; border-radius: var(--r-card-web); background: var(--surface); cursor: pointer; }
-.desc2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: var(--fs-body-sm); color: var(--ink-2); line-height: var(--lh-prose); }
+.desc2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: var(--fs-body-sm); color: var(--ink-2); line-height: var(--lh-prose-lg); }
 .subs.subs { padding: 4px 18px; }
 .rowBtn.rowBtn { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 13px 0; border-top: 1px solid var(--line); width: 100%; cursor: pointer; }
 .subs .first.first { border-top: 0; padding-top: 13px; }
 
 .foot { position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); z-index: var(--z-sticky); padding: 0 18px; display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px; }
+.foot::before { content: ""; position: absolute; inset: -22px 0 -14px; z-index: -1; background: linear-gradient(to bottom, transparent, var(--bg) 28%); pointer-events: none; }
 .xl.xl { height: 52px; font-size: var(--fs-emph); }
 .block.block { width: 100%; height: 52px; }
 
@@ -55,7 +65,7 @@
 .top { position: relative; display: flex; align-items: center; justify-content: space-between; height: 52px; margin-bottom: 8px; }
 .top > :last-child { justify-self: end; }
 .topT { position: absolute; left: 44px; right: 44px; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-width: 0; pointer-events: none; }
-.topT b { display: block; max-width: 100%; font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topT b { display: block; max-width: 100%; font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); line-height: 1.35; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topT small { display: block; max-width: 100%; font-size: var(--fs-label); color: var(--ink-3); font-weight: var(--fw-medium); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rbtn.rbtn { width: 36px; height: 36px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); display: grid; place-items: center; color: var(--ink-2); }
 .subBody { min-width: 0; }
@@ -63,8 +73,10 @@
 .embed > * { margin-top: 0; }
 .notices [data-host-notices-toggle] { display: none; }
 .notices > * + * { margin-top: 14px; }
-.note { margin-top: 10px; font-size: var(--fs-label); color: var(--ink-3); line-height: var(--lh-prose); }
-.roCard.roCard { padding: 2px 14px; margin-top: 0; }
+.note { margin-top: 10px; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); line-height: var(--lh-prose); }
+.roCard.roCard { padding: 18px; margin-top: 0; }
+/* b13 .qr：题目块与 ↑↓ 之间 10px，↑↓ 之间 6px。 */
+.roCard [data-reorder-row] > :first-child { margin-right: 4px; }
 
 .fld { display: block; margin-top: 14px; }
 .fldL { display: flex; align-items: center; gap: 6px; font-size: var(--fs-meta); font-weight: var(--fw-bold); color: var(--ink-2); margin-bottom: 6px; }
@@ -73,7 +85,7 @@
 .in input { flex: 1 1 0%; min-width: 0; height: 44px; border: 0; outline: 0; padding: 0; background: transparent; font: inherit; font-size: var(--fs-body); color: var(--ink); }
 .inGrey { background: var(--surface-2); }
 .tseg { display: grid; grid-template-columns: repeat(3, 1fr); padding: 3px; border-radius: var(--r-pill); background: var(--surface-2); gap: 2px; }
-.tseg > :global(.btn) { height: 38px; min-height: 0; border: 0; border-radius: var(--r-pill); background: transparent; font-size: var(--fs-body-sm); font-weight: var(--fw-bold); color: var(--ink-2); }
+.tseg > :global(.btn) { height: 32.8px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: transparent; font-size: var(--fs-control); font-weight: var(--fw-bold); color: var(--ink-2); }
 .tseg > .tsegOn.tsegOn { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-seg); }
 .req.req { display: flex; flex-direction: row; align-items: center; margin-top: 14px; padding: 12px 16px; }
 .req b { flex: 1 1 0%; font-size: var(--fs-row); }
@@ -87,27 +99,40 @@
 .cbx { width: 20px; height: 20px; border-radius: var(--r-tag); border: 1.8px solid var(--ink-4); flex: none; }
 .rad { width: 20px; height: 20px; border-radius: var(--r-pill); border: 1.8px solid var(--ink-4); flex: none; }
 .kept { margin-top: 12px; }
-.del.del { margin-top: 14px; color: var(--coral-text); }
-.descTa { display: block; width: 100%; min-height: 60vh; border: 0; outline: 0; resize: none; border-radius: var(--r-bubble); background: var(--surface); padding: 16px; font: inherit; font-size: var(--fs-body); line-height: var(--lh-prose-lg); color: var(--ink); }
+.del.del { margin-top: 14px; height: 40px; color: var(--coral-text); }
+/* b13 HM-S5 .ta-m：白底 18 角、内边距 14、14/1.8，最低 300；计数压在右下角。 */
+.descBox { position: relative; }
+.descNote { display: block; margin-top: 10px; }
+.descTa { display: block; width: 100%; min-height: 300px; border: 0; outline: 0; resize: none; border-radius: var(--r-bubble); background: var(--surface); padding: 14px 14px 32px; font: inherit; font-size: var(--fs-body); line-height: 1.8; color: var(--ink); }
+.descCnt { position: absolute; right: 14px; bottom: 10px; font-size: var(--fs-caption); color: var(--ink-3); font-weight: var(--fw-bold); font-family: var(--font-num); line-height: 1.8; pointer-events: none; }
 
 /* 底部抽屉 */
 .sheetT { display: block; font-size: var(--fs-logo); font-weight: var(--fw-heavy); margin-bottom: 4px; }
+.closeHead .sheetT { margin-bottom: 0; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .grid2 > :global(.btn) { height: 48px; min-width: 0; }
+/* 申込締切抽屉（b13 HM-S6 .k-close）：字段紧贴标题区（.sh 下距 12），按钮区上距 16、高 46；右侧细线日历 / 时钟图标代替原生图标（原生选择器仍可点开）。 */
+.closeFlds .fld { margin-top: 0; }
+.sheetActs { margin-top: 16px; }
+.sheetActs.sheetActs > :global(.btn) { height: 46px; }
+.pick { position: relative; }
+.pick > svg { flex: none; color: var(--ink); pointer-events: none; }
+.pick input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; margin: 0; padding: 0; opacity: 0; cursor: pointer; }
 .mi.mi { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 4px; width: 100%; font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--ink); cursor: pointer; border-top: 1px solid var(--line); }
 .pvSheet.pvSheet { top: 58px; display: flex; flex-direction: column; max-height: none; overflow: hidden; padding-bottom: 14px; }
 .pvBody { flex: 1 1 0%; min-height: 0; overflow: hidden auto; margin: 0 -18px 10px; padding: 0 18px; }
 
 /* お知らせの文面（b13 HM-S8 .ntr / .fld / .nprev / .nn） */
 .ntList.ntList { display: block; padding: 4px 16px; }
-.ntr { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 0; border-top: 1px solid var(--line); cursor: pointer; }
-.ntr:first-child { border-top: 0; }
+.ntr.ntr { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 0; border-top: 1px solid var(--line); cursor: pointer; }
+.ntr.ntr:first-child { border-top: 0; }
+.ntr.ntr:active { transform: none; }
 .ntr b { font-size: var(--fs-row); }
 .ntr .grow { display: block; }
 .ntr .grow > span { display: block; font-size: var(--fs-label); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ntr svg { color: var(--ink-3); flex: none; }
 .ntrOn b { color: var(--accent); }
-.ntr:focus-visible { outline: 2px solid var(--plum-500); outline-offset: 2px; border-radius: var(--r-sm); }
+.ntr.ntr:focus-visible { outline: 2px solid var(--plum-500); outline-offset: 2px; border-radius: var(--r-sm); }
 .noteIn.noteIn { min-height: 76px; align-items: flex-start; padding-top: 12px; padding-bottom: 8px; }
 .noteIn textarea { flex: 1 1 0%; min-width: 0; min-height: 52px; border: 0; outline: 0; padding: 0; resize: none; background: transparent; font: inherit; font-size: var(--fs-body); line-height: 1.6; color: var(--ink); }
 .noteIn > :last-child { flex: none; }
@@ -120,4 +145,3 @@
 .nprevT { font-size: var(--fs-body-sm); }
 .nprevText.nprevText { margin-top: 8px; line-height: 1.6; }
 .nn { margin-top: 10px; padding: 10px 12px; border-radius: var(--r-row); background: var(--surface); font-size: var(--fs-control); color: var(--ink-2); line-height: 1.6; }
-.maxNoteRo.maxNoteRo { margin-top: 12px; }

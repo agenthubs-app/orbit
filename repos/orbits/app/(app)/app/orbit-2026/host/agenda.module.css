@@ -38,19 +38,27 @@
 .roName { min-width: 0; font-size: var(--fs-body-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* < 768（b13 HM-S7）：紧凑行 */
-.pCard.pCard { display: block; border: 0; margin: 0; padding: 4px 14px; min-width: 0; }
+.pCard.pCard { display: block; border: 0; margin: 0; padding: 8px 14px; min-width: 0; }
 .pRow { padding: 10px 0; }
 .pRow + .pRow { border-top: 1px solid var(--line); }
 .pLine { display: flex; align-items: center; gap: 8px; }
-.pTime, .pTitle { height: 40px; border: 0; outline: 0; border-radius: var(--r-row); background: var(--surface-2); font: inherit; font-size: var(--fs-body-sm); font-weight: var(--fw-bold); color: var(--ink); min-width: 0; }
-.pTime { width: 62px; flex: none; padding: 0 6px; text-align: center; font-family: var(--font-num); font-weight: var(--fw-heavy); -webkit-appearance: none; appearance: none; }
+.pTime, .pTitle { height: 40px; border: 0; outline: 0; border-radius: var(--r-row); background: var(--surface-2); font: inherit; font-size: var(--fs-body-sm); font-weight: var(--fw-semibold); color: var(--ink); min-width: 0; }
+.pTime { width: 62px; flex: none; padding: 0 6px; font-size: var(--fs-row); text-align: center; font-family: var(--font-num); font-weight: var(--fw-heavy); -webkit-appearance: none; appearance: none; }
 .pTime::-webkit-calendar-picker-indicator { display: none; }
 .pTitle { flex: 1 1 0%; padding: 0 12px; }
 .pTitle::placeholder { color: var(--ink-4); font-weight: var(--fw-medium); }
 .pAdds { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-.pAdds .add { height: 34px; }
-.ghost.ghost { background: transparent; }
+.pAdds .add.add { height: 32px; }
+/* b13 .ag 行尾 ×：16px 线条图标，40 高（触屏热区见下方 pointer: coarse）。 */
+.x.pX { width: 16px; height: 40px; display: grid; place-items: center; flex: none; }
+.ghost.ghost { background: transparent; color: var(--ink-2); }
 .pCount { margin-left: auto; }
+/* < 768 並べ替え（b13 HM-S7b .ag.qr）：行 10px 上下、时刻块 62×40、名称 13/600，↑↓ 前留 8。 */
+.pReo [data-reorder-row] { padding: 10px 0; }
+.pReo [data-reorder-row] > :first-child { gap: 8px; margin-right: 2px; }
+.pReoTime { width: 62px; height: 40px; flex: none; border-radius: var(--r-row); background: var(--surface-2); display: grid; place-items: center; font-family: var(--font-num); font-weight: var(--fw-heavy); font-size: var(--fs-row); }
+.pReoName { flex: 1 1 0%; min-width: 0; font-size: var(--fs-body-sm); font-weight: var(--fw-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pReoNote.pReoNote { display: block; margin-top: 10px; line-height: var(--lh-prose); }
 
 /* 触屏（pointer: coarse）：可点区域扩到至少 44×44，外观尺寸不变（2026-11-26 iPad 检查；只限主办方后台）。 */
 @media (pointer: coarse) {

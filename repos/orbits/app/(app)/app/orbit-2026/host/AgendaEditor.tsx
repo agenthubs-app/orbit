@@ -7,6 +7,7 @@
 import { useState, type DragEvent, type KeyboardEvent } from "react";
 
 import { AGENDA_DETAIL_MAX, AGENDA_MAX_ROWS, AGENDA_TITLE_MAX, agendaRowChecks, blankAgendaRow, type AgendaDraftRow } from "../../../../../shared/compute/host-agenda";
+import { Icon } from "../ui";
 import type { HostT } from "./host-model";
 import { ReorderList } from "./ReorderList";
 import s from "./host.module.css";
@@ -67,11 +68,11 @@ export type AgendaEditorProps = {
   noneSaved?: boolean;
   disabled?: boolean;
   /** < 768（b13 HM-S7）：一行 = 时刻 + 标题 + ×，没有说明栏与拖拽手柄；「行を追加 / 並べ替え / N / 40行」放在卡片下面。 */
-  phone?: boolean;
+  phone?: { reordering: boolean; onReorder: () => void };
   onChange?: (rows: AgendaDraftRow[]) => void;
 };
 
-export function AgendaEditor({ rows, t, start, end, required = false, showMissing = false, readOnly = false, noneSaved = false, disabled = false, phone = false, onChange }: AgendaEditorProps) {
+export function AgendaEditor({ rows, t, start, end, required = false, showMissing = false, readOnly = false, noneSaved = false, disabled = false, phone, onChange }: AgendaEditorProps) {
   const [opened, setOpened] = useState<ReadonlySet<number>>(new Set());
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [reordering, setReordering] = useState(false);
@@ -111,6 +112,17 @@ export function AgendaEditor({ rows, t, start, end, required = false, showMissin
     if (dragFrom !== null) move(dragFrom, index);
     setDragFrom(null);
   };
+  if (phone?.reordering && list.length > 1) {
+    return (
+      <>
+        <div className={`${s.card} ${a.pCard} ${a.pReo}`} data-host-agenda={list.length} data-host-agenda-reorder="">
+          <ReorderList items={list} t={t} keyOf={(_, index) => `${index}`} labelOf={(row, index) => row.title || row.at || String(index + 1)} onMove={move}
+            render={(row) => <><span className={a.pReoTime}>{row.at || "--:--"}</span><span className={a.pReoName}>{row.title || t("evAgendaTitlePh")}</span></>} />
+        </div>
+        <div className={`${s.lbl} ${a.pReoNote}`}>{t("roNoteAgenda")}</div>
+      </>
+    );
+  }
   if (reordering && list.length > 1) {
     // 触屏没法拖：並べ替え モード（b13 HM-S7b），每行 ↑ ↓；时间不随顺序自动改。
     return (
@@ -134,7 +146,7 @@ export function AgendaEditor({ rows, t, start, end, required = false, showMissin
                 <div className={a.pLine}>
                   <input className={`${a.pTime} ${need === "time" ? a.bad : ""}`} type="time" value={row.at} aria-label={t("evAgendaTime")} aria-invalid={need === "time" || undefined} data-agenda-field="time" onChange={(event) => update(index, { at: event.target.value })} />
                   <input className={`${a.pTitle} ${need === "title" ? a.bad : ""}`} value={row.title} maxLength={AGENDA_TITLE_MAX} placeholder={t("evAgendaTitlePh")} aria-label={t("evAgendaTitlePh")} aria-invalid={need === "title" || undefined} data-agenda-field="title" onChange={(event) => update(index, { title: event.target.value })} />
-                  <button type="button" className={`btn ${a.x}`} aria-label={t("evAgendaRemove")} disabled={list.length <= 1} onClick={() => remove(index)}>×</button>
+                  <button type="button" className={`btn ${a.x} ${a.pX}`} aria-label={t("evAgendaRemove")} disabled={list.length <= 1} onClick={() => remove(index)}><Icon name="x" size={16} /></button>
                 </div>
                 {need ? <span className={a.err} role="alert" data-agenda-missing={need}>{t(need === "time" ? "evAgendaNeedTime" : "evAgendaNeedTitle")}</span>
                   : range ? <span className={a.err} data-agenda-range={range}>{range === "afterEnd" ? t("evAgendaAfterEnd", { t: end ?? "" }) : t("evAgendaBeforeStart", { t: start ?? "" })}</span> : null}
@@ -144,7 +156,7 @@ export function AgendaEditor({ rows, t, start, end, required = false, showMissin
         </fieldset>
         <div className={a.pAdds}>
           <button type="button" className={`btn ${a.add}`} disabled={disabled || list.length >= AGENDA_MAX_ROWS} onClick={() => onChange?.([...list, blankAgendaRow()])} data-agenda-add-row="">{t("evAgendaAddRow")}</button>
-          {list.length > 1 ? <button type="button" className={`btn ${a.add} ${a.ghost}`} onClick={() => setReordering(true)} data-host-reorder="">{t("roReorder")}</button> : null}
+          {list.length > 1 ? <button type="button" className={`btn ${a.add} ${a.ghost}`} disabled={disabled} onClick={phone.onReorder} data-host-reorder="">{t("roReorder")}</button> : null}
           <span className={`${s.lbl} ${a.pCount}`}>{t("evAgendaRowsOf", { n: list.length, max: AGENDA_MAX_ROWS })}</span>
         </div>
       </div>

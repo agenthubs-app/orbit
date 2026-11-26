@@ -188,6 +188,8 @@ async function shootDesign(v) {
       const sbarH = f.querySelector(":scope > .sbar")?.getBoundingClientRect().height ?? 0;
       const tab = f.querySelector(":scope > .tabbar");
       if (tab && sbarH) tab.style.bottom = `${Math.max(0, parseFloat(getComputedStyle(tab).bottom) - sbarH)}px`;
+      const foot = f.querySelector(":scope > .foot");
+      if (asMweb && foot && sbarH) foot.style.bottom = `${Math.max(0, parseFloat(getComputedStyle(foot).bottom) - sbarH)}px`;
       // 底部弹层与它的遮罩同样被抬在 Safari 底栏之上（b12 .mweb .sheet bottom 100 / .sheet-scrim bottom 92）：一并放回。
       if (sbarH) for (const el of f.querySelectorAll(":scope > .sheet, :scope > .sheet-scrim")) el.style.bottom = `${Math.max(0, parseFloat(getComputedStyle(el).bottom) - sbarH)}px`;
       for (const el of f.querySelectorAll(":scope > .status, :scope > .home-ind, :scope > .sbar, :scope > .safari")) el.remove();
@@ -235,6 +237,16 @@ async function finishDesign(v, d, height) {
       if (scroll && f.classList.contains("phone")) scroll.style.minHeight = `${h}px`;
     }, height);
     await d.page.waitForTimeout(200);
+  }
+  if (v["design-scroll-anchor"]) {
+    const anchor = await d.frame.$(v["design-scroll-anchor"]);
+    if (!anchor) throw new Stop(3, `滚动锚点找不到：${v["design-scroll-anchor"]}`);
+    await anchor.evaluate((el) => {
+      const scroll = el.closest(".scroll");
+      if (!scroll) throw new Error("design-scroll-anchor must be inside .scroll");
+      const offset = Number(el.getAttribute("data-off") ?? 0);
+      scroll.scrollTop += el.getBoundingClientRect().top - scroll.getBoundingClientRect().top - offset;
+    });
   }
   const file = join(v.out, "design.png");
   // --style-diff：在画框定高之后、截图之前取样式（定高前底部对齐的元素位置还不对）；--design-clip 时以该元素为根取样。
@@ -447,7 +459,7 @@ async function runView(v) {
   const hash = local ? designInputsHash(DESIGN_DIR, String(v.design).split("?")[0]) : null;
   // 整页模式（--design-page）另起一组键（v: 2 + page / clip），不与画板模式的缓存混用。
   const pageMode = v["design-page"] === true || v["design-page"] === "true";
-  const cache = hash ? designCache({ v: pageMode ? 2 : 1, hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? null, nth: v["board-nth"] ?? null, width: v.width, theme: v.theme, fullPage: v.fullPage, click: many(v["design-click"]), remove: many(v["design-remove"]), unroll: v["design-unroll"] ?? null, ...(v["design-as-mweb"] ? { asMweb: true } : {}), ...(pageMode ? { page: true, clip: v["design-clip"] ?? null, clipBottom: v["design-clip-bottom"] ?? null } : {}) }) : null;
+  const cache = hash ? designCache({ v: pageMode ? 2 : 1, hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? null, nth: v["board-nth"] ?? null, width: v.width, theme: v.theme, fullPage: v.fullPage, click: many(v["design-click"]), remove: many(v["design-remove"]), unroll: v["design-unroll"] ?? null, ...(v["design-scroll-anchor"] ? { scrollAnchor: v["design-scroll-anchor"] } : {}), ...(v["design-as-mweb"] ? { asMweb: true } : {}), ...(pageMode ? { page: true, clip: v["design-clip"] ?? null, clipBottom: v["design-clip-bottom"] ?? null } : {}) }) : null;
   const meta = cache?.meta();
   let d = null, board, designNatural, designPng = null, cached = false, designStyles = null;
   v.regionBox = v.region ? String(v.region).split(",").map(Number) : null;

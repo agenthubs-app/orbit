@@ -23,7 +23,7 @@ export function ReorderList<T>({ items, keyOf, labelOf, render, onMove, t, note,
   const [moved, setMoved] = useState<string | null>(null);
   const move = (from: number, to: number) => {
     if (to < 0 || to >= items.length) return;
-    setMoved(keyOf(items[from]!, from));
+    setMoved(keyOf(items[from]!, to));
     onMove(from, to);
   };
   return (

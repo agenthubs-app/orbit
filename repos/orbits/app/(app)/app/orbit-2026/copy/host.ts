@@ -458,6 +458,7 @@ export const hostCopy = {
   suDescMax: { ja: "2000字まで", zh: "最多2000字", en: "Up to 2000 characters", kind: "label" },
   suDescPh: { ja: "どんな人が集まり、何が得られる会かを書きましょう。例：製造業の DX 担当者とスタートアップが、現場の課題を持ち寄る朝会です。", zh: "写下会有哪些人参加、能有什么收获。例：制造业数字化负责人与初创公司带着现场课题交流的早会。", en: "Say who will come and what they'll get. e.g. A morning meetup where factory DX leads and startups bring real problems.", kind: "placeholder" },
   suCounter: { ja: "{n} / 2000", zh: "{n}/2000", en: "{n}/2000", kind: "label" },
+  suDescNote: { ja: "申込ページの上部に表示されます。自動で保存します。", zh: "显示在报名页顶部。会自动保存。", en: "Shown at the top of the sign-up page. Saved automatically.", kind: "body" },
   suTpl: { ja: "テンプレートから始める", zh: "从模板开始", en: "Start from a template", kind: "title" },
   tplMixer: { ja: "交流会", zh: "社交交流会", en: "Mixer", kind: "label" },
   tplMixerSub: { ja: "立場・業界・話したいテーマ・会いたい人", zh: "身份、行业、想聊的话题、想认识的人", en: "Role, industry, topics, who to meet", kind: "label" },

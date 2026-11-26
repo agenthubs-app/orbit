@@ -90,6 +90,11 @@ function matchingView(eventId: string, round: number): HostMatchingResponse | nu
 
 export function createHostMockService(): HostService {
   const m = memory;
+  const setupFor = (eventId: string) => {
+    const setup = m().setup.get(eventId) ?? hostSetup(eventId, m().state);
+    const event = m().events.get(eventId);
+    return setup && event ? { ...setup, event } : setup;
+  };
   return {
     async center(_actor, query) {
       const base = hostCenter(m().state, query.filter, query.q);
@@ -274,10 +279,10 @@ export function createHostMockService(): HostService {
       return { devices: m().state.kiosk === "before" ? 1 : 3 };
     },
     async setup(_actor, eventId) {
-      return m().setup.get(eventId) ?? hostSetup(eventId, m().state);
+      return setupFor(eventId);
     },
     async saveSetup(_actor, eventId, input) {
-      const current = m().setup.get(eventId) ?? hostSetup(eventId, m().state);
+      const current = setupFor(eventId);
       if (!current) throw new HostError("NOT_FOUND");
       if (input.expectedRevision !== current.revision) throw new HostError("VERSION_CONFLICT");
       const next: HostSetupResponse = { ...current, admissionMode: input.admissionMode, capacity: input.capacity, description: input.description, questions: input.questions, registrationClosesAt: input.registrationClosesAt, revision: current.revision + 1, savedAt: NOW().toISOString(), unpublishedChanges: current.formPublished ? current.unpublishedChanges + 1 : 0 };
@@ -285,7 +290,7 @@ export function createHostMockService(): HostService {
       return next;
     },
     async publishSetup(_actor, eventId, input) {
-      const current = m().setup.get(eventId) ?? hostSetup(eventId, m().state);
+      const current = setupFor(eventId);
       if (!current) throw new HostError("NOT_FOUND");
       if (input.expectedRevision !== current.revision) throw new HostError("VERSION_CONFLICT");
       const next = { ...current, formPublished: true, revision: current.revision + 1, unpublishedChanges: 0 };
@@ -293,7 +298,7 @@ export function createHostMockService(): HostService {
       return next;
     },
     async saveHostNote(_actor, eventId, input) {
-      const current = m().setup.get(eventId) ?? hostSetup(eventId, m().state);
+      const current = setupFor(eventId);
       if (!current) throw new HostError("NOT_FOUND");
       const next = { ...current, hostNote: input.hostNote };
       m().setup.set(eventId, next);

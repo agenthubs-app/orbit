@@ -805,6 +805,12 @@
    "steps": [
     {
      "waitFor": "[data-host-setup-sub=reorder]"
+    },
+    {
+     "click": "[data-host-setup-sub=reorder] [data-reorder-row='3'] [data-reorder-up]"
+    },
+    {
+     "click": "[data-host-setup-sub=reorder] [data-reorder-row='2'] [data-reorder-up]"
     }
    ],
    "note": "HM-S3 申込設定 · 並べ替え（b13 #25）"
@@ -989,9 +995,18 @@
    "steps": [
     {
      "waitFor": "[data-host-qlib]"
+    },
+    {
+     "click": "[data-host-qlib-q=lib-position]"
+    },
+    {
+     "click": "[data-host-qlib-q=lib-meet]"
+    },
+    {
+     "eval": "document.querySelector('[data-host-qlib]').scrollTop = 0"
     }
    ],
-   "note": "HM-S4 申込設定 · 質問集（b13 #26；先删到 3 問才能打开）"
+   "note": "HM-S4 申込設定 · 質問集（b13 #26；切换少题示例后选 2 问）"
   },
   {
    "id": "HM-R5",
@@ -1255,17 +1270,20 @@
    "design": "b13-host-mobile.html",
    "board-index": 23,
    "width": 390,
+   "viewport": true,
+   "design-as-mweb": true,
+   "design-scroll-anchor": ".scrollto",
    "themes": [
     "light"
    ],
    "wait-for": "[data-host-setup-phone]",
    "steps": [
     {
-     "eval": "window.scrollTo(0, document.documentElement.scrollHeight)",
+     "eval": "window.scrollTo(0, document.querySelector('[data-host-questions]').getBoundingClientRect().top + window.scrollY - 24)",
      "wait": 600
     }
    ],
-   "note": "HM-S1b 申込設定 · 下半屏（b13 #23；滚到底）"
+   "note": "HM-S1b 申込設定 · 下半屏（b13 #23；画板锚点留 10px，问题卡前间距 14px）"
   },
   {
    "id": "HM-S5",
@@ -1306,7 +1324,7 @@
      "wait": 800
     }
    ],
-   "note": "HM-S6 申込設定 · 申込締切（b13 #28；画板同时画了「定員就地改」，两者不能同时出现——点开締切抽屉会让定員输入失焦收起）"
+   "note": "HM-S6 申込設定 · 申込締切（b13 #28；从报名设置主页打开）"
   },
   {
    "id": "HM-S7b",
@@ -1326,11 +1344,31 @@
      "waitFor": "[data-host-setup-sub=agenda]"
     },
     {
-     "click": "[data-host-setup-sub=agenda] [data-host-reorder]",
-     "wait": 500
+     "click": "[data-host-setup-sub=agenda] [data-host-reorder]"
+    },
+    {
+     "click": "[data-host-setup-sub=agenda-reorder] [data-reorder-row='3'] [data-reorder-up]"
     }
    ],
    "note": "HM-S7b 申込設定 · アジェンダを並べ替え（b13 #30）"
+  },
+  {
+   "id": "HM-S6b",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 57,
+   "width": 390,
+   "viewport": true,
+   "design-as-mweb": true,
+   "design-remove": [".k-capedit .caret"],
+   "themes": ["light"],
+   "wait-for": "[data-host-setup-phone]",
+   "host": { "setup": "many" },
+   "click": ["[data-host-setup-settings] button[aria-label='定員を変更']"],
+   "steps": [
+    { "fill": ["[data-host-setup-settings] input[type=number]", "160"] }
+   ],
+   "note": "HM-S6b 申込設定 · 定員就地改（b13 #57）"
   },
   {
    "id": "HM-S9",
