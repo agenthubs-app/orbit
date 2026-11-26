@@ -9,10 +9,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HostKioskRecent, HostKioskResponse, HostKioskRow } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { newIdempotencyKey } from "../events/events-api";
-import { Avatar, Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { Avatar, ConfirmDialog, Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { failureCode, failureOf, hostApi } from "./host-api";
 import { ScoreRing } from "./HostPeople";
 import { consoleHref, hostTime, hostTranslator, type HostT } from "./host-model";
+import { KioskPhoneScanner, KioskPhoneView, type ScanOutcome } from "./KioskPhone";
 import { flushQueue, indexedDbKioskStore, kioskDeviceId, memoryKioskStore, purgeExpiredRosters, readRoster, searchRoster, type KioskQueueItem, type KioskRosterCache, type KioskStore } from "./kiosk-store";
 import s from "./host.module.css";
 import k from "./kiosk.module.css";
@@ -30,6 +31,15 @@ export function minutesToDoors(doorsOpenAt: string | null, now: Date): number | 
   if (!Number.isFinite(doors)) return null;
   const minutes = Math.ceil((doors - now.getTime()) / 60_000);
   return minutes > 0 ? minutes : null;
+}
+
+/** 開場までの表示：1 日以上は日、2 時間以上は時間、それ未満は分（「23345分」にならない）。null = 開場済み / 不明。 */
+export function doorsText(doorsOpenAt: string | null, now: Date, t: HostT): string | null {
+  const minutes = minutesToDoors(doorsOpenAt, now);
+  if (minutes == null) return null;
+  if (minutes >= 24 * 60) return t("kDoorsInDays", { n: Math.floor(minutes / (24 * 60)) });
+  if (minutes >= 120) return t("kDoorsInHours", { n: Math.floor(minutes / 60) });
+  return t("kDoorsIn", { n: minutes });
 }
 
 export type KioskStreamRow = { key: string; at: string; name: string; org: string | null; table: string | null; pending: boolean; error?: string | null; participantId: string };
@@ -79,7 +89,7 @@ export function HostKioskView(props: HostKioskViewProps) {
   const rate = data.total ? Math.round((checkedIn / data.total) * 100) : 0;
   const queued = new Set(queue.map((item) => item.participantId));
   const stream = streamRows(data.recent, queue);
-  const doors = minutesToDoors(data.doorsOpenAt, now);
+  const doors = doorsText(data.doorsOpenAt, now, t);
   const staff = data.venue ? t("kStaff", { name: data.staffName, role: data.staffRole, venue: data.venue }) : t("kStaffNoVenue", { name: data.staffName, role: data.staffRole });
   return (
     <div className={k.kiosk} data-host-kiosk={!online ? "offline" : before ? "before" : "live"}>
@@ -129,7 +139,7 @@ export function HostKioskView(props: HostKioskViewProps) {
           {!q.trim() && before && !data.closed ? (
             <div className={k.emptyCard} data-kiosk-empty="">
               <div className={k.door} aria-hidden>🚪</div>
-              <b className={k.emptyTitle}>{doors != null ? t("kDoorsIn", { n: doors }) : t("kDoorsOpen")}</b>
+              <b className={k.emptyTitle}>{doors ?? t("kDoorsOpen")}</b>
               <div className={`${k.sub} ${k.emptyBody}`}>{t("kEmptyBody")}</div>
               <button type="button" className={`btn ${k.arrive} ${k.emptyArrive}`} onClick={props.onScan}><Icon name="scan" size={20} />{t("kScan")}</button>
             </div>
@@ -292,7 +302,7 @@ function isOnline() {
   return typeof navigator === "undefined" ? true : navigator.onLine !== false;
 }
 
-function KioskInner({ eventId, language }: { eventId: string; language: OrbitLanguage }) {
+function KioskInner({ eventId, language, phone = false }: { eventId: string; language: OrbitLanguage; phone?: boolean }) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const toast = useToast();
   const [data, setData] = useState<HostKioskResponse | null>(null);
@@ -491,6 +501,19 @@ function KioskInner({ eventId, language }: { eventId: string; language: OrbitLan
     await load(qRef.current);
   }, [eventId, load, t, toast]);
 
+  /** 手机连续读取：不关相机，结果交给取景页显示 2 秒。 */
+  const scannedPhone = useCallback(async (payload: string): Promise<ScanOutcome> => {
+    if (!isOnline()) return { message: t("kOfflineAction"), ok: false };
+    const res = await hostApi.scanCheckIn(eventId, payload, newIdempotencyKey());
+    if (!res.ok) return { message: failureCode(res) === "WAITLISTED" ? t("kWaitlistedErr") : t("kQrInvalid"), ok: false };
+    void load(qRef.current);
+    return { at: new Date().toISOString(), duplicate: Boolean(res.data.duplicate), name: res.data.name, ok: true, table: res.data.table ?? null };
+  }, [eventId, load, t]);
+  const copyLink = () => {
+    const url = `${window.location.origin}/app/events/${encodeURIComponent(eventId)}/operations/check-in`;
+    void navigator.clipboard?.writeText(url).then(() => toast.success(t("copied")), () => toast.error(t("saveError")));
+  };
+
   if (!data) {
     return failure ? (
       <div className={k.kiosk}><div className={`${s.card} ${s.empty}`} data-host-failure={failure}>{failure === "forbidden" ? t("noAccess") : failure === "not_found" ? t("notFound") : t("loadError")} <a className={`btn ${s.btn} ${s.sm}`} href="/app/events/center">{t("back")}</a></div></div>
@@ -498,35 +521,30 @@ function KioskInner({ eventId, language }: { eventId: string; language: OrbitLan
   }
   return (
     <>
-      <HostKioskView data={data} t={t} now={clock} online={online} q={q} rows={rows} queue={queue} devices={devices} busy={busy} focused={focused}
-        onQ={setQ} onFocus={setFocused} onArrive={(row) => void arrive(row)} onUndo={setUndo} onWalkIn={(row) => void walkIn(row, false)}
-        onRetry={() => void flush(true)} onScan={() => setScan(true)} exitHref={consoleHref(eventId)} />
-      {scan ? <QrScanner t={t} onResult={(payload) => void scanned(payload)} onClose={() => setScan(false)} /> : null}
-      {undo ? <UndoConfirm row={undo} t={t} busy={busy === undo.participantId} onCancel={() => setUndo(null)} onConfirm={() => void doUndo()} /> : null}
-      {over ? <OverCapacityConfirm row={over} t={t} approved={data?.approved} capacity={data?.capacity} busy={busy === over.participantId} onCancel={() => setOver(null)} onConfirm={() => void walkIn(over, true)} /> : null}
+      {phone ? (
+        <KioskPhoneView data={data} t={t} now={clock} online={online} q={q} rows={rows} queue={queue} devices={devices} busy={busy}
+          onQ={setQ} onArrive={(row) => void arrive(row)} onUndo={setUndo} onWalkIn={(row) => void walkIn(row, false)}
+          onRetry={() => void flush(true)} onScan={() => setScan(true)} exitHref={consoleHref(eventId)} onCopyLink={copyLink} />
+      ) : (
+        <HostKioskView data={data} t={t} now={clock} online={online} q={q} rows={rows} queue={queue} devices={devices} busy={busy} focused={focused}
+          onQ={setQ} onFocus={setFocused} onArrive={(row) => void arrive(row)} onUndo={setUndo} onWalkIn={(row) => void walkIn(row, false)}
+          onRetry={() => void flush(true)} onScan={() => setScan(true)} exitHref={consoleHref(eventId)} />
+      )}
+      {scan && phone ? <KioskPhoneScanner t={t} title={data.title} onScan={scannedPhone} onClose={() => setScan(false)} /> : null}
+      {scan && !phone ? <QrScanner t={t} onResult={(payload) => void scanned(payload)} onClose={() => setScan(false)} /> : null}
+      {undo && phone ? (
+        <ConfirmDialog open icon="x" destructive title={t("kUndoTitle", { name: undo.name })}
+          message={undo.table ? t("kUndoBody", { t: undo.table, time: hostTime(undo.checkedInAt) }) : t("kUndoBodyNoTable", { time: hostTime(undo.checkedInAt) })}
+          confirmLabel={t("kUndoConfirm")} cancelLabel={t("kUndoKeep")} onCancel={() => setUndo(null)} onConfirm={() => void doUndo()} />
+      ) : null}
+      {undo && !phone ? <UndoConfirm row={undo} t={t} busy={busy === undo.participantId} onCancel={() => setUndo(null)} onConfirm={() => void doUndo()} /> : null}
+      {over && phone ? (
+        <ConfirmDialog open emoji="🙋" title={t("kOverTitle")}
+          message={typeof data.approved === "number" && typeof data.capacity === "number" ? t("kOverBodyCount", { a: data.approved, c: data.capacity }) : t("kOverBody")}
+          confirmLabel={t("kOverYes")} cancelLabel={t("kOverNo")} onCancel={() => setOver(null)} onConfirm={() => void walkIn(over, true)} />
+      ) : null}
+      {over && !phone ? <OverCapacityConfirm row={over} t={t} approved={data?.approved} capacity={data?.capacity} busy={busy === over.participantId} onCancel={() => setOver(null)} onConfirm={() => void walkIn(over, true)} /> : null}
     </>
-  );
-}
-
-/** 390 等窄屏：受付はタブレットか App で（b12 #478，A8）。 */
-export function KioskNarrowGuide({ t, title, eventId }: { t: HostT; title: string; eventId: string }) {
-  const toast = useToast();
-  const path = `/app/events/${encodeURIComponent(eventId)}/operations/check-in`;
-  return (
-    <div className={k.narrow} data-kiosk-narrow="">
-      <div className={k.narrowTop}>
-        <a className={k.rbtn} href={consoleHref(eventId)} aria-label={t("back")}><Icon name="left" size={20} /></a>
-        <div><b>{t("kNarrowTop")}</b>{title ? <small>{title}</small> : null}</div>
-        <span />
-      </div>
-      <div className={k.guide}>
-        <div className={k.guideEmoji} aria-hidden>📱</div>
-        <b className={k.guideTitle}>{t("kNarrowTitle")}</b>
-        <div className={`${k.sub} ${k.guideBody}`}>{t("kNarrowBody")}</div>
-        <a className={`btn ${s.btn} ${s.primary} ${k.block}`} href={`orbit://events/${encodeURIComponent(eventId)}/operations/check-in`}>{t("kOpenApp")}</a>
-        <button type="button" className={`btn ${s.btn} ${s.ghost} ${k.block} ${k.blockGap}`} onClick={() => { void navigator.clipboard?.writeText(`${window.location.origin}${path}`).then(() => toast.success(t("copied")), () => toast.error(t("saveError"))); }}>{t("kCopyLink")}</button>
-      </div>
-    </div>
   );
 }
 
@@ -540,12 +558,8 @@ function KioskRoot({ eventId, language }: { eventId: string; language: OrbitLang
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
-  return (
-    <>
-      {narrow ? null : <KioskInner eventId={eventId} language={language} />}
-      <KioskNarrowGuide t={t} title="" eventId={eventId} />
-    </>
-  );
+  // < 768 也开受付（b13 HM-K1–K10）：同一套数据与动作，手机画法。
+  return <KioskInner key={narrow ? "phone" : "kiosk"} eventId={eventId} language={language} phone={narrow} />;
 }
 
 export function HostKiosk({ eventId, language }: { eventId: string; language: OrbitLanguage }) {

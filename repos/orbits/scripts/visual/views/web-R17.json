@@ -592,6 +592,138 @@
    ],
    "wait-for": "[data-host-people=empty]",
    "note": "HM-P7 参加者 · 空（b13 #7，朝会 #3）"
+  },
+  {
+   "id": "HM-K1",
+   "app": "/app/events/demo-event-cfo-night-18/operations/check-in",
+   "design": "b13-host-mobile.html",
+   "board-index": 44,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-kiosk-phone][data-host-kiosk=live]",
+   "host": {
+    "kiosk": "live"
+   },
+   "note": "HM-K1 受付 · 開場後（b13 #44，CFO18）"
+  },
+  {
+   "id": "HM-K2",
+   "app": "/app/events/demo-event-cfo-night-18/operations/check-in",
+   "design": "b13-host-mobile.html",
+   "board-index": 45,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-kiosk-phone][data-host-kiosk=live]",
+   "host": {
+    "kiosk": "live"
+   },
+   "steps": [
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      "もり"
+     ],
+     "wait": 1200
+    },
+    {
+     "waitFor": "[data-kiosk-results=\"3\"]"
+    }
+   ],
+   "note": "HM-K2 受付 · 搜索「もり」（b13 #45）"
+  },
+  {
+   "id": "HM-K7",
+   "app": "/app/events/demo-event-cfo-night-18/operations/check-in",
+   "design": "b13-host-mobile.html",
+   "board-index": 50,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-kiosk-phone]",
+   "host": {
+    "kiosk": "offline"
+   },
+   "steps": [
+    {
+     "wait": 1500
+    },
+    {
+     "eval": "Object.defineProperty(Navigator.prototype,'onLine',{configurable:true,get:()=>false});window.dispatchEvent(new Event('offline'))",
+     "wait": 600
+    },
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      "松本"
+     ],
+     "wait": 500
+    },
+    {
+     "click": "[data-kiosk-row=\"participant:hp-matsumoto\"] [data-kiosk-arrive]",
+     "wait": 600
+    },
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      "藤井"
+     ],
+     "wait": 500
+    },
+    {
+     "click": "[data-kiosk-row=\"participant:hp-fujii\"] [data-kiosk-arrive]",
+     "wait": 600
+    },
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      "木村"
+     ],
+     "wait": 500
+    },
+    {
+     "click": "[data-kiosk-row=\"participant:hp-kimura\"] [data-kiosk-arrive]",
+     "wait": 600
+    },
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      "もり"
+     ],
+     "wait": 600
+    },
+    {
+     "waitFor": "[data-kiosk-offline=\"3\"]",
+     "wait": 5600
+    },
+    {
+     "fill": [
+      "[data-kiosk-search]",
+      ""
+     ],
+     "wait": 800
+    }
+   ],
+   "note": "HM-K7 受付 · オフライン（b13 #50）"
+  },
+  {
+   "id": "HM-K8",
+   "app": "/app/events/demo-event-cfo-night-18/operations/check-in",
+   "design": "b13-host-mobile.html",
+   "board-index": 51,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-kiosk-phone][data-host-kiosk=before]",
+   "host": {
+    "kiosk": "before"
+   },
+   "note": "HM-K8 受付 · 開場前（b13 #51）"
   }
  ]
 }
