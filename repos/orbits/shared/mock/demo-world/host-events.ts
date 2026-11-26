@@ -362,6 +362,16 @@ export const HOST_MATCHING_SAMPLE: readonly HostMatchingTable[] = [
   table("C", "財務チームづくり", [...TABLE_C4, "hp-matsumoto"]),
 ];
 
+const CFO18_MORE_TABLES = "GHIJKLMNOPQRSTUV".split("");
+const CFO18_TABLE_CYCLE: ReadonlyArray<readonly [string, readonly string[]]> = [
+  ["資本政策 × 投資家", ["hp-morita", "hp-kimura", "hp-saito", "hp-goto", "hp-murakami"]],
+  ["製造業 DX × 資金調達", ["hp-inoue", "hp-yamaguchi", "hp-fujii", "hp-kondo", "hp-harada"]],
+  ["財務チームづくり", ["hp-shimizu", "hp-maeda", "hp-ishikawa", "hp-endo", "hp-matsumoto"]],
+  ["上場準備の実務", ["hp-okada", "hp-hasegawa", "hp-sakamoto", "hp-aoki", "hp-hayashi"]],
+  ["CVC との協業", ["hp-goto", "hp-murakami", "hp-morita", "hp-kimura", "hp-saito"]],
+  ["地域金融 × スタートアップ", ["hp-kondo", "hp-harada", "hp-inoue", "hp-yamaguchi", "hp-fujii"]],
+];
+
 export function hostMatching(eventId: string, state: HostMockState = DEFAULT_HOST_MOCK_STATE): HostMatchingResponse | null {
   const event = hostEventView(eventId, state);
   const seed = seedOf(eventId);
@@ -382,6 +392,11 @@ export function hostMatching(eventId: string, state: HostMockState = DEFAULT_HOS
         table("D", "上場準備の実務", [...TABLE_D4, "hp-hayashi"]),
         table("E", "CVC との協業", ["hp-goto", "hp-murakami", "hp-morita", "hp-kimura", "hp-saito"]),
         table("F", "地域金融 × スタートアップ", ["hp-kondo", "hp-harada", "hp-inoue", "hp-yamaguchi", "hp-fujii"], "地域金融"),
+        // G–V（2026-11-26，b13 HM-M3：手机一行一桌全部列出，桌号 chip 22 个）：示例按 A–F 循环；电脑版仍只先显示 6 卓 +「残り 16」。
+        ...CFO18_MORE_TABLES.map((letter, index) => {
+          const source = CFO18_TABLE_CYCLE[index % CFO18_TABLE_CYCLE.length]!;
+          return table(letter, source[0], source[1]);
+        }),
       ],
       unplaced: ["hp-mori", "hp-morikawa", "hp-hasegawa"].map(member),
     };

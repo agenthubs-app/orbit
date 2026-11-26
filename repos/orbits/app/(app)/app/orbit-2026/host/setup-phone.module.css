@@ -49,13 +49,13 @@
 .block.block { width: 100%; height: 52px; }
 
 /* 子页（全屏层） */
-.subPage { position: fixed; inset: 0; z-index: var(--z-modal); background: var(--bg); overflow: hidden auto; padding: calc(env(safe-area-inset-top, 0px) + 6px) 18px calc(env(safe-area-inset-bottom, 0px) + 96px); color: var(--ink); }
-.top { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 0 0 14px; }
+.subPage { position: fixed; inset: 0; z-index: var(--z-modal); background: var(--bg); overflow: hidden auto; padding: env(safe-area-inset-top, 0px) 18px calc(env(safe-area-inset-bottom, 0px) + 96px); color: var(--ink); }
+.top { position: relative; display: flex; align-items: center; justify-content: space-between; height: 52px; margin-bottom: 8px; }
 .top > :last-child { justify-self: end; }
-.topT { text-align: center; min-width: 0; }
-.topT b { display: block; font-size: var(--fs-logo); font-weight: var(--fw-heavy); }
-.topT small { display: block; font-size: var(--fs-label); color: var(--ink-3); font-weight: var(--fw-medium); margin-top: 1px; }
-.rbtn.rbtn { width: 40px; height: 40px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); display: grid; place-items: center; color: var(--ink-2); }
+.topT { position: absolute; left: 44px; right: 44px; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-width: 0; pointer-events: none; }
+.topT b { display: block; max-width: 100%; font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topT small { display: block; max-width: 100%; font-size: var(--fs-label); color: var(--ink-3); font-weight: var(--fw-medium); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rbtn.rbtn { width: 36px; height: 36px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); display: grid; place-items: center; color: var(--ink-2); }
 .subBody { min-width: 0; }
 .subFoot { position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); padding: 0 18px; z-index: var(--z-sticky); }
 .embed > * { margin-top: 0; }
