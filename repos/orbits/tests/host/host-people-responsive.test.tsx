@@ -42,3 +42,37 @@ test("the four people buckets scroll inside their 390px card", async () => {
     } finally { await page.close(); }
   } finally { await browser.close(); }
 });
+
+test("phone rows: 承認 plus ⋯ with 待ち / 見送り, all inside 390 (2026-11-26)", async () => {
+  const code = await bundle(`
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    import { HostPeopleView } from "./app/(app)/app/orbit-2026/host/HostPeople";
+    import { hostTranslator } from "./app/(app)/app/orbit-2026/host/host-model";
+    import { Orbit2026Scope } from "./app/(app)/app/orbit-2026/ui";
+    import { HOST_EVENT_IDS, hostPeople } from "./shared/mock/demo-world/host-events";
+    const data = hostPeople(HOST_EVENT_IDS.roundtable, "pending");
+    window.decided = [];
+    createRoot(document.getElementById("root")).render(<Orbit2026Scope language="ja">
+      <div style={{width:390,padding:"0 18px",boxSizing:"border-box"}}>
+        <HostPeopleView phone language="ja" data={data} t={hostTranslator("ja")} rows={data.rows} query={{bucket:"pending",incomplete:false,q:""}} selected={new Set()}
+          onDecide={(row, decision) => window.decided.push([row.actorId, decision])} />
+      </div>
+    </Orbit2026Scope>);
+  `);
+  const browser = await launch();
+  try {
+    const page = await open(browser, code, { width: 390 });
+    try {
+      const more = page.locator("[data-host-row-more]").first();
+      await more.waitFor();
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 390);
+      await more.click();
+      await page.getByRole("menuitem", { name: "見送り" }).click();
+      const decided = await page.evaluate(() => (window as unknown as { decided: unknown[] }).decided);
+      assert.equal(decided.length, 1);
+      assert.equal((decided[0] as string[])[1], "reject");
+      assert.deepEqual(errorsOf(page), []);
+    } finally { await page.close(); }
+  } finally { await browser.close(); }
+});

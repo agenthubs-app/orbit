@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { HostAdmissionDecision, HostPeopleBucket, HostPeopleResponse, HostPeopleRow } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { InviteQr } from "../add/invite/InviteQr";
-import { Avatar, Icon, Modal, Segmented, useToast } from "../ui";
+import { Avatar, ContextMenu, Icon, Modal, Segmented, useToast } from "../ui";
 import { failureOf, hostApi, type HostPeopleQuery } from "./host-api";
 import { HostPersonDrawer } from "./HostPersonDrawer";
 import { consoleHref, hostTranslator, type HostT } from "./host-model";
@@ -83,6 +83,22 @@ export function peopleIsEmpty(data: HostPeopleResponse): boolean {
   return data.counts.pending + data.counts.approved + data.counts.waitlisted + data.counts.rejected === 0;
 }
 
+/** < 768：单条 候补 / 婉拒 放进行尾「⋯」（2026-11-26 用户定：手机上也要能处理，不只承認）。 */
+function PhoneRowMore({ row, t, busy, waitlisted, onDecide }: { row: HostPeopleRow; t: HostT; busy: boolean; waitlisted: boolean; onDecide?: (row: HostPeopleRow, decision: HostAdmissionDecision) => void }) {
+  const ref = useRef<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const items = [
+    ...(waitlisted ? [] : [{ key: "waitlist", label: t("pWait"), onSelect: () => onDecide?.(row, "waitlist") }]),
+    { key: "reject", label: t("pReject"), destructive: true, onSelect: () => onDecide?.(row, "reject") },
+  ];
+  return (
+    <>
+      <button ref={ref} type="button" className={`btn ${m.lbtn}`} disabled={busy} aria-label={t("pRowMore", { name: row.name })} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(true)} data-host-row-more=""><Icon name="more" size={16} /></button>
+      {open ? <ContextMenu open onClose={() => setOpen(false)} anchor={ref} label={t("pRowMore", { name: row.name })} items={items} /> : null}
+    </>
+  );
+}
+
 export function HostPeopleView(props: HostPeopleViewProps) {
   const { data, t, rows, query, selected, issues = new Map<string, RowIssue>(), busy = false, origin = "" } = props;
   const eventId = data.event.eventId;
@@ -150,6 +166,7 @@ export function HostPeopleView(props: HostPeopleViewProps) {
                     {issue ? <span className={m.rowNote} role="status">{issue === "conflict" ? t("pRowConflict") : t("pRowFailed")}</span> : null}
                   </span>
                 </button>
+                {decidable ? <PhoneRowMore row={row} t={t} busy={busy} waitlisted={query.bucket === "waitlisted"} onDecide={props.onDecide} /> : null}
                 {decidable ? <button type="button" className={`btn ${s.btn} ${s.sm} ${s.primary}`} disabled={busy} onClick={() => props.onDecide?.(row, "approve")}>{t("pApprove")}</button> : null}
               </div>
             );

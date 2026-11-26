@@ -322,6 +322,7 @@ export const hostCopy = {
   pBulkWaitlist: { ja: "キャンセル待ちへ", zh: "转为候补", en: "Move to waitlist", kind: "button" },
   pReject: { ja: "見送り", zh: "婉拒", en: "Decline", kind: "button" },
   pWait: { ja: "待ち", zh: "候补", en: "Waitlist", kind: "button" },
+  pRowMore: { ja: "{name} のその他の操作", zh: "{name}的更多操作", en: "More for {name}", kind: "label" },
   pPhonePc: { ja: "まとめて審査・見送りの理由メモは PC で", zh: "批量审核和婉拒备注请在电脑上操作", en: "Bulk review and decline notes are on a computer", kind: "label" },
   pApprove: { ja: "承認", zh: "批准", en: "Approve", kind: "button" },
   pSelectAll: { ja: "表示中の全員を選択", zh: "选择显示中的所有人", en: "Select everyone shown", kind: "label" },
