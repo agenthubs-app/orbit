@@ -131,7 +131,6 @@ export const hostCopy = {
   oPhSeeResult: { ja: "結果を見る", zh: "查看结果", en: "See results", kind: "button" },
   oPhTodo: { ja: "要対応", zh: "待处理", en: "To do", kind: "title" },
   oPhWalkIn: { ja: "当日枠 {n}名分", zh: "当天名额{n}人", en: "{n} walk-in slots", kind: "label" },
-  oPhPc: { ja: "申込設定とレポートの詳細は PC で編集できます", zh: "报名设置和报告详情可以在电脑上编辑", en: "Edit sign-up settings and see report details on a computer", kind: "label" },
   oMatchable: { ja: "マッチ可能", zh: "可匹配", en: "Matchable", kind: "chip" },
   oProfileDone: { ja: "プロフィール完了", zh: "资料已完成", en: "Profile complete", kind: "label" },
   oCheckedIn: { ja: "受付済み", zh: "已签到", en: "Checked in", kind: "chip" },

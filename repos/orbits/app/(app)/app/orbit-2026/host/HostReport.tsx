@@ -4,6 +4,7 @@
 // 数据：GET /api/host/events/[id]/report?view=all|mine。参加者私人记录来的数字 <5 抑制 → null → 「—」（§2.9）。
 // 自分の視点只读主办者本人的人脉与计划（不经主办权限），「下書きを作成」只开草稿、不发送。
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { usePhone } from "../events/EventDetail";
 
 import type { HostReportAll, HostReportMine, HostReportResponse } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
@@ -91,6 +92,7 @@ function Before({ all, t }: { all: HostReportAll; t: HostT }) {
 }
 
 function After({ all, t, why, onWhy }: { all: HostReportAll; t: HostT; why: boolean; onWhy: () => void }) {
+  const phone = usePhone();
   const base = all.funnel.exchanged;
   const funnel = [
     ["rpFunExchanged", all.funnel.exchanged, base == null ? 0 : 100, ""],
@@ -102,25 +104,25 @@ function After({ all, t, why, onWhy }: { all: HostReportAll; t: HostT; why: bool
   const round = all.tables[0]?.round ?? 1;
   return (
     <>
-      <div className={`${s.card} ${s.span3}`} data-host-report="after">
+      <div className={`${s.card} ${s.span3} ${s.half}`} data-host-report="after">
         <div className={`${s.row} ${r.rate}`}>
-          <ScoreRing value={(all.checkInRate ?? 0) / 100} size={88} stroke={10} color="var(--plum-700)" label={`${t("rpCheckInRate")} ${orDash(all.checkInRate, "%")}`}>
+          <ScoreRing value={(all.checkInRate ?? 0) / 100} size={phone ? 52 : 88} stroke={phone ? 7 : 10} color="var(--plum-700)" label={`${t("rpCheckInRate")} ${orDash(all.checkInRate, "%")}`}>
             <b className={r.rateC}>{all.checkInRate ?? DASH}{all.checkInRate != null ? <small>%</small> : null}</b>
           </ScoreRing>
           <div><div className={s.lbl}>{t("rpCheckInRate")}</div><div className={r.mid}>{orDash(all.checkedIn)}<small className={s.lbl}> {t("rpOf", { n: all.applied })}</small></div></div>
         </div>
       </div>
-      <div className={`${s.card} ${s.span3}`}>
+      <div className={`${s.card} ${s.span3} ${s.half}`}>
         <div className={s.lbl}>{t("rpExchanges")}</div>
         <div className={`${s.big} ${r.mt6}`}>{orDash(all.exchanges)}{all.exchanges != null ? <small>{t("rpPairs")}</small> : null}</div>
         <div className={s.lbl}>{t("rpPerPerson", { n: orDash(all.exchangesPerPerson) })}</div>
       </div>
-      <div className={`${s.card} ${s.span3}`}>
+      <div className={`${s.card} ${s.span3} ${s.half}`}>
         <Why label={t("rpExchangeRate")} body={t("rpExchangeWhy", { n: orDash(all.checkedIn) })} open={why} onToggle={onWhy} />
         <div className={`${s.big} ${r.mt6}`}>{orDash(all.exchangeRate)}{all.exchangeRate != null ? <small>%</small> : null}</div>
         <div className={s.lbl}>{t("rpExchangeRateSub")}</div>
       </div>
-      <div className={`${s.card} ${s.span3}`}>
+      <div className={`${s.card} ${s.span3} ${s.half}`}>
         <div className={s.lbl}>{t("rpFollow")}</div>
         <div className={`${s.big} ${r.mt6}`}>{orDash(all.followups)}{all.followups != null ? <small>{t("unitPeople")}</small> : null}</div>
         <span className={s.delta}>{t("rpFollowDelta", { d: all.followupWindowDays, r: orDash(all.followupRate, "%") })}</span>

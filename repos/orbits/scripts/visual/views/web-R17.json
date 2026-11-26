@@ -852,6 +852,80 @@
     }
    ],
    "note": "HM-M4 マッチング · 移動先を選ぶ（b13 #15；A 卓第 1 人「移動」）"
+  },
+  {
+   "id": "HM-R1",
+   "app": "/app/events/demo-host-cfo-night-17/operations?tab=report",
+   "design": "b13-host-mobile.html",
+   "board-index": 39,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-report=after]",
+   "note": "HM-R1 レポート · 全体（b13 #39，vol.17）"
+  },
+  {
+   "id": "HM-R3",
+   "app": "/app/events/demo-host-cfo-night-17/operations?tab=report&view=mine",
+   "design": "b13-host-mobile.html",
+   "board-index": 41,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-report-mine]",
+   "note": "HM-R3 レポート · 自分の視点（b13 #41）"
+  },
+  {
+   "id": "HM-R4",
+   "app": "/app/events/demo-host-mfg-asakai-3/operations?tab=report",
+   "design": "b13-host-mobile.html",
+   "board-index": 42,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-report=before]",
+   "note": "HM-R4 レポート · 開催前（b13 #42，朝会 #3）"
+  },
+  {
+   "id": "HM-T1",
+   "app": "/app/events/demo-event-cfo-night-18/operations",
+   "design": "b13-host-mobile.html",
+   "board-index": 54,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-overview-phone]",
+   "host": {
+    "overview": "live"
+   },
+   "note": "HM-T1 页签栏 · 概要（b13 #54，CFO18 開催中）"
+  },
+  {
+   "id": "HM-T3",
+   "app": "/app/events/demo-event-cfo-night-18/operations",
+   "design": "b13-host-mobile.html",
+   "board-index": 56,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-overview-phone]",
+   "host": {
+    "overview": "live"
+   },
+   "click": [
+    "[data-orbit-phone-top] button[aria-label]:last-of-type"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-phone-menu]"
+    }
+   ],
+   "note": "HM-T3 页头 ⋯ 菜单（b13 #56）"
   }
  ]
 }

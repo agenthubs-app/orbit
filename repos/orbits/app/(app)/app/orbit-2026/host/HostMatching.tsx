@@ -365,6 +365,15 @@ export function HostMatchingTab({ eventId, language, onChanged }: { eventId: str
     if (res.ok) { setData(res.data); setFailed(false); } else setFailed(true);
   }, [eventId, round]);
   useEffect(() => { void load(); }, [load]);
+  // 概要的「公開する」跳过来（?publish=1，b13 HM-T1 / 61-390）：下書き时直接打开公開確認，只开一次。
+  const wantPublish = params.get("publish") === "1";
+  useEffect(() => {
+    if (!wantPublish || data?.state !== "draft") return;
+    setModal("publish");
+    const search = new URLSearchParams(params.toString());
+    search.delete("publish");
+    router.replace(`?${search.toString()}`, { scroll: false });
+  }, [wantPublish, data?.state, params, router]);
   // 生成中：每 4 秒重读，直到出结果；标签页在后台时跳过。
   useEffect(() => {
     if (data?.state !== "generating") return;

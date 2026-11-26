@@ -14,7 +14,7 @@ import type { HostEventView } from "../../../../../shared/contract/host-events";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { HostNoticePreview } from "../../../../../shared/contract/host-notices";
 import { ShellPage } from "../shell/slots";
-import { ConfirmDialog, Icon, Modal, Orbit2026Scope, ToastProvider, UnderlineTabs, useToast } from "../ui";
+import { BottomSheet, ConfirmDialog, Icon, Modal, Orbit2026Scope, ToastProvider, UnderlineTabs, useToast } from "../ui";
 import { failureOf, hostApi, hostEventApi, type HostApiFailure, type HostApiResult } from "./host-api";
 import { CancelEventConfirm, PublishEventConfirm } from "./HostEventForm";
 import { HOST_CONSOLE_TABS, HostTabContent, HostTabPlaceholder, parseConsoleTab, type HostConsoleTab } from "./HostConsoleTabs";
@@ -135,6 +135,7 @@ function HostOverviewPhone({ data, t }: HostOverviewViewProps) {
         </div>
         <div className={`${s.row} ${s.phMatchActs}`}>
           <a className={`btn ${s.btn} ${s.sm}`} href={consoleHref(id, "matching")}>{t("oPhSeeResult")}</a>
+          {state === "draft" ? <a className={`btn ${s.btn} ${s.sm} ${s.primary}`} href={`${consoleHref(id, "matching")}&publish=1`} data-host-overview-publish=""><Icon name="share" size={16} />{t("aPublish")}</a> : null}
           {data.matching.unplaced > 0 ? <span className={`${s.lbl} ${s.phPush}`}>{t("chipUnplaced", { n: data.matching.unplaced })}</span> : null}
         </div>
       </div>
@@ -157,7 +158,6 @@ function HostOverviewPhone({ data, t }: HostOverviewViewProps) {
           ) : null}
         </div>
       ) : null}
-      <div className={`${s.card} ${s.flat} ${s.row} ${s.phPc}`}><span className={`${s.emo} ${s.e_blue} ${s.phEmo}`}>💻</span><div className={`${s.lbl} ${s.grow}`}>{t("oPhPc")}</div></div>
     </div>
   );
 }
@@ -284,6 +284,26 @@ export function HostMoreMenu({ event, t, defaultOpen = false, onAction }: { even
   );
 }
 
+/** < 768 页头「⋯」的底部菜单（b13 HM-T3）。项目与电脑版下拉相同（hostMenuItems），外加 共同運営者。 */
+function HostPhoneMenu({ open, event, t, subtitle, cohostsHref, onOpenCohosts, onAction, onClose }: { open: boolean; event: HostEventView; t: HostT; subtitle: string; cohostsHref: string; onOpenCohosts?: (event: MouseEvent<HTMLAnchorElement>) => void; onAction?: (action: HostMenuAction) => void; onClose: () => void }) {
+  const items = hostMenuItems(event);
+  const pick = (action: HostMenuAction) => { onClose(); onAction?.(action); };
+  return (
+    <BottomSheet open={open} onClose={onClose} label={t("hmMore")}>
+      <div className={s.phMenuHead}><b>{event.title}</b><span className={s.lbl}>{subtitle}</span></div>
+      <div className={s.phMenu} data-host-phone-menu="">
+        <a className={s.phMi} href={cohostsHref} onClick={(click) => { onClose(); onOpenCohosts?.(click); }} data-host-menu-item="cohosts"><Icon name="users" size={16} /><span>{t("cohostsBtn")}</span><span className={s.phMiTail}>{t("nPeople", { n: event.cohosts.length })}</span></a>
+        {items.edit ? <a className={s.phMi} href={`/app/events/${id(event.eventId)}/edit`} data-host-menu-item="edit"><Icon name="pen" size={16} /><span>{t("hmEdit")}</span></a> : null}
+        {items.reissue ? <button type="button" className={`btn ${s.phMi}`} onClick={() => pick("reissue")} data-host-menu-item="reissue"><Icon name="refresh" size={16} /><span>{t("hmReissue")}</span></button> : null}
+        {items.openPage ? <a className={s.phMi} href={`/e/${id(event.publicSlug!)}`} target="_blank" rel="noopener" onClick={onClose} data-host-menu-item="open"><Icon name="link" size={16} /><span>{t("hmOpenPage")}</span></a> : null}
+        {items.archive ? <button type="button" className={`btn ${s.phMi}`} onClick={() => pick("archive")} data-host-menu-item="archive"><Icon name="archive" size={16} /><span>{t("hmArchive")}</span></button> : null}
+        {items.cancel ? <button type="button" className={`btn ${s.phMi} ${s.phMiDanger}`} onClick={() => pick("cancel")} data-host-menu-item="cancel"><Icon name="x" size={16} /><span>{t("hmCancel")}</span></button> : null}
+      </div>
+      <button type="button" className={`btn ${s.btn} ${s.phMenuClose}`} onClick={onClose}>{t("close")}</button>
+    </BottomSheet>
+  );
+}
+
 export type HostConsoleViewProps = {
   data: HostOverviewResponse;
   tab: HostConsoleTab;
@@ -311,6 +331,9 @@ export function HostConsoleView({ data, tab, language, now = new Date(), busy = 
   const t = useMemo(() => hostTranslator(language), [language]);
   const phone = usePhone();
   const event = data.event;
+  // < 768：页头右上「⋯」= 底部菜单（b13 HM-T3：共同運営者 · 基本情報を編集 · 参加コードを再発行 · 申込ページを開く · 中止）。
+  const [phoneMenu, setPhoneMenu] = useState(false);
+  const phoneMenuActions = useMemo(() => [{ icon: "more" as const, key: "host-more", label: t("hmMore"), onClick: () => setPhoneMenu(true) }], [t]);
   // 页签一律下划线（.htabs；决定表 §41-1 统一了 web.html #20）。参加者角标 = 审核待人数，在参加者页签本身不显示（b6 #7–#9）。
   const back = <a className={`btn ${s.btn} ${s.backBtn}`} href="/app/events/center" aria-label={t("back")}><Icon name="left" size={20} /></a>;
   const right = (
@@ -331,12 +354,23 @@ export function HostConsoleView({ data, tab, language, now = new Date(), busy = 
   );
   return (
     <>
-      <ShellPage title={event.title} subtitle={consoleSubtitle(event, language, t, now, tab, formPublished)} left={back} right={right} rightRail={false} />
+      <ShellPage title={event.title} subtitle={consoleSubtitle(event, language, t, now, tab, formPublished)} left={back} right={right} rightRail={false}
+        phoneActions={phoneMenuActions} />
+      {phone ? <HostPhoneMenu open={phoneMenu} event={event} t={t} subtitle={consoleSubtitle(event, language, t, now, tab, formPublished)} cohostsHref={`${consoleHref(event.eventId, tab)}&drawer=cohosts`} onOpenCohosts={onOpenCohosts} onAction={onMenu} onClose={() => setPhoneMenu(false)} /> : null}
       {/* R31b：运营台下线页签换成组件 UnderlineTabs（host 变体 = b6 / b12 .htabs）；外边距仍由 .htabs 给。 */}
       <UnderlineTabs variant="host" className={s.htabs} data-host-tabs="underline" value={tab}
         tabs={HOST_CONSOLE_TABS.map((key) => ({ key, label: t(TAB_LABEL[key]), href: key === "checkin" ? checkInHref(event.eventId) : consoleHref(event.eventId, key), badge: key === "people" && tab !== "people" && data.pendingReview > 0 ? data.pendingReview : undefined }))} />
       <div className={s.wgrid} data-host-console={tab}>
         <StatusBanner event={event} t={t} busy={busy} onPublish={() => onPublish?.()} onArchive={(archived) => onArchive?.(archived)} />
+        {phone && tab === "report" ? (
+          <div className={`${s.seg} ${s.phReportSeg}`} role="tablist" aria-label={t("rpViews")} data-host-report-views="">
+            {(["all", "mine"] as const).map((view) => (
+              <a key={view} role="tab" aria-selected={reportView === view} className={`btn ${s.segBtn} ${reportView === view ? s.segOn : ""}`}
+                href={`${consoleHref(event.eventId, "report")}${view === "mine" ? "&view=mine" : ""}`}
+                onClick={onReportView ? (click) => { click.preventDefault(); onReportView(view); } : undefined}>{t(view === "all" ? "rpAll" : "rpMine")}</a>
+            ))}
+          </div>
+        ) : null}
         {tab === "overview" ? <HostOverviewView data={data} t={t} phone={phone} /> : content ?? <HostTabPlaceholder tab={tab} t={t} />}
       </div>
     </>
