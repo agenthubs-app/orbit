@@ -3,6 +3,7 @@
 // R27 参加登録（Web 1440：b2 #23 ① 質問 + 実時間の参加用プロフィール；1024 / 390：b12 #354 / #356）。
 // ② 確認 / ③ 申込完了：b12 #370 / #372（§30 补画，版式照 #23：左卡换内容、右侧参加用プロフィール常驻）。
 // 数据：/api/events/[id]/join/*（问题 = 现有 AI 访谈 ≤5 问；资料规则实时更新，只有确认时才生成自己紹介草稿）。
+import { introDraftOutcome, waitForIntroDraft } from "./intro-draft-wait";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { EventJoinAnswer, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep } from "../../../../../shared/contract/event-join";
@@ -67,8 +68,10 @@ const ITEM_OF_FIELD: Readonly<Record<string, EventJoinProfileItemKey>> = { desir
 
 type ProfileMode = "live" | "review" | "applied";
 
-export function ProfileCard({ profile, t, mode }: { profile: EventJoinProfile | null; t: JourneyT; mode: ProfileMode }) {
+export function ProfileCard({ profile, t, mode, introPending = false }: { profile: EventJoinProfile | null; t: JourneyT; mode: ProfileMode; introPending?: boolean }) {
   const drafting = mode === "live";
+  // 确认页上自我介绍还在写：只有介绍这一块显示加载，其余照常。
+  const introWait = drafting || introPending;
   return (
     <div className={`${styles.card} ${styles.span5} ${r.persona}`} data-join-profile={mode}>
       <div className={styles.cardH}>
@@ -96,8 +99,8 @@ export function ProfileCard({ profile, t, mode }: { profile: EventJoinProfile | 
       </div>
       <div className={`${styles.lbl} ${r.sectionLbl}`}>{t("topicsLbl")}</div>
       <div className={`${styles.chips} ${r.chips}`}>{(profile?.topics ?? []).map((topic) => <span key={topic} className={`${styles.chip} ${styles.c_lav}`}>{topic}</span>)}</div>
-      <div className={`${styles.lbl} ${r.sectionLbl}`}>{t(drafting ? "introDraftLbl" : "introLbl")}</div>
-      {profile?.selfIntro ? <div className={drafting ? `${styles.sub} ${r.intro}` : r.introSide}>{profile.selfIntro.text}</div> : drafting ? (
+      <div className={`${styles.lbl} ${r.sectionLbl}`}>{t(introWait ? "introDraftLbl" : "introLbl")}</div>
+      {profile?.selfIntro && !introPending ? <div className={drafting ? `${styles.sub} ${r.intro}` : r.introSide}>{profile.selfIntro.text}</div> : introWait ? (
         <>
           <div className={r.shimmer} /><div className={r.shimmer} style={{ width: "85%" }} /><div className={r.shimmer} style={{ width: "60%" }} />
         </>
@@ -122,6 +125,10 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const [result, setResult] = useState<EventJoinResult | null>(null);
   const [calendar, setCalendar] = useState<"asked" | "added" | "declined">("asked");
   const [intro, setIntro] = useState<string | null>(null);
+  const introRef = useRef<string | null>(null);
+  introRef.current = intro;
+  const [draft, setDraft] = useState<"idle" | "running" | "failed">("idle");
+  const draftSeq = useRef(0);
   const [editingIntro, setEditingIntro] = useState(false);
   const [why, setWhy] = useState(false);
   // 主催者の連絡先：申込が通った直後、ID があれば自動で開く（閉じたあとは完了ページのカードに残る）。
@@ -219,11 +226,29 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     setAnswers(next); setFree("");
     showStep(nextStep.data);
     if (nextProfile.ok) setProfile(nextProfile.data);
-    if (nextStep.ok && nextStep.data.done) {
-      const drafted = await joinApi.profile(eventId, next, true);
-      if (drafted.ok) { setProfile(drafted.data); setIntro((current) => current ?? drafted.data.selfIntro?.text ?? null); }
-    }
     setBusy(false);
+    if (nextStep.data.done) void draftIntro(next);
+  };
+  // 答完后 AI 写自我介绍（几秒）：写好之前确认页说明「正在写」，不能提交、不能改介绍。已经有介绍（写过或本人改过）就不再写。
+  // 最多等 INTRO_DRAFT_WAIT_MS；没写成 / 超时 → 用资料里的介绍或空，说明可以自己写或直接报名。超时后才回来的结果，介绍还空着时照样放进去。
+  const draftIntro = async (given: readonly EventJoinAnswer[]) => {
+    if (introRef.current !== null) return;
+    const seq = ++draftSeq.current;
+    setDraft("running");
+    const request = joinApi.profile(eventId, given, true);
+    const take = (drafted: Awaited<typeof request>) => {
+      if (drafted.ok) setProfile(drafted.data);
+      const outcome = introDraftOutcome(drafted.ok ? { ok: true, selfIntro: drafted.data.selfIntro } : { ok: false });
+      setIntro(outcome.text);
+      setDraft(outcome.state);
+    };
+    const first = await waitForIntroDraft(request);
+    if (seq !== draftSeq.current) return;
+    if (first.timedOut === false) { take(first.value); return; }
+    setIntro("");
+    setDraft("failed");
+    const late = await first.late;
+    if (seq === draftSeq.current && introRef.current === "" && late.ok && late.data.selfIntro?.source === "ai_draft") take(late);
   };
   // 「追加」/「質問に戻る」：访谈认为够了也再问一题（live 由 AI 决定，可能仍然结束 → 留在确认页）。
   const askMore = async (focus?: EventJoinProfileItemKey) => {
@@ -238,7 +263,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     if (list.length) { showEditQuestions(list, answers); setOptional(true); } else void askMore(key);
   };
   const apply = async () => {
-    if (!mode) return;
+    if (!mode || draft === "running") return;
     setBusy(true);
     // 2026-11-26：确认页上的自我介绍（AI 草稿原样或改过的）都随报名留存——它会显示给这场活动的其他参会者。
     const confirmed = (intro ?? profile?.selfIntro?.text ?? "").trim().slice(0, 400);
@@ -401,21 +426,26 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         )) : null}
         {missing.some((item) => item.key === "offer") ? <div className={`${styles.lbl} ${r.hint}`}>{t("offerHint")}</div> : null}
       </div>
-      <div className={`${styles.card} ${r.inner} ${r.gap}`}>
+      <div className={`${styles.card} ${r.inner} ${r.gap}`} aria-busy={draft === "running"}>
         <div className={styles.cardH}>
           <h3>{t("introLbl")} <span className={`${styles.lbl} ${r.introTag}`}>{t("introShown")}</span></h3>
           <div className={styles.row} style={{ gap: 6 }}>
             {profile?.selfIntroBasis ? <button type="button" className={`btn ${r.why}`} aria-expanded={why} aria-label={t("introWhy")} onClick={() => setWhy((v) => !v)}>?</button> : null}
-            <button type="button" className={`btn ${d.lbtn}`} aria-label={t("edit")} onClick={() => setEditingIntro((v) => !v)}><Icon name="pen" size={16} /></button>
+            <button type="button" className={`btn ${d.lbtn}`} aria-label={t("edit")} disabled={draft === "running"} onClick={() => setEditingIntro((v) => !v)}><Icon name="pen" size={16} /></button>
           </div>
         </div>
-        {editingIntro ? (
+        {draft === "running" ? (
+          <div className={r.drafting}>
+            <div className={r.shimmer} /><div className={r.shimmer} style={{ width: "85%" }} /><div className={r.shimmer} style={{ width: "60%" }} />
+          </div>
+        ) : editingIntro ? (
           <div className={r.editIntro}>
             <textarea className={r.textarea} value={shownIntro} maxLength={400} onChange={(ev) => { setIntro(ev.target.value); if (editing) setDirty(true); }} aria-label={t("introLbl")} />
             <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} onClick={() => setEditingIntro(false)}>{t("saveIntro")}</button>
           </div>
         ) : <div className={r.introText}>{shownIntro}</div>}
         {why && profile?.selfIntroBasis ? <div className={r.whyBody}>{profile.selfIntroBasis}</div> : null}
+        <div className={`${styles.lbl} ${r.draftNote}`} role="status" aria-live="polite" data-join-intro-draft={draft}>{draft === "running" ? t("introDrafting") : draft === "failed" ? t("introDraftFailed") : ""}</div>
       </div>
       <div className={`${styles.card} ${r.inner} ${r.gap} ${r.scope}`}>
         <div className={`${styles.lbl} ${r.scopeLbl}`}>{t("visibilityTitle")}</div>
@@ -424,7 +454,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       <div className={`${styles.row} ${r.go}`}>
         <span className={`${styles.lbl} ${r.grow}`}>{profile?.editableUntil ? t("editableUntil", { date: monthDaySlash(profile.editableUntil) }) : null}</span>
         {editing ? null : <button type="button" className={`btn ${styles.btn}`} disabled={busy} onClick={() => void askMore()}>{t("backToQuestions")}</button>}
-        <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.nextBtn}`} disabled={busy} onClick={() => void apply()}>{t(editing ? "joinSave" : "applyNow")}</button>
+        <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.nextBtn}`} disabled={busy || draft === "running"} aria-disabled={draft === "running"} onClick={() => void apply()}>{draft === "running" ? t("introDrafting") : t(editing ? "joinSave" : "applyNow")}</button>
       </div>
     </div>
   );
@@ -494,7 +524,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       />
       <div className={styles.wgrid} data-join={eventId}>
         {done ?? loadError ?? (reviewing ? review : chat)}
-        <ProfileCard profile={profile ? { ...profile, selfIntro: intro && (profile.selfIntro || editing) ? { source: profile.selfIntro?.source ?? "profile", text: intro } : profile.selfIntro } : null} t={t} mode={result ? "applied" : reviewing ? "review" : "live"} />
+        <ProfileCard introPending={draft === "running"} profile={profile ? { ...profile, selfIntro: intro && (profile.selfIntro || editing) ? { source: profile.selfIntro?.source ?? "profile", text: intro } : profile.selfIntro } : null} t={t} mode={result ? "applied" : reviewing ? "review" : "live"} />
       </div>
       </>}
       {result ? <HostContactModal open={contactOpen} contact={result.hostContact} t={t} reviewLine={contactLine} onClose={() => setContactOpen(false)} /> : null}

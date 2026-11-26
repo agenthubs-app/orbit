@@ -32,6 +32,9 @@
 .intro.intro { margin-top: 8px; font-size: var(--fs-body-sm); line-height: 1.6; }
 .shimmer { height: 12px; margin-top: 8px; border-radius: var(--r-chip); background: linear-gradient(90deg, var(--surface-3), var(--surface-2), var(--surface-3)); background-size: 200% 100%; }
 .foot.foot { margin-top: 16px; }
+.drafting { padding-top: 2px; }
+.draftNote.draftNote { margin-top: 8px; }
+.draftNote:empty { display: none; }
 
 .railCard.railCard { padding: 16px; }
 .railName { font-size: var(--fs-row); display: block; }
