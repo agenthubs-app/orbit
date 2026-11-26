@@ -27,6 +27,15 @@ test("参加者詳細: answers, profile, tables with tablemates and the first fi
   assert.doesNotMatch(html, /AI/);
 });
 
+test("参加者詳細: library questions and their choices follow the interface language (2026-11-26)", () => {
+  const base = hostPerson(HOST_EVENT_IDS.cfo18, "actor:hp-morita")!;
+  const data = { ...base, hostAnswers: [{ label: "あなたの立場に近いものを選んでください", value: "自由に書いた答え" }] };
+  const zh = renderToStaticMarkup(<HostPersonView data={data} t={hostTranslator("zh")} language="zh" />);
+  assert.match(zh, /请选择最接近你身份的一项/);
+  assert.doesNotMatch(zh, /あなたの立場/);
+  assert.match(zh, /自由に書いた答え/, "free text is shown as written");
+});
+
 test("参加者詳細: before publishing, a short note instead of tables", () => {
   const base = hostPerson(HOST_EVENT_IDS.cfo18, "actor:hp-morita")!;
   const html = renderToStaticMarkup(<HostPersonView data={{ ...base, matching: { published: false, recommendations: [], tables: [] } }} t={t} />);

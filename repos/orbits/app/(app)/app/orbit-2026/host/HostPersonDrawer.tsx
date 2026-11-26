@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { HostPersonResponse } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { localizeLibraryAnswerText, localizeLibraryPrompt } from "../../../../../shared/domain/host-question-library";
 import { Avatar, Drawer } from "../ui";
 import { hostApi } from "./host-api";
 import { hostDateShort, hostTime, hostTranslator, type HostT } from "./host-model";
@@ -20,7 +21,7 @@ import pd from "./person.module.css";
 
 const RECS_FIRST = 5;
 
-export function HostPersonView({ data, t }: { data: HostPersonResponse; t: HostT }) {
+export function HostPersonView({ data, t, language }: { data: HostPersonResponse; t: HostT; language?: OrbitLanguage }) {
   const [allRecs, setAllRecs] = useState(false);
   const meta = [
     data.checkedInAt ? t("pdCheckedIn", { time: hostTime(data.checkedInAt) }) : null,
@@ -48,7 +49,7 @@ export function HostPersonView({ data, t }: { data: HostPersonResponse; t: HostT
       {data.hostAnswers.length ? (
         <section className={pd.section}>
           <h3 className={pd.h}>{t("pdHostAnswers")}</h3>
-          <dl className={pd.qa}>{data.hostAnswers.map((item, index) => <div key={index}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
+          <dl className={pd.qa}>{data.hostAnswers.map((item, index) => <div key={index}><dt>{language ? localizeLibraryPrompt(item.label, language) : item.label}</dt><dd>{language ? localizeLibraryAnswerText(item.value, language) : item.value}</dd></div>)}</dl>
         </section>
       ) : null}
 
@@ -124,7 +125,7 @@ export function HostPersonDrawer({ eventId, actorId, name, language, onClose }: 
   }, [eventId, actorId]);
   return (
     <Drawer open onClose={onClose} title={data?.name ?? name} size="md">
-      {data ? <HostPersonView data={data} t={t} />
+      {data ? <HostPersonView data={data} t={t} language={language} />
         : failed ? <div className={s.empty}>{t("loadError")}</div>
           : <div className={pd.loading} aria-busy="true"><i /><i /><i /></div>}
     </Drawer>
