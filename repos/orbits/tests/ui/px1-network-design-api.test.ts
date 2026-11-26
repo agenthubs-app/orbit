@@ -29,3 +29,29 @@ test("PX1 design contact detail, fit and connection stay on the actor-scoped dev
     globalThis.fetch = before;
   }
 });
+
+test("UR-S shared contact methods: fixture people from the fixture, exchanged contacts from the route, anyone else asks nothing", async () => {
+  const calls: string[] = [];
+  const before = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    calls.push(url);
+    const data = url.startsWith("/api/dev/network-design-fixture")
+      ? { rows: [], links: [], goalRelatedIds: [], followUpContactIds: [], fits: {}, connections: {}, valueLines: {}, sharedContactMethods: { "design-person-001": { lineId: "misaki_aoba", email: "m.takahashi@aoba-vc.example" } } }
+      : { lineId: "matsumoto.t" };
+    return new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    const fixture = await networkApi.sharedMethods("design-person-001");
+    const fixtureNone = await networkApi.sharedMethods("design-person-002");
+    const manual = await networkApi.sharedMethods("contact:manual-v2:abc");
+    const exchanged = await networkApi.sharedMethods("contact:event-consent:xyz");
+    assert.deepEqual(fixture.ok && fixture.data, { lineId: "misaki_aoba", email: "m.takahashi@aoba-vc.example" });
+    assert.equal(fixtureNone.ok && fixtureNone.data, null);
+    assert.equal(manual.ok && manual.data, null);
+    assert.deepEqual(exchanged.ok && exchanged.data, { lineId: "matsumoto.t" });
+    assert.deepEqual([...new Set(calls)], ["/api/dev/network-design-fixture?contacts=1", "/api/contacts/contact%3Aevent-consent%3Axyz/shared-contact-methods"]);
+  } finally {
+    globalThis.fetch = before;
+  }
+});

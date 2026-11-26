@@ -3,6 +3,7 @@ import type { ContactCardDTO, ContactCardSourceChip } from "../../../shared/cont
 import type { ContactSyncPayload } from "../../../shared/contract/contact-local-directory";
 import type { InviteConnectionView } from "../../../shared/contract/invite-codes";
 import type { PlanContactFit } from "../../../shared/contract/plan-v2";
+import type { ProfileContactMethods } from "../../../shared/compute/profile-contact-methods";
 import type { NetworkDesignVariant } from "../analysis-fixtures";
 import { designNetworkPeople } from "./index";
 
@@ -28,6 +29,8 @@ export interface DesignNetworkContactFixture {
   fits: Record<string, PlanContactFit>;
   connections: Record<string, InviteConnectionView>;
   valueLines: Record<string, { relation: string; evidence: string[]; meetingCount?: number }>;
+  /** UR-S：交换完成后对方共享的联系方式（只给人脉详情的门禁用）。高橋 美咲 四种都有，第 32 位只有 LINE。 */
+  sharedContactMethods: Record<string, ProfileContactMethods>;
 }
 
 const personIndex = (id: string) => Number(id.slice("design-person-".length)) - 1;
@@ -102,6 +105,10 @@ export function designNetworkContactFixture(variant: NetworkDesignVariant): Desi
   });
   return {
     variant, rows,
+    sharedContactMethods: variant === "empty" ? {} : {
+      "design-person-001": { lineId: "misaki_aoba", wechatId: "misaki-tk", email: "m.takahashi@aoba-vc.example", phone: "090-0000-1234" },
+      "design-person-032": { lineId: "h.matsui" },
+    },
     goalRelatedIds: people.filter((person) => goalIndexes.has(personIndex(person.id))).map((person) => person.id),
     followUpContactIds: people.filter((person) => followUpIndexes.has(personIndex(person.id))).map((person) => person.id),
     links: people.filter((person) => goalIndexes.has(personIndex(person.id))).map((person) => ({

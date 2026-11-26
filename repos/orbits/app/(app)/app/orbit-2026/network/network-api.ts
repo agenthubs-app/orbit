@@ -107,7 +107,7 @@ const id = (value: string) => encodeURIComponent(value);
 const designId = (value: string) => /^design-person-[0-9]{3}$/u.test(value);
 type DesignContacts = { rows: ContactSyncPayload[]; goalRelatedIds: string[]; followUpContactIds: string[]; links: ContactGoalRelatedIdsDTO["links"]; asOf?: string;
   fits: Record<string, PlanContactFit>; connections: Record<string, InviteConnectionView>;
-  valueLines: Record<string, { relation: string; evidence: string[] }> };
+  valueLines: Record<string, { relation: string; evidence: string[] }>; sharedContactMethods?: Record<string, unknown> };
 const designContacts = () => call<DesignContacts>("/api/dev/network-design-fixture?contacts=1", undefined, anything as ZodType<DesignContacts>);
 const designMissing = (): NetworkApiResult<never> => ({ ok: false, reason: "not_found", status: 404 });
 
@@ -173,5 +173,15 @@ export const networkApi = {
   memoEventOptions: () => call<{ options: ContactLogEventOption[] }>("/api/contacts/memo-event-options", undefined, memoEventOptionsSchema),
   updateDetail: (contactId: string, patch: Record<string, unknown>) => call(`/api/contacts/${id(contactId)}`, { method: "PATCH", body: JSON.stringify(patch) }, anything),
   remove: (contactId: string) => call<ContactDeleteResult>(`/api/contacts/${id(contactId)}`, { method: "DELETE" }, contactDeleteResultSchema as unknown as ZodType<ContactDeleteResult>),
+  /** UR-S：交换完成后对方共享的联系方式；不是交换来的联系人回 null（不显示这张卡）。只有交换来的联系人（contact:event-consent:…）才问服务器；设计 fixture 联系人从 fixture 取。 */
+  sharedMethods: async (contactId: string): Promise<NetworkApiResult<unknown>> => {
+    if (designId(contactId)) {
+      const result = await designContacts();
+      if ("reason" in result) return result;
+      return { ok: true, data: result.data.sharedContactMethods?.[contactId] ?? null };
+    }
+    if (!contactId.startsWith("contact:event-consent:")) return { ok: true, data: null };
+    return call<unknown>(`/api/contacts/${id(contactId)}/shared-contact-methods`, { cache: "no-store" }, anything as ZodType<unknown>);
+  },
   restore: (contactId: string) => call<ContactRestoreResult>(`/api/contacts/${id(contactId)}/restore`, { method: "POST" }, contactRestoreResultSchema as unknown as ZodType<ContactRestoreResult>),
 };

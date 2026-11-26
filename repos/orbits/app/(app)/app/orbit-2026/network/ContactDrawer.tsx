@@ -171,15 +171,12 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   }, [contactId]);
   useEffect(() => {
     setSharedMethods(null);
-    if (!contactId?.startsWith("contact:event-consent:")) return;
-    const controller = new AbortController();
-    void fetch(`/api/contacts/${encodeURIComponent(contactId)}/shared-contact-methods`, { cache: "no-store", signal: controller.signal })
-      .then(async response => response.ok ? response.json() : null)
-      .then(reply => {
-        if (!controller.signal.aborted && reply?.success === true) setSharedMethods({ id: contactId, fields: profileContactMethods(reply.data) });
-      })
-      .catch(() => undefined);
-    return () => controller.abort();
+    if (!contactId) return;
+    let alive = true;
+    void networkApi.sharedMethods(contactId).then((result) => {
+      if (alive && result.ok && result.data != null) setSharedMethods({ id: contactId, fields: profileContactMethods(result.data) });
+    });
+    return () => { alive = false; };
   }, [contactId]);
 
   const contact = useMemo(() => drawerContactFrom(payload), [payload]);
