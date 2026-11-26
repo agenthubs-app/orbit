@@ -177,7 +177,7 @@ export function HostPeoplePhone(props: HostPeoplePhoneProps) {
               <Icon name={query.incomplete ? "check" : "filter"} size={16} />{t("pIncomplete")}
             </button>
             <span className={p.grow} />
-            {decidable && rows.length > 0 ? <button type="button" className={`btn ${s.btn} ${s.sm} ${s.ghost}`} onClick={() => props.onSelecting(true)} data-host-select="">{t("pSelect")}</button> : null}
+            {decidable ? <button type="button" className={`btn ${s.btn} ${s.sm} ${s.ghost}`} disabled={rows.length === 0} onClick={() => props.onSelecting(true)} data-host-select="">{t("pSelect")}</button> : null}
           </div>
         </>
       )}
@@ -222,7 +222,7 @@ export function HostPeoplePhone(props: HostPeoplePhoneProps) {
           </div>
         </div>
       ) : null}
-      <BottomSheet open={sheet} onClose={() => setSheet(false)} label={t("pMoreMenu")} tight>
+      <BottomSheet open={sheet} onClose={() => setSheet(false)} label={t("pMoreMenu")}>
         <div className={p.mrows}>
           <button type="button" className={`btn ${p.mi}`} disabled={!data.applyPath} onClick={() => { setSheet(false); props.onCopyLink?.(); }}><Icon name="link" size={16} />{t("pCopyApplyLink")}</button>
           <button type="button" className={`btn ${p.mi}`} disabled={!data.applyPath} onClick={() => { setSheet(false); props.onQr?.(); }}><Icon name="scan" size={16} />{t("pQrTitle")}</button>

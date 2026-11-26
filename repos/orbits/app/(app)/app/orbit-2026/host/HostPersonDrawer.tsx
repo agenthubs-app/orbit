@@ -15,7 +15,7 @@ import { localizeLibraryAnswerText, localizeLibraryPrompt } from "../../../../..
 import { Avatar, BottomSheet, Drawer, Icon } from "../ui";
 import { ScoreRing } from "./HostPeople";
 import { hostApi } from "./host-api";
-import { hostDateShort, hostTime, hostTranslator, type HostT } from "./host-model";
+import { hostDateShort, hostTime, hostTranslator, type HostT, hostDateDay } from "./host-model";
 import type { HostCopyKey } from "../copy/host";
 import s from "./host.module.css";
 import pd from "./person.module.css";
@@ -30,6 +30,13 @@ export function HostPersonView({ data, t, language, phone = false, onClose }: { 
     data.attendCount === 0 ? t("pFirstTime") : t("pTimes", { n: data.attendCount }),
     data.source === "member" ? t("pdNoForm") : data.submittedAt ? t("pdApplied", { date: hostDateShort(data.submittedAt, t) }) : null,
   ].filter(Boolean);
+  // < 768（b13 HM-P6 .meta-l）：状态之后先「申込 M月D日」再参加次数，日期写成月日。
+  const phoneMeta = [
+    data.source === "member" ? t("pdNoForm") : data.submittedAt ? t("pdApplied", { date: hostDateDay(data.submittedAt, t, language ?? "ja") }) : null,
+    data.attendCount === 0 ? t("pFirstTime") : t("pTimes", { n: data.attendCount }),
+    data.checkedInAt ? t("pdCheckedIn", { time: hostTime(data.checkedInAt) }) : null,
+    data.receptionNumber ? t("pdReception", { n: data.receptionNumber }) : null,
+  ].filter(Boolean);
   const recs = data.matching?.recommendations ?? [];
   const shownRecs = allRecs ? recs : recs.slice(0, RECS_FIRST);
   const chips = ([["pdTopics", data.topics], ["pdOffers", data.offers], ["pdNeeds", data.needs]] as const).filter(([, items]) => items.length > 0);
@@ -43,7 +50,7 @@ export function HostPersonView({ data, t, language, phone = false, onClose }: { 
             {data.org || data.role ? <div className={s.lbl}>{[data.org, data.role].filter(Boolean).join(" · ")}</div> : null}
             <div className={pd.pChips}>
               <span className={`${pd.status} ${pd[`st_${data.status}`] ?? ""}`}>{t(`pdStatus_${data.status}` as HostCopyKey)}</span>
-              {meta.map((item) => <span key={item} className={pd.status}>{item}</span>)}
+              {phoneMeta.map((item) => <span key={item} className={pd.status}>{item}</span>)}
             </div>
           </div>
           <button type="button" className={`btn ${pd.pClose}`} aria-label={t("close")} onClick={onClose}><Icon name="x" size={16} /></button>

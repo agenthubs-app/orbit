@@ -8102,10 +8102,29 @@ __g8out(group('g8', g));
 const X = B12X.H6, HV3 = B12X.HV3;
 const S8 = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
 const W10 = (id, name, body, src) => WP(`${id} ${name} · 1024`, '', () => ({ nav: 'host', body }), null, src + ' · 补画 2026-10-16', 1024);
-const M39 = (id, name, body, src) => WP(`${id} ${name} · 390`, '', () => ({ body, tab: -1 }), null, src + ' · 补画 2026-10-16', 390);
+const M39 = (id, name, body, src, o = {}) => WP(`${id} ${name} · 390`, '', () => ({ body: o.r17m ? `<div class="r17m">${body}</div>` : body, tab: o.tab ?? -1 }), null, src + ' · 补画 2026-10-16', 390);
+/* 2026-11-26：W-R17-01/60/61-390 跟全站手机规则（同 b13-host-mobile.html ①②）：顶栏一行 52px（‹ 36 圆钮、标题 16 居中、副标题 11.5，下距 8）、
+   运营页有底部导航（イベント 高亮）、主办页副标题「主催 · …」、页签 = 胶囊行（含申込設定，审核待人数用珊瑚角标，当前页签不显示角标）；
+   「申込設定とレポートは PC で」提示卡去掉（主办方后台手机也能做全部工作，2026-11-26 用户定）。 */
+document.head.insertAdjacentHTML('beforeend', `<style>
+  .r17m .topbar { position: relative; display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0; margin: 0 0 8px; }
+  .r17m .topbar > .rbtn, .r17m .topbar > span:first-child, .r17m .topbar > span:last-child { width: 36px; height: 36px; flex: none; }
+  .r17m .topbar > .rbtn .i { width: 20px; height: 20px; }
+  .r17m .topbar .t { position: absolute; left: 44px; right: 44px; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; pointer-events: none; min-width: 0; }
+  .r17m .topbar .t b { font-size: 16px; line-height: 1.35; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .r17m .topbar .t small { font-size: 11.5px; line-height: 1.4; margin-top: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .r17m .tabs-m { display: flex; gap: 6px; overflow: hidden; margin: 0 -18px 14px; padding: 2px 18px; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); }
+  .r17m .tabs-m button { flex: none; padding: 7px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+  .r17m .tabs-m button.on { background: var(--ink); color: var(--bg); }
+  .r17m .tabs-m .n { font-size: 10.5px; padding: 1px 6px; border-radius: 999px; background: var(--coral-soft); color: var(--coral-text); font-weight: 800; }
+</style>`);
+const R17TABS = (on) => `<div class="tabs-m">${[['概要'], ['マッチング'], ['参加者', 12], ['受付'], ['申込設定'], ['レポート']].map(([t, n]) => `<button class="${t === on ? 'on' : ''}">${t}${n && t !== on ? `<span class="n">${n}</span>` : ''}</button>`).join('')}</div>`;
+const appEvent390 = () => X.appEvent()
+  .replace(/^[\s\S]*?<div class="carousel"[\s\S]*?<\/div>/, topbar('CFO Night Tokyo vol.18', '主催 · 本日 19:00 · 渋谷ストリーム', `<button class="rbtn">${ic('left')}</button>`, `<button class="rbtn">${ic('more')}</button>`) + R17TABS('概要'))
+  .replace(/\s*<div class="card flat row"[\s\S]*$/, '');
 const pcGuide = (title, what) => topbar(title, X.HE[0].n, `<button class="rbtn">${ic('left')}</button>`, '<span></span>') + `<div class="card guide pcguide"><div style="font-size:44px;line-height:1">💻</div><b style="display:block;font-size:17px;margin-top:8px">${title}は PC で編集できます</b><div class="sub" style="margin:6px 0 16px">${what}</div><button class="btn primary block">PC で開くリンクを自分に送る</button><button class="btn ghost block" style="margin-top:6px">${ic('copy', 'sm')}リンクをコピー</button></div>`;
 /* 390 建活动：单列表单（同 1440 字段顺序） */
-const evForm390 = () => topbar('イベントを作成', '運営センター', `<button class="rbtn">${ic('x')}</button>`, '<button class="btn sm">下書き保存</button>') + `<div class="card">${[['イベント名 *', 'CFO Night Tokyo vol.19'], ['日時 *', '11月4日（水）19:00–21:30'], ['会場 *', '渋谷ストリーム 4F ホール'], ['定員', '150名'], ['参加費', '¥5,000']].map(([l, v]) => `<div style="padding:8px 0"><div class="lbl" style="font-weight:700;color:var(--ink-2)">${l}</div><div class="input" style="margin-top:6px;height:42px;color:var(--ink)">${v}</div></div>`).join('')}
+const evForm390 = () => topbar('イベントを作成', '運営センター', `<button class="rbtn">${ic('left')}</button>`, '<button class="btn sm">下書き保存</button>') + `<div class="card">${[['イベント名 *', 'CFO Night Tokyo vol.19'], ['日時 *', '11月4日（水）19:00–21:30'], ['会場 *', '渋谷ストリーム 4F ホール'], ['定員', '150名'], ['参加費', '¥5,000']].map(([l, v]) => `<div style="padding:8px 0"><div class="lbl" style="font-weight:700;color:var(--ink-2)">${l}</div><div class="input" style="margin-top:6px;height:42px;color:var(--ink)">${v}</div></div>`).join('')}
   <div style="padding:8px 0"><div class="lbl" style="font-weight:700;color:var(--ink-2)">所属する主催者ページ *</div><div class="input k-evorg" style="margin-top:6px;height:42px;color:var(--ink);justify-content:space-between">🥂 CFO Night 実行委員会${ic('down', 'sm')}</div></div></div>
   <div class="card"><div class="card-h"><h3>説明文</h3><span class="lbl">200字まで</span></div><div class="ta">上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜。<span class="counter">36 / 200</span></div></div>
   <button class="btn primary block xl" style="margin-top:6px">公開へ進む</button>`;
@@ -8129,9 +8148,9 @@ g += W10('W-R17-63-1024', '参加者', X.participants('many'), 'b6 #9');
 g += W10('W-R17-64-1024', '申込設定', X.regForm('many'), 'b6 #15');
 g += W10('W-R17-65-1024', 'レポート', X.report('many'), 'b6 #18');
 g += S8('补画 · 2026-10-16 · 主催 R17 · B1 / B3 Web 390', '390：運営センター / 概要 / 参加者 照 App；申込設定 / マッチング / レポート 只放「PC で編集」引导；建活动单列表单');
-g += M39('W-R17-01-390', 'イベントを作成', evForm390(), 'W-R17-01');
-g += M39('W-R17-60-390', '運営センター', X.appCenter('many'), 'b6 #22');
-g += M39('W-R17-61-390', 'イベント運営 · 概要', X.appEvent(), 'b6 #23');
+g += M39('W-R17-01-390', 'イベントを作成', evForm390(), 'W-R17-01', { r17m: true, tab: 3 });
+g += M39('W-R17-60-390', '運営センター', X.appCenter('many'), 'b6 #22', { r17m: true, tab: 3 });
+g += M39('W-R17-61-390', 'イベント運営 · 概要', appEvent390(), 'b6 #23', { r17m: true, tab: 3 });
 g += M39('W-R17-63-390', '参加者', X.appReview(), 'A-R17-32 · 已由 b13 HM-P1–P10 取代（2026-11-26）');
 g += M39('W-R17-62-390', 'マッチング（PC で編集）', pcGuide('マッチング', 'テーブルの確認・入れ替え・公開は画面の広い PC で行えます。結果を見るだけなら App で。'), 'B3 · 已由 b13 HM-M1–M10 取代（2026-11-26）');
 g += M39('W-R17-64-390', '申込設定（PC で編集）', pcGuide('申込設定', '説明文・質問・お知らせの文面は PC で編集できます。'), 'B3 · 已由 b13 HM-S1–S13 取代（2026-11-26）');

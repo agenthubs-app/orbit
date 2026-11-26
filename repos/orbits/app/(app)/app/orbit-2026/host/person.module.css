@@ -57,9 +57,12 @@
 .pHead { display: flex; gap: 12px; align-items: center; }
 .pName { display: block; font-size: var(--fs-title-xs); }
 .pChips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.pClose.pClose { width: 34px; height: 34px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); display: grid; place-items: center; color: var(--ink-2); flex: none; align-self: flex-start; }
+.pClose.pClose { width: 34px; height: 34px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); display: grid; place-items: center; color: var(--ink-2); flex: none; align-self: center; }
 .phone .section { display: block; border-top: 0; padding-top: 0; margin-top: 18px; }
 .phone .h { font-size: var(--fs-meta); font-weight: var(--fw-semibold); color: var(--ink-3); margin-bottom: 8px; }
+/* 話したいテーマ / 提供できること / 探していること 各自成节：上距 18、标题同小节标题（b13 .det-sec h5）。 */
+.phone .chipsRow { display: block; margin-top: 18px; }
+.phone .chipsRow > .dt { font-size: var(--fs-meta); font-weight: var(--fw-semibold); color: var(--ink-3); margin-bottom: 8px; }
 .phone .qa { display: block; background: var(--surface-2); border-radius: var(--r-tile); padding: 4px 14px; }
 .phone .qa > div { padding: 9px 0; }
 .phone .qa > div + div { border-top: 1px solid var(--line); }

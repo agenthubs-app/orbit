@@ -1386,7 +1386,7 @@
   },
   {
    "id": "HM-S13",
-   "app": "/app/events/demo-host-founders-lunch-11/operations?tab=setup",
+   "app": "/app/events/demo-host-cfo-night-17/operations?tab=setup",
    "design": "b13-host-mobile.html",
    "board-index": 38,
    "width": 390,
@@ -1394,7 +1394,7 @@
     "light"
    ],
    "wait-for": "[data-host-setup-phone]",
-   "note": "HM-S13 申込設定 · 開催済み（只读，b13 #38，Founders Lunch #11）"
+   "note": "HM-S13 申込設定 · 開催済み（只读，b13 #38，vol.17；説明文 / アジェンダ等照常显示、点开只读）"
   },
   {
    "id": "HM-R2",

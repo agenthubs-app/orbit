@@ -31,7 +31,7 @@
 .imp3 > div { background: var(--surface-2); border-radius: var(--r-tile); padding: 10px 12px; min-width: 0; }
 .imp3 b { display: block; margin-top: 4px; font-family: var(--font-num); font-size: var(--fs-number); font-weight: var(--fw-heavy); white-space: nowrap; }
 .imp3 b small { font-size: var(--fs-caption); color: var(--ink-3); font-weight: var(--fw-bold); margin-left: 2px; }
-.tChip.tChip { padding: 2px 7px; font-size: var(--fs-tab); white-space: nowrap; }
+.tChip.tChip { padding: 2px 7px; font-size: var(--fs-tab); white-space: nowrap; max-width: none; overflow: visible; }
 .phNote { margin-top: 10px; line-height: var(--lh-prose); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 .grid2 > :global(.btn) { min-width: 0; }

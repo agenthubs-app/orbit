@@ -135,7 +135,7 @@ export function KioskPhoneView(props: HostKioskViewProps & { onCopyLink?: () => 
         </div>
       )}
 
-      <BottomSheet open={menu} onClose={() => setMenu(false)} label={t("pMoreMenu")} tight>
+      <BottomSheet open={menu} onClose={() => setMenu(false)} label={t("pMoreMenu")}>
         <button type="button" className={`btn ${kp.mi}`} onClick={() => { setMenu(false); props.onCopyLink?.(); }}><Icon name="link" size={16} />{t("kCopyLink")}</button>
         <a className={kp.mi} href={props.exitHref ?? "/app/events/center"}><Icon name="x" size={16} />{t("kExit")}</a>
         <button type="button" className={`btn ${s.btn} ${kp.sheetClose}`} onClick={() => setMenu(false)}>{t("close")}</button>

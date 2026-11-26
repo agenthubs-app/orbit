@@ -30,6 +30,8 @@
 .copy.copy { width: 30px; height: 30px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); display: grid; place-items: center; color: var(--ink-2); flex: none; }
 
 .qr.qr { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid var(--line); width: 100%; cursor: pointer; }
+/* 卡头下第一题不画分隔线、上内边距 2（b13 .card-h + .qr）。 */
+.cardHRow + .qr.qr { border-top: 0; padding-top: 2px; }
 .qrErr b { color: var(--coral-text); }
 .qacts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
 .push.push { margin-left: auto; }
@@ -118,3 +120,4 @@
 .nprevT { font-size: var(--fs-body-sm); }
 .nprevText.nprevText { margin-top: 8px; line-height: 1.6; }
 .nn { margin-top: 10px; padding: 10px 12px; border-radius: var(--r-row); background: var(--surface); font-size: var(--fs-control); color: var(--ink-2); line-height: 1.6; }
+.maxNoteRo.maxNoteRo { margin-top: 12px; }

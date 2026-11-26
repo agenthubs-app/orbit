@@ -84,7 +84,7 @@
 .sheetClose.sheetClose { width: 100%; height: 46px; margin-top: 8px; }
 
 /* 空（HM-P7） */
-.emptyGuide.emptyGuide { padding: 20px; }
+.emptyGuide.emptyGuide { padding: 20px; background: var(--surface); border-radius: var(--r-card-web); position: relative; }
 .emptyTitle { font-size: var(--fs-section); font-weight: var(--fw-heavy); }
 .emptySub.emptySub { margin-top: 4px; }
 .emptyLink { margin-top: 14px; height: 44px; border-radius: var(--r-md); background: var(--surface-2); display: flex; align-items: center; gap: 8px; padding: 0 14px; color: var(--ink); font-size: var(--fs-body-sm); min-width: 0; }

@@ -39,13 +39,14 @@ export function SubPage({ title, sub, onBack, right, foot, children, testId }: {
   );
 }
 
-function QuestionEditPage({ question, index, count, t, onChange, onDelete, onBack }: { question: HostSetupQuestion; index: number; count: number; t: HostT; onChange: (question: HostSetupQuestion) => void; onDelete: () => void; onBack: () => void }) {
+function QuestionEditPage({ question, index, count, t, onChange, onDelete, onBack, readOnly = false }: { question: HostSetupQuestion; index: number; count: number; t: HostT; onChange: (question: HostSetupQuestion) => void; onDelete: () => void; onBack: () => void; /** 開催済み：只看不改（b13 HM-S13）。 */ readOnly?: boolean }) {
   const [optReorder, setOptReorder] = useState(false);
   const choice = question.kind !== "free";
   const marker = question.kind === "multiple" ? sp.cbx : sp.rad;
   return (
-    <SubPage testId={`q${index}`} title={t("suEditQ", { n: index + 1 })} sub={t("suQEditSub", { i: index + 1, n: count })} onBack={onBack}
-      foot={<button type="button" className={`btn ${s.btn} ${s.primary} ${sp.block}`} onClick={onBack} data-host-q-done="">{t("roDone")}</button>}>
+    <SubPage testId={`q${index}`} title={t(readOnly ? "suViewQ" : "suEditQ", { n: index + 1 })} sub={t("suQEditSub", { i: index + 1, n: count })} onBack={onBack}
+      foot={readOnly ? undefined : <button type="button" className={`btn ${s.btn} ${s.primary} ${sp.block}`} onClick={onBack} data-host-q-done="">{t("roDone")}</button>}>
+      <div {...inertWhen(readOnly)} data-host-q-readonly={readOnly || undefined}>
       <label className={sp.fld}>
         <span className={sp.fldL}>{t("suFieldPrompt")}</span>
         <span className={sp.in}><input value={question.prompt} maxLength={120} placeholder={t("suPromptPh")} onChange={(event) => onChange({ ...question, prompt: event.target.value })} /></span>
@@ -85,7 +86,8 @@ function QuestionEditPage({ question, index, count, t, onChange, onDelete, onBac
           )}
         </>
       ) : question.options.length ? <div className={`${s.lbl} ${sp.kept}`}>{t("suKept")}</div> : null}
-      <button type="button" className={`btn ${s.btn} ${s.ghost} ${sp.block} ${sp.del}`} onClick={onDelete} data-host-q-delete="">{t("suDeleteThisQ")}</button>
+      {readOnly ? null : <button type="button" className={`btn ${s.btn} ${s.ghost} ${sp.block} ${sp.del}`} onClick={onDelete} data-host-q-delete="">{t("suDeleteThisQ")}</button>}
+      </div>
     </SubPage>
   );
 }
@@ -161,7 +163,7 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
 
   if (sub?.kind === "q" && questions[sub.index]) {
     const index = sub.index;
-    return <QuestionEditPage question={questions[index]!} index={index} count={questions.length} t={t} onBack={() => setSub(null)}
+    return <QuestionEditPage question={questions[index]!} index={index} count={questions.length} t={t} readOnly={ended} onBack={() => setSub(null)}
       onChange={(next) => setQuestions(questions.map((item, k) => (k === index ? next : item)))}
       onDelete={() => { setQuestions(questions.filter((_, k) => k !== index)); setSub(null); }} />;
   }
@@ -227,18 +229,18 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
         </div>
       )}
 
-      <div className={`${ended ? sp.ro : ""}`} {...inertWhen(ended)}>
-        <div className={`${s.card} ${sp.card}`} data-host-setup-settings="">
+      <div>
+        <div className={`${s.card} ${sp.card} ${ended ? sp.ro : ""}`} data-host-setup-settings="">
           <h3 className={sp.cardH}>{t("suSettings")}</h3>
           <div className={`${sp.srow} ${sp.first}`}>
             <span className={sp.k}>{t("suMode")}</span>
-            <div className={`${s.seg} ${sp.right}`} role="radiogroup" aria-label={t("suMode")}>
+            <div className={`${s.seg} ${sp.right}`} role="radiogroup" aria-label={t("suMode")} {...inertWhen(ended)}>
               {(["first_come", "review"] as const).map((mode) => <button key={mode} type="button" role="radio" aria-checked={draft.admissionMode === mode} className={`btn ${s.segBtn} ${draft.admissionMode === mode ? s.segOn : ""}`} onClick={() => change({ ...draft, admissionMode: mode })}>{t(mode === "review" ? "modeReview" : "modeFirstCome")}</button>)}
             </div>
           </div>
           <div className={sp.srow}>
             <span className={sp.k}>{t("suCapacity")}</span>
-            {editCap ? (
+            {ended ? <span className={sp.v}>{draft.capacity ? `${draft.capacity}${t("unitPeople")}` : t("suNoCap")}</span> : editCap ? (
               <span className={sp.v}>
                 <input autoFocus className={sp.capIn} type="number" inputMode="numeric" min={1} max={10000} aria-label={t("suEditCap")} defaultValue={draft.capacity ?? ""}
                   onBlur={(event) => { const n = Number(event.currentTarget.value); change({ ...draft, capacity: event.currentTarget.value.trim() && Number.isInteger(n) && n > 0 ? Math.min(n, 10000) : null }); setEditCap(false); }}
@@ -250,7 +252,7 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
           </div>
           <div className={sp.srow}>
             <span className={sp.k}>{t("suCloses")}</span>
-            <button type="button" className={`btn ${sp.vBtn}`} aria-label={t("suEditClose")} onClick={openClose}><span>{draft.registrationClosesAt ? hostDateLong(draft.registrationClosesAt, language, t) : t("suNoClose")}</span><Icon name="right" size={16} /></button>
+            {ended ? <span className={sp.v}>{draft.registrationClosesAt ? hostDateLong(draft.registrationClosesAt, language, t) : t("suNoClose")}</span> : <button type="button" className={`btn ${sp.vBtn}`} aria-label={t("suEditClose")} onClick={openClose}><span>{draft.registrationClosesAt ? hostDateLong(draft.registrationClosesAt, language, t) : t("suNoClose")}</span><Icon name="right" size={16} /></button>}
           </div>
           <div className={sp.srow}>
             <span className={sp.k}>{t("suPage")}</span>
@@ -275,17 +277,17 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
         <div className={`${s.card} ${sp.card}`} data-host-questions={questions.length}>
           <div className={sp.cardHRow}><h3 className={sp.cardH}>{t("suQuestions")} <span className={s.lbl}>{t("suQCountOf", { n: questions.length })}</span></h3><span className={s.lbl}>{t("suQUse")}</span></div>
           {questions.map((question, index) => (
-            <button key={question.id} type="button" className={`btn ${sp.qr} ${!question.prompt.trim() ? sp.qrErr : ""}`} onClick={() => setSub({ index, kind: "q" })} aria-label={question.prompt.trim() ? `${t("suEditQ", { n: index + 1 })} · ${question.prompt}` : t("suEditQ", { n: index + 1 })} data-host-question={question.id}>
+            <button key={question.id} type="button" className={`btn ${sp.qr} ${!question.prompt.trim() ? sp.qrErr : ""}`} onClick={() => setSub({ index, kind: "q" })} aria-label={question.prompt.trim() ? `${t(ended ? "suViewQ" : "suEditQ", { n: index + 1 })} · ${question.prompt}` : t(ended ? "suViewQ" : "suEditQ", { n: index + 1 })} data-host-question={question.id}>
               <QuestionLine question={question} index={index} t={t} />
               <Icon name="right" size={16} />
             </button>
           ))}
-          <div className={sp.qacts}>
+          {ended ? null : <div className={sp.qacts}>
             <button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={full} onClick={() => props.onLibrary?.(true)} data-host-qlib-open=""><Icon name="book" size={16} />{t("qlOpen")}</button>
             <button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={full} onClick={() => setAddSheet(true)} data-host-qadd-open=""><Icon name="plus" size={16} />{t("suAddQ")}</button>
             {questions.length > 1 ? <button type="button" className={`btn ${s.btn} ${s.sm} ${s.ghost} ${sp.push}`} onClick={() => setSub({ kind: "reorder" })} data-host-reorder="">{t("roReorder")}</button> : null}
-          </div>
-          {full ? <div className={`${s.lbl} ${sp.maxNote}`}>{t("suAddMax")}</div> : null}
+          </div>}
+          {full ? <div className={`${s.lbl} ${sp.maxNote} ${ended ? sp.maxNoteRo : ""}`}>{t("suAddMax")}</div> : null}
         </div>
 
         <button type="button" className={`btn ${s.card} ${sp.card} ${sp.descCard}`} onClick={() => setSub({ kind: "desc" })} data-host-setup-desc="">
@@ -328,7 +330,7 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
         </div>
       </BottomSheet>
 
-      <BottomSheet open={addSheet} onClose={() => setAddSheet(false)} label={t("suChooseKind")} tight>
+      <BottomSheet open={addSheet} onClose={() => setAddSheet(false)} label={t("suChooseKind")}>
         <b className={sp.sheetT}>{t("suChooseKind")}</b>
         {KINDS.map((kind) => <button key={kind} type="button" className={`btn ${sp.mi}`} onClick={() => addBlank(kind)}><Icon name="plus" size={16} />{t(KIND_LABEL[kind])}</button>)}
         <button type="button" className={`btn ${s.btn} ${sp.block}`} onClick={() => setAddSheet(false)}>{t("close")}</button>
