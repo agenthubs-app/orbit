@@ -156,7 +156,7 @@
   .utabsHost .utab, .utabsHost .utab:global(.btn) { scroll-snap-align: start; padding: 7px 14px; border-radius: var(--r-pill); font-size: var(--fs-control); background: var(--surface-2); color: var(--ink-2); }
   .utabsHost .utabOn, .utabsHost .utabOn:global(.btn) { background: var(--ink); color: var(--bg); }
   .utabsHost .utabOn::after { display: none; }
-  .utabsHost .utabBadge { background: var(--coral-soft); color: var(--coral-text); padding: 1px 6px; margin-left: 4px; font-family: var(--font-num); font-weight: var(--fw-heavy); }
+  .utabsHost .utabBadge { background: var(--coral-soft); color: var(--coral-text); padding: 1px 6px; margin-left: 5px; font-weight: var(--fw-heavy); }
   /* 右端渐隐：被截的一项露一半，看得出还能滑（b13 HM-T1）。 */
   .utabsHost { -webkit-mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent); mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent); }
 }

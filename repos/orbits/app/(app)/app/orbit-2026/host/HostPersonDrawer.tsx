@@ -64,7 +64,7 @@ export function HostPersonView({ data, t, language, phone = false, onClose }: { 
       {data.profileScore != null ? (
         <div className={pd.cmp} data-host-person-score={data.profileScore}>
           <ScoreRing value={data.profileScore / 100} size={44} stroke={5} color={data.profileScore < 50 ? "var(--coral)" : "var(--plum-500)"} label={t("pProfileScore", { n: data.profileScore })}>
-            <b className={pd.cmpN}>{data.profileScore}</b>
+            <b className={`${pd.cmpN} ${data.profileScore < 50 ? pd.inc : ""}`}>{data.profileScore}</b>
           </ScoreRing>
           <div className={s.minw0}>
             <b className={pd.cmpT}>{t("pdScore", { n: data.profileScore })}</b>

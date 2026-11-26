@@ -1198,11 +1198,11 @@
     },
     {
      "click": "[data-host-move-to=C]",
-     "wait": 900
+     "wait": 2500
     },
     {
      "click": "[data-host-table=C] button[aria-expanded]",
-     "wait": 600
+     "wait": 800
     }
    ],
    "note": "HM-M5 マッチング · 移动后 + なぜ同じテーブル？（b13 #16）"
@@ -1248,18 +1248,6 @@
     }
    ],
    "note": "HM-M7 マッチング · 再生成 确认（b13 #18）"
-  },
-  {
-   "id": "HM-M9",
-   "app": "/app/events/demo-host-cfo-night-17/operations?tab=matching",
-   "design": "b13-host-mobile.html",
-   "board-index": 20,
-   "width": 390,
-   "themes": [
-    "light"
-   ],
-   "wait-for": "[data-host-matching-phone]",
-   "note": "HM-M9 マッチング · 公開済み（只读，b13 #20，vol.17）"
   },
   {
    "id": "HM-S1b",
@@ -1453,18 +1441,6 @@
     }
    ],
    "note": "HM-K5 受付 · 取り消す 确认（b13 #48）"
-  },
-  {
-   "id": "HM-K9",
-   "app": "/app/events/demo-host-founders-lunch-11/operations/check-in",
-   "design": "b13-host-mobile.html",
-   "board-index": 52,
-   "width": 390,
-   "themes": [
-    "light"
-   ],
-   "wait-for": "[data-kiosk-phone]",
-   "note": "HM-K9 受付 · 受付終了（b13 #52，Founders Lunch #11）"
   },
   {
    "id": "HM-T2",

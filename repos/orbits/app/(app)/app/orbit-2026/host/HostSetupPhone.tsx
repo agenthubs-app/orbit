@@ -275,7 +275,7 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
         <div className={`${s.card} ${sp.card}`} data-host-questions={questions.length}>
           <div className={sp.cardHRow}><h3 className={sp.cardH}>{t("suQuestions")} <span className={s.lbl}>{t("suQCountOf", { n: questions.length })}</span></h3><span className={s.lbl}>{t("suQUse")}</span></div>
           {questions.map((question, index) => (
-            <button key={question.id} type="button" className={`btn ${sp.qr} ${!question.prompt.trim() ? sp.qrErr : ""}`} onClick={() => setSub({ index, kind: "q" })} data-host-question={question.id}>
+            <button key={question.id} type="button" className={`btn ${sp.qr} ${!question.prompt.trim() ? sp.qrErr : ""}`} onClick={() => setSub({ index, kind: "q" })} aria-label={question.prompt.trim() ? `${t("suEditQ", { n: index + 1 })} · ${question.prompt}` : t("suEditQ", { n: index + 1 })} data-host-question={question.id}>
               <QuestionLine question={question} index={index} t={t} />
               <Icon name="right" size={16} />
             </button>

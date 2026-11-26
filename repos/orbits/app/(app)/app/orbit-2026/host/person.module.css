@@ -73,3 +73,4 @@
   .pClose.pClose { position: relative; }
   .pClose.pClose::before { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
 }
+.inc.inc { color: var(--coral-text); }

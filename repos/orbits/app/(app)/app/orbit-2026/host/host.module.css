@@ -242,7 +242,8 @@
 .phMiDanger.phMiDanger { color: var(--coral-text); }
 .phMenuClose.phMenuClose { width: 100%; height: 46px; margin-top: 8px; }
 .phReportSeg.phReportSeg { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-.phReportSeg :global(.btn) { justify-content: center; height: 36px; }
+/* kit .tseg：按钮上下 7、12.5 / 700、文字居中（b13 HM-R1 .k-rview）。 */
+.phReportSeg.phReportSeg .segBtn.segBtn { display: flex; align-items: center; justify-content: center; text-align: center; padding: 7px 0; font-size: var(--fs-control); font-weight: var(--fw-bold); }
 /* < 768：两列网格，默认子项仍占满；.half（报告 KPI 等）各占一列 → 2×2（b13 HM-R1）。 */
 @media (max-width: 767px) {
   .wgrid.wgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

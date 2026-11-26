@@ -64,6 +64,7 @@
   .mweb .dialog .dacts { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px !important; }
   .mweb .dialog .dacts .btn { height: 40px; padding: 0 16px; font-size: 13px; font-weight: 700; flex: none; width: auto; }
   .mweb .sheet ~ .sheet-scrim { z-index: 52; }
+  .mweb .sheet-scrim:has(+ .dialog) { background: var(--scrim-web); }
   .toast.pos.b1 { bottom: 108px; } .toast.pos.b2 { bottom: 196px; } .toast.pos.b3 { bottom: 236px; }
   .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .grow { flex: 1; min-width: 0; }

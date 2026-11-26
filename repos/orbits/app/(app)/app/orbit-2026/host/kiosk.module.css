@@ -143,3 +143,4 @@
 }
 :global([data-orbit-2026][data-reduced-motion="true"]) .caret,
 :global([data-orbit-2026][data-reduced-motion="true"]) .krowNew { animation: none; }
+.failPhone { padding: 24px 18px; }

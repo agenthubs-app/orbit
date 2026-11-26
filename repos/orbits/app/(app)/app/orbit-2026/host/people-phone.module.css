@@ -101,3 +101,7 @@
   .cbx.cbx, .more.more, .fchip.fchip { position: relative; }
   .cbx.cbx::before, .more.more::before, .fchip.fchip::before { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
 }
+/* 完整度不足 50 的数字用珊瑚色（b13 .score9.inc）。 */
+.inc.inc { color: var(--coral-text); }
+/* 选择模式整行右移 2（b13 .plist.selm .prow）。 */
+[data-selecting] .face { padding-left: 2px; }

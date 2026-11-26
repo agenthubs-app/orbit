@@ -512,8 +512,10 @@ function AccountMenuBody({ name, email, compact, onDone }: { name: string; email
 }
 
 // Under 768 the left rail becomes a bottom capsule with the five main tabs (b8).
-function ShellBottomBar({ active }: { active: ShellNavKey | null }) {
+function ShellBottomBar({ active: navKey }: { active: ShellNavKey | null }) {
   const copy = useStandardCopy();
+  // 手机底栏没有「主催」：主催页（運営センター / 各活动的運営）归在「イベント」下高亮（b13 全部主催画板）。
+  const active = navKey === "host" ? "events" : navKey;
   return (
     <nav className={styles.bottom} aria-label={copy.nav.main}>
       {SHELL_NAV.filter((item) => item.key !== "inbox").map((item) => (

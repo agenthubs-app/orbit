@@ -96,7 +96,7 @@ function PersonRow({ row, t, bucket, answer, issue, busy, selecting, selected, o
   const low = row.profileScore < 50;
   const ring = (
     <ScoreRing value={row.profileScore / 100} size={30} stroke={4} color={low ? "var(--coral)" : "var(--plum-500)"} label={t("pProfileScore", { n: row.profileScore })}>
-      <span className={p.score9}>{row.profileScore}</span>
+      <span className={`${p.score9} ${low ? p.inc : ""}`}>{row.profileScore}</span>
     </ScoreRing>
   );
   const line = [row.org, row.role].filter(Boolean).join(" · ");

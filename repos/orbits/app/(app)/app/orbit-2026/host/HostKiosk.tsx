@@ -515,8 +515,9 @@ function KioskInner({ eventId, language, phone = false }: { eventId: string; lan
   };
 
   if (!data) {
+    // < 768 时 .kiosk 隐藏（手机走 KioskPhoneView），失败卡换一个不隐藏的外框，否则结束 / 找不到的活动在手机上是一整页空白。
     return failure ? (
-      <div className={k.kiosk}><div className={`${s.card} ${s.empty}`} data-host-failure={failure}>{failure === "forbidden" ? t("noAccess") : failure === "not_found" ? t("notFound") : t("loadError")} <a className={`btn ${s.btn} ${s.sm}`} href="/app/events/center">{t("back")}</a></div></div>
+      <div className={phone ? k.failPhone : k.kiosk}><div className={`${s.card} ${s.empty}`} data-host-failure={failure}>{failure === "forbidden" ? t("noAccess") : failure === "not_found" ? t("notFound") : t("loadError")} <a className={`btn ${s.btn} ${s.sm}`} href="/app/events/center">{t("back")}</a></div></div>
     ) : <div className={k.kiosk} />;
   }
   return (
