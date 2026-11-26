@@ -75,19 +75,9 @@ export type EmailVerificationService = ReturnType<typeof createEmailVerification
 
 type Env = Record<string, string | undefined>;
 
-type DeliveryBlocker = "smtp_configuration" | "public_origin" | "recipient_policy";
-type DeliveryConfiguration = { deliverable: true; blocker?: never } | { deliverable: false; blocker: DeliveryBlocker };
-
-function deliveryConfiguration(env: Env): DeliveryConfiguration {
-  if (!transactionalSmtpConfig(env)) return { deliverable: false, blocker: "smtp_configuration" };
-  if (!publicOrigin(env)) return { deliverable: false, blocker: "public_origin" };
-  if (!resolveMailRecipient("a@example.invalid", env).to) return { deliverable: false, blocker: "recipient_policy" };
-  return { deliverable: true };
-}
-
 /** 能不能发信：有 SMTP、有站点地址，非生产环境还要有收件重定向地址（见 mail/transactional）。 */
 export function emailVerificationDeliverable(env: Env = process.env): boolean {
-  return deliveryConfiguration(env).deliverable;
+  return Boolean(transactionalSmtpConfig(env) && publicOrigin(env) && resolveMailRecipient("a@example.invalid", env).to);
 }
 
 let override: EmailVerificationService | null = null;
@@ -98,12 +88,12 @@ export function setEmailVerificationServiceForTests(service: EmailVerificationSe
 }
 
 /** 点链接只要有库；`deliverable` 为 false 时不要调 send。 */
-export function configuredEmailVerification(env: Env = process.env): ({ service: EmailVerificationService } & DeliveryConfiguration) | null {
+export function configuredEmailVerification(env: Env = process.env): { service: EmailVerificationService; deliverable: boolean } | null {
   if (override) return { service: override, deliverable: true };
   const database = createConfiguredPostgresLiveRecordStore({ env });
   if (!database) return null;
   return {
-    ...deliveryConfiguration(env),
+    deliverable: emailVerificationDeliverable(env),
     service: createEmailVerificationService({
       store: createEmailVerificationStore(database.client, database.workspaceId),
       mailer: createTransactionalMailer({ env }),

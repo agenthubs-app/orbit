@@ -39,11 +39,9 @@ export function createEmailVerificationSendHandler(resolveAccount: () => Promise
     if (!account) return NextResponse.json(failure(new AppError("UNAUTHORIZED", "Sign in to access this resource.")), { headers, status: 401 });
     const body = await request.json().catch(() => null) as { language?: unknown } | null;
     const verification = configuredEmailVerification();
-    if (!verification || verification.deliverable === false) {
-      console.warn(JSON.stringify({ event: "email_verification_unavailable", blocker: verification ? verification.blocker : "database_configuration" }));
-      return refused("SERVICE_UNAVAILABLE", 503, "EMAIL_SEND_UNAVAILABLE");
-    }
+    if (!verification) return refused("SERVICE_UNAVAILABLE", 503, "EMAIL_SEND_UNAVAILABLE");
     try {
+      if (!verification.deliverable) return refused("SERVICE_UNAVAILABLE", 503, "EMAIL_SEND_UNAVAILABLE");
       const outcome = await verification.service.send(account, requestMailLanguage(request, body?.language));
       if (outcome.state === "too_soon") return refused("RATE_LIMITED", 429, "EMAIL_SEND_TOO_SOON", outcome.retryAfterSeconds);
       if (outcome.state === "daily_limit") return refused("RATE_LIMITED", 429, "EMAIL_SEND_DAILY_LIMIT");

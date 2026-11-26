@@ -10,8 +10,6 @@
 - 首选沿用 party-app SMTP：`SMTP_HOST`、`SMTP_PORT`、`SMTP_SECURE`、`SMTP_USER`、`SMTP_PASS`、`ACCESS_EMAIL_FROM`，可选 `ACCESS_EMAIL_REPLY_TO`。只通过本地程序直接传递配置值，不回显密钥。
 - 可选 Resend：`ORBIT_AUTH_RESEND_API_KEY`、`ORBIT_AUTH_MAIL_FROM`。SMTP 配置完整时优先使用 SMTP。
 
-邮箱验证与密码恢复共用上述 SMTP 设置。若两条接口都在投递前返回 503，先查生产构建时各字段是否有效。验证重发接口的 `email_verification_unavailable` 事件只记录失败类别。SMTP 支持单独检查连接与认证，验收投递时再发给已授权的测试邮箱。
-
 发送接口依据 [Resend 官方 API](https://resend.com/docs/api-reference/emails/send-email)。此配置仅供事务性密码恢复邮件使用，不授权 Agent 发送联系人消息。
 
 本版本在 Vercel 使用原生 Queues：申请先写数据库，再等待不含邮箱/令牌的唤醒消息入队，成功后才返回 202；入队失败返回可重试的 503。`vercel.json` 的 `queue/v2beta` trigger 将消费者设为平台私有函数。每次消费最多投递一封，再检查数据库是否仍有未过期的 pending/sending 任务；未来重试时间和未释放租约不会被误认为完成。消息保留 35 分钟，超过链接有效期；发送次数仍由数据库状态控制，正常失败最多 5 次。Vercel OIDC 自动认证，无新增静态密钥。
