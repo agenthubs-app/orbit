@@ -9,6 +9,7 @@ import type { HostEventContact } from "../../../shared/contract/host-events";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import type { EventJoinAnswer, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
 import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../../../shared/compute/profile-tag-options";
+import { JOIN_COVERAGE_ITEMS, JOIN_ITEM_OF_FIELD, joinCoverage } from "../../../shared/domain/join-coverage";
 import { PROFILE_ONBOARDING_GOALS } from "../../../shared/compute/profile-onboarding-goal";
 import { HOST_QUESTION_PROFILE_ITEM, hostQuestionOptionAliases, hostQuestionProfilePrefill, localizeQuestion } from "../../../shared/domain/host-question-library";
 import { AppError } from "../../../shared/errors/app-error";
@@ -27,9 +28,8 @@ export const JOIN_ANSWER_MAX = JOIN_TOTAL + 4;
 const SECONDS_PER_QUESTION = 20;
 
 /** 字段 → 资料项（カバー率：会社・役職 44 + 其余各 14；画板 72 % / 86 % / 100 %）。 */
-const ITEM_OF_FIELD: Readonly<Record<string, EventJoinProfileItemKey>> = { desiredOutcome: "purpose", experienceHighlight: "topics", targetAttendees: "target", valueOffered: "offer" };
-const ITEM_WEIGHT: Readonly<Record<EventJoinProfileItemKey, number>> = { company: 44, offer: 14, purpose: 14, target: 14, topics: 14 };
-const ITEMS: readonly EventJoinProfileItemKey[] = ["company", "purpose", "topics", "target", "offer"];
+const ITEM_OF_FIELD: Readonly<Record<string, EventJoinProfileItemKey>> = JOIN_ITEM_OF_FIELD;
+const ITEMS: readonly EventJoinProfileItemKey[] = JOIN_COVERAGE_ITEMS;
 type AnswerItem = Exclude<EventJoinProfileItemKey, "company">;
 /** 访谈优先补的顺序（会いたい人・提供できること 两道核心题在前，再是目的、话题）。 */
 const ANSWER_ITEMS: readonly AnswerItem[] = ["target", "offer", "purpose", "topics"];
@@ -118,7 +118,7 @@ const answerParts = (text: string) => text.split(/\s*[·、,，]\s*/).map((item)
 export function profileFromAnswers(answers: readonly EventJoinAnswer[], extras: { profileItems?: readonly EventJoinProfileItemKey[]; selfIntro?: EventJoinProfile["selfIntro"]; selfIntroBasis?: string | null; personaTopics?: readonly string[]; editableUntil?: string | null; reviewUntil?: string | null; review: boolean }): EventJoinProfile {
   // `profileItems`：提交时由资料标签补上的核心项（resolveCoreAnswers），确认页同样算有值（只在问完后传，答题中不算）。
   const filled = new Set([...filledItems(answers), ...(extras.profileItems ?? [])]);
-  const coverage = ITEMS.reduce((sum, key) => sum + (filled.has(key) ? ITEM_WEIGHT[key] : 0), 0);
+  const coverage = joinCoverage(filled);
   // 话题 chip 只来自话题题（访谈的话题题与主办方 lib-topic 等）和 persona 的 topics；能提供的、目的、想见的人的回答不混进来。
   const topicAnswers = answers.filter((answer) => itemOfAnswer(answer.field) === "topics").flatMap((answer) => answerParts(answer.answer));
   const notTopics = new Set(answers.filter((answer) => { const item = itemOfAnswer(answer.field); return item !== null && item !== "topics"; }).flatMap((answer) => answerParts(answer.answer)));

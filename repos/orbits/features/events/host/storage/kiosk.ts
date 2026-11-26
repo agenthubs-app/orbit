@@ -7,6 +7,7 @@
  * - 心跳：最近 60 秒有心跳的设备数 =「N台で受付中」。
  * 同一幂等键重放返回第一次的结果（离线补发、两台同时签同一人只记一次）。
  */
+import { displayNameSql } from "../../event-operations/storage/canonical-registration-repository";
 import { randomUUID } from "node:crypto";
 
 import type { HostCheckInResult } from "../../../../shared/contract/host-console";
@@ -64,7 +65,7 @@ export function createHostKiosk(deps: HostKioskDeps) {
     const result = await client.query<{ actor_id: string; participant_id: string; display_name: string | null }>(
       // Name: the application when there is one, otherwise the member's own event profile (first-come / imported events).
       `select head.actor_id, head.participant_id,
-              coalesce(nullif(trim(application.profile_payload ->> 'displayName'), ''), version.profile_payload #>> '{participant,displayName}', '') as display_name
+              ${displayNameSql("head.workspace_id", "head.actor_id", "coalesce(nullif(trim(application.profile_payload ->> 'displayName'), ''), version.profile_payload #>> '{participant,displayName}', '')")} as display_name
          from event_ops_membership_heads head
          left join event_ops_admission_application_heads application
            on application.workspace_id = head.workspace_id and application.event_id = head.event_id and application.actor_id = head.actor_id

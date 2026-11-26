@@ -3,6 +3,7 @@
  * 只读；授权在 live.ts（`requireEventCapability` 同一判定）。来自参加者私人记录的数字（会後フォロー、交換）在这里给原始计数，
  * 抑制（<5、差分保护）在拼装时用 `shared/compute/small-cell.ts` 做。
  */
+import { displayNameSql, profileNameSql } from "../event-operations/storage/canonical-registration-repository";
 import { eventCoverUrlFromPayload } from "../../../shared/compute/event-cover";
 import type { EventOperationsPostgresClient } from "../event-operations/storage/postgres-client";
 import type { HostEventPayload } from "./storage/lifecycle";
@@ -12,13 +13,21 @@ import { normalizeHostAgenda } from "../../../shared/compute/host-agenda";
 type Row = Record<string, unknown>;
 
 /**
- * profileScore() in SQL for an admission application row `alias`: with interview responses 44 + the
- * coverage weights (jsonb param) of the answered fields; otherwise 100 when every answer key (text[]
- * param) is filled, else 44. Lets lists and counts filter / count without shipping profiles.
+ * profileScore() in SQL for an admission application row `alias` (same table as shared/domain/join-coverage): with interview
+ * responses, the weights of the items filled by an answered interview field or by an answered organizer question that fills an
+ * item (eventHostAnswers of this person and event); otherwise 100 when every answer key (text[] param) is filled, else 44.
+ * `coverageParam` = joinCoverageSqlParams() as jsonb. Lets lists and counts filter / count without shipping profiles.
  */
-function applicationScoreSql(alias: string, weightsParam: string, keysParam: string): string {
+function applicationScoreSql(alias: string, coverageParam: string, keysParam: string): string {
   return `case when jsonb_typeof(${alias}.profile_payload -> 'interviewResponses') = 'array' and jsonb_array_length(${alias}.profile_payload -> 'interviewResponses') > 0
-    then 44 + coalesce((select sum(coalesce((${weightsParam}::jsonb ->> x.f)::int, 0)) from (select distinct r ->> 'field' as f from jsonb_array_elements(${alias}.profile_payload -> 'interviewResponses') r where coalesce(trim(r #>> '{answer,displayText}'), '') <> '') x), 0)
+    then ((${coverageParam}::jsonb #>> '{weights,company}')::int) + coalesce((select sum((${coverageParam}::jsonb -> 'weights' ->> items.item)::int) from (
+        select ${coverageParam}::jsonb -> 'fieldItems' ->> (r ->> 'field') as item from jsonb_array_elements(${alias}.profile_payload -> 'interviewResponses') r
+         where coalesce(trim(r #>> '{answer,displayText}'), '') <> ''
+        union
+        select ${coverageParam}::jsonb -> 'hostItems' ->> h.key from orbit_records hr cross join lateral jsonb_each_text(case when jsonb_typeof(hr.payload -> 'answers') = 'object' then hr.payload -> 'answers' else '{}'::jsonb end) h
+         where hr.workspace_id = ${alias}.workspace_id and hr.collection_name = 'eventHostAnswers' and hr.user_id = ${alias}.actor_id and hr.lifecycle_state <> 'deleted'
+           and hr.payload ->> 'eventId' = ${alias}.event_id and coalesce(trim(h.value), '') <> ''
+      ) items where items.item is not null), 0)
     else case when not exists (select 1 from unnest(${keysParam}::text[]) k where coalesce(trim(${alias}.profile_payload #>> array['answers', k]), '') = '') then 100 else 44 end
   end`;
 }
@@ -185,12 +194,12 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
      */
     async peoplePage(input: {
       eventId: string; organizerActorId: string; status: string; includeMembers: boolean; q: string; incompleteOnly: boolean;
-      limit: number; offset: number; answerKeys: readonly string[]; coverageWeights: Readonly<Record<string, number>>; hostQuestionId: string | null;
+      limit: number; offset: number; answerKeys: readonly string[]; coverageWeights: unknown; hostQuestionId: string | null;
     }): Promise<{ total: number; rows: Array<{ actorId: string; kind: "application" | "member"; version: number; name: string; positioning: string | null; org: string | null; role: string | null; desired: string | null; hostAnswer: string | null; score: number; attendCount: number }> }> {
       const result = await client.query<Row>(
         `with apps as (
            select a.actor_id, a.application_version::int as version, a.submitted_at as sort_at, 'application' as kind,
-                  a.profile_payload ->> 'displayName' as name,
+                  ${displayNameSql("a.workspace_id", "a.actor_id", "a.profile_payload ->> 'displayName'")} as name,
                   a.profile_payload #>> '{answers,positioning}' as positioning, null::text as org, null::text as role,
                   a.profile_payload #>> '{answers,desiredOutcome}' as desired,
                   ${applicationScoreSql("a", "$9", "$8")} as score
@@ -200,7 +209,7 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
            select m.actor_id, 0 as version,
                   (select min(mv.registered_at) from event_ops_membership_versions mv where mv.workspace_id = m.workspace_id and mv.event_id = m.event_id and mv.actor_id = m.actor_id) as sort_at,
                   'member' as kind,
-                  v.profile_payload #>> '{participant,displayName}' as name, null::text as positioning,
+                  ${displayNameSql("m.workspace_id", "m.actor_id", "v.profile_payload #>> '{participant,displayName}'")} as name, null::text as positioning,
                   v.profile_payload #>> '{participant,company}' as org, v.profile_payload #>> '{participant,role}' as role,
                   (select string_agg(n, '、') from (select jsonb_array_elements_text(case when jsonb_typeof(v.profile_payload #> '{participant,needs}') = 'array' then v.profile_payload #> '{participant,needs}' else '[]'::jsonb end) as n limit 2) needs) as desired,
                   round(100.0 * (
@@ -247,10 +256,11 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
     async person(eventId: string, subjectActorId: string, organizerActorId: string): Promise<{
       status: string | null; submittedAt: string | null; applicationName: string | null; answers: Record<string, string>;
       participantId: string | null; memberStatus: string | null; participant: Record<string, unknown>; checkedInAt: string | null; receptionNumber: string | null;
-      hostAnswers: Record<string, string>; attendCount: number;
+      hostAnswers: Record<string, string>; attendCount: number; profileName: string | null;
     } | null> {
       const result = await client.query<Row>(
         `select a.status, a.submitted_at, a.profile_payload ->> 'displayName' as application_name, a.profile_payload -> 'answers' as answers,
+                ${profileNameSql("$1", "$3")} as profile_name,
                 m.participant_id, m.status as member_status, c.checked_in_at, r.reception_no,
                 case when v.profile_payload is null then null else jsonb_build_object(
                   'displayName', v.profile_payload #> '{participant,displayName}', 'company', v.profile_payload #> '{participant,company}',
@@ -274,7 +284,7 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
       const obj = (value: unknown) => (value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : typeof value === "string" ? JSON.parse(value) as Record<string, unknown> : {});
       const strings = (value: Record<string, unknown>) => Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
       return {
-        answers: strings(obj(row.answers)), applicationName: (row.application_name as string | null) ?? null, attendCount: num(row.attend_count),
+        answers: strings(obj(row.answers)), applicationName: (row.application_name as string | null) ?? null, profileName: typeof row.profile_name === "string" && row.profile_name.trim() ? row.profile_name.trim() : null, attendCount: num(row.attend_count),
         checkedInAt: iso(row.checked_in_at), hostAnswers: strings(obj(row.host_answers)), memberStatus: (row.member_status as string | null) ?? null,
         participant: obj(row.participant), participantId: (row.participant_id as string | null) ?? null, receptionNumber: (row.reception_no as string | null) ?? null,
         status: (row.status as string | null) ?? null, submittedAt: iso(row.submitted_at),
@@ -309,7 +319,7 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
                          'why', coalesce(nullif(t -> 'memberRationales' ->> $3, ''), t ->> 'rationale'),
                          'members', (select jsonb_agg(mm ->> 'participantId') from jsonb_array_elements(t -> 'members') mm)) order by round) from tbl) as tables,
                 (select jsonb_agg(jsonb_build_object('rank', x -> 'rank', 'participantId', x ->> 'targetParticipantId', 'reason', coalesce(nullif(x -> 'reasons' ->> 0, ''), x ->> 'memberHint')) order by (x ->> 'rank')::int) from rec) as recs,
-                (select jsonb_object_agg(e ->> 'participantId', jsonb_build_object('name', e ->> 'displayName', 'org', e ->> 'company', 'role', e ->> 'role'))
+                (select jsonb_object_agg(e ->> 'participantId', jsonb_build_object('name', ${displayNameSql("$1", "e ->> 'actorId'", "e ->> 'displayName'")}, 'org', e ->> 'company', 'role', e ->> 'role'))
                    from pub cross join lateral jsonb_array_elements(case when jsonb_typeof(pub.d -> 'directory') = 'array' then pub.d -> 'directory' else '[]'::jsonb end) e
                   where e ->> 'participantId' in (select id from ids)) as names`,
         [workspaceId, eventId, participantId],
@@ -324,8 +334,19 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
       };
     },
 
+    /** 显示用：这些人当前的资料姓名（一次查询；没有资料姓名的不在结果里）。 */
+    async profileNames(actorIds: readonly string[]): Promise<Map<string, string>> {
+      const ids = [...new Set(actorIds.filter(Boolean))];
+      if (!ids.length) return new Map();
+      const result = await client.query<{ user_id: string; name: string | null }>(
+        `select distinct on (user_id) user_id, payload ->> 'displayName' as name from orbit_records
+          where workspace_id = $1 and collection_name = 'profiles' and user_id = any($2::text[]) and lifecycle_state <> 'deleted'
+          order by user_id, updated_at desc`, [workspaceId, ids]);
+      return new Map(result.rows.flatMap((row) => (row.name?.trim() ? [[row.user_id, row.name.trim()] as const] : [])));
+    },
+
     /** 概要の「マッチ可能」「プロフィール未完了」：申込者の資料完成度を DB で数えるだけ（資料は運ばない）。 */
-    async applicantScoreCounts(eventId: string, answerKeys: readonly string[], coverageWeights: Readonly<Record<string, number>>): Promise<{ incomplete: number; matchable: number }> {
+    async applicantScoreCounts(eventId: string, answerKeys: readonly string[], coverageWeights: unknown): Promise<{ incomplete: number; matchable: number }> {
       const result = await client.query<{ incomplete: number; matchable: number }>(
         `select count(*) filter (where s.score < 100)::int as incomplete, count(*) filter (where s.status = 'admitted' and s.score = 100)::int as matchable
            from (select a.status, ${applicationScoreSql("a", "$4", "$3")} as score from event_ops_admission_application_heads a
@@ -374,7 +395,7 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
       const result = await client.query<Row>(
         `with roster as (
            select m.actor_id, m.participant_id, c.checked_in_at, r.reception_no, 'member' as kind,
-                  coalesce(nullif(trim(a.profile_payload ->> 'displayName'), ''), v.profile_payload #>> '{participant,displayName}') as name,
+                  ${displayNameSql("m.workspace_id", "m.actor_id", "coalesce(nullif(trim(a.profile_payload ->> 'displayName'), ''), v.profile_payload #>> '{participant,displayName}')")} as name,
                   a.profile_payload #>> '{answers,positioning}' as positioning,
                   v.profile_payload #>> '{participant,company}' as company, v.profile_payload #>> '{participant,role}' as role
              from event_ops_membership_heads m
@@ -384,7 +405,7 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
              left join event_ops_admission_application_heads a on a.workspace_id = m.workspace_id and a.event_id = m.event_id and a.actor_id = m.actor_id
             where m.workspace_id = $1 and m.event_id = $2 and m.status = 'rsvped'
            union all
-           select a.actor_id, null, null, null, 'waitlist', a.profile_payload ->> 'displayName', a.profile_payload #>> '{answers,positioning}', null, null
+           select a.actor_id, null, null, null, 'waitlist', ${displayNameSql("a.workspace_id", "a.actor_id", "a.profile_payload ->> 'displayName'")}, a.profile_payload #>> '{answers,positioning}', null, null
              from event_ops_admission_application_heads a
             where a.workspace_id = $1 and a.event_id = $2 and a.status = 'waitlisted'
          ), picked as (

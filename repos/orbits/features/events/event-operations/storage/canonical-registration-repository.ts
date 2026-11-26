@@ -448,6 +448,11 @@ export function profileNameSql(workspace: string, actor: string): string {
           and person.lifecycle_state <> 'deleted' order by person.updated_at desc limit 1)`;
 }
 
+/** 显示用的名字：这个人当前的资料姓名，没有才用 `stored`（报名时存的名字）。名单、详情、主办方后台共用这一条规则。 */
+export function displayNameSql(workspace: string, actor: string, stored: string): string {
+  return `coalesce(nullif(btrim(${profileNameSql(workspace, actor)}), ''), ${stored})`;
+}
+
 function registrationSelect(extraColumns = ""): string {
   return `
     select

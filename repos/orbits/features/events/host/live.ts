@@ -4,6 +4,7 @@
  * - 数字：来自参加者私人记录的（会後フォロー、名刺交換、立場分布）按 §2.9 做 <5 抑制与差分保护。
  * - 不调付费 AI（编组生成走现有 event-ops worker，与之前相同）；不发自由文本通知。
  */
+import { joinCoverage, joinCoverageSqlParams, joinFilledItems } from "../../../shared/domain/join-coverage";
 import { randomUUID } from "node:crypto";
 
 import { hostNextSteps, hostTodoItems, type HostTodoEventFacts } from "../../../shared/compute/host-todo";
@@ -71,15 +72,15 @@ function statusOf(facts: HostEventFacts, now: Date): HostEventStatus {
 }
 
 /**
- * プロフィール完成度：与 R27 参加登録 的カバー率同一口径（会社・役職 44 + 目的 / 話題 / 会いたい人 / 提供 各 14）。
- * 有访谈回答（R27 的 ≤5 问）时按回答到的字段算；只有完整资料（8 项都填）时为 100。
+ * プロフィール完成度：参加者の確認画面と同じ計算（shared/domain/join-coverage、2026-11-26 統一）。訪談の回答と、項目を埋める主催者質問への
+ * 回答の両方を数える（以前は訪談だけで、主催者質問で答えた話題などが「未完成」になっていた）。訪談回答のない旧データは 8 項全部で 100。
  */
-const COVERAGE_OF_FIELD: Readonly<Record<string, number>> = { desiredOutcome: 14, experienceHighlight: 14, targetAttendees: 14, valueOffered: 14 };
-export function profileScore(payload: { answers?: Record<string, string>; interviewResponses?: ReadonlyArray<{ field?: string; answer?: { displayText?: string } }> } | undefined): number {
+const COVERAGE = joinCoverageSqlParams();
+export function profileScore(payload: { answers?: Record<string, string>; interviewResponses?: ReadonlyArray<{ field?: string; answer?: { displayText?: string } }> } | undefined, hostAnswers: Readonly<Record<string, string>> = {}): number {
   const responses = payload?.interviewResponses;
   if (responses && responses.length > 0) {
-    const fields = new Set(responses.filter((item) => (item.answer?.displayText ?? "").trim()).map((item) => item.field ?? ""));
-    return 44 + Object.entries(COVERAGE_OF_FIELD).reduce((sum, [field, weight]) => sum + (fields.has(field) ? weight : 0), 0);
+    const fields = responses.filter((item) => (item.answer?.displayText ?? "").trim()).map((item) => item.field ?? "");
+    return joinCoverage(joinFilledItems({ fields, hostQuestionIds: Object.keys(hostAnswers).filter((id) => (hostAnswers[id] ?? "").trim()) }));
   }
   return ANSWER_KEYS.every((key) => (payload?.answers?.[key] ?? "").trim().length > 0) ? 100 : 44;
 }
@@ -307,7 +308,9 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       tableCount: 0, tableSizeMax: conditions.tableSize, tableSizeMin: conditions.tableSize, tables: [], unplaced: [], unsatisfiedTables: 0,
     };
     if (!latest?.grouping) return base;
-    const directory = new Map(latest.participants.map((participant) => [participant.participantId, participant]));
+    // 显示用名字：当前的资料姓名（一次查询）；生成用的快照本身不改（分桌、推荐按 participantId，不按名字）。
+    const names = await reads.profileNames(latest.participants.map((participant) => participant.actorId));
+    const directory = new Map(latest.participants.map((participant) => [participant.participantId, { ...participant, displayName: names.get(participant.actorId) ?? participant.displayName }]));
     const { moves, version } = await matching.overrides(eventId, latest.generationId);
     const snapshotActors = new Set(latest.participants.map((participant) => participant.actorId));
     const roster = await reads.kioskRoster(eventId);
@@ -422,7 +425,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       if (!caps.includes("operations.read_summary") && !caps.includes("operations.read_sensitive")) throw new HostError(caps.length ? "FORBIDDEN" : "NOT_FOUND");
       const facts = await factsOrThrow(actorId, eventId);
       // Counted in the database; no applicant profile leaves it for these two numbers.
-      const scores = await reads.applicantScoreCounts(eventId, ANSWER_KEYS, COVERAGE_OF_FIELD);
+      const scores = await reads.applicantScoreCounts(eventId, ANSWER_KEYS, COVERAGE);
       const incomplete = scores.incomplete;
       // + 没走申込直接登记的参加者（不审核的活动、从 party-app 搬来的场次）：进了已发布分组的就是可匹配的。
       const matchable = scores.matchable + await reads.matchedMembersWithoutApplication(eventId);
@@ -516,7 +519,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       // One page from the database (filters, search and paging in SQL); 承認済み also lists members who
       // registered without an application (first-come events, the imported 中日创业交流会), read-only.
       const result = await reads.peoplePage({
-        answerKeys: ANSWER_KEYS, coverageWeights: COVERAGE_OF_FIELD, eventId, hostQuestionId: answerQuestion?.id ?? null, includeMembers: query.bucket === "approved",
+        answerKeys: ANSWER_KEYS, coverageWeights: COVERAGE, eventId, hostQuestionId: answerQuestion?.id ?? null, includeMembers: query.bucket === "approved",
         incompleteOnly: query.incomplete, limit: PEOPLE_PAGE_SIZE, offset, organizerActorId: facts.organizerActorId, q: query.q, status: statusOfBucket[query.bucket],
       });
       const page: HostPeopleRow[] = result.rows.map((item) => {
@@ -536,7 +539,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const list = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()).slice(0, 40) : []);
       const p = found.participant;
       const fromApplication = found.status !== null;
-      const name = text(found.applicationName) ?? text(p.displayName) ?? "";
+      const name = text(found.profileName) ?? text(found.applicationName) ?? text(p.displayName) ?? "";
       const positioning = splitPositioning(found.answers.positioning);
       const org = positioning.org ?? text(p.company);
       const role = positioning.role ?? text(p.role);
@@ -822,7 +825,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       await require(actorId, eventId, kind === "event_cancelled" ? "event.cancel" : "event.edit");
       const facts = await factsOrThrow(actorId, eventId);
       const recipients = kind === "profile_incomplete"
-        ? (await reads.applicants(eventId, facts.organizerActorId, ["admitted", "pending_review", "waitlisted"])).filter((item) => profileScore(item.payload as never) < 100).length
+        ? (await reads.applicants(eventId, facts.organizerActorId, ["admitted", "pending_review", "waitlisted"])).filter((item) => profileScore(item.payload as never, item.hostAnswers) < 100).length
         : kind === "event_cancelled" ? facts.applied + facts.waitlisted : facts.admitted + facts.waitlisted;
       const template = { text: hostNoticeTemplates(facts.title).find((item) => item.kind === "profile_incomplete")!.text };
       const sent = await reads.sendCount(eventId, kind);
