@@ -57,9 +57,14 @@
 .tile { display: grid; width: 40px; height: 40px; flex: none; place-items: center; border-radius: var(--r-emo); background: var(--surface); font-size: var(--fs-emoji-md); }
 .scanPhone, .scanPhoneDone { display: none; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
-.contactMethods { border: 0; min-width: 0; margin: 18px 0 0; padding: 0; }
-.contactMethods legend { padding: 0; }
-.contactMethods p { margin: 4px 0 8px; }
+.contactMethods { container-type: inline-size; min-width: 0; margin: 18px 0 0; padding: 16px; border: 1px solid var(--line); border-radius: var(--r-tile); background: var(--surface-2); }
+.contactTitle { margin: 0 0 10px; font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); }
+.contactMethods .contactHint { margin: 0; }
+.contactGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; }
+.contactGrid .field { display: flex; flex-direction: column; }
+.contactGrid .fieldLabel { flex-wrap: wrap; row-gap: 3px; }
+.contactGrid .input { margin-top: auto; background: var(--surface); }
+@container (max-width: 16rem) { .contactGrid { grid-template-columns: minmax(0, 1fr); } }
 .field { min-width: 0; margin-top: 12px; }
 .fieldLabel { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; color: var(--ink-2); font-size: var(--fs-meta); font-weight: var(--fw-bold); }
 .input { width: 100%; height: 48px; padding: 0 14px; border: 1.5px solid transparent; border-radius: var(--r-md); outline: none; background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body); text-overflow: ellipsis; }

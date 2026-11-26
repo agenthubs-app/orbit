@@ -207,6 +207,23 @@ test("a new account goes 名片与基本信息 → 目标与强项 → 自我介
 test("「下一步」 is never greyed out: it lists what is missing, marks it, and each mark goes as soon as it is filled", async t => {
   const page = await open(t);
   await next(page).waitFor();
+  const contacts = page.getByTestId("onboarding-contact-methods");
+  await contacts.getByText("至少填一种，推荐 LINE 或微信。完成交换的人脉和你报名活动的主办方可查看。", { exact: true }).waitFor();
+  const positions = () => contacts.getByRole("textbox").evaluateAll(inputs =>
+    inputs.map(input => ({ label: input.getAttribute("aria-label"), top: input.getBoundingClientRect().top })),
+  );
+  await page.setViewportSize({ width: 375, height: 844 });
+  const columns = await positions();
+  assert.deepEqual(columns.map(field => field.label), ["LINE", "微信", "邮箱", "电话"]);
+  assert.equal(columns[0]!.top, columns[1]!.top);
+  assert.equal(columns[2]!.top, columns[3]!.top);
+  assert.ok(columns[0]!.top < columns[2]!.top);
+  await page.setViewportSize({ width: 300, height: 844 });
+  await page.waitForFunction(() => {
+    const fields = Array.from(document.querySelectorAll('[data-testid="onboarding-contact-methods"] input'));
+    return fields.length === 4 && new Set(fields.map(field => field.getBoundingClientRect().top)).size === 4;
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await next(page).isDisabled(), false);
   assert.equal(Math.round((await next(page).boundingBox())!.height), 50, "the page's main button (.btn.xl)");
   await page.evaluate(() => document.querySelector('[data-testid="onboarding-scroll"]')!.scrollTo(0, 9999));

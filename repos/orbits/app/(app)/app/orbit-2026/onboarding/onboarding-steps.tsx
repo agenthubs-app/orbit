@@ -241,18 +241,21 @@ export function ProfileStep({
           <input className={styles.input} disabled={disabled} id="onb-place" maxLength={80} onChange={text("homeMarket")} placeholder={t({ ja: "例）東京", zh: "例如：东京", en: "e.g. Tokyo" })} value={basic.homeMarket} />
         </Field>
       </div>
-      <fieldset className={styles.contactMethods} aria-describedby="onb-contact-hint">
-        <legend className={styles.fieldLabel}>{t({
+      <fieldset className={styles.contactMethods} aria-labelledby="onb-contact-title" aria-describedby="onb-contact-hint">
+        <h2 className={styles.contactTitle} id="onb-contact-title">{t({
           ja: "ここでつながった相手は、どうやってあなたに連絡できますか？",
           zh: "你在此添加的朋友如何联系到你？",
           en: "How can the people you connect with here reach you?",
-        })}</legend>
-        <p id="onb-contact-hint" className={styles.lbl}>{t({
-          ja: "1 つ以上必須。LINE または WeChat がおすすめです。交換した相手と、申し込んだイベントの主催者が確認できます。",
-          zh: "至少填一种，推荐 LINE 或微信。完成交换的人脉和你报名活动的主办方可查看。",
-          en: "Enter at least one. LINE or WeChat makes it easier to stay in touch. Mutual contacts and organizers of events you apply to can view these details.",
-        })}</p>
-        <div className={styles.grid2}>
+        })}</h2>
+        <div id="onb-contact-hint" className={`${styles.once} ${styles.contactHint}`}>
+          <span className={styles.onceTile} aria-hidden><Icon name="info" size={16} /></span>
+          <span>{t({
+            ja: "1 つ以上必須。LINE または WeChat がおすすめです。交換した相手と、申し込んだイベントの主催者が確認できます。",
+            zh: "至少填一种，推荐 LINE 或微信。完成交换的人脉和你报名活动的主办方可查看。",
+            en: "Enter at least one. LINE or WeChat makes it easier to stay in touch. Mutual contacts and organizers of events you apply to can view these details.",
+          })}</span>
+        </div>
+        <div className={styles.contactGrid}>
           <Field id="onb-lineId" label={{ ja: "LINE", zh: "LINE", en: "LINE" }} origin={origins.lineId} t={t}>
             <input className={styles.input} disabled={disabled} id="onb-lineId" maxLength={80} onChange={text("lineId")} value={basic.lineId ?? ""} />
           </Field>

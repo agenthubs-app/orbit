@@ -1,6 +1,6 @@
 /** The three onboarding pages as drawn (A1–A7); state, saving and AI calls live in ProfileOnboardingScreen. */
 import { useState, type RefObject } from "react";
-import { Platform, TextInput, View, type LayoutChangeEvent } from "react-native";
+import { Platform, StyleSheet, TextInput, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
 
 import { BottomSheet, Icon, UiPressable, UiText } from "../../../components/ui";
 import { faceFor } from "../../../components/ui/Text";
@@ -53,6 +53,9 @@ export interface ProfileStepProps {
 export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inputs, marks, onBirth, onClearBirth, onFieldLayout, onPick, onScan, onText, scan }: ProfileStepProps) {
   const { styles, colors } = useOnboardingStyles();
   const { t, language } = useOrbitLocale();
+  const { fontScale, width } = useWindowDimensions();
+  const [contactWidth, setContactWidth] = useState<number>();
+  const useContactColumns = (contactWidth ?? width - 36) - 32 > 256 * fontScale;
   const busy = scan.kind === "scanning";
   const done = scan.kind === "done";
   const primary = industry?.primary ?? (basic.primaryIndustryId ? industryLabel(basic.primaryIndustryId, language) : null);
@@ -98,18 +101,37 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
       {text("homeMarket", t(marks.homeMarket ? "onboarding.v3.homeMarket" : "onboarding.v3.homeMarketOptional"), t("onboarding.v3.homeMarketPlaceholder"))}
       <SelectField accessibilityLabel={`${t("onboarding.v3.birthDate")}：${birthLabel ?? t("onboarding.v3.birthDatePlaceholder")}`} disabled={disabled} hint={t("onboarding.v3.birthDateHelp")} icon="calendar" label={t("onboarding.v3.birthDate")} onPress={onBirth} placeholder={t("onboarding.v3.birthDatePlaceholder")} value={birthLabel}
         trailing={birthLabel ? <UiPressable accessibilityLabel={t("onboarding.v3.birthDateClear")} accessibilityRole="button" disabled={disabled} hitSlop={10} onPress={onClearBirth} style={styles.clear}><Icon color={colors.ink3Text} name="x" size={16} /></UiPressable> : null} />
-      <View onLayout={event => onFieldLayout("contact", event)}>
+      <View
+        onLayout={event => {
+          setContactWidth(event.nativeEvent.layout.width);
+          onFieldLayout("contact", event);
+        }}
+        style={[contactLayout.card, { backgroundColor: colors.surface2, borderColor: colors.line }]}
+        testID="onboarding-contact-methods"
+      >
         <UiText accessibilityRole="header" style={styles.scanDoneTitle}>{t("onboarding.v3.contactTitle")}</UiText>
-        <UiText style={styles.lbl}>{t("onboarding.v3.contactHint")}</UiText>
-        {text("lineId", t("onboarding.v3.lineId"), "", { autoCapitalize: "none" })}
-        {text("wechatId", t("onboarding.v3.wechatId"), "", { autoCapitalize: "none" })}
-        {text("email", t("onboarding.v3.email"), "", { autoCapitalize: "none", autoComplete: "email", keyboardType: "email-address", textContentType: "emailAddress" })}
-        {text("phone", t("onboarding.v3.phone"), "", { autoComplete: "tel", keyboardType: "phone-pad", textContentType: "telephoneNumber" })}
+        <View style={[styles.once, contactLayout.hint]}>
+          <View style={[styles.emo, styles.emoSurface]}><Icon color={colors.ink2} name="info" size={16} /></View>
+          <UiText style={styles.onceText}>{t("onboarding.v3.contactHint")}</UiText>
+        </View>
+        <View style={useContactColumns ? styles.fieldRow : undefined}>
+          <View style={useContactColumns ? styles.fieldHalf : undefined}>{text("lineId", t("onboarding.v3.lineId"), "", { autoCapitalize: "none" })}</View>
+          <View style={useContactColumns ? styles.fieldHalf : undefined}>{text("wechatId", t("onboarding.v3.wechatId"), "", { autoCapitalize: "none" })}</View>
+        </View>
+        <View style={useContactColumns ? styles.fieldRow : undefined}>
+          <View style={useContactColumns ? styles.fieldHalf : undefined}>{text("email", t("onboarding.v3.email"), "", { autoCapitalize: "none", autoComplete: "email", keyboardType: "email-address", textContentType: "emailAddress" })}</View>
+          <View style={useContactColumns ? styles.fieldHalf : undefined}>{text("phone", t("onboarding.v3.phone"), "", { autoComplete: "tel", keyboardType: "phone-pad", textContentType: "telephoneNumber" })}</View>
+        </View>
         {errors.has("contact") ? <UiText accessibilityRole="alert" style={styles.errLine}>{t("onboarding.v3.missContact")}</UiText> : null}
       </View>
     </>
   );
 }
+
+const contactLayout = StyleSheet.create({
+  card: { marginTop: 18, padding: 16, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth },
+  hint: { marginTop: 10 },
+});
 
 export interface GoalsStepProps {
   disabled: boolean;
