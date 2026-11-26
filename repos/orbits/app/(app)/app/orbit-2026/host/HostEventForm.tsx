@@ -307,7 +307,7 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
   );
   return (
     <>
-      <ShellPage title={t(mode === "create" ? "evCreateTitle" : "evEditTitle")} subtitle={mode === "create" ? t("evCreateCrumb") : t("evEditCrumb", { title: event?.title ?? "" })} left={back} right={right} rightRail={false} />
+      <ShellPage title={t(mode === "create" ? "evCreateTitle" : "evEditTitle")} subtitle={mode === "create" ? t("evCreateCrumb") : t("evEditCrumb", { title: event?.title ?? "" })} phoneSubtitle={mode === "create" ? t("centerTitle") : undefined} left={back} right={right} rightRail={false} />
       <div className={s.wgrid} data-host-event-form={mode}>
         <div className={`${f.col} ${f.span7}`}>
           {showTemplates ? (
@@ -382,8 +382,13 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
                 onLimit={() => toast.info(t("suQLimit"))} onAdded={(n) => toast.success(t("suAdded", { n }))} />
             </div>
           ) : null}
+          {/* < 768（b12 W-R17-01-390）：顶栏放不下文字按钮，「公開へ進む」整宽放在表单末尾，下書き保存 在它上面。 */}
+          <div className={f.phoneActs} data-host-form-phone-actions="">
+            {isDraft ? <button type="button" className={`btn ${s.btn}`} disabled={busy || readOnly} onClick={onSaveDraft}>{t(mode === "create" ? "evSaveTemp" : "evSaveDraft")}</button> : null}
+            <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={busy || readOnly} onClick={onPrimary}>{t(mode === "create" ? "evToPublish" : "evSaveChanges")}</button>
+          </div>
         </div>
-        <div className={`${f.col} ${f.span5}`}>
+        <div className={`${f.col} ${f.span5} ${f.previewCol}`}>
           <div className={`${s.card} ${f.blk}`} data-host-evcard-preview="">
             <div className={`${s.lbl} ${r.pvHead}`}>{t("evPreviewCard")}</div>
             <div className={r.pvWrap}>

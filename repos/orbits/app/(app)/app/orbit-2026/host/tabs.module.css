@@ -201,3 +201,21 @@
 .whoBtn.whoBtn { all: unset; box-sizing: border-box; display: flex; width: 100%; gap: 10px; align-items: center; cursor: pointer; border-radius: var(--r-sm); text-align: left; }
 .whoBtn:hover .whoName { text-decoration: underline; text-underline-offset: 3px; }
 .whoBtn:focus-visible { outline: 2px solid var(--plum-500); outline-offset: 2px; }
+
+/* < 768：画板 W-R17-63-390（b12 #466）——分段 4 等分、卡片行（头像 · 名前 / 会社 / 回答 1 行 · 承認）、PC 提示。 */
+.phoneCol { grid-column: 1 / -1; min-width: 0; }
+.phoneSeg.phoneSeg { width: 100%; display: grid; grid-template-columns: repeat(4, auto); margin-bottom: 12px; }
+.phoneSeg.phoneSeg.phoneSeg button:global(.btn) { padding: 0 8px; font-size: var(--fs-label); }
+.phoneTools.phoneTools { gap: 8px; margin-bottom: 12px; }
+.phoneTools .searchSm { flex: 1; min-width: 0; width: auto; }
+.phoneList.phoneList { padding: 6px 16px; }
+.phoneRow { display: flex; align-items: center; gap: 10px; padding: 11px 0; position: relative; }
+.phoneRow + .phoneRow::before { content: ""; position: absolute; top: 0; left: 42px; right: 0; height: 1px; background: var(--line); }
+.phoneWho.phoneWho { all: unset; box-sizing: border-box; display: flex; flex: 1; min-width: 0; gap: 12px; align-items: center; cursor: pointer; }
+.phoneWho:focus-visible { outline: 2px solid var(--plum-500); outline-offset: 2px; border-radius: var(--r-sm); }
+.phoneMeta { display: flex; flex-direction: column; min-width: 0; }
+.phoneMeta > span { font-size: var(--fs-meta); }
+.phoneMeta b { font-size: var(--fs-body); }
+.phoneAnswer { color: var(--ink-2); font-size: var(--fs-label); }
+.ghostRow i { display: block; height: 36px; flex: 1; border-radius: var(--r-sm); background: var(--surface-2); }
+.phoneFoot.phoneFoot { margin-top: 8px; text-align: center; }

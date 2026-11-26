@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { HostCenterEventRow, HostCenterFilter, HostCenterResponse, HostNextStep, HostTodoItem } from "../../../../../shared/contract/host-events";
+import { usePhone } from "../events/EventDetail";
 import { ShellSearchButton } from "../shell/Orbit2026Shell";
 import { ShellPage } from "../shell/slots";
 import { Icon, Modal, Orbit2026Scope, Segmented, ToastProvider } from "../ui";
@@ -197,6 +198,26 @@ export function HostCenterView({ data, filter, query, language, newestFirst = fa
   const kpi = data.kpi;
   const spot = data.spotlight;
   const unit = t("unitPeople");
+  const phone = usePhone();
+
+  if (phone && !empty) {
+    // < 768（b12 W-R17-60-390）：状态分段 + 一场一张卡；KPI・要対応・検索・並べ替え・次にやること 留给 PC。
+    return (
+      <>
+        <ShellPage title={t("centerTitle")} subtitle={subtitle} phoneSubtitle={t("centerCrumb")} rightRail={false}
+          phoneActions={[{ href: CREATE_HREF, icon: "plus", key: "create", label: t("createEvent") }]} />
+        <div className={s.phCenter} data-host-center="list" data-host-center-phone="">
+          <Segmented variant="seg" label={t("fLabel")} data-host-filters="" value={filter} onChange={(key) => onFilter?.(key)}
+            className={s.phCenterSeg}
+            segments={tabs.map((key) => ({ key, label: t(FILTER_LABEL[key]) }))} />
+          <div className={s.phCenterList}>
+            {rows.map((row) => <HostEventCard key={row.eventId} row={row} t={t} language={language} onOpen={onOpen} />)}
+            {!rows.length ? <div className={`${s.card} ${s.empty}`}>{t("noResults")}</div> : null}
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

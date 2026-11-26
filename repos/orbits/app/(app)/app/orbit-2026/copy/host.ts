@@ -10,6 +10,7 @@ const CFO_NIGHT_17 = "CFO Night Tokyo vol.17";
 export const hostCopy = {
   // 運営センター · 見出し
   centerTitle: { ja: "運営センター", zh: "运营中心", en: "Host center", kind: "title" },
+  centerCrumb: { ja: "マイ › 主催", zh: "我的 › 主办", en: "Me › Hosting", kind: "label" },
   centerSubEmpty: { ja: "主催するイベントを、申込から会後まで", zh: "从报名到会后，管理你主办的活动", en: "Your events, from sign-up to follow-up", kind: "label" },
   centerSubCount: { ja: "主催イベント {n}件", zh: "主办活动{n}场", en: "{n} hosted events", kind: "label" },
   centerSubApplied: { ja: "主催イベント {n}件 · 今月の申込 {m}名", zh: "主办活动{n}场 · 本月报名{m}人", en: "{n} hosted events · {m} sign-ups this month", kind: "label" },
@@ -121,6 +122,16 @@ export const hostCopy = {
   tReport: { ja: "レポート", zh: "报告", en: "Report", kind: "tab" },
 
   // 概要
+  oPhMatched: { ja: "マッチ", zh: "已匹配", en: "Matched", kind: "label" },
+  oPhCheckedIn: { ja: "受付", zh: "签到", en: "Checked in", kind: "label" },
+  oPhArrival: { ja: "到着 {a} / {b} · {r}%", zh: "到场{a} / {b} · {r}%", en: "{a} of {b} arrived · {r}%", kind: "label" },
+  oPhRounds: { ja: "{r}ラウンド · {n}テーブル", zh: "{r}轮 · {n}桌", en: "{r} rounds · {n} tables", kind: "label" },
+  oPhNoMatching: { ja: "まだ生成していません", zh: "还没有生成", en: "Not generated yet", kind: "label" },
+  oPhGenerating: { ja: "生成中", zh: "生成中", en: "Generating", kind: "chip" },
+  oPhSeeResult: { ja: "結果を見る", zh: "查看结果", en: "See results", kind: "button" },
+  oPhTodo: { ja: "要対応", zh: "待处理", en: "To do", kind: "title" },
+  oPhWalkIn: { ja: "当日枠 {n}名分", zh: "当天名额{n}人", en: "{n} walk-in slots", kind: "label" },
+  oPhPc: { ja: "申込設定とレポートの詳細は PC で編集できます", zh: "报名设置和报告详情可以在电脑上编辑", en: "Edit sign-up settings and see report details on a computer", kind: "label" },
   oMatchable: { ja: "マッチ可能", zh: "可匹配", en: "Matchable", kind: "chip" },
   oProfileDone: { ja: "プロフィール完了", zh: "资料已完成", en: "Profile complete", kind: "label" },
   oCheckedIn: { ja: "受付済み", zh: "已签到", en: "Checked in", kind: "chip" },
@@ -311,6 +322,7 @@ export const hostCopy = {
   pBulkWaitlist: { ja: "キャンセル待ちへ", zh: "转为候补", en: "Move to waitlist", kind: "button" },
   pReject: { ja: "見送り", zh: "婉拒", en: "Decline", kind: "button" },
   pWait: { ja: "待ち", zh: "候补", en: "Waitlist", kind: "button" },
+  pPhonePc: { ja: "まとめて審査・見送りの理由メモは PC で", zh: "批量审核和婉拒备注请在电脑上操作", en: "Bulk review and decline notes are on a computer", kind: "label" },
   pApprove: { ja: "承認", zh: "批准", en: "Approve", kind: "button" },
   pSelectAll: { ja: "表示中の全員を選択", zh: "选择显示中的所有人", en: "Select everyone shown", kind: "label" },
   pSelectRow: { ja: "{name}を選択", zh: "选择{name}", en: "Select {name}", kind: "label" },

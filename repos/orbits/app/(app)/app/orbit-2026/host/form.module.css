@@ -14,6 +14,7 @@
 .input input[type="checkbox"] { flex: 0 0 auto; width: 16px; height: 16px; appearance: auto; }
 .narrow { max-width: 160px; }
 .feeKind { max-width: 180px; }
+.phoneActs { display: none; }
 .org { justify-content: space-between; }
 .org select { cursor: pointer; }
 .date { max-width: 150px; }
@@ -82,6 +83,16 @@
   .emojiPick { margin-left: 0; }
   /* 单列网格里 span 12 会生出隐式列，把同网格的其他卡挤窄（主办方页面列表/预览只有约 60% 宽）。 */
   .span7, .span5 { grid-column: auto; }
+  /* b12 W-R17-01-390：手机上字段整行、无预览栏；「公開へ進む」整宽主按钮在末尾。 */
+  .narrow, .feeKind { max-width: none; }
+  .previewCol { display: none; }
+  .phoneActs { display: flex; flex-direction: column; gap: 10px; }
+  .phoneActs > :global(.btn) { width: 100%; }
+  /* 字段行照画板：上下 8、无分隔线；标签粗体 ink-2；输入框 42 高。 */
+  .fs div:has(> .fl) { padding: 8px 0; border-top: 0; }
+  .fl.fl { font-weight: var(--fw-bold); color: var(--ink-2); }
+  .fs .input { height: 42px; }
+  .col { gap: 14px; }
 }
 
 /* 主催者ページ（b12 #412 .k-orglist / .k-orgform / .k-orgprev） */

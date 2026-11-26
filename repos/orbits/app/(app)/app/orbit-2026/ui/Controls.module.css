@@ -150,3 +150,11 @@
 /* Over an old page's unscoped legacy .btn (HANDOFF G13): two classes restate the kit values. */
 .utab:global(.btn) { gap: 0; height: auto; padding: 9px 0; border: 0; border-radius: var(--r-hair); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); letter-spacing: normal; }
 .utabsHost .utab:global(.btn) { padding: 10px 16px 12px; }
+/* 2026-11-26 运营台 < 768：画板 W-R17-61-390 的页签 = 横滑的胶囊（.carousel + .chip：选中墨色底），出屏的那一项露出一半提示还能滑。 */
+@media (max-width: 767px) {
+  .utabsHost { gap: 6px; border-bottom: 0; padding: 2px 18px 4px; scroll-padding-left: 18px; scroll-snap-type: x mandatory; }
+  .utabsHost .utab, .utabsHost .utab:global(.btn) { scroll-snap-align: start; padding: 7px 14px; border-radius: var(--r-pill); font-size: var(--fs-control); background: var(--surface-2); color: var(--ink-2); }
+  .utabsHost .utabOn, .utabsHost .utabOn:global(.btn) { background: var(--ink); color: var(--bg); }
+  .utabsHost .utabOn::after { display: none; }
+  .utabsHost .utabBadge { background: transparent; color: inherit; padding: 0; margin-left: 4px; font-family: var(--font-num); }
+}

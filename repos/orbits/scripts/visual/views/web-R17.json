@@ -1,5 +1,5 @@
 {
- "_note": "R17 主催 Web（PLANNER 像素 SC P01–P33；b12 #396–#475 待用户过目 §38，不进本清单）。mock 服务器 orbits-r17（:3017，distDir .next-r17，ORBIT_REDESIGN_MOCK 含 host-operations）。每张先切 host 变体（views 的 host 字段）：node features/events/design-fixtures/switch.mjs --origin http://localhost:3017 --storage ~/orbit-sprint-evidence/redesign/.auth/qa@orbit.test.json --host '<host 字段 JSON>'，再 --only <id>。变体是服务端全局状态，不同变体的画面不要并行跑。",
+ "_note": "R17 主催 Web（PLANNER 像素 SC P01–P33；b12 #396–#475 待用户过目 §38，不进本清单；例外：2026-11-26 主办方手机端按画板实现后，W-R17-01/60/61/63-390（#460/#462/#464/#466 浅色）进清单）。mock 服务器 orbits-r17（:3017，distDir .next-r17，ORBIT_REDESIGN_MOCK 含 host-operations）。每张先切 host 变体（views 的 host 字段）：node features/events/design-fixtures/switch.mjs --origin http://localhost:3017 --storage ~/orbit-sprint-evidence/redesign/.auth/qa@orbit.test.json --host '<host 字段 JSON>'，再 --only <id>。变体是服务端全局状态，不同变体的画面不要并行跑。",
  "defaults": {
   "app-origin": "http://localhost:3017",
   "login": "qa@orbit.test",
@@ -488,6 +488,60 @@
     }
    ],
    "note": "P33 フォロー · 未ログイン（b7 #39，底图 = 少；点「フォローする」→ 底部 sheet：Google で続ける（主）/ メールで続ける，§44-4 删 Apple）"
+  },
+  {
+   "id": "W-R17-01-390",
+   "app": "/app/events/center/new",
+   "design": "b12-missing-states.html",
+   "board-index": 460,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-event-form=create]",
+   "note": "W-R17-01-390 イベントを作成 · 手机（b12 #460；画板是 6 个字段 + 説明文 + 公開へ進む，实现多出封面 / 议程 / 联系方式 / 报名问题，属后加功能）"
+  },
+  {
+   "id": "W-R17-60-390",
+   "app": "/app/events/center",
+   "design": "b12-missing-states.html",
+   "board-index": 462,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-center-phone]",
+   "host": {
+    "center": "many"
+   },
+   "note": "W-R17-60-390 運営センター · 手机（b12 #462；状态分段 + 一场一卡）"
+  },
+  {
+   "id": "W-R17-61-390",
+   "app": "/app/events/demo-event-cfo-night-18/operations",
+   "design": "b12-missing-states.html",
+   "board-index": 464,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-overview-phone]",
+   "host": {
+    "overview": "live"
+   },
+   "note": "W-R17-61-390 イベント運営 · 概要 · 手机（b12 #464，CFO18 開催中）"
+  },
+  {
+   "id": "W-R17-63-390",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=people",
+   "design": "b12-missing-states.html",
+   "board-index": 466,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-people-phone]",
+   "note": "W-R17-63-390 参加者 · 手机（b12 #466，CFO18 審査待ち；卡片行 + 承認，批量在 PC）"
   }
  ]
 }

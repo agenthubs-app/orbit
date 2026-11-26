@@ -5,6 +5,7 @@
 // 基本情報を編集 / 参加コードを再発行 / 申込ページを開く / ― / イベントを中止（珊瑚色，仅 event.cancel = owner）；所有页签同一位置）。
 // 页签：概要 / マッチング / 参加者 N / 受付（跳 kiosk）/ 申込設定 / レポート；本段只做概要，其余是占位（HostConsoleTabs.tsx，后续替换）。
 // 数据：GET /api/host/events/[id]/overview（requireEventCapability 在服务端）；定型通知 /notices/preview → /notices/send。
+import { usePhone } from "../events/EventDetail";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 
@@ -105,7 +106,64 @@ function StatusBanner({ event, t, busy, onPublish, onArchive }: { event: HostEve
 export type HostOverviewViewProps = { data: HostOverviewResponse; t: HostT; onNotice?: () => void };
 
 /** 概要页签（web.html #20）。下書き / 中止 / アーカイブ 只画四格（b12 #440–#444）。 */
-export function HostOverviewView({ data, t }: HostOverviewViewProps) {
+/** < 768：画板 W-R17-61-390（b12 #464）——申込 / マッチ / 受付 + 到着バー + 受付を開く · マッチング · 要対応 · PC 提示。 */
+function HostOverviewPhone({ data, t }: HostOverviewViewProps) {
+  const event = data.event;
+  const id = event.eventId;
+  const matched = data.matching.state === "none" ? null : data.matchable;
+  const rate = data.applied ? Math.round((data.checkedIn / data.applied) * 100) : 0;
+  const review = data.todos.find((todo) => todo.kind === "review_pending");
+  const profile = data.todos.find((todo) => todo.kind === "profile_incomplete");
+  const state = data.matching.state;
+  const chip = state === "published" ? <span className={`${s.chip} ${s.c_teal}`}>{t("mPublishedChip")}</span> : state === "draft" ? <span className={`${s.chip} ${s.c_apricot}`}>{t("sDraft")}</span> : state === "generating" ? <span className={s.chip}>{t("oPhGenerating")}</span> : null;
+  return (
+    <div className={s.phOverview} data-host-overview-phone="">
+      <div className={s.card}>
+        <div className={`${s.cnt3} ${s.phCnt}`}>
+          <div><span className={s.lbl}>{t("kApplied")}</span><b>{data.applied}</b></div>
+          <div><span className={s.lbl}>{t("oPhMatched")}</span><b>{matched ?? "—"}</b></div>
+          <div><span className={s.lbl}>{t("oPhCheckedIn")}</span><b>{data.checkedIn}</b></div>
+        </div>
+        <div className={`${s.bar} ${s.phBar}`}><i style={{ width: `${Math.min(100, rate)}%` }} /></div>
+        <div className={s.lbl}>{t("oPhArrival", { a: data.checkedIn, b: data.applied, r: rate })}</div>
+        {INACTIVE.has(event.status) ? null : <a className={`btn ${s.btn} ${s.primary} ${s.phBlock}`} href={checkInHref(id)}><Icon name="check" size={16} />{t("openCheckIn")}</a>}
+      </div>
+      <div className={s.card}>
+        <div className={`${s.row} ${s.between}`}>
+          <div><div className={s.lbl}>{t("tMatching")}</div><b className={s.phMatchTitle}>{state === "none" ? t("oPhNoMatching") : t("oPhRounds", { r: data.matching.roundCount, n: data.matching.tableCount })}</b></div>
+          {chip}
+        </div>
+        <div className={`${s.row} ${s.phMatchActs}`}>
+          <a className={`btn ${s.btn} ${s.sm}`} href={consoleHref(id, "matching")}>{t("oPhSeeResult")}</a>
+          {data.matching.unplaced > 0 ? <span className={`${s.lbl} ${s.phPush}`}>{t("chipUnplaced", { n: data.matching.unplaced })}</span> : null}
+        </div>
+      </div>
+      {review?.count || profile?.count ? (
+        <div className={s.card}>
+          <div className={s.cardH}><h3>{t("oPhTodo")}</h3></div>
+          {review?.count ? (
+            <a className={`${s.row} ${s.phTodo}`} href={consoleHref(id, "people")}>
+              <span className={`${s.emo} ${s.e_apricot} ${s.phEmo}`}>🧾</span>
+              <div className={s.grow}><b>{t("todoReview", { n: review.count })}</b>{review.walkInSlots ? <div className={s.lbl}>{t("oPhWalkIn", { n: review.walkInSlots })}</div> : null}</div>
+              <Icon name="right" size={16} />
+            </a>
+          ) : null}
+          {profile?.count ? (
+            <a className={`${s.row} ${s.phTodo}`} href={`${consoleHref(id, "people")}&incomplete=1`}>
+              <span className={`${s.emo} ${s.e_pink} ${s.phEmo}`}>🙋</span>
+              <div className={s.grow}><b>{t("todoProfile", { n: profile.count })}</b><div className={s.lbl}>{t("todoProfileSub")}</div></div>
+              <Icon name="right" size={16} />
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+      <div className={`${s.card} ${s.flat} ${s.row} ${s.phPc}`}><span className={`${s.emo} ${s.e_blue} ${s.phEmo}`}>💻</span><div className={`${s.lbl} ${s.grow}`}>{t("oPhPc")}</div></div>
+    </div>
+  );
+}
+
+export function HostOverviewView({ data, t, phone = false }: HostOverviewViewProps & { phone?: boolean }) {
+  if (phone) return <HostOverviewPhone data={data} t={t} />;
   const event = data.event;
   const inactive = INACTIVE.has(event.status);
   const archived = event.status === "archived";
@@ -251,6 +309,7 @@ export type HostConsoleViewProps = {
 /** 純粋な描画：页头 + 页签 + 当前页签内容。 */
 export function HostConsoleView({ data, tab, language, now = new Date(), busy = false, onPublish, onArchive, content, onOpenCohosts, formPublished = null, reportView = "all", onReportView, onMenu, menuOpen = false }: HostConsoleViewProps) {
   const t = useMemo(() => hostTranslator(language), [language]);
+  const phone = usePhone();
   const event = data.event;
   // 页签一律下划线（.htabs；决定表 §41-1 统一了 web.html #20）。参加者角标 = 审核待人数，在参加者页签本身不显示（b6 #7–#9）。
   const back = <a className={`btn ${s.btn} ${s.backBtn}`} href="/app/events/center" aria-label={t("back")}><Icon name="left" size={20} /></a>;
@@ -278,7 +337,7 @@ export function HostConsoleView({ data, tab, language, now = new Date(), busy = 
         tabs={HOST_CONSOLE_TABS.map((key) => ({ key, label: t(TAB_LABEL[key]), href: key === "checkin" ? checkInHref(event.eventId) : consoleHref(event.eventId, key), badge: key === "people" && tab !== "people" && data.pendingReview > 0 ? data.pendingReview : undefined }))} />
       <div className={s.wgrid} data-host-console={tab}>
         <StatusBanner event={event} t={t} busy={busy} onPublish={() => onPublish?.()} onArchive={(archived) => onArchive?.(archived)} />
-        {tab === "overview" ? <HostOverviewView data={data} t={t} /> : content ?? <HostTabPlaceholder tab={tab} t={t} />}
+        {tab === "overview" ? <HostOverviewView data={data} t={t} phone={phone} /> : content ?? <HostTabPlaceholder tab={tab} t={t} />}
       </div>
     </>
   );

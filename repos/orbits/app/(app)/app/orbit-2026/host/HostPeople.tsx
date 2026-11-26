@@ -3,6 +3,8 @@
 // R17 イベント運営 · 参加者（b6 #7 空 · 朝会 #3 / #8 少 · ラウンドテーブル / #9 大 · CFO18，§39 A10 审核说明与批量按钮写人数）。
 // 数据：GET /api/host/events/[id]/people?bucket=&q=&incomplete=1&cursor=；决定 POST /people/[actorId]/decision。
 // 批量 = 逐条调用，各带自己的版本号；失败的行就地标出（409 →「他の運営者が先に更新しました」并只重读这一行所在的列表）。
+import { localizeLibraryAnswerText, localizeLibraryPrompt } from "../../../../../shared/domain/host-question-library";
+import { usePhone } from "../events/EventDetail";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { HostAdmissionDecision, HostPeopleBucket, HostPeopleResponse, HostPeopleRow } from "../../../../../shared/contract/host-console";
@@ -44,6 +46,10 @@ function attendText(count: number, t: HostT) {
 export type HostPeopleViewProps = {
   data: HostPeopleResponse;
   t: HostT;
+  /** 题库题的题面・回答按这个语言显示（主办方自己写的保持原文）。 */
+  language?: OrbitLanguage;
+  /** < 768：画板 W-R17-63-390 的卡片行（承認だけ；まとめて審査・見送りは PC）。 */
+  phone?: boolean;
   rows: readonly HostPeopleRow[];
   query: HostPeopleQuery;
   selected: ReadonlySet<string>;
@@ -116,7 +122,45 @@ export function HostPeopleView(props: HostPeopleViewProps) {
   const approved = data.counts.approved;
   const decidable = query.bucket === "pending" || query.bucket === "waitlisted";
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.actorId));
-  const answerHead = data.answerLabel ? t("pColAnswer", { q: data.answerLabel }) : t("pColAnswerPlain");
+  const language = props.language ?? "ja";
+  const label = data.answerLabel ? localizeLibraryPrompt(data.answerLabel, language).replace(/[（(].*$/u, "").replace(/^今回/u, "").trim() : null;
+  const answerHead = label ? t("pColAnswer", { q: label.length > 20 ? `${label.slice(0, 20)}…` : label }) : t("pColAnswerPlain");
+  const answerOf = (row: HostPeopleRow) => (row.answer ? localizeLibraryAnswerText(row.answer, language) : null);
+  if (props.phone) {
+    return (
+      <div className={m.phoneCol} data-host-people={query.bucket} data-host-people-phone="">
+        <Segmented variant="seg" className={`${s.peopleSeg} ${m.phoneSeg}`} label={t("pBuckets")} value={query.bucket} onChange={(bucket) => props.onBucket?.(bucket)} segments={BUCKETS.map((bucket) => ({ key: bucket, label: t(BUCKET_LABEL[bucket], { n: data.counts[bucket] }) }))} />
+        <div className={`${s.row} ${m.phoneTools}`}>
+          <label className={`${m.input} ${m.searchSm}`}><Icon name="search" size={16} /><input type="search" aria-label={t("pSearch")} placeholder={t("pSearchPh")} defaultValue={query.q} onChange={(event) => props.onSearch?.(event.target.value)} /></label>
+          <button type="button" className={`btn ${s.btn} ${s.sm} ${query.incomplete ? m.filterOn : ""}`} aria-pressed={query.incomplete} onClick={props.onIncomplete}><Icon name="filter" size={16} />{t("pIncomplete")}</button>
+        </div>
+        <div className={`${s.card} ${m.phoneList}`}>
+          {props.loading ? [0, 1, 2].map((key) => <div key={key} className={`${m.phoneRow} ${m.ghostRow}`} aria-hidden><i /></div>) : rows.map((row) => {
+            const issue = issues.get(row.actorId);
+            const line = row.org || row.role; // 画板 W-R17-63-390 只列公司；没有公司时用职位
+            const answer = answerOf(row);
+            return (
+              <div key={row.actorId} className={m.phoneRow} data-host-row={row.actorId} data-issue={issue}>
+                <button type="button" className={`btn ${m.phoneWho}`} aria-label={t("pdOpen", { name: row.name })} onClick={() => props.onOpen?.(row)}>
+                  <Avatar name={row.name} size="sm" />
+                  <span className={m.phoneMeta}>
+                    <b className={s.clamp1}>{row.name}</b>
+                    {line ? <span className={`${s.lbl} ${s.clamp1}`}>{line}</span> : null}
+                    {answer ? <span className={`${m.phoneAnswer} ${s.clamp1}`}>{answer}</span> : null}
+                    {issue ? <span className={m.rowNote} role="status">{issue === "conflict" ? t("pRowConflict") : t("pRowFailed")}</span> : null}
+                  </span>
+                </button>
+                {decidable ? <button type="button" className={`btn ${s.btn} ${s.sm} ${s.primary}`} disabled={busy} onClick={() => props.onDecide?.(row, "approve")}>{t("pApprove")}</button> : null}
+              </div>
+            );
+          })}
+          {rows.length === 0 && !props.loading ? <div className={s.empty}>{query.q || query.incomplete ? t("pNoMatch") : t("pNone")}</div> : null}
+        </div>
+        {data.more > 0 && data.nextCursor ? <div className={`${s.row} ${m.moreRow}`}><button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={busy} onClick={props.onMore}>{t("pMore", { n: data.more })}</button></div> : null}
+        {decidable ? <div className={`${s.lbl} ${m.phoneFoot}`}>{t("pPhonePc")}</div> : null}
+      </div>
+    );
+  }
   return (
     <>
       <div className={`${s.card} ${m.span9}`} data-host-people={query.bucket}>
@@ -167,7 +211,7 @@ export function HostPeopleView(props: HostPeopleViewProps) {
                       </div>
                     </button>
                   </td>
-                  <td className={m.tdAnswer}><div className={m.answer}>{row.answer ?? "—"}</div></td>
+                  <td className={m.tdAnswer}><div className={m.answer}>{answerOf(row) ?? "—"}</div></td>
                   <td>
                     <div className={s.row} style={{ gap: 8 }}>
                       <ScoreRing value={row.profileScore / 100} size={34} stroke={4} color={low ? "var(--coral)" : "var(--plum-500)"} label={t("pProfileScore", { n: row.profileScore })}>
@@ -230,6 +274,7 @@ export async function runDecisions(
 
 export function HostPeopleTab({ eventId, language, initialIncomplete = false, onChanged }: { eventId: string; language: OrbitLanguage; initialIncomplete?: boolean; onChanged?: () => void }) {
   const t = useMemo(() => hostTranslator(language), [language]);
+  const phone = usePhone();
   const toast = useToast();
   const [query, setQuery] = useState<HostPeopleQuery>({ bucket: "pending", incomplete: initialIncomplete, q: "" });
   const [data, setData] = useState<HostPeopleResponse | null>(null);
@@ -311,7 +356,7 @@ export function HostPeopleTab({ eventId, language, initialIncomplete = false, on
   const visibleRows = rows.slice(0, Math.max(ROW_PAGE, rows.length));
   return (
     <>
-      <HostPeopleView data={data} t={t} rows={visibleRows} query={query} selected={selected} issues={issues} busy={busy} origin={origin} loading={data.bucket !== query.bucket}
+      <HostPeopleView data={data} t={t} language={language} phone={phone} rows={visibleRows} query={query} selected={selected} issues={issues} busy={busy} origin={origin} loading={data.bucket !== query.bucket}
         onOpen={(row) => setOpen({ actorId: row.actorId, name: row.name })}
         onBucket={(bucket) => change({ bucket })}
         onSearch={(q) => change({ q })}
