@@ -31,3 +31,9 @@ export function profileContactMethodsValid(handles: ProfileContactMethods): bool
   return Object.keys(values).length > 0
     && PROFILE_CONTACT_METHODS.every(method => !handles[method]?.trim() || Boolean(values[method]));
 }
+
+/** Methods the user typed something into that is not a valid value (email / phone format, too long). Used to mark only those fields. */
+export function invalidProfileContactMethods(handles: ProfileContactMethods): ProfileContactMethod[] {
+  const values = profileContactMethods(handles);
+  return PROFILE_CONTACT_METHODS.filter(method => Boolean(handles[method]?.trim()) && !values[method]);
+}

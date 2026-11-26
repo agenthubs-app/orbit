@@ -227,7 +227,7 @@ test("「下一步」 is never greyed out: it lists what is missing, marks it, a
   assert.equal(Math.round((await next(page).boundingBox())!.height), 50, "the page's main button (.btn.xl)");
   await page.evaluate(() => document.querySelector('[data-testid="onboarding-scroll"]')!.scrollTo(0, 9999));
   await next(page).click();
-  const contactError = "请至少填写一种";
+  const contactError = "填写其中一种即可";
   assert.deepEqual(await alerts(page), ["请填写姓名", "请选择行业", contactError, "还差3项：姓名、行业、联系方式"]);
   assert.equal(await page.getByRole("textbox", { name: "姓名" }).evaluate(el => el === document.activeElement), true, "focus on the first missing field");
   await page.waitForFunction(() => document.querySelector('[data-testid="onboarding-scroll"]')!.scrollTop < 500);

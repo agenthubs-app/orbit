@@ -7,7 +7,7 @@ import type { OrbitLanguage } from "../api/contract/language";
 import { isIndustryIdCode, validateIndustrySelection } from "../api/domain/industries";
 import type { ProfileDetail } from "../api/profile-detail-contract";
 import { profileBioLimit, profileVisibleLength } from "../api/schema/profile-bio";
-import { profileContactMethods, profileContactMethodsValid, type ProfileContactMethods } from "../api/compute/profile-contact-methods";
+import { invalidProfileContactMethods, profileContactMethodsValid, type ProfileContactMethods } from "../api/compute/profile-contact-methods";
 import { PROFILE_ONBOARDING_GOALS } from "../api/compute/profile-onboarding-goal";
 import { isSeniorityLevelValue, type SeniorityLevelValue } from "../api/compute/seniority-group";
 import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../api/compute/profile-tag-options";
@@ -252,12 +252,10 @@ export function basicDraftValid(draft: BasicDraft, today: string): boolean {
   return Boolean(draft.name.trim()) && basicIndustryValid(draft) && (!draft.birthDate || isValidProfileBirthDate(draft.birthDate, today));
 }
 
-/** UR-C：联系方式里第一处格式不对的栏（メール → 電話）；没有就是 null。空栏不算。 */
+/** UR-C：联系方式里第一处格式不对的栏（メール → 電話）；没有就是 null。空栏不算（同 Web invalidProfileContactMethods）。 */
 export function contactFormatProblem(handles: ProfileContactMethods): "email" | "phone" | null {
-  const values = profileContactMethods(handles);
-  if (handles.email?.trim() && !values.email) return "email";
-  if (handles.phone?.trim() && !values.phone) return "phone";
-  return null;
+  const invalid = invalidProfileContactMethods(handles);
+  return invalid.includes("email") ? "email" : invalid.includes("phone") ? "phone" : null;
 }
 
 export type OnboardingMissingField = "name" | "primaryIndustry" | "secondaryIndustry" | "contact" | "birthDate" | "goals" | "intro";

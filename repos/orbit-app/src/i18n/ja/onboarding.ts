@@ -110,7 +110,7 @@ export const onboarding = {
   "onboarding.v3.birthDate": "生年月日（任意）",
   "onboarding.v3.birthDatePlaceholder": "年 / 月 / 日",
   "onboarding.v3.birthDateClear": "生年月日を消す",
-  "onboarding.v3.birthDateHelp": "相手に公開されません。",
+  "onboarding.v3.birthDateHelp": "だれにも公開されません",
   "onboarding.v3.goalsTitle": "いちばん達成したいことは？",
   "onboarding.v3.goalsLead": "2個まで。選んだ順に優先します。",
   "onboarding.v3.focus": "ひとことで（任意）",
