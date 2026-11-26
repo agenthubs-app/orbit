@@ -55,3 +55,21 @@ test("sample write is rejected before resolving storage", async () => {
   assert.equal(response.status, 403);
   assert.equal(serviceCalls, 0);
 });
+
+test("setup identifies the authenticated migration while the original GET remains compatible", async () => {
+  const actor = { id: "alice", userId: "user-alice", email: "alice@example.test" };
+  const { store } = world(actor.id);
+  const setup = new Request("https://orbit.test/api/profile/onboarding-progress?view=setup");
+  const handlers = createProfileOnboardingProgressRouteHandlers({
+    resolveActor: async () => actor,
+    serviceForActor: id => createStorageProfileOnboardingProgressService({ actorId: id, store, workspaceId: "r28-api" }),
+    repairEligible: async authenticated => authenticated === actor,
+  });
+  assert.equal((await world(null).handlers.GET(setup)).status, 401);
+  assert.deepEqual((await (await handlers.GET(setup)).json()).data, { progress: null, legacyRepair: true });
+  assert.equal((await (await handlers.GET()).json()).data, null);
+  const response = await handlers.POST(post({ action: "finish_repair", expectedRevision: null, mutationId: "repair" }));
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error.message, /LEGACY_REPAIR_NOT_READY/);
+  assert.equal((await handlers.POST(post({ action: "finish_repair", expectedRevision: null, mutationId: "repair", contactMethodsConfirmed: true }))).status, 400);
+});

@@ -10,7 +10,7 @@ import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndu
 import { SENIORITY_LEVELS, SENIORITY_LEVEL_LABELS } from "../../../../../shared/compute/seniority-group";
 import { Icon, MacTile, WhyBody, WhyButton } from "../ui";
 import type { AvatarTone } from "../ui/Basics";
-import { ONBOARDING_COPY, ONBOARDING_SCREEN_LABELS } from "../copy/onboarding";
+import { LEGACY_REPAIR_COPY, ONBOARDING_COPY, ONBOARDING_SCREEN_LABELS } from "../copy/onboarding";
 import {
   OFFER_LIMIT,
   OFFER_OPTIONS,
@@ -129,7 +129,7 @@ function SelectHint({ phone, wide }: { phone: string; wide: string }) {
 const invalid = (id: string, error?: string) => (error ? { "aria-describedby": `${id}-msg`, "aria-invalid": true as const } : {});
 
 export function ProfileStep({
-  basic, cameraRef, cardScanAvailable, disabled, fileRef, language, missing, onCardDrop, onCardFile, onQr, onUserEdit, origins, scan, scanning, t, todayIso,
+  basic, cameraRef, cardScanAvailable, disabled, fileRef, language, missing, onCardDrop, onCardFile, onQr, onUserEdit, origins, repair, scan, scanning, t, todayIso,
 }: {
   basic: BasicDraft;
   cameraRef: RefObject<HTMLInputElement | null>;
@@ -143,6 +143,7 @@ export function ProfileStep({
   onQr: () => void;
   onUserEdit: (patch: Partial<BasicDraft>) => void;
   origins: Partial<Record<BasicField, FieldOrigin>>;
+  repair?: { birthDate: boolean } | null;
   scan: { ai: number; card: number } | null;
   scanning: boolean;
   t: T;
@@ -171,8 +172,11 @@ export function ProfileStep({
   const anotherImage = t({ ja: "別の画像にする", zh: "换一张图片", en: "Use another image" });
   return (
     <div data-screen-label={ONBOARDING_SCREEN_LABELS.basics}>
-      <h2 className={`${styles.title} ${styles.basicsTitle}`}>{t({ ja: "まずは、あなたのことを", zh: "先从你开始", en: "Let's start with you" })}</h2>
-      {cardScanAvailable ? <>
+      {repair ? <>
+        <h1 className={styles.title}>{t(LEGACY_REPAIR_COPY.title)}</h1>
+        <p className={styles.sub}>{t(LEGACY_REPAIR_COPY.hint)}</p>
+      </> : <h2 className={`${styles.title} ${styles.basicsTitle}`}>{t({ ja: "まずは、あなたのことを", zh: "先从你开始", en: "Let's start with you" })}</h2>}
+      {!repair && cardScanAvailable ? <>
         {scan && !scanning ? <div className={`${styles.scan} ${styles.scanDone}`} data-onboarding-scanned="" {...drag}>
           <span className={styles.tile} aria-hidden>📇</span>
           <div className={styles.grow}>
@@ -202,20 +206,23 @@ export function ProfileStep({
         <input accept="image/*,.heic,.heif" className={styles.srOnly} onChange={onCardFile} ref={fileRef} tabIndex={-1} type="file" aria-hidden />
         <input accept="image/*" capture="environment" className={styles.srOnly} onChange={onCardFile} ref={cameraRef} tabIndex={-1} type="file" aria-hidden />
       </> : null}
-      <div className={styles.grid2}>
+      <div className={repair ? `${styles.grid2} ${styles.repairFields}` : styles.grid2}>
         <Field className={styles.fName} error={errors.name} id="onb-name" label={{ ja: "氏名", zh: "姓名", en: "Name" }} origin={origins.name} t={t}>
           <input className={styles.input} disabled={disabled} id="onb-name" maxLength={60} onChange={text("name")} value={basic.name} {...invalid("onb-name", errors.name)}
             placeholder={errors.name ? "" : t({ ja: "例）佐藤 健一", zh: "例如：张伟", en: "e.g. Kenichi Sato" })} />
         </Field>
+        {repair ? null : <>
         <Field className={styles.fCompany} id="onb-company" label={origins.company ? { ja: "会社", zh: "公司", en: "Company" } : { ja: "会社（任意）", zh: "公司（选填）", en: "Company (optional)" }} origin={origins.company} t={t}>
           <input className={styles.input} disabled={disabled} id="onb-company" maxLength={80} onChange={text("company")} placeholder={t({ ja: "例）株式会社ミナトリンク", zh: "例如：港联科技", en: "e.g. Minatolink Inc." })} value={basic.company} />
         </Field>
         <Field className={styles.fTitle} id="onb-title" label={origins.title ? { ja: "役職", zh: "职位", en: "Title" } : { ja: "役職（任意）", zh: "职位（选填）", en: "Title (optional)" }} origin={origins.title} t={t}>
           <input className={styles.input} disabled={disabled} id="onb-title" maxLength={80} onChange={text("title")} placeholder={t({ ja: "例）代表取締役", zh: "例如：总经理", en: "e.g. CEO" })} value={basic.title} />
         </Field>
-        <Field className={styles.fBirth} error={errors.birthDate} help={t({ ja: "相手に公開されません。", zh: "不会公开给对方。", en: "Not shown to others." })} id="onb-birth" label={{ ja: "生年月日（任意）", zh: "生日（选填）", en: "Birthday (optional)" }} t={t}>
+        </>}
+        {!repair || repair.birthDate ? <Field className={styles.fBirth} error={errors.birthDate} help={t({ ja: "相手に公開されません。", zh: "不会公开给对方。", en: "Not shown to others." })} id="onb-birth" label={{ ja: "生年月日（任意）", zh: "生日（选填）", en: "Birthday (optional)" }} t={t}>
           <span className={styles.wrap}><input className={`${styles.input} ${styles.date} ${basic.birthDate ? "" : styles.empty}`} disabled={disabled} id="onb-birth" max={todayIso} onChange={text("birthDate")} type="date" value={basic.birthDate} {...invalid("onb-birth", errors.birthDate)} />{basic.birthDate ? null : <span className={styles.hint} aria-hidden>{t({ ja: "年 / 月 / 日", zh: "年 / 月 / 日", en: "YYYY / MM / DD" })}</span>}<Icon name="calendar" size={16} /></span>
-        </Field>
+          {repair && basic.birthDate ? <button className={`btn ${styles.ghost}`} type="button" disabled={disabled} onClick={() => onUserEdit({ birthDate: "" })}>{t(LEGACY_REPAIR_COPY.clearBirth)}</button> : null}
+        </Field> : null}
         <Field className={`${styles.fIndustry} ${styles.half}`} error={errors.industry} id="onb-industry" label={{ ja: "業界", zh: "行业", en: "Industry" }} origin={origins.primaryIndustryId} t={t}>
           <span className={styles.wrap}><select className={`${styles.input} ${basic.primaryIndustryId ? "" : styles.empty}`} disabled={disabled} id="onb-industry" value={basic.primaryIndustryId} {...invalid("onb-industry", errors.industry)}
             onChange={event => onUserEdit({ primaryIndustryId: event.target.value as IndustryIdCode | "", secondaryIndustryId: "" })}>
@@ -230,6 +237,7 @@ export function ProfileStep({
             {(basic.primaryIndustryId ? listSecondaryIndustries(basic.primaryIndustryId) : []).map(item => <option key={item.id} value={item.id}>{secondaryIndustryLabel(item.id, language)}</option>)}
           </select>{basic.secondaryIndustryId ? null : <SelectHint wide={detailHint} phone={basic.primaryIndustryId ? t({ ja: "選択", zh: "请选择", en: "Select" }) : "—"} />}<Icon name="down" size={16} /></span>
         </Field>
+        {repair ? null : <>
         <Field className={styles.fSeniority} id="onb-seniority" label={origins.seniorityLevel ? { ja: "役職層", zh: "职级", en: "Level" } : { ja: "役職層（任意）", zh: "职级（选填）", en: "Level (optional)" }} origin={origins.seniorityLevel} t={t}>
           <span className={styles.wrap}><select className={`${styles.input} ${basic.seniorityLevel ? "" : styles.empty}`} disabled={disabled} id="onb-seniority" value={basic.seniorityLevel}
             onChange={event => onUserEdit({ seniorityLevel: event.target.value as SeniorityLevelCode | "" })}>
@@ -240,8 +248,9 @@ export function ProfileStep({
         <Field className={styles.fPlace} id="onb-place" label={origins.homeMarket ? { ja: "所在地", zh: "所在地", en: "Location" } : { ja: "所在地（任意）", zh: "所在地（选填）", en: "Location (optional)" }} origin={origins.homeMarket} t={t}>
           <input className={styles.input} disabled={disabled} id="onb-place" maxLength={80} onChange={text("homeMarket")} placeholder={t({ ja: "例）東京", zh: "例如：东京", en: "e.g. Tokyo" })} value={basic.homeMarket} />
         </Field>
+        </>}
       </div>
-      <fieldset className={styles.contactMethods} aria-labelledby="onb-contact-title" aria-describedby="onb-contact-hint">
+      {repair ? null : <fieldset className={styles.contactMethods} aria-labelledby="onb-contact-title" aria-describedby="onb-contact-hint">
         <h2 className={styles.contactTitle} id="onb-contact-title">{t({
           ja: "ここでつながった相手は、どうやってあなたに連絡できますか？",
           zh: "你在此添加的朋友如何联系到你？",
@@ -274,7 +283,7 @@ export function ProfileStep({
           zh: "请至少填写一种联系方式，并检查邮箱或电话号码的格式。",
           en: "Enter at least one contact method and check any email address or phone number.",
         })}</div> : null}
-      </fieldset>
+      </fieldset>}
     </div>
   );
 }

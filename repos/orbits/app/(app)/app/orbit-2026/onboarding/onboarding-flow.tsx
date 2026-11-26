@@ -26,6 +26,7 @@ import { Icon, Modal, Orbit2026Scope } from "../ui";
 import {
   fetchAutofillInference,
   fetchOnboardingProgress,
+  fetchOnboardingSetup,
   fetchProfile,
   fetchSeekSuggestions,
   generateIntroDraft,
@@ -72,7 +73,7 @@ import {
   type IntroTone,
   type T,
 } from "./onboarding-steps";
-import { ONBOARDING_COPY } from "../copy/onboarding";
+import { LEGACY_REPAIR_COPY, ONBOARDING_COPY } from "../copy/onboarding";
 import { PROFILE_CONTACT_METHODS, profileContactMethods, profileContactMethodsValid } from "../../../../../shared/compute/profile-contact-methods";
 import styles from "./OnboardingFlow.module.css";
 
@@ -122,6 +123,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const t: T = (copy: Copy) => siteText(copy as { ja: string; zh: string; en: string });
   // Which step it is comes with the first read: until then the page draws its skeleton, never a step it may have to leave.
   const [view, setView] = useState<OnboardingView>("basics");
+  const [repair, setRepair] = useState<{ birthDate: boolean } | null>(null);
+  const persistedBasicRef = useRef<BasicDraft>(EMPTY_BASIC);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | null>(null);
@@ -180,7 +183,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     let active = true;
     void (async () => {
       try {
-        const [payload, flow] = await Promise.all([fetchProfile(), fetchOnboardingProgress()]);
+        const [payload, { progress: flow, legacyRepair }] = await Promise.all([fetchProfile(), fetchOnboardingSetup()]);
         if (!active) return;
         progressRef.current = flow;
         rememberOnboardingFlow(flow);
@@ -189,10 +192,13 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         const profile = payload.profile;
         handlesRef.current = { ...(profile?.handles ?? {}) };
         const complete = payload.onboarding?.status === "complete";
-        const draft = readOnboardingDraft(actorKey);
+        const savedBasic = basicFromPayload(payload);
+        persistedBasicRef.current = savedBasic;
+        setRepair(legacyRepair ? { birthDate: Boolean(savedBasic.birthDate && !isValidProfileBirthDate(savedBasic.birthDate, todayIso)) } : null);
+        const draft = legacyRepair ? null : readOnboardingDraft(actorKey);
         const fields = draft?.fields;
         const draftBasic = done < 1 || !complete ? basicFromDraft(fields?.basic) : null;
-        setBasic(draftBasic ?? basicFromPayload(payload));
+        setBasic(draftBasic ?? savedBasic);
         setExpectedUpdatedAt(profile?.updatedAt ?? null);
         setOffer(done < 3 && fields?.offer ? fields.offer : [...(profile?.offering ?? [])]);
         setSeek(done < 3 && fields?.seek ? fields.seek : [...(profile?.seeking ?? [])]);
@@ -219,6 +225,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         // 必填项缺了（包括走完后又被清空的老账号）：回到第一步补，不跳去会把人送回来的页面。
         if (!complete) setView("basics");
         else if (flow?.finishedAt) { window.location.assign(next); return; }
+        else if (legacyRepair) setView("basics");
         else setView(flow ? onboardingStepForProgress(done) : draft?.view ?? "basics");
         setLoaded(true);
       } catch {
@@ -234,7 +241,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   }, []);
 
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || repair) return;
     const fields = { basic, offer, seek, topics, bio };
     const written = writeOnboardingDraft(actorKey, {
       view, goalText, goalChoices, horizon: "", introRegenerations, fields,
@@ -243,7 +250,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     const input = JSON.stringify([goalText, goalChoices, fields]);
     if (draftBaselineRef.current === null) draftBaselineRef.current = input;
     else if (written && input !== draftBaselineRef.current) setDraftSaved(true);
-  }, [actorKey, goalText, goalChoices, introRegenerations, loaded, view, basic, offer, seek, topics, bio, scan, origins, offerFromAi, topicsFromAi]);
+  }, [actorKey, goalText, goalChoices, introRegenerations, loaded, view, basic, offer, seek, topics, bio, scan, origins, offerFromAi, topicsFromAi, repair]);
 
   function go(nextView: OnboardingView) {
     setError("");
@@ -258,10 +265,10 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const birthValid = !basic.birthDate || isValidProfileBirthDate(basic.birthDate, todayIso);
   const bioCount = bioCounter(bio);
   const missing: OnboardingMissing[] = view === "basics"
-    ? missingBasics({ birthValid, industryValid, name: basic.name, primaryIndustryId: basic.primaryIndustryId, contacts: basic })
+    ? missingBasics({ birthValid, industryValid, name: basic.name, primaryIndustryId: basic.primaryIndustryId, contacts: basic, legacyRepair: Boolean(repair) })
     : view === "goals" ? (goalChoices.length ? [] : ["goal"])
       : missingIntro({ bio, bioOver: bioCount.over, generating: introStatus === "generating", headlineOver: visibleCharacterCount(headline.trim()) > HEADLINE_LIMIT });
-  const shown = attempted === view ? missing : [];
+  const shown = repair || attempted === view ? missing : [];
 
   function focusMissing(first: OnboardingMissing) {
     if (first === "introEmpty") setEditingIntro(true);
@@ -317,15 +324,28 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     setSaving(true);
     setError("");
     try {
-      await ensureProgress(); // Must persist the flow before the first profile PUT.
+      if (!repair) await ensureProgress(); // The regular flow must exist before its first profile PUT.
       const fingerprint = JSON.stringify([step, fields]);
-      if (savedFieldsRef.current !== fingerprint) {
+      if (Object.keys(fields).length && savedFieldsRef.current !== fingerprint) {
         const payload = await saveProfileFields(fields, expectedUpdatedAt);
         setExpectedUpdatedAt(payload.profile?.updatedAt ?? null);
         handlesRef.current = { ...(payload.profile?.handles ?? {}) };
         savedFieldsRef.current = fingerprint;
       }
-      for (const screen of ONBOARDING_STEP_SCREENS[step]) await confirmScreen(screen);
+      if (repair) {
+        finishMutationRef.current ??= crypto.randomUUID();
+        const previous = progressRef.current;
+        try {
+          progressRef.current = await updateOnboardingProgress({ action: "finish_repair", expectedRevision: previous?.revision ?? null, mutationId: finishMutationRef.current });
+        } catch (error) {
+          const latest = await fetchOnboardingProgress().catch(() => null);
+          if (latest) progressRef.current = latest;
+          if (!latest?.finishedAt || latest.revision === previous?.revision) throw error;
+        }
+        rememberOnboardingFlow(progressRef.current);
+      } else {
+        for (const screen of ONBOARDING_STEP_SCREENS[step]) await confirmScreen(screen);
+      }
       savedFieldsRef.current = null;
       return true;
     } catch (caught) {
@@ -337,6 +357,18 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   }
 
   function basicsFields(): ProfileFields {
+    if (repair) {
+      const saved = persistedBasicRef.current;
+      const industryChanged = basic.primaryIndustryId !== saved.primaryIndustryId || basic.secondaryIndustryId !== saved.secondaryIndustryId;
+      return {
+        ...(name !== saved.name ? { displayName: name } : {}),
+        ...(industryChanged ? {
+          primaryIndustryId: basic.primaryIndustryId as IndustryIdCode,
+          secondaryIndustryId: basic.secondaryIndustryId as SecondaryIndustryIdCode,
+        } : {}),
+        ...(repair.birthDate && basic.birthDate !== saved.birthDate ? { birthDate: basic.birthDate || null } : {}),
+      };
+    }
     const handles: ContactHandlesContract = { ...cardHandlesRef.current, ...Object.fromEntries(Object.entries(handlesRef.current).filter(([, value]) => value)) };
     for (const method of PROFILE_CONTACT_METHODS) delete handles[method];
     Object.assign(handles, profileContactMethods(basic));
@@ -384,7 +416,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     setAttempted(null);
     if (view === "basics") {
       // 没扫名片（或扫完又改了公司、职位）：用这一步填的内容在后台补推断，不等它。
-      void infer(basic);
+      if (!repair) void infer(basic);
       if (!await save("basics", basicsFields())) return;
       // 走完过的老账号只是回来补必填项。
       if (progressRef.current?.finishedAt) { clearOnboardingDraft(actorKey); window.location.assign(next); return; }
@@ -407,7 +439,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     if (saving) return;
     setSaving(true);
     try {
-      if (loaded) {
+      if (loaded && !repair) {
         if (view === "basics" && name) {
           const { birthDate, handles, primaryIndustryId, secondaryIndustryId, ...rest } = basicsFields();
           await saveProfileFields({ ...rest, ...(profileContactMethodsValid(basic) ? { handles } : {}), ...(birthValid ? { birthDate } : {}), ...(industryValid ? { primaryIndustryId, secondaryIndustryId } : {}) }, expectedUpdatedAt);
@@ -563,7 +595,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const logoutButton = <button className={`btn ${styles.logout}`} data-onboarding-logout="" disabled={saving} onClick={() => void logout()} type="button">{t({ ja: "ログアウト", zh: "退出登录", en: "Log out" })}</button>;
   const back = t({ zh: "返回", en: "Back", ja: "戻る" });
   const eta = t({ ja: "約1分", zh: "约 1 分钟", en: "About 1 min" });
-  const nextLabel = saving ? t(ONBOARDING_COPY.flow024) : view === "intro" ? t({ ja: "この内容ではじめる", zh: "就用这份开始", en: "Start with this" }) : t({ zh: "下一步", en: "Next", ja: "次へ" });
+  const nextLabel = saving ? t(ONBOARDING_COPY.flow024) : repair ? t(LEGACY_REPAIR_COPY.save) : view === "intro" ? t({ ja: "この内容ではじめる", zh: "就用这份开始", en: "Start with this" }) : t({ zh: "下一步", en: "Next", ja: "次へ" });
   const stepLabel = t(ONBOARDING_STEP_LABELS[stepIndex]!);
 
   if (!loaded) {
@@ -597,7 +629,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     <Orbit2026Scope language={language} as="main" className={styles.page}>
       <header className={styles.head}>
         <span className={styles.brand}><span className={styles.logo} aria-hidden>O</span><b>Orbit</b></span>
-        <div className={styles.steps}><OnboardingStepper current={stepIndex + 1} confirmed={stepIndex} /><span className={styles.eta}>{eta}</span></div>
+        {repair ? null : <div className={styles.steps}><OnboardingStepper current={stepIndex + 1} confirmed={stepIndex} /><span className={styles.eta}>{eta}</span></div>}
         {logoutButton}
       </header>
 
@@ -608,15 +640,17 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
             <b>Orbit</b>
             {logoutButton}
           </div>
+          {repair ? null : <>
           <div className={styles.bar} aria-hidden>{ONBOARDING_STEPS.map((step, index) => <i className={index < stepIndex ? styles.barDone : index === stepIndex ? styles.barNow : ""} key={step} />)}</div>
           <div className={styles.barLabel}><span>{t({ ja: `ステップ ${stepIndex + 1} / 3 · ${stepLabel}`, zh: `第 ${stepIndex + 1} / 3 步 · ${stepLabel}`, en: `Step ${stepIndex + 1} / 3 · ${stepLabel}` })}</span><span>{eta}</span></div>
+          </>}
         </div>
-        <OnceNote t={t} withScan={view === "basics" && cardScanAvailable} />
-        <div className={styles.grid}>
+        {repair ? null : <OnceNote t={t} withScan={view === "basics" && cardScanAvailable} />}
+        <div className={repair ? styles.repairGrid : styles.grid}>
           <section className={styles.card}>
             {view === "basics" ? <ProfileStep basic={basic} cameraRef={cameraRef} cardScanAvailable={cardScanAvailable} disabled={saving} fileRef={fileRef} language={language} missing={shown}
               onCardDrop={(file) => void scanCard(file)} onCardFile={(event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; event.target.value = ""; void scanCard(file); }} onQr={() => setQrOpen(true)}
-              onUserEdit={editBasic} origins={origins} scan={scan} scanning={scanning} t={t} todayIso={todayIso} /> : null}
+              onUserEdit={editBasic} origins={origins} repair={repair} scan={scan} scanning={scanning} t={t} todayIso={todayIso} /> : null}
             {view === "goals" ? <>
               <GoalsStep error={shown.includes("goal")} goals={goalChoices} setGoals={setGoalChoices} setGoalText={setGoalText} t={t} text={goalText} />
               <div className={styles.inline}><StrengthGroups {...groups} /></div>
@@ -630,20 +664,20 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
 
             <div className={styles.foot}>
               {stepIndex > 0 ? <button className={`btn ${styles.back}`} disabled={saving} onClick={onBack} type="button"><Icon name="left" size={16} />{back}</button> : null}
-              {shown.length === 0 && (confirmed > 0 || draftSaved) ? <span className={styles.saved}><Icon name="check" size={16} /> {t({ zh: "已自动保存", en: "Saved automatically", ja: "自動保存済み" })}</span> : null}
+              {!repair && shown.length === 0 && (confirmed > 0 || draftSaved) ? <span className={styles.saved}><Icon name="check" size={16} /> {t({ zh: "已自动保存", en: "Saved automatically", ja: "自動保存済み" })}</span> : null}
               <span className={styles.spacer} />
-              {shown.length ? <span className={styles.miss} role="alert"><Icon name="flag" size={16} />{missingSummary(shown, t, language)}</span> : null}
+              {shown.length && attempted === view ? <span className={styles.miss} role="alert"><Icon name="flag" size={16} />{missingSummary(shown, t, language)}</span> : null}
               <button aria-busy={saving || undefined} className={`btn ${styles.primary}`} data-onboarding-next="" onClick={() => void onNext()} type="button">
                 {nextLabel}{view === "goals" && goalChoices.length ? <span className={styles.goalCount}>{t({ ja: ` · 目標 ${goalChoices.length} / 2`, zh: ` · 目标 ${goalChoices.length} / 2`, en: ` · Goals ${goalChoices.length} / 2` })}</span> : null}<Icon name="right" size={16} />
               </button>
             </div>
           </section>
 
-          <aside className={styles.aside}>
+          {repair ? null : <aside className={styles.aside}>
             {view === "basics" ? <ProfileAside basic={basic} initial={initial} language={language} t={t} /> : null}
             {view === "goals" ? <div className={styles.sideCard}><StrengthGroups {...groups} /></div> : null}
             {view === "intro" ? <IntroAside bio={bio} t={t} /> : null}
-          </aside>
+          </aside>}
         </div>
       </div>
       <Modal open={qrOpen} onClose={() => setQrOpen(false)} title={t({ ja: "スマホで撮る", zh: "用手机拍", en: "Use your phone" })} size={380}>

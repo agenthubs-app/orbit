@@ -88,3 +88,33 @@ test("defer preserves the resume screen and finish latches after screen five", a
   assert.deepEqual(await flow.apply({ action: "initialize", expectedRevision: null, mutationId: "new-flow" }), state);
   await assert.rejects(flow.apply({ action: "confirm", screen: 5, expectedRevision: state.revision, mutationId: "late" }), /FLOW_FINISHED/);
 });
+
+test("repair completion needs a complete migrated profile, accepts an interrupted flow, and preserves contact consent", async () => {
+  const { actor, store } = world();
+  const repair = { action: "finish_repair", expectedRevision: null, mutationId: "repair" } as const;
+  await assert.rejects(actor("new").apply(repair), /LEGACY_REPAIR_NOT_READY/);
+  let complete = false;
+  const alice = createStorageProfileOnboardingProgressService({
+    actorId: "alice", store, workspaceId, canFinishRepair: async () => complete,
+  });
+  await assert.rejects(alice.apply(repair), /LEGACY_REPAIR_NOT_READY/);
+  const initial = await alice.apply({ action: "initialize", expectedRevision: null, mutationId: "init" });
+  complete = true;
+  await assert.rejects(alice.apply(repair), /REVISION_CONFLICT/);
+  const command = { ...repair, expectedRevision: initial.revision };
+  const result = await alice.apply(command);
+  assert.equal(result.currentScreen, null);
+  assert.equal(result.lastConfirmedScreen, 5);
+  assert.ok(result.finishedAt);
+  assert.deepEqual(await alice.apply(command), result);
+  const key = { workspaceId: `${workspaceId}:profile-onboarding-actor:alice`, collectionName: "profileOnboardingFlow", recordId: "current", userId: "alice" };
+  assert.equal((await store.getRecord(key))?.payload.contactMethodsConfirmed, undefined);
+
+  const beth = createStorageProfileOnboardingProgressService({
+    actorId: "beth", store, workspaceId, canFinishRepair: async () => true,
+  });
+  const started = await beth.apply({ action: "initialize", expectedRevision: null, mutationId: "init" });
+  const confirmed = await beth.apply({ action: "confirm", screen: 1, expectedRevision: started.revision, mutationId: "confirm", contactMethodsConfirmed: true });
+  await beth.apply({ ...repair, expectedRevision: confirmed.revision });
+  assert.equal((await store.getRecord({ ...key, workspaceId: `${workspaceId}:profile-onboarding-actor:beth`, userId: "beth" }))?.payload.contactMethodsConfirmed, true);
+});

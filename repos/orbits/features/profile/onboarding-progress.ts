@@ -29,7 +29,7 @@ export interface ProfileOnboardingProgressPayload extends Record<string, unknown
 }
 
 export class ProfileOnboardingProgressError extends Error {
-  constructor(readonly code: "REVISION_CONFLICT" | "MUTATION_CONFLICT" | "SCREEN_ORDER" | "FLOW_FINISHED" | "FLOW_NOT_INITIALIZED" | "STORAGE_UNAVAILABLE" | "CONTACT_METHOD_REQUIRED") {
+  constructor(readonly code: "REVISION_CONFLICT" | "MUTATION_CONFLICT" | "SCREEN_ORDER" | "FLOW_FINISHED" | "FLOW_NOT_INITIALIZED" | "STORAGE_UNAVAILABLE" | "CONTACT_METHOD_REQUIRED" | "LEGACY_REPAIR_NOT_READY") {
     super(code);
   }
 }
@@ -65,6 +65,7 @@ export function createStorageProfileOnboardingProgressService(input: {
   workspaceId: string;
   now?: () => string;
   hasContactMethod?: () => Promise<boolean>;
+  canFinishRepair?: () => Promise<boolean>;
 }) {
   const actorId = input.actorId.trim();
   if (!actorId) throw new Error("Profile onboarding progress requires an actor.");
@@ -89,6 +90,7 @@ export function createStorageProfileOnboardingProgressService(input: {
       if (!input.store.insertRecordIfAbsent || !input.store.updateRecordIfCurrent) {
         throw new ProfileOnboardingProgressError("STORAGE_UNAVAILABLE");
       }
+      const repair = command.action === "finish_repair";
       for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt += 1) {
         const existing = await read();
         const prior = existing?.payload.mutations?.[command.mutationId];
@@ -98,7 +100,11 @@ export function createStorageProfileOnboardingProgressService(input: {
         }
         // Re-entry never starts a second first flow, even with a different mutation id.
         if (command.action === "initialize" && existing) return state(existing);
-        if (!existing && command.action !== "initialize") throw new ProfileOnboardingProgressError("FLOW_NOT_INITIALIZED");
+        if (repair) {
+          if (!await input.canFinishRepair?.()) throw new ProfileOnboardingProgressError("LEGACY_REPAIR_NOT_READY");
+          if (existing?.payload.finishedAt) return state(existing);
+        }
+        if (!existing && command.action !== "initialize" && !repair) throw new ProfileOnboardingProgressError("FLOW_NOT_INITIALIZED");
         if (command.expectedRevision !== (existing?.updatedAt ?? null)) throw new ProfileOnboardingProgressError("REVISION_CONFLICT");
         if (existing?.payload.finishedAt) throw new ProfileOnboardingProgressError("FLOW_FINISHED");
 
@@ -114,11 +120,12 @@ export function createStorageProfileOnboardingProgressService(input: {
           throw new ProfileOnboardingProgressError("CONTACT_METHOD_REQUIRED");
         }
         const updatedAt = nextTimestamp(now(), existing?.updatedAt);
+        const finishing = command.action === "finish" || repair;
         const payload: ProfileOnboardingProgressPayload = {
           version: 1,
-          lastConfirmedScreen: command.action === "confirm" ? command.screen : previous?.lastConfirmedScreen ?? 0,
-          finishedAt: command.action === "finish" ? updatedAt : previous?.finishedAt ?? null,
-          deferred: command.action === "defer" ? true : command.action === "finish" ? false : previous?.deferred ?? false,
+          lastConfirmedScreen: repair ? 5 : command.action === "confirm" ? command.screen : previous?.lastConfirmedScreen ?? 0,
+          finishedAt: finishing ? updatedAt : previous?.finishedAt ?? null,
+          deferred: command.action === "defer" ? true : finishing ? false : previous?.deferred ?? false,
           ...(confirmsContactMethods || previous?.contactMethodsConfirmed === true ? { contactMethodsConfirmed: true } : {}),
           mutations: { ...previous?.mutations, [command.mutationId]: fingerprint(command) },
         };

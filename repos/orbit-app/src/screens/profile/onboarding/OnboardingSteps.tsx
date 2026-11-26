@@ -47,10 +47,11 @@ export interface ProfileStepProps {
   onPick: (which: "primary" | "secondary" | "seniority") => void;
   onScan: (source: "camera" | "library") => void;
   onText: (key: TextKey, value: string) => void;
+  repair?: { birthDate: boolean } | null;
   scan: ScanState;
 }
 
-export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inputs, marks, onBirth, onClearBirth, onFieldLayout, onPick, onScan, onText, scan }: ProfileStepProps) {
+export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inputs, marks, onBirth, onClearBirth, onFieldLayout, onPick, onScan, onText, repair, scan }: ProfileStepProps) {
   const { styles, colors } = useOnboardingStyles();
   const { t, language } = useOrbitLocale();
   const { fontScale, width } = useWindowDimensions();
@@ -66,7 +67,10 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
   const optional = (key: "company" | "role", filled: boolean) => t(filled ? `onboarding.v3.${key}` : key === "company" ? "onboarding.v3.companyOptional" : "onboarding.v3.roleOptional");
   return (
     <>
-      {done ? (
+      {repair ? <>
+        <UiText accessibilityRole="header" style={styles.h1}>{t("onboarding.v3.repairTitle")}</UiText>
+        <UiText style={styles.sub}>{t("onboarding.v3.repairHint")}</UiText>
+      </> : done ? (
         <View accessibilityLiveRegion="polite" style={styles.scanDone} testID="onboarding-scan-done">
           <Emo emoji="📇" large tone="surface" />
           <View style={styles.scanDoneText}>
@@ -88,20 +92,26 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
       <View onLayout={event => onFieldLayout("name", event)}>
         {text("name", t("onboarding.v3.name"), errors.has("name") ? "" : t("onboarding.v3.namePlaceholder"), { inputRef: inputs.name, error: errors.has("name") ? t("onboarding.v3.missName") : undefined, autoComplete: "name", textContentType: "name" })}
       </View>
+      {repair ? null : <>
       {text("company", optional("company", done || Boolean(marks.company)), t("onboarding.v3.companyPlaceholder"))}
       {text("title", optional("role", done || Boolean(marks.title)), t("onboarding.v3.rolePlaceholder"))}
+      </>}
       <View onLayout={event => { onFieldLayout("primaryIndustry", event); onFieldLayout("secondaryIndustry", event); }} style={styles.fieldRow}>
         <SelectField accessibilityLabel={`${t("onboarding.v3.primaryIndustry")}：${primary ?? t("onboarding.v3.select")}`} disabled={disabled} error={errors.has("primaryIndustry") ? t("onboarding.v3.missIndustry") : undefined} icon="down" label={t("onboarding.v3.primaryIndustry")}
           mark={marks.primaryIndustryId} onPress={() => onPick("primary")} placeholder={t("onboarding.v3.select")} pressRef={inputs.primary} style={styles.fieldHalf} value={primary} />
         <SelectField accessibilityLabel={`${t("onboarding.v3.secondaryIndustry")}：${secondary ?? t("onboarding.v3.select")}`} disabled={disabled || !basic.primaryIndustryId} error={errors.has("secondaryIndustry") ? t("onboarding.v3.missDetail") : undefined} icon="down" label={t("onboarding.v3.secondaryIndustry")}
           mark={marks.secondaryIndustryId} onPress={() => onPick("secondary")} placeholder={basic.primaryIndustryId ? t("onboarding.v3.select") : t("onboarding.v3.none")} pressRef={inputs.secondary} style={styles.fieldHalf} value={secondary} />
       </View>
+      {repair ? null : <>
       <SelectField accessibilityLabel={`${t("onboarding.v3.seniority")}：${basic.seniorityLevel ? SENIORITY_LEVEL_LABELS[basic.seniorityLevel][language] : t("onboarding.v3.select")}`} disabled={disabled} icon="down" label={t(marks.seniorityLevel ? "onboarding.v3.seniority" : "onboarding.v3.seniorityOptional")}
         mark={marks.seniorityLevel} onPress={() => onPick("seniority")} placeholder={t("onboarding.v3.select")} value={basic.seniorityLevel ? SENIORITY_LEVEL_LABELS[basic.seniorityLevel][language] : null} />
       {text("homeMarket", t(marks.homeMarket ? "onboarding.v3.homeMarket" : "onboarding.v3.homeMarketOptional"), t("onboarding.v3.homeMarketPlaceholder"))}
-      <SelectField accessibilityLabel={`${t("onboarding.v3.birthDate")}：${birthLabel ?? t("onboarding.v3.birthDatePlaceholder")}`} disabled={disabled} hint={t("onboarding.v3.birthDateHelp")} icon="calendar" label={t("onboarding.v3.birthDate")} onPress={onBirth} placeholder={t("onboarding.v3.birthDatePlaceholder")} value={birthLabel}
-        trailing={birthLabel ? <UiPressable accessibilityLabel={t("onboarding.v3.birthDateClear")} accessibilityRole="button" disabled={disabled} hitSlop={10} onPress={onClearBirth} style={styles.clear}><Icon color={colors.ink3Text} name="x" size={16} /></UiPressable> : null} />
-      <View
+      </>}
+      {!repair || repair.birthDate ? <View onLayout={event => onFieldLayout("birthDate", event)}>
+      <SelectField error={errors.has("birthDate") ? t("onboarding.v3.missBirthDate") : undefined} accessibilityLabel={`${t("onboarding.v3.birthDate")}：${birthLabel ?? t("onboarding.v3.birthDatePlaceholder")}`} disabled={disabled} hint={t("onboarding.v3.birthDateHelp")} icon="calendar" label={t("onboarding.v3.birthDate")} onPress={onBirth} placeholder={t("onboarding.v3.birthDatePlaceholder")} value={birthLabel}
+        trailing={basic.birthDate ? <UiPressable accessibilityLabel={t("onboarding.v3.birthDateClear")} accessibilityRole="button" disabled={disabled} hitSlop={10} onPress={onClearBirth} style={styles.clear}><Icon color={colors.ink3Text} name="x" size={16} /></UiPressable> : null} />
+      </View> : null}
+      {repair ? null : <View
         onLayout={event => {
           setContactWidth(event.nativeEvent.layout.width);
           onFieldLayout("contact", event);
@@ -123,7 +133,7 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
           <View style={useContactColumns ? styles.fieldHalf : undefined}>{text("phone", t("onboarding.v3.phone"), "", { autoComplete: "tel", keyboardType: "phone-pad", textContentType: "telephoneNumber" })}</View>
         </View>
         {errors.has("contact") ? <UiText accessibilityRole="alert" style={styles.errLine}>{t("onboarding.v3.missContact")}</UiText> : null}
-      </View>
+      </View>}
     </>
   );
 }

@@ -6,6 +6,7 @@ import {
   type ProfileOnboardingProgressService,
 } from "../../../../features/profile/onboarding-progress";
 import { resolveProfileOnboardingProgressService } from "../../../../features/profile/onboarding-progress-factory";
+import { isLegacyProfileRepairEligible } from "../../../../features/profile/legacy-onboarding-repair";
 import { recordSignupFunnel } from "../../../../features/signup-funnel/record";
 import { isSampleWrite } from "../../../../features/guide/sample-write";
 import { failure, runtimeBoundaryHeaders, success } from "../../../../shared/api/envelope";
@@ -45,7 +46,7 @@ function parseCommand(body: unknown): ProfileOnboardingProgressCommand {
       ...(input.contactMethodsConfirmed === true ? { contactMethodsConfirmed: true } : {}),
     };
   }
-  if ((input.action === "initialize" || input.action === "defer" || input.action === "finish") && !("screen" in input)) {
+  if ((input.action === "initialize" || input.action === "defer" || input.action === "finish" || input.action === "finish_repair") && !("screen" in input)) {
     return { action: input.action, expectedRevision, mutationId: input.mutationId };
   }
   throw new AppError("VALIDATION_ERROR", "Invalid profile onboarding action or screen.");
@@ -53,11 +54,13 @@ function parseCommand(body: unknown): ProfileOnboardingProgressCommand {
 
 export function createProfileOnboardingProgressRouteHandlers(dependencies: {
   resolveActor?: () => Promise<AuthenticatedApiActor | null>;
-  serviceForActor?: (actorId: string) => ProfileOnboardingProgressService | null;
+  serviceForActor?: (actorId: string, canFinishRepair?: () => Promise<boolean>) => ProfileOnboardingProgressService | null;
+  repairEligible?: (actor: AuthenticatedApiActor) => Promise<boolean>;
 } = {}) {
   const resolveActor = dependencies.resolveActor ?? resolveAuthenticatedApiActor;
   const serviceForActor = dependencies.serviceForActor ?? resolveProfileOnboardingProgressService;
-  async function run(operation: (service: ProfileOnboardingProgressService) => Promise<unknown>, request?: Request, done?: (actor: AuthenticatedApiActor) => void) {
+  const repairEligible = dependencies.repairEligible ?? isLegacyProfileRepairEligible;
+  async function run(operation: (service: ProfileOnboardingProgressService, actor: AuthenticatedApiActor) => Promise<unknown>, request?: Request, done?: (actor: AuthenticatedApiActor) => void) {
     const mode = resolveFeatureMode();
     const headers = runtimeBoundaryHeaders(mode);
     try {
@@ -66,9 +69,14 @@ export function createProfileOnboardingProgressRouteHandlers(dependencies: {
       if (request && isSampleWrite(request, actor.id)) {
         return NextResponse.json(failure(new AppError("FORBIDDEN", "SAMPLE_READ_ONLY"), { reason: "SAMPLE_READ_ONLY" }), { headers, status: 403 });
       }
-      const service = serviceForActor(actor.id);
+      const service = serviceForActor(actor.id, async () => {
+        if (!await repairEligible(actor)) return false;
+        const { createProfileService } = await import("../../../../features/profile/service-factory");
+        const profile = await createProfileService("live").getProfile({ actorId: actor.id });
+        return profile.success && profile.data.profile !== null && profile.data.onboarding?.status === "complete";
+      });
       if (!service) throw new AppError("SERVICE_UNAVAILABLE", "Profile onboarding progress is unavailable.");
-      const data = await operation(service);
+      const data = await operation(service, actor);
       done?.(actor);
       return NextResponse.json(success(data), { headers, status: 200 });
     } catch (error) {
@@ -80,7 +88,11 @@ export function createProfileOnboardingProgressRouteHandlers(dependencies: {
     }
   }
   return {
-    GET: () => run((service) => service.get()),
+    GET: (request?: Request) => run(async (service, actor) => {
+      if (!request || new URL(request.url).searchParams.get("view") !== "setup") return service.get();
+      const [progress, legacyRepair] = await Promise.all([service.get(), repairEligible(actor)]);
+      return { progress, legacyRepair };
+    }),
     POST: async (request: Request) => {
       let command: ProfileOnboardingProgressCommand | null = null;
       let invalid: unknown;

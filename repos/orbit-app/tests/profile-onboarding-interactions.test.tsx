@@ -37,10 +37,18 @@ window.fetch = async (input, init = {}) => {
   state.requests.push({ method, path: url.pathname, body });
   if (state.network) throw new TypeError("Network request failed");
   const d = state.detail;
-  if (url.pathname === "/api/profile/onboarding-progress" && method === "GET") return json(200, { success: true, data: state.flow });
+  if (url.pathname === "/api/profile/onboarding-progress" && method === "GET") {
+    const data = url.searchParams.get("view") === "setup" && state.legacyRepair !== undefined
+      ? { progress: state.flow, legacyRepair: state.legacyRepair } : state.flow;
+    return json(200, { success: true, data });
+  }
   if (url.pathname === "/api/profile/onboarding-progress" && method === "POST") {
     if (body.action === "initialize") {
       state.flow ||= { version: 1, currentScreen: 1, lastConfirmedScreen: 0, finishedAt: null, deferred: false, revision: "flow:1" };
+      return json(200, { success: true, data: state.flow });
+    }
+    if (body.action === "finish_repair" && state.legacyRepair && !body.contactMethodsConfirmed && (state.flow?.revision ?? null) === body.expectedRevision && onboarding(d.profile).status === "complete") {
+      state.flow = { version: 1, lastConfirmedScreen: 5, currentScreen: null, finishedAt: "2026-10-20T00:00:00.000Z", deferred: false, revision: "flow:repair-" + ++tick };
       return json(200, { success: true, data: state.flow });
     }
     if (body.action === "confirm" && state.flowConfirm === "fail") return json(503, { success: false, error: { code: "SERVICE_UNAVAILABLE", message: "down" } });
@@ -409,6 +417,38 @@ test("it reopens on the step that was reached, and never past one that is incomp
     await page.getByText(expected, { exact: true }).waitFor();
     assert.deepEqual((await fx(page)).navigation, [], expected);
   }
+});
+
+test("a migrated account repairs its required fields on one page, keeps saved details, and returns to the event", async t => {
+  const handles = { email: "legacy@example.test", wechatId: "existing" };
+  const page = await open(t, {
+    ...withProfile({ ...complete, ...blank, displayName: "", secondaryIndustryId: null, organization: "已有公司", bio: "已有简介", handles }),
+    ...flowAt(3), legacyRepair: true,
+  });
+  await page.getByText("补齐基本资料", { exact: true }).waitFor();
+  await page.getByText(/已保存的资料会保留/).waitFor();
+  assert.equal(await page.getByTestId("onboarding-contact-methods").count(), 0);
+  assert.equal(await page.getByRole("textbox", { name: "公司" }).count(), 0);
+  assert.equal(await page.getByText(/第1\/3步/).count(), 0);
+  await next(page).click();
+  assert.equal((await fx(page)).requests.filter((request: any) => request.method === "PUT").length, 0);
+  await page.getByRole("textbox", { name: "姓名" }).fill("林晓");
+  await page.getByRole("button", { name: /^细分：/u }).click();
+  await page.getByRole("button", { name: "人工智能与数据", exact: true }).click();
+  await page.getByRole("button", { name: "保存并继续" }).click();
+  await page.waitForFunction(() => (window as any).fixture.navigation.length === 1);
+  const { aiCalls, navigation, profile, requests } = await fx(page);
+  assert.deepEqual(navigation, ["replace:/events/e1"]);
+  assert.equal(aiCalls, 0);
+  assert.equal(profile.organization, "已有公司");
+  assert.equal(profile.bio, "已有简介");
+  assert.deepEqual(profile.handles, handles);
+  const writes = requests.filter((request: any) => request.method === "PUT" || request.method === "POST");
+  assert.deepEqual(writes.map((request: any) => request.path), ["/api/profile", "/api/profile/onboarding-progress"]);
+  const { expectedUpdatedAt, mutationId, ...patched } = writes[0].body;
+  assert.deepEqual(patched, { displayName: "林晓", ...IT });
+  assert.equal(writes[1].body.action, "finish_repair");
+  assert.equal(writes[1].body.expectedRevision, "flow:1");
 });
 
 test("set-up accounts go straight to next and write nothing", async t => {

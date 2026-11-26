@@ -29,7 +29,7 @@ import {
   type OnboardingProfileFields,
   type OwnCard,
 } from "../../../api/profile-onboarding";
-import { readProfileOnboardingProgress, updateProfileOnboardingProgress, type AppProfileOnboardingProgress } from "../../../api/profile-onboarding-progress";
+import { readProfileOnboardingProgress, readProfileOnboardingSetup, updateProfileOnboardingProgress, type AppProfileOnboardingProgress } from "../../../api/profile-onboarding-progress";
 import { isTabPageHref, openMainTab, resetStackTo } from "../../../components/shell-navigation";
 import { BottomSheet, Skeleton, UiText } from "../../../components/ui";
 import { presentConfirm } from "../../../components/ui/feedback-requests";
@@ -76,7 +76,7 @@ type Notice = "failed" | "offline" | "conflict" | null;
 const STEP_NAME: Record<OnboardingStep, MessageKey> = { profile: "onboarding.v3.step.profile", goals: "onboarding.v3.step.goals", intro: "onboarding.v3.step.intro" };
 const MISSING_NAME: Record<OnboardingMissingField, MessageKey> = {
   name: "onboarding.v3.name", primaryIndustry: "onboarding.v3.primaryIndustry", secondaryIndustry: "onboarding.v3.secondaryIndustry", goals: "onboarding.v3.missGoalsName", intro: "onboarding.v3.bio",
-  contact: "onboarding.v3.contactName",
+  contact: "onboarding.v3.contactName", birthDate: "onboarding.v3.birthDate",
 };
 const DRAFT_DELAY_MS = 250;
 /** A chosen goal rests this long before candidates are asked for, and at most this many times per visit (paid AI). */
@@ -126,6 +126,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const [view, setView] = useState<View_>("loading");
+  const [repair, setRepair] = useState<{ birthDate: boolean } | null>(null);
   const [detail, setDetail] = useState<ProfileDetail | null>(null);
   const [basic, setBasic] = useState<BasicDraft>(EMPTY_BASIC);
   const [goals, setGoals] = useState<string[]>([]);
@@ -180,7 +181,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   const load = useCallback(async () => {
     setView("loading"); setNotice(null); setAttempted(false);
     const [result, progress, draft] = await Promise.all([
-      readOnboardingProfile(client), readProfileOnboardingProgress(client), scope ? profileOnboardingStorage.readDraft(scope) : null,
+      readOnboardingProfile(client), readProfileOnboardingSetup(client), scope ? profileOnboardingStorage.readDraft(scope) : null,
     ]);
     if (!mounted.current) return;
     if (!result.ok || !progress.ok) {
@@ -201,6 +202,16 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     const confirmed = progress.progress?.lastConfirmedScreen ?? 0;
     const savedGoal = onboardingGoals(profile?.relationshipGoal ?? "");
     const saved = { basic: basicDraftFromProfile(profile), goals: [...savedGoal.goals], bio: profile?.bio ?? "" };
+    if (progress.legacyRepair) {
+      setRepair({ birthDate: Boolean(saved.basic.birthDate && !isValidProfileBirthDate(saved.basic.birthDate, today)) });
+      setDetail(result.detail);
+      setBasic(saved.basic);
+      setMarks({});
+      setScan({ kind: "idle" });
+      setView("profile");
+      return;
+    }
+    setRepair(null);
     // The draft speaks for every step while the profile has not moved on elsewhere; otherwise only for steps not confirmed yet.
     const fresh = draft !== null && draft.updatedAt === (profile?.updatedAt ?? null);
     const from = (step: OnboardingStep) => (draft && (fresh || confirmed < STEP_SCREENS[step][0]!) ? draft : null);
@@ -228,7 +239,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   useEffect(() => { void load(); }, [load]);
 
   // ── Draft on this device ──
-  const draft: OnboardingDraft | null = view === "loading" || view === "loadError" ? null : {
+  const draft: OnboardingDraft | null = repair || view === "loading" || view === "loadError" ? null : {
     step: view, updatedAt: detail?.profile?.updatedAt ?? null, basic, goals, focus, offer, seek, topics, bio, headline, marks,
     scan: scan.kind === "done" ? { card: scan.card, ai: scan.ai } : null,
   };
@@ -291,6 +302,19 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   }
 
   function fieldsFor(step: OnboardingStep): OnboardingProfileFields {
+    if (repair) {
+      const saved = basicDraftFromProfile(detail?.profile ?? null);
+      const name = basic.name.trim();
+      const industryChanged = basic.primaryIndustryId !== saved.primaryIndustryId || basic.secondaryIndustryId !== saved.secondaryIndustryId;
+      return {
+        ...(name !== saved.name ? { displayName: name } : {}),
+        ...(industryChanged ? {
+          primaryIndustryId: basic.primaryIndustryId as IndustryIdCode,
+          secondaryIndustryId: basic.secondaryIndustryId as SecondaryIndustryIdCode,
+        } : {}),
+        ...(repair.birthDate && basic.birthDate !== saved.birthDate ? { birthDate: basic.birthDate || null } : {}),
+      };
+    }
     if (step === "goals") return { relationshipGoal: composeRelationshipGoal({ goals, focus, horizon }, locale.language), offering: offer, seeking: seek, topics };
     if (step === "intro") return { bio: bio.trim(), headline: headline.trim() };
     // PUT replaces handles as a whole. Keep other saved fields and the schema's key order.
@@ -308,15 +332,29 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   }
 
   // ── 「次へ」 ──
-  const missing = view === "loading" || view === "loadError" ? [] : onboardingMissing(view, { basic, goals, bio });
+  async function finishRepair(): Promise<Notice> {
+    finishMutationRef.current ??= `ios:onboarding:repair:${Crypto.randomUUID()}`;
+    const previous = flowRef.current;
+    const result = await updateProfileOnboardingProgress(client, { action: "finish_repair", expectedRevision: previous?.revision ?? null, mutationId: finishMutationRef.current });
+    if (result.ok && result.progress?.finishedAt) { flowRef.current = result.progress; return null; }
+    const latest = await readProfileOnboardingProgress(client);
+    if (latest.ok) {
+      flowRef.current = latest.progress;
+      if (latest.progress?.finishedAt && latest.progress.revision !== previous?.revision) return null;
+    }
+    return result.ok ? "failed" : result.kind;
+  }
+
+  const missing = view === "loading" || view === "loadError" ? [] : onboardingMissing(view, { basic, goals, bio }, repair ? today : undefined);
   const introBlocked = view === "intro" && introStatus === "generating";
-  const shown = attempted ? (introBlocked ? ["intro" as const] : missing) : [];
+  const shown = attempted || repair ? (introBlocked ? ["intro" as const] : missing) : [];
   const errors = new Set<OnboardingMissingField>(shown);
   const bioCount = bioCounter(bio);
   const fieldError = (field: OnboardingMissingField): string => {
     if (field === "name") return t("onboarding.v3.missName");
     if (field === "primaryIndustry") return t("onboarding.v3.missIndustry");
     if (field === "secondaryIndustry") return t("onboarding.v3.missDetail");
+    if (field === "birthDate") return t("onboarding.v3.missBirthDate");
     if (field === "contact") return t("onboarding.v3.missContact");
     if (field === "goals") return t("onboarding.v3.missGoals");
     if (introBlocked) return t("onboarding.v3.missIntroGenerating");
@@ -358,19 +396,28 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
           // only its answer got lost, in which case there is nothing left to save.
           const newer = result.kind === "conflict" ? await readOnboardingProfile(client) : null;
           if (!mounted.current) return;
-          if (newer?.ok) setDetail(newer.detail);
+          if (newer?.ok) {
+            setDetail(newer.detail);
+            if (repair && !holds(newer.detail.profile)) {
+              const latest = basicDraftFromProfile(newer.detail.profile);
+              setBasic(latest);
+              setRepair({ birthDate: Boolean(latest.birthDate && !isValidProfileBirthDate(latest.birthDate, today)) });
+            }
+          }
           if (!newer?.ok || !holds(newer.detail.profile)) { setNotice(result.kind); return; }
         }
       }
-      const confirmFailure = await confirmStep(step);
-      if (!mounted.current) return;
-      if (confirmFailure) { setNotice(confirmFailure); return; }
-      // No card read: guess strengths and topics from what was typed, while the next step opens.
-      if (step === "profile" && !offer.length && !topics.length) {
-        void infer({ displayName: basic.name, organization: basic.company, role: basic.title, industry: basicIndustryPair(basic) });
+      if (!repair) {
+        const confirmFailure = await confirmStep(step);
+        if (!mounted.current) return;
+        if (confirmFailure) { setNotice(confirmFailure); return; }
+        // No card read: guess strengths and topics from what was typed, while the next step opens.
+        if (step === "profile" && !offer.length && !topics.length) {
+          void infer({ displayName: basic.name, organization: basic.company, role: basic.title, industry: basicIndustryPair(basic) });
+        }
+        if (step !== "intro") { go(ONBOARDING_STEPS[stepIndex(step) + 1]!); return; }
       }
-      if (step !== "intro") { go(ONBOARDING_STEPS[stepIndex(step) + 1]!); return; }
-      const finishFailure = await finishFlow();
+      const finishFailure = await (repair ? finishRepair() : finishFlow());
       if (!mounted.current) return;
       if (finishFailure) { setNotice(finishFailure); return; }
       unsaved.current = null;
@@ -578,10 +625,10 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   }
   const index = stepIndex(view);
   const noticeText = signOutError ?? (notice ? t(notice === "conflict" ? "onboarding.v3.conflict" : notice === "offline" ? "onboarding.v3.offline" : "onboarding.v3.saveFailed") : null);
-  const label = saving ? t("onboarding.v3.saving") : view === "intro" ? t("onboarding.v3.start") : t("onboarding.v3.next");
+  const label = saving ? t("onboarding.v3.saving") : repair ? t("onboarding.v3.repairSave") : view === "intro" ? t("onboarding.v3.start") : t("onboarding.v3.next");
   const footer = (
     <>
-      {shown.length ? <MissLine text={summaryOf(shown)} /> : noticeText ? <MissLine text={noticeText} /> : null}
+      {shown.length && attempted ? <MissLine text={summaryOf(shown)} /> : noticeText ? <MissLine text={noticeText} /> : null}
       <KitButton block label={label} onPress={() => void onNext(view)} size="xl" testID="onboarding-next" variant="primary"
         trailing={view === "goals" && goals.length && !saving ? t("onboarding.v3.nextGoals", { count: goals.length, limit: GOAL_LIMIT }) : undefined} />
     </>
@@ -611,11 +658,13 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     <>
       <OnboardingFrame footer={footer} scrollRef={scrollRef}>
         <OnboardingTopBar onBack={index ? () => go(ONBOARDING_STEPS[index - 1]!) : undefined} onLogout={() => void logOut()} />
+        {repair ? null : <>
         <OnboardingProgress eta={t("onboarding.v3.eta")} index={index} label={t("onboarding.v3.step", { step: index + 1, total: ONBOARDING_STEPS.length, name: t(STEP_NAME[view]) })} total={ONBOARDING_STEPS.length} />
         <OnceNotice scan={view === "profile"} />
+        </>}
         {view === "profile" ? (
           <ProfileStep basic={basic} birthLabel={birthLabel} disabled={saving} errors={errors} inputs={inputs} marks={marks} onBirth={() => { Keyboard.dismiss(); setDateOpen(true); }} onClearBirth={() => setBasic(current => ({ ...current, birthDate: "" }))} onFieldLayout={onFieldLayout}
-            onPick={key => { Keyboard.dismiss(); setPicker(key); }} onScan={source => void scanWith(source)} onText={(key, value) => { setBasic(current => ({ ...current, [key]: value })); unmark(key); }} scan={scan} />
+            onPick={key => { Keyboard.dismiss(); setPicker(key); }} onScan={source => void scanWith(source)} repair={repair} onText={(key, value) => { setBasic(current => ({ ...current, [key]: value })); unmark(key); }} scan={scan} />
         ) : view === "goals" ? (
           <GoalsStep disabled={saving} error={errors.has("goals")} focus={focus} goals={goals} marks={marks} offer={offer} onFocus={setFocus} onGoal={(goal, selected) => setGoals(current => (selected ? current.filter(value => value !== selected) : toggleValue(current, goal, GOAL_LIMIT)))}
             onGoalsLayout={event => onFieldLayout("goals", event)} onGroup={(group, values) => { (group === "offer" ? setOffer : group === "seek" ? setSeek : setTopics)(values); if (group !== "seek") unmark(group); }} revision={fillRevision} seek={seek} seekSuggestions={goals.length ? seekSuggestions : []} topics={topics} />

@@ -56,6 +56,8 @@
 .scanDone b { font-size: var(--fs-body); }
 .tile { display: grid; width: 40px; height: 40px; flex: none; place-items: center; border-radius: var(--r-emo); background: var(--surface); font-size: var(--fs-emoji-md); }
 .scanPhone, .scanPhoneDone { display: none; }
+.repairGrid { width: 100%; max-width: 660px; margin-inline: auto; }
+.repairFields > .fName, .repairFields > .fBirth { grid-column: 1 / -1; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
 .contactMethods { container-type: inline-size; min-width: 0; margin: 18px 0 0; padding: 16px; border: 1px solid var(--line); border-radius: var(--r-tile); background: var(--surface-2); }
 .contactTitle { margin: 0 0 10px; font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); }

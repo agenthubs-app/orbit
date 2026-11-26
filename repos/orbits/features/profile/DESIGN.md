@@ -40,6 +40,12 @@ Service factory 提供 profile、document extraction 和 signal review queue ser
 
 页面写入使用 `expectedUpdatedAt` 与 `mutationId`。首次创建版本为 `null`，同一请求的不确定重试复用相同请求体和 ID，正文变化生成新 ID；PUT 回执必须匹配后，再用独立 GET 仅核对本次提交的字段。版本冲突保留本地草稿并要求加载最新版本，加载后把未保存字段合并回草稿再由用户再次保存。可选建议或用户主动触发的资料提取失败，不阻塞手动资料加载。
 
+### 迁移账号补齐资料
+
+历史活动迁移来源由服务端核对当前认证账号的记录。资料未齐或旧引导未完成时，Web 和新版 App 使用一页基础资料表单，预填已保存的姓名和行业，只提交更改的基本资料。服务端读回现行资料完成状态后才允许结束引导，再返回登录时请求的活动或其他站内页面。目标、简介和联系方式继续保留，补资料操作不会记录联系方式共享确认。资料齐全且无需完成未结束引导的迁移账号直接进入原页面。
+
+旧版 App 仍读取原进度响应。新版使用 `GET /api/profile/onboarding-progress?view=setup`，完成时提交 `finish_repair`。两种方式共用现有进度、版本和重试记录。
+
 ### 登录后的 onboarding continuation
 
 认证成功后的注册自动登录、密码登录和 Google callback 统一进入 `/app/profile/continue`。该中转只读取当前 session actor 的权威 profile 与 `onboarding.policyVersion = 1`：资料未完成时回到 `/app/profile?onboarding=1&next=...`，完成时才回到原应用深链。它不调用可选建议、文档抽取或付费 provider；读取或保存失败留在资料页，用户可以重试。

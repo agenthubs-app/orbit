@@ -44,8 +44,14 @@ export interface ProfileOnboardingProgressContract {
   revision: string;
 }
 
+/** Opt-in GET /api/profile/onboarding-progress?view=setup. */
+export interface ProfileOnboardingSetupContract {
+  progress: ProfileOnboardingProgressContract | null;
+  legacyRepair: boolean;
+}
+
 export type ProfileOnboardingProgressCommandContract =
-  | { action: "initialize" | "defer" | "finish"; expectedRevision: string | null; mutationId: string }
+  | { action: "initialize" | "defer" | "finish" | "finish_repair"; expectedRevision: string | null; mutationId: string }
   | { action: "confirm"; screen: 1 | 2 | 3 | 4 | 5; expectedRevision: string | null; mutationId: string; contactMethodsConfirmed?: true };
 
 // New clients send both fields; omitting both preserves the legacy update API.

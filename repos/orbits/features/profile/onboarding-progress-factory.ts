@@ -12,7 +12,7 @@ interface ProgressGlobal {
 }
 const progressGlobal = globalThis as typeof globalThis & ProgressGlobal;
 
-export function resolveProfileOnboardingProgressService(actorId: string) {
+export function resolveProfileOnboardingProgressService(actorId: string, canFinishRepair?: () => Promise<boolean>) {
   const mode = resolveModuleMode();
   if (mode === "live") {
     const configured = createConfiguredPostgresLiveRecordStore<ProfileOnboardingProgressPayload>();
@@ -21,6 +21,7 @@ export function resolveProfileOnboardingProgressService(actorId: string) {
       actorId,
       store: configured.store,
       workspaceId: configured.workspaceId,
+      ...(canFinishRepair ? { canFinishRepair } : {}),
       async hasContactMethod() {
         const { rows } = await configured.client.query<{ handles: unknown }>(
           `select payload -> 'handles' as handles from orbit_records

@@ -3,7 +3,7 @@
  * 名片识别自动填写、按名片推断、AI 起草介绍。与个人中心编辑器同一套接口与核验口径。
  */
 import type { ManualProfileUpdateInput, ProfilePayload } from "../../../../../features/profile/contract";
-import type { ProfileOnboardingProgressCommandContract, ProfileOnboardingProgressContract } from "../../../../../shared/contract/profile";
+import type { ProfileOnboardingProgressCommandContract, ProfileOnboardingProgressContract, ProfileOnboardingSetupContract } from "../../../../../shared/contract/profile";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
 import type { OwnCardScanContract, ProfileAutofillInferenceContract, ProfileAutofillInferenceRequestContract } from "../../../../../shared/contract/profile-autofill";
 import type { SeniorityLevelCode } from "../../../../../shared/contract/profile";
@@ -49,6 +49,17 @@ export async function fetchOnboardingProgress(): Promise<ProfileOnboardingProgre
     throw new OnboardingRequestError(envelope.error?.message ?? "Onboarding progress read failed", envelope.error?.code);
   }
   return envelope.data;
+}
+
+export async function fetchOnboardingSetup(): Promise<ProfileOnboardingSetupContract> {
+  const response = await fetch("/api/profile/onboarding-progress?view=setup", { cache: "no-store" });
+  const envelope = await readJson<ProfileOnboardingSetupContract | ProfileOnboardingProgressContract | null>(response);
+  if (!response.ok || envelope.success !== true || envelope.data === undefined) {
+    throw new OnboardingRequestError(envelope.error?.message ?? "Onboarding setup read failed", envelope.error?.code);
+  }
+  const { data } = envelope;
+  if (data && "progress" in data) return data;
+  return { progress: data && "version" in data ? data : null, legacyRepair: false };
 }
 
 export async function updateOnboardingProgress(command: ProfileOnboardingProgressCommandContract): Promise<ProfileOnboardingProgressContract> {

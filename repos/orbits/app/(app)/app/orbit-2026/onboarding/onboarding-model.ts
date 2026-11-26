@@ -49,13 +49,13 @@ export function migrateOnboardingView(value: unknown): OnboardingView {
 // ── 缺项（「次へ」始终可点；点了才提示）──
 export type OnboardingMissing = "name" | "birthDate" | "industry" | "industryDetail" | "contact" | "goal" | "introGenerating" | "introEmpty" | "introOver" | "headlineOver";
 
-export function missingBasics(input: { name: string; birthValid: boolean; primaryIndustryId: string; industryValid: boolean; contacts: ProfileContactMethods }): OnboardingMissing[] {
+export function missingBasics(input: { name: string; birthValid: boolean; primaryIndustryId: string; industryValid: boolean; contacts: ProfileContactMethods; legacyRepair?: boolean }): OnboardingMissing[] {
   return [
     ...(input.name.trim() ? [] : ["name" as const]),
     ...(input.birthValid ? [] : ["birthDate" as const]),
     // 没选一级时细分还不能选，只算一项。
     ...(!input.primaryIndustryId ? ["industry" as const] : input.industryValid ? [] : ["industryDetail" as const]),
-    ...(profileContactMethodsValid(input.contacts) ? [] : ["contact" as const]),
+    ...(input.legacyRepair || profileContactMethodsValid(input.contacts) ? [] : ["contact" as const]),
   ];
 }
 

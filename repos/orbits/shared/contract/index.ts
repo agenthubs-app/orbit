@@ -84,6 +84,7 @@ export type {
   ProfileCompletenessStatusCode,
   ProfileOnboardingProgressCommandContract,
   ProfileOnboardingProgressContract,
+  ProfileOnboardingSetupContract,
   ProfileEditorStateContract,
   ProfileViewStateCode,
   SeniorityLevelCode

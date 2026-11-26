@@ -979,3 +979,15 @@ export const ONBOARDING_PREVIEW_PEOPLE = [
   { ch: "陈", name: "陈以宁" },
   { ch: "林", name: "林夏" },
 ] as const;
+
+export const LEGACY_REPAIR_COPY = {
+  title: { kind: "pageTitle", ja: "基本プロフィールを補完", zh: "补齐基本资料", en: "Complete your basic profile" },
+  hint: {
+    kind: "sentence",
+    ja: "保存済みの情報は引き継がれます。必須項目を入力して続けてください。",
+    zh: "已保存的资料会保留。补齐标出的必填项即可继续。",
+    en: "Your saved information is kept. Fill in the marked fields to continue.",
+  },
+  save: { kind: "button", ja: "保存して続ける", zh: "保存并继续", en: "Save and continue" },
+  clearBirth: { kind: "button", ja: "生年月日を削除", zh: "清除生日", en: "Clear birthday" },
+} as const;

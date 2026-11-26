@@ -17765,6 +17765,7 @@
         "ProfileEditorStateContract",
         "ProfileOnboardingProgressCommandContract",
         "ProfileOnboardingProgressContract",
+        "ProfileOnboardingSetupContract",
         "ProfilePublicFieldsContract",
         "ProfileViewStateCode",
         "PushDeviceContract",
@@ -25671,6 +25672,21 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        }
+      }
+    },
+    "profile.ts::ProfileOnboardingSetupContract": {
+      "kind": "object",
+      "members": {
+        "progress": {
+          "optional": false,
+          "kind": "text",
+          "type": "ProfileOnboardingProgressContract | null"
+        },
+        "legacyRepair": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },

@@ -160,6 +160,10 @@ function stubProfileApi(t: { mock: { method: (target: object, name: string, impl
   let flow: Record<string, unknown> | null = initialConfirmed ? { version: 1, lastConfirmedScreen: initialConfirmed, currentScreen: initialConfirmed + 1, deferred: false, finishedAt: extra.finishedAt ?? null, revision: "flow:1" } : null;
   t.mock.method(globalThis, "fetch", async (input: unknown, init?: RequestInit) => {
     const url = String(input);
+    if (url === "/api/profile/onboarding-progress?view=setup" && !init?.method) {
+      progressReads += 1;
+      return Response.json({ success: true, data: { progress: flow, legacyRepair: extra.legacyRepair === true } });
+    }
     if (url === "/api/profile/onboarding-progress" && !init?.method) { progressReads += 1; return Response.json({ success: true, data: flow }); }
     if (url === "/api/profile/onboarding-progress" && init?.method === "POST") {
       const command = JSON.parse(String(init.body)) as { action: string; screen?: number };
@@ -167,6 +171,9 @@ function stubProfileApi(t: { mock: { method: (target: object, name: string, impl
       if (command.action === "defer" && deferFailures-- > 0) return Response.json({ success: false, error: { code: "SERVICE_UNAVAILABLE", message: "down" } }, { status: 503 });
       if (command.action === "initialize") flow ??= { version: 1, lastConfirmedScreen: 0, currentScreen: 1, deferred: false, finishedAt: null, revision: "flow:1" };
       if (command.action === "confirm" && flow) flow = { ...flow, lastConfirmedScreen: command.screen, currentScreen: (command.screen ?? 0) + 1, revision: `flow:${++revision + 1}` };
+      if (command.action === "finish_repair") {
+        flow = { version: 1, lastConfirmedScreen: 5, currentScreen: null, finishedAt: "2026-09-28T00:00:02.000Z", deferred: false, revision: `flow:${++revision + 1}` };
+      }
       if (command.action === "finish" && flow) flow = { ...flow, finishedAt: "2026-09-28T00:00:02.000Z", deferred: false, revision: `flow:${++revision + 1}` };
       if (command.action === "defer" && flow) flow = { ...flow, deferred: true, revision: `flow:${++revision + 1}` };
       return Response.json({ success: true, data: flow });
@@ -323,6 +330,31 @@ const click = async (root: ReactTestRenderer, target: ReactTestInstance) => { aw
 const alerts = (root: ReactTestRenderer) => root.root.findAll(node => typeof node.type === "string" && node.props.role === "alert").map(node => textOf(node).trim());
 const field = (root: ReactTestRenderer, id: string) => root.root.findAll(node => typeof node.type === "string" && node.props.id === id)[0];
 const output = (root: ReactTestRenderer) => JSON.stringify(root.toJSON());
+test("a migrated account completes just its missing basics and goes back to the event", async (t) => {
+  const assignments = stubWindow(t, new Map());
+  const api = stubProfileApi(t, "已有目标", {
+    legacyRepair: true, assumeComplete: false, displayName: "", primaryIndustryId: "technology_internet",
+    bio: "已有简介", organization: "已有公司", handles: { email: "legacy@example.test", wechatId: "existing" },
+  }, 3);
+  const target = "/app/events/event-a?from=mine";
+  const root = await mountFlow("u-legacy-repair", target);
+  assert.match(output(root), /补齐基本资料/);
+  assert.match(textOf(nextButton(root)), /保存并继续/);
+  assert.equal(field(root, "onb-industry")?.props.value, "technology_internet");
+  assert.equal(field(root, "onb-email"), undefined);
+  assert.equal(field(root, "onb-company"), undefined);
+  assert.doesNotMatch(output(root), /目标与强项|扫码|把名片图片拖到这里/);
+  await act(async () => { field(root, "onb-name")!.props.onChange({ target: { value: "林晓" } }); });
+  await act(async () => { field(root, "onb-industry-detail")!.props.onChange({ target: { value: "technology_internet.ai_data" } }); });
+  await click(root, nextButton(root));
+  const writes = api.puts.map(({ expectedUpdatedAt, mutationId, ...fields }) => fields);
+  assert.deepEqual(writes, [{ displayName: "林晓", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" }]);
+  assert.deepEqual(api.commands.map(command => [command.action, command.expectedRevision]), [["finish_repair", "flow:1"]]);
+  assert.deepEqual(api.inferences, []);
+  assert.deepEqual(assignments, [target]);
+  act(() => root.unmount());
+});
+
 const CARD = {
   draft: { displayName: "佐藤 健一", email: "sato@minatolink.example", organization: "株式会社ミナトリンク", phone: "03-5555-0142", role: "代表取締役 CEO" },
   ocr: { structuredExtraction: { primaryIndustryId: "technology_internet", regionCity: "Tokyo", regionCountryCode: "JP", secondaryIndustryId: "technology_internet.enterprise_software", seniorityLevel: "c_level" } },

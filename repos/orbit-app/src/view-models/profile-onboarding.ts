@@ -252,17 +252,19 @@ export function basicDraftValid(draft: BasicDraft, today: string): boolean {
   return Boolean(draft.name.trim()) && basicIndustryValid(draft) && (!draft.birthDate || isValidProfileBirthDate(draft.birthDate, today));
 }
 
-export type OnboardingMissingField = "name" | "primaryIndustry" | "secondaryIndustry" | "contact" | "goals" | "intro";
+export type OnboardingMissingField = "name" | "primaryIndustry" | "secondaryIndustry" | "contact" | "birthDate" | "goals" | "intro";
 
 /** What still stops 「次へ」 on a step, in screen order. 詳細 is asked for only once 業界 is chosen. */
-export function onboardingMissing(step: OnboardingStep, draft: { basic: BasicDraft; goals: readonly string[]; bio: string }): OnboardingMissingField[] {
+export function onboardingMissing(step: OnboardingStep, draft: { basic: BasicDraft; goals: readonly string[]; bio: string }, repairToday?: string): OnboardingMissingField[] {
   if (step === "goals") return draft.goals.length ? [] : ["goals"];
   if (step === "intro") return draft.bio.trim() && !bioCounter(draft.bio).over ? [] : ["intro"];
   const missing: OnboardingMissingField[] = [];
   if (!draft.basic.name.trim()) missing.push("name");
   if (!draft.basic.primaryIndustryId) missing.push("primaryIndustry");
   else if (!basicIndustryValid(draft.basic)) missing.push("secondaryIndustry");
-  if (!profileContactMethodsValid(draft.basic)) missing.push("contact");
+  if (repairToday) {
+    if (draft.basic.birthDate && !isValidProfileBirthDate(draft.basic.birthDate, repairToday)) missing.push("birthDate");
+  } else if (!profileContactMethodsValid(draft.basic)) missing.push("contact");
   return missing;
 }
 

@@ -26,6 +26,20 @@ export async function readProfileOnboardingProgress(client: OrbitApiClient): Pro
   return parsed.success ? { ok: true, progress: parsed.data } : { ok: false, kind: "failed" };
 }
 
+export async function readProfileOnboardingSetup(client: OrbitApiClient): Promise<
+  { ok: true; progress: AppProfileOnboardingProgress | null; legacyRepair: boolean } | Extract<ProgressResult, { ok: false }>
+> {
+  const response = await client.get<unknown>(`${PROFILE_ONBOARDING_PROGRESS_PATH}?view=setup`);
+  if (!response.success || response.status < 200 || response.status >= 300) {
+    return { ok: false, kind: !response.success && response.error.code === "ORBIT_APP_NETWORK_ERROR" ? "offline" : "failed" };
+  }
+  const setup = z.object({ progress: progressSchema.nullable(), legacyRepair: z.boolean() }).safeParse(response.data);
+  if (setup.success) return { ok: true, ...setup.data };
+  // A server without the setup view still returns the original progress envelope.
+  const progress = progressSchema.nullable().safeParse(response.data);
+  return progress.success ? { ok: true, progress: progress.data, legacyRepair: false } : { ok: false, kind: "failed" };
+}
+
 export async function updateProfileOnboardingProgress(
   client: OrbitApiClient,
   command: ProfileOnboardingProgressCommandContract,
