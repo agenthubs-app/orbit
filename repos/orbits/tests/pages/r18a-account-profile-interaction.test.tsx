@@ -224,3 +224,66 @@ test("a late old-profile read cannot restore data after authorization fails", as
   assert.ok(root.root.findAllByProps({ role: "alert" }).length > 0);
   assert.ok(!root.root.findAllByType("span").some(span => span.children.join("") === profile.profile?.handles.email));
 });
+
+// UR-P9–P15（2026-11-27）：编辑资料面板里的「連絡先」——改过才提交 handles + contactMethodsConfirmed，其他 handles 保留；
+// 格式不对时点保存不提交，只标那一栏。
+async function contactHarness(t: { after: (fn: () => void) => void }) {
+  const store = createAccountDesignFixtureStore();
+  const initial = store.read("actor", "100").data;
+  if (!initial.profile) throw new Error("missing test profile");
+  const originalFetch = globalThis.fetch;
+  const writes: Record<string, unknown>[] = [];
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (url.startsWith("/api/events/mine")) return Response.json({ data: { range: "upcoming", items: [], upcomingCount: 0 } });
+    if (url.startsWith("/api/events/center")) return Response.json({ data: { eventCount: 0, activeCount: 0, appliedThisMonth: 0 } });
+    if (url === "/api/profile" && init?.method === "PUT") {
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      writes.push(body);
+      const { contactMethodsConfirmed: _flag, ...profileBody } = body;
+      const saved = store.update("actor", "100", profileBody);
+      return Response.json(saved.success ? { success: true, data: saved.data } : { success: false }, { status: saved.success ? 200 : 409 });
+    }
+    throw new Error(`Unexpected test fetch ${url}`);
+  };
+  t.after(() => { globalThis.fetch = originalFetch; });
+  let root!: ReactTestRenderer;
+  await act(async () => { root = create(createElement(AccountProfilePage, { initialPayload: initial })); });
+  t.after(() => { void act(() => root.unmount()); });
+  await act(async () => { root.root.findByProps({ "data-profile-edit": true }).props.onClick(); });
+  return { root, writes, initial };
+}
+
+test("filling LINE in the edit panel saves it with the confirmation and keeps the other handles", async t => {
+  const { root, writes, initial } = await contactHarness(t);
+  await act(async () => { root.root.findByProps({ id: "pe-lineId" }).props.onChange({ target: { value: "  alice.line " } }); });
+  await act(async () => { await root.root.findByProps({ "data-profile-save": true }).props.onClick(); });
+  assert.equal(writes.length, 1);
+  const body = writes[0] as { handles: Record<string, string>; contactMethodsConfirmed?: boolean };
+  assert.equal(body.contactMethodsConfirmed, true);
+  assert.equal(body.handles.lineId, "alice.line");
+  for (const [key, value] of Object.entries(initial.profile!.handles ?? {})) {
+    if (key !== "lineId" && typeof value === "string" && value.trim()) assert.equal(body.handles[key], value.trim(), `${key} is kept`);
+  }
+});
+
+test("saving without touching the contact fields sends no handles and no confirmation", async t => {
+  const { root, writes } = await contactHarness(t);
+  await act(async () => { root.root.findByProps({ "data-public-field": "intro" }).findByProps({ role: "switch" }).props.onClick(); });
+  await act(async () => { await root.root.findByProps({ "data-profile-save": true }).props.onClick(); });
+  assert.equal(writes.length, 1);
+  assert.ok(!("handles" in writes[0]!));
+  assert.ok(!("contactMethodsConfirmed" in writes[0]!));
+});
+
+test("a malformed email stops the save and marks only that field", async t => {
+  const { root, writes } = await contactHarness(t);
+  const more = root.root.findAllByProps({ "data-profile-contact-more": "" });
+  if (more.length) await act(async () => { more[0]!.props.onClick(); });
+  await act(async () => { root.root.findByProps({ id: "pe-email" }).props.onChange({ target: { value: "k.sato@minatolink" } }); });
+  await act(async () => { await root.root.findByProps({ "data-profile-save": true }).props.onClick(); });
+  assert.equal(writes.length, 0);
+  assert.equal(root.root.findByProps({ id: "pe-email" }).props["aria-invalid"], true);
+  assert.equal(root.root.findByProps({ id: "pe-lineId" }).props["aria-invalid"], undefined);
+  assert.ok(root.root.findAllByProps({ "data-profile-miss": "" }).length === 1);
+});

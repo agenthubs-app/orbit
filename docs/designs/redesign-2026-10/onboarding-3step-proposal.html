@@ -655,6 +655,11 @@ docNav(''); orbitChrome();
 
 /* 手机网页输入框 16px：iOS Safari / Chrome 聚焦小于 16px 的输入框会自动放大页面（2026-11-27 定，不用禁止缩放绕开）。App 原生输入框不受影响。 */
 .urx .mweb .fld .in, .urx .mweb .tagadd.k-typing { font-size: 16px; }
+
+/* 2026-11-27：UR-P1–P8 的表单补上「連絡先」卡（同 UR-P9 起）：卡内说明与「＋」行 */
+.urx .drawer .card .cg-s, .urx .phone .card .cg-s { margin-top: 2px; }
+.urx .card .addmore { border-color: var(--ink-4); }
+.urx .phone .fld .in.ta { font-size: 16px; }
 </style>
 <script>
 {
@@ -840,9 +845,12 @@ function profForm(s, two) {
     <div class="card k-ptags ${d ? 'fadeout' : ''}"><div class="gh">提供できること<small>${GIVE.length} / 5</small></div>${tags(GIVE, 'lav')}
       <div class="gh" style="margin-top:18px">求めていること<small>${s === 'edit' ? 3 : 2} / 5</small></div>${tags(SEEK, 'pink', { typing: s === 'edit' })}</div>
     <div class="card k-pbio">${fld('自己紹介', bio, { ta: true, k: 'k-bio', cls: (s === 'err' ? 'err ' : '') + d, msg: s === 'err' ? 'あと 6 文字減らしてください' : '', lt: `<span class="lbl" style="margin-left:auto;font-family:var(--font-num);${s === 'err' ? 'color:var(--coral-text)' : ''}">${bioLen} / 80</span>` })}</div>
+    <div class="card k-pcon"><div class="gh">連絡先</div><div class="cg-s k-see">人脈の相手と、申し込んだイベントの主催者だけに表示されます。</div>
+      ${two ? '<div class="grid2" style="gap:0 12px">' : ''}${fld('LINE', 'LINE ID', { ph: true, k: 'k-line' })}${fld('WeChat', 'WeChat ID', { ph: true, k: 'k-wc' })}${two ? '</div>' : ''}
+      <button class="addmore k-more">${ic('plus', 'sm')}メール・電話を入れる</button></div>
     <div class="card k-pvis" style="padding:12px 18px 6px"><div class="gh" style="margin:4px 0 4px">公開する項目</div>
       ${[['会社・役職', 1], ['提供・求めていること', 1], ['自己紹介', 1]].map(([t, on]) => `<div class="vrow"><div class="grow"><b>${t}</b></div>${tg(on)}</div>`).join('')}
-      <div class="vrow k-pfix"><div class="grow"><b>連絡先</b><span>人脈にいない人には表示されません</span></div><span class="fix">${ic('users', 'sm')}人脈と主催者のみ</span></div></div>`;
+</div>`;
 }
 const pErr = `<div class="ng-card k-perr" style="margin-top:14px"><span class="ngmark"><span class="lic sm i-alert"></span></span><span>保存できませんでした。通信を確認して、もう一度お試しください。</span></div>`;
 const profDrawer = (s, scroll) => `<div class="overlay"></div><div class="drawer ed k-drawer"><div class="dh"><b>プロフィールを編集</b>${rb('x', 'soft')}</div><div class="db">${scroll ? `<div class="scrollto" data-off="${scroll}"></div>` : ''}${profForm(s, true)}${s === 'err' ? pErr : ''}</div>
@@ -981,7 +989,7 @@ h += board('UR-P1 · Web 1440 · 默认', '提案', W(setPage, profDrawer('def',
   ['.k-pco .fld', '会社、役職分成两栏，各自的标签。原来两个输入框占位符都写「会社・役職」'],
   ['.k-ptags', '「提供 / 求めていること」从「每行一项」的多行框改成标签输入：每项一枚、点 ✕ 去掉、「＋ 追加」加一项；标题旁显示 3 / 5'],
   ['.k-pvis', '公开范围用 kit 开关（44×26，开 = 灰紫），一行一项。与右栏「公開プレビュー」的开关是同一份数据'],
-  ['.k-pfix', '联系方式不能关，写明给谁看。zh：联系方式　仅人脉和主办方 / en: Contact details — network and hosts only。生日谁都看不到，不列在这里'],
+  ['.k-pcon', '連絡先（2026-11-27 补，详见 UR-P9 起）：选填，与引导第①步同一份数据；「公開する項目」里不再有固定的「連絡先」说明行。生日谁都看不到，不列在这里'],
 ]);
 h += board('UR-P2 · Web 1440 · 编辑中', '状态', W(setPage, profDrawer('edit')), [
   ['.k-typing', '点「＋ 追加」原位变输入框，回车加入；满 5 项后「追加」消失'],
@@ -995,7 +1003,7 @@ h += boards([
   ['UR-P5 · 390 · 默认', '提案', M(profPhone('def')), [['.tb52 .rbtn', '顶栏 52：左上 ✕ 关闭（有改动时先问「変更を破棄しますか？」），标题居中，不吸顶'], ['.k-pco', '单列，每栏 48 高'], ['.k-psave', '「保存」固定在 Safari 栏之上；不再有右下角挤着的两个小按钮']]],
   ['UR-P6 · 390 · 编辑中', '状态', M(profPhone('edit').replace('<div class="card k-ptags', '<div class="scrollto" data-off="40"></div><div class="card k-ptags')), [['.k-typing', '标签原位输入'], ['.k-ptags .gh small', '计数']]],
   ['UR-P7 · 390 · 出错', '状态', M(profPhone('err').replace('<div class="card k-pbio', '<div class="scrollto" data-off="42"></div><div class="card k-pbio')), [['.k-bio', '超字数'], ['.k-perr', '保存失败']]],
-  ['UR-P8 · 390 · 公开范围（滚到底）', '状态', M(profPhone('def').replace('<div class="card k-pvis', '<div class="scrollto" data-off="400"></div><div class="card k-pvis')), [['.k-pvis', '开关整行可点'], ['.k-pfix', '联系方式固定规则']]],
+  ['UR-P8 · 390 · 公开范围（滚到底）', '状态', M(profPhone('def').replace('<div class="card k-pvis', '<div class="scrollto" data-off="452"></div><div class="card k-pvis')), [['.k-pvis', '开关整行可点'], ['.k-pvis', '只有三个开关；谁能看联系方式写在上面的「連絡先」里']]],
 ]);
 
 /* ---------- UR-E ---------- */
@@ -1246,6 +1254,9 @@ docNav(''); orbitChrome();
   .urx2 .card .addmore { border-color: var(--ink-4); }
   .urx2 .pcard-me { min-height: 168px; background: linear-gradient(135deg, var(--mac-lav), var(--surface) 62%); }
 
+
+/* 编辑资料「連絡先滚动定位标记夹在两张卡之间时，后一张卡照常保持卡间距（同 .urx，2026-11-27） */
+.urx2 .card + .scrollto + .card { margin-top: 14px; }
 </style>
 <script>
 {
@@ -1487,7 +1498,7 @@ const profFormC = (c, two) => profForm('def', two).replace(/<div class="card k-p
 const SCROLL = '<div class="scrollto" data-off="12"></div>';
 const profDrawerC = (c) => `<div class="overlay"></div><div class="drawer ed k-drawer"><div class="dh"><b>プロフィールを編集</b>${rb('x', 'soft')}</div><div class="db">${profFormC(c, true).replace('<div class="card k-pbio">', SCROLL + '<div class="card k-pbio">')}</div>
   <div class="df"><span style="flex:1"></span><button class="btn">キャンセル</button><button class="btn primary k-psave">保存</button></div></div>`;
-const profPhoneC = (c) => tb52('プロフィールを編集', rb('x')) + profFormC(c, false).replace('<div class="card k-pcon">', '<div class="scrollto" data-off="70"></div><div class="card k-pcon">') + `<div style="height:140px"></div>` +
+const profPhoneC = (c) => tb52('プロフィールを編集', rb('x')) + profFormC(c, false).replace('<div class="card k-pcon">', `<div class="scrollto" data-off="${c === 'empty' ? 113 : 56}"></div><div class="card k-pcon">`) + `<div style="height:140px"></div>` +
   foot(`${c === 'fmt' ? miss('メールの形式を確認してください') : ''}<button class="btn primary block xl k-psave">保存</button>`);
 const meProfPhone = tb52('プロフィール', rb('left')) + `<div class="card pcard-me"><div class="lbl">Orbit 名刺</div><div class="row" style="gap:14px;margin-top:44px"><div class="av lg c1">佐</div><div><div style="font-size:21px;font-weight:800">佐藤 健一</div><div class="sub">株式会社ミナトリンク · 代表取締役 CEO</div></div></div></div>
   <div class="card" style="margin-top:14px"><div class="lbl">提供できること</div><div class="chips" style="margin-top:6px">${GIVE.map(t => `<span class="chip lav">${t}</span>`).join('')}</div></div>`;
@@ -1498,7 +1509,7 @@ h += sec('UR-P9 起 · 编辑资料里的「連絡先」', '位置：自己紹�
 h += board('UR-P9 · Web 1440 · 空', '提案', W(setPage, profDrawerC('empty')), [
   ['.k-pcon .gh', '新分组「連絡先」：与上面几张卡同一写法（卡 + 小标题）。选填，不写「1つ以上」'],
   ['.k-see', '一句谁能看。zh：只给人脉里的人和你报名活动的主办方看。en: Only people in your network and hosts of events you apply to can see this.'],
-  ['.k-line', 'LINE、WeChat 两栏直接给出；空栏位不放占位（标签已说明）'],
+  ['.k-line', 'LINE、WeChat 两栏直接给出；空栏位带与引导第①步相同的占位（LINE ID / WeChat ID）'],
   ['.k-more', 'メール・電話收在「＋」里，点一下原位展开两栏；有值时默认展开'],
   ['.k-pvis', '「公開する項目」去掉原来那行固定的「連絡先 · 人脈と主催者のみ」，只留三个开关——谁能看已写在上面的分组里，不说两遍'],
 ]);

@@ -7,6 +7,9 @@ import {
 import { resolveFeatureMode } from "../../../shared/config/feature-mode";
 import { AppError, getHttpStatusForAppErrorCode } from "../../../shared/errors/app-error";
 import { createProfileService } from "../../../features/profile/service-factory";
+import { setProfileContactConsent, type ProfileContactConsentPayload } from "../../../features/profile/contact-consent";
+import { profileContactMethods } from "../../../shared/compute/profile-contact-methods";
+import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import { isSampleWrite } from "../../../features/guide/sample-write";
 import type {
   ManualProfileUpdateInput,
@@ -66,6 +69,23 @@ export interface ProfileRouteDependencies {
   /** Focused tests may inject an isolated development fixture store. */
   designFixtureStore?: ReturnType<typeof createAccountDesignFixtureStore>;
   designFixturesEnabled?: boolean;
+  /** 「保存即确认」：编辑资料面板提交联系方式后写入 / 撤销确认（缺省写本机配置的库）。 */
+  setContactConsent?: (actorId: string, confirmed: boolean) => Promise<void>;
+}
+
+async function liveSetContactConsent(actorId: string, confirmed: boolean): Promise<void> {
+  const configured = createConfiguredPostgresLiveRecordStore<ProfileContactConsentPayload>();
+  if (!configured) return;
+  await setProfileContactConsent({ store: configured.store, workspaceId: configured.workspaceId, actorId, confirmed });
+}
+
+/**
+ * 只有带可见范围说明的界面（编辑资料面板）会在请求里带 contactMethodsConfirmed: true，且必须同时提交了 handles；
+ * 其他写入（名片扫描、迁移导入、后台同步）不带，确认状态不变。这个键不进资料本身。
+ */
+function takeContactConsent(input: ManualProfileUpdateInput): { input: ManualProfileUpdateInput; confirming: boolean } {
+  const { contactMethodsConfirmed, ...rest } = input as ManualProfileUpdateInput & { contactMethodsConfirmed?: unknown };
+  return { input: rest, confirming: contactMethodsConfirmed === true && typeof rest.handles === "object" && rest.handles !== null };
 }
 
 async function liveOnRelationshipGoalSet(actorId: string): Promise<void> {
@@ -143,7 +163,7 @@ export function createProfileRouteHandlers(
 
       const design = designFixturesEnabled ? accountDesignVariant(request) : null;
       if (design) {
-        const input = await readProfileUpdateInput(request);
+        const { input } = takeContactConsent(await readProfileUpdateInput(request));
         const result = (await designStore()).update(actor.id, design, input);
         if (result.success === false) {
           const appError = profileFailureToAppError(result);
@@ -159,7 +179,7 @@ export function createProfileRouteHandlers(
       }
 
       const profileService = (dependencies.profileService ?? createProfileService)();
-      const input = await readProfileUpdateInput(request);
+      const { input, confirming } = takeContactConsent(await readProfileUpdateInput(request));
       // W0057（W57-2）：只有提交了非空目标时才多读一次旧目标，判断是否「空 → 非空」。
       const settingGoal = typeof input.relationshipGoal === "string" && input.relationshipGoal.trim().length > 0;
       const previousGoal = settingGoal
@@ -180,6 +200,13 @@ export function createProfileRouteHandlers(
             status: getHttpStatusForAppErrorCode(appError.code),
           },
         );
+      }
+
+      if (confirming) {
+        const confirmed = Object.keys(profileContactMethods(input.handles)).length > 0;
+        await (dependencies.setContactConsent ?? liveSetContactConsent)(actor.id, confirmed).catch((error: unknown) => {
+          console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "profile_contact_consent_failed" }));
+        });
       }
 
       if (settingGoal && previousGoal !== null && !previousGoal.trim()) {

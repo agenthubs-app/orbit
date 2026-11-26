@@ -12,6 +12,8 @@ import { createHostLiveService, profileScore } from "../../features/events/host/
 import { shiftedRegistrationClose } from "../../features/events/host/storage/lifecycle";
 import { HostError } from "../../features/events/host/service";
 import { hostDatabaseTest, withHostDatabase } from "../support/host-harness";
+import { setProfileContactConsent, type ProfileContactConsentPayload } from "../../features/profile/contact-consent";
+import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { lockedFixtureQuery } from "../support/sync-revision-fixture";
 import { hostPeopleRowObject, hostPersonResponseObject } from "../../shared/api-schema/host-console";
 
@@ -135,6 +137,13 @@ test("live host service end to end", hostDatabaseTest, async () => {
     assert.ok(Array.isArray(applicant!.missing));
     assert.equal(applicant!.intro ?? null, null, "no introduction written");
     assert.equal(hostPersonResponseObject.parse(applicant).contactMethods, undefined, "a profile imported without confirmation is private");
+    // 「保存即确认」：没走过新引导的老用户在编辑资料面板里保存联系方式后，报名活动的主办方才看得到；清空后撤销。
+    const consentStore = createPostgresLiveRecordStore<ProfileContactConsentPayload>({ client });
+    await setProfileContactConsent({ store: consentStore, workspaceId, actorId: "actor:p2", confirmed: true });
+    assert.deepEqual(hostPersonResponseObject.parse(await service.person(HOST, eventId, "actor:p2")).contactMethods, { lineId: "mori-line", email: "mori@example.com" });
+    await setProfileContactConsent({ store: consentStore, workspaceId, actorId: "actor:p2", confirmed: false });
+    assert.equal(hostPersonResponseObject.parse(await service.person(HOST, eventId, "actor:p2")).contactMethods, undefined, "cleared in the panel: no longer shared");
+    await setProfileContactConsent({ store: consentStore, workspaceId, actorId: "actor:p2", confirmed: true });
     await client.query(
       `insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
        values ($1 || ':profile-onboarding-actor:actor:p2','profileOnboardingFlow','current','actor:p2','fixture','current',

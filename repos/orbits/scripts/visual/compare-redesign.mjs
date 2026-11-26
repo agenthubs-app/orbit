@@ -242,8 +242,9 @@ async function finishDesign(v, d, height) {
     const anchor = await d.frame.$(v["design-scroll-anchor"]);
     if (!anchor) throw new Stop(3, `滚动锚点找不到：${v["design-scroll-anchor"]}`);
     await anchor.evaluate((el) => {
-      const scroll = el.closest(".scroll");
-      if (!scroll) throw new Error("design-scroll-anchor must be inside .scroll");
+      // 手机画框的 .scroll；电脑画板的抽屉内容区（.drawer .db）或卡片滚动区（.cbody）同样可滚（画板脚本 .scrollto 也认这三种）。
+      const scroll = el.closest(".scroll") ?? el.closest(".drawer .db, .cbody");
+      if (!scroll) throw new Error("design-scroll-anchor must be inside .scroll / .drawer .db / .cbody");
       const offset = Number(el.getAttribute("data-off") ?? 0);
       scroll.scrollTop += el.getBoundingClientRect().top - scroll.getBoundingClientRect().top - offset;
     });

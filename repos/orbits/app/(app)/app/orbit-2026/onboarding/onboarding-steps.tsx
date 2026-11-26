@@ -11,6 +11,7 @@ import { SENIORITY_LEVELS, SENIORITY_LEVEL_LABELS } from "../../../../../shared/
 import { BottomSheet, Button, Icon, MacTile, WhyBody, WhyButton } from "../ui";
 import type { AvatarTone } from "../ui/Basics";
 import { LEGACY_REPAIR_COPY, ONBOARDING_COPY, ONBOARDING_SCREEN_LABELS } from "../copy/onboarding";
+import { LINE_PLACEHOLDER, WECHAT_PLACEHOLDER, contactMethodsCopy } from "../copy/contact-methods";
 import {
   OFFER_LIMIT,
   OFFER_OPTIONS,
@@ -391,16 +392,13 @@ function BasicsStep({
 }
 
 /** Who can see contact methods (UR-C / UR-S; decided 2026-11-27). */
-export const CONTACT_SEE: Copy = { ja: "人脈の相手と、申し込んだイベントの主催者だけに表示されます。", zh: "只有人脉里的人和你报名活动的主办方能看到。", en: "Only people in your network and hosts of events you apply to can see this." };
+export const CONTACT_SEE: Copy = contactMethodsCopy.see;
 const CONTACT_PRIVACY: Copy = {
   ja: "生年月日はだれにも公開されません。連絡先は、人脈の相手と申し込んだイベントの主催者だけに表示されます。",
   zh: "生日不会公开给任何人。联系方式只给人脉里的人和你报名活动的主办方看。",
   en: "Your birthday is never shown to anyone. Only people in your network and hosts of events you apply to can see your contact details.",
 };
-const CONTACT_FORMAT: Record<"email" | "phone", Copy> = {
-  email: { ja: "メールアドレスの形式を確認してください（例：name@example.com）", zh: "请检查邮箱格式（例：name@example.com）", en: "Check the email address (e.g. name@example.com)" },
-  phone: { ja: "電話番号の形式を確認してください（例：090-1234-5678）", zh: "请检查电话号码格式（例：090-1234-5678）", en: "Check the phone number (e.g. 090-1234-5678)" },
-};
+const CONTACT_FORMAT: Record<"email" | "phone", Copy> = { email: contactMethodsCopy.emailFormat, phone: contactMethodsCopy.phoneFormat };
 /** Brand names stay as they are in every language. */
 const brand = (name: string): Copy => ({ en: name, ja: name, zh: name });
 const WECHAT_NAME = "WeChat";
@@ -430,25 +428,25 @@ function ContactGroup({ basic, disabled, missing, onUserEdit, origins, t }: {
   const noneAria = none ? { "aria-describedby": "onb-contact-none", "aria-invalid": true as const } : {};
   return (
     <fieldset className={`${styles.contactGroup} ${none ? styles.contactNone : ""}`} aria-labelledby="onb-contact-title" aria-describedby="onb-contact-see" data-onboarding-contact={none ? "none" : bad.length ? "format" : "ok"}>
-      <h2 className={styles.contactTitle} id="onb-contact-title">{t({ ja: "連絡先", zh: "联系方式", en: "Contact" })}<small>{t({ ja: "1つ以上", zh: "至少一种", en: "at least one" })}</small></h2>
+      <h2 className={styles.contactTitle} id="onb-contact-title">{t(contactMethodsCopy.title)}<small>{t({ ja: "1つ以上", zh: "至少一种", en: "at least one" })}</small></h2>
       <p className={styles.contactSee} id="onb-contact-see">{t(CONTACT_SEE)}</p>
       <div className={styles.contactGrid}>
         <Field className={none ? styles.err : ""} id="onb-lineId" label={brand("LINE")} origin={origins.lineId} tag={RECOMMENDED} t={t}>
-          <input className={styles.input} disabled={disabled} id="onb-lineId" maxLength={80} onChange={text("lineId")} placeholder="LINE ID" value={basic.lineId ?? ""} {...noneAria} />
+          <input className={styles.input} disabled={disabled} id="onb-lineId" maxLength={80} onChange={text("lineId")} placeholder={LINE_PLACEHOLDER} value={basic.lineId ?? ""} {...noneAria} />
         </Field>
         <Field className={none ? styles.err : ""} id="onb-wechatId" label={WECHAT} origin={origins.wechatId} tag={RECOMMENDED} t={t}>
-          <input className={styles.input} disabled={disabled} id="onb-wechatId" maxLength={80} onChange={text("wechatId")} placeholder="WeChat ID" value={basic.wechatId ?? ""} {...noneAria} />
+          <input className={styles.input} disabled={disabled} id="onb-wechatId" maxLength={80} onChange={text("wechatId")} placeholder={WECHAT_PLACEHOLDER} value={basic.wechatId ?? ""} {...noneAria} />
         </Field>
         {open ? <>
-          <Field error={err("email")} id="onb-email" label={{ ja: "メール", zh: "邮箱", en: "Email" }} origin={origins.email} t={t}>
-            <input className={styles.input} disabled={disabled} id="onb-email" inputMode="email" maxLength={120} onChange={text("email")} placeholder={t({ ja: "例）name@example.com", zh: "例如：name@example.com", en: "e.g. name@example.com" })} type="email" value={basic.email} {...invalid("onb-email", err("email"))} />
+          <Field error={err("email")} id="onb-email" label={contactMethodsCopy.email} origin={origins.email} t={t}>
+            <input className={styles.input} disabled={disabled} id="onb-email" inputMode="email" maxLength={120} onChange={text("email")} placeholder={t(contactMethodsCopy.emailPh)} type="email" value={basic.email} {...invalid("onb-email", err("email"))} />
           </Field>
-          <Field error={err("phone")} id="onb-phone" label={{ ja: "電話", zh: "电话", en: "Phone" }} origin={origins.phone} t={t}>
-            <input className={styles.input} disabled={disabled} id="onb-phone" inputMode="tel" maxLength={40} onChange={text("phone")} placeholder={t({ ja: "例）090-1234-5678", zh: "例如：090-1234-5678", en: "e.g. 090-1234-5678" })} type="tel" value={basic.phone} {...invalid("onb-phone", err("phone"))} />
+          <Field error={err("phone")} id="onb-phone" label={contactMethodsCopy.phone} origin={origins.phone} t={t}>
+            <input className={styles.input} disabled={disabled} id="onb-phone" inputMode="tel" maxLength={40} onChange={text("phone")} placeholder={t(contactMethodsCopy.phonePh)} type="tel" value={basic.phone} {...invalid("onb-phone", err("phone"))} />
           </Field>
         </> : null}
       </div>
-      {open ? null : <button className={`btn ${styles.addMore}`} disabled={disabled} onClick={() => setMore(true)} type="button" data-onboarding-contact-more=""><Icon name="plus" size={16} />{t({ ja: "メール・電話を入れる", zh: "填写邮箱或电话", en: "Add email or phone" })}</button>}
+      {open ? null : <button className={`btn ${styles.addMore}`} disabled={disabled} onClick={() => setMore(true)} type="button" data-onboarding-contact-more=""><Icon name="plus" size={16} />{t(contactMethodsCopy.addMore)}</button>}
       {none ? <div className={styles.errLine} id="onb-contact-none" role="alert">{t({ ja: "どれか 1 つを入力してください", zh: "填写其中一种即可", en: "Fill in any one" })}</div> : null}
     </fieldset>
   );

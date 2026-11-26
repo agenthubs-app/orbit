@@ -1,3 +1,4 @@
+import { contactConsentSql } from "../profile/contact-consent";
 import { profileContactMethods, type ProfileContactMethods } from "../../shared/compute/profile-contact-methods";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
@@ -24,11 +25,7 @@ export async function readExchangedContactMethods(
       and profile.user_id = peer.owner_actor_id and profile.payload ->> 'accountId' = peer.owner_actor_id
       and profile.lifecycle_state = 'active'
     where own.workspace_id = $1 and own.owner_actor_id = $2 and own.contact_id = $3
-      and exists (select 1 from orbit_records consent
-        where consent.workspace_id = peer.workspace_id || ':profile-onboarding-actor:' || peer.owner_actor_id
-          and consent.collection_name = 'profileOnboardingFlow' and consent.record_id = 'current'
-          and consent.user_id = peer.owner_actor_id and consent.lifecycle_state = 'active'
-          and consent.payload -> 'contactMethodsConfirmed' = 'true'::jsonb)
+      and ${contactConsentSql("peer.workspace_id", "peer.owner_actor_id")}
       and not exists (select 1 from orbit_records tombstone where tombstone.workspace_id = own.workspace_id
         and tombstone.collection_name = 'contacts' and tombstone.lifecycle_state = 'deleted'
         and ((tombstone.record_id = own.contact_id and tombstone.user_id = own.owner_actor_id)

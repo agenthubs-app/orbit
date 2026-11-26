@@ -85,8 +85,7 @@
 .drawerActions { display:flex; justify-content:flex-end; gap:8px; margin-top:auto; }
 .drawerActions button:global(.btn):last-child { border-color:var(--plum-700); background:var(--plum-700); color:var(--on-accent); }
 .drawerActions button:disabled { opacity:.5; cursor:default; }
-.toast { position:fixed; z-index:var(--z-toast); right:24px; bottom:24px; border-radius:var(--r-sm); padding:10px 15px; background:var(--ink); color:var(--surface); font-size:var(--fs-meta); }
-@media (min-width:1441px) { .toast { right:calc((100vw - 1440px) / 2 + 24px); } .drawerBackdrop { padding-right:calc((100vw - 1440px) / 2); } }
+@media (min-width:1441px) { .drawerBackdrop { padding-right:calc((100vw - 1440px) / 2); } }
 @media (max-width:1279px) { .mobilePreview { display:block; } }
 @media (max-width:1279px) { .businessCard, .progressCard { grid-column: span 12; } }
 @media (max-width:767px) { .grid { grid-template-columns: minmax(0, 1fr); } .grid > * { grid-column: 1; } .rowCard + .rowCard { margin-top: var(--space-14); } .mobilePreview { display:block; } .drawerBackdrop { align-items:flex-end; } .drawer { width:100%; height:min(85vh,780px); border-top-left-radius:var(--r-bubble); border-top-right-radius:var(--r-bubble); } }

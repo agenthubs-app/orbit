@@ -10,6 +10,7 @@ import type { HostEventPayload } from "./storage/lifecycle";
 import type { HostAgendaItem } from "../../../shared/contract/host-events";
 import { normalizeHostAgenda } from "../../../shared/compute/host-agenda";
 import { profileContactMethods, type ProfileContactMethods } from "../../../shared/compute/profile-contact-methods";
+import { contactConsentSql } from "../../profile/contact-consent";
 
 type Row = Record<string, unknown>;
 
@@ -274,11 +275,7 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
                   'offers', v.profile_payload #> '{participant,offers}', 'needs', v.profile_payload #> '{participant,needs}') end as participant,
                 (select h.payload -> 'answers' from orbit_records h where h.workspace_id = $1 and h.collection_name = 'eventHostAnswers' and h.user_id = $3 and h.lifecycle_state <> 'deleted' and h.payload ->> 'eventId' = $2 limit 1) as host_answers,
                 case when $5::boolean and (a.status in ('pending_review', 'waitlisted', 'admitted') or m.status = 'rsvped')
-                  and exists (select 1 from orbit_records consent
-                    where consent.workspace_id = $1 || ':profile-onboarding-actor:' || $3
-                      and consent.collection_name = 'profileOnboardingFlow' and consent.record_id = 'current'
-                      and consent.user_id = $3 and consent.lifecycle_state = 'active'
-                      and consent.payload -> 'contactMethodsConfirmed' = 'true'::jsonb) then (
+                  and ${contactConsentSql("$1", "$3")} then (
                   select p.payload -> 'handles' from orbit_records p where p.workspace_id = $1 and p.collection_name = 'profiles'
                     and p.user_id = $3 and p.payload ->> 'accountId' = $3 and p.lifecycle_state = 'active'
                   order by coalesce(p.occurred_at, p.updated_at) desc, p.updated_at desc, p.record_id limit 1

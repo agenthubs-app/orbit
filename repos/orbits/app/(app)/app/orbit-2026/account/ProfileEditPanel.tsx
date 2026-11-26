@@ -3,16 +3,23 @@
 /**
  * UR-P 编辑资料（2026-11-27 定稿）：电脑右侧抽屉（✕ 在右上，底部 キャンセル + 保存），手机全屏（52 高顶栏 ✕ + 居中标题，保存固定在底部）。
  * 会社 / 役職分栏；提供 / 求めていること是标签输入（每项一枚、最多 5 项带计数）；自己紹介带字数（中日文 80 / 其他 200）；
- * 公開する項目用开关（与名片卡同一份 publicFields，只在这里改）；連絡先固定「人脈と主催者のみ」，生日不列。
+ * 公開する項目用开关（与名片卡同一份 publicFields，只在这里改）；生日不列。
+ * UR-P9–P15（2026-11-27）：自己紹介 之后加「連絡先」——与引导第①步同一份数据、文案、占位与格式校验（copy/contact-methods）；
+ * 选填、不写「1つ以上」；LINE / WeChat 直接给出，メール・電話收在「＋」里（有值时展开）；点保存时格式不对只标那一栏，
+ * 按钮旁一句，改对前不提交。「公開する項目」里原来那行固定说明去掉（谁能看写在分组里）。
  */
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+
+import { invalidProfileContactMethods, type ProfileContactMethod } from "../../../../../shared/compute/profile-contact-methods";
+import { LINE_NAME, LINE_PLACEHOLDER, WECHAT_PLACEHOLDER, contactMethodsCopy, wechatLabel } from "../copy/contact-methods";
 
 import { profileBioLimit, profileBioWithinLimit, profileVisibleLength } from "../../../../../shared/api-schema/profile-bio";
 import type { ProfilePublicFieldsContract } from "../../../../../shared/contract/profile";
 import { ConfirmDialog, Icon, Toggle } from "../ui";
 import p from "./ProfileEditPanel.module.css";
 
-export type ProfileEditDraft = { organization: string; role: string; offering: string[]; seeking: string[]; bio: string; publicFields: ProfilePublicFieldsContract };
+export type ProfileEditContacts = { lineId: string; wechatId: string; email: string; phone: string };
+export type ProfileEditDraft = { organization: string; role: string; offering: string[]; seeking: string[]; bio: string; contacts: ProfileEditContacts; publicFields: ProfilePublicFieldsContract };
 type Lang = "ja" | "zh" | "en";
 type Text = Record<Lang, string>;
 const TAG_LIMIT = 5;
@@ -32,9 +39,6 @@ const C = {
   visCompany: { ja: "会社・役職", zh: "公司和职位", en: "Company and role" },
   visTags: { ja: "提供・求めていること", zh: "能提供的 · 希望认识的", en: "Offer and seek" },
   visIntro: { ja: "自己紹介", zh: "自我介绍", en: "Introduction" },
-  contact: { ja: "連絡先", zh: "联系方式", en: "Contact details" },
-  contactWho: { ja: "人脈にいない人には表示されません", zh: "不在人脉里的人看不到", en: "Hidden from people outside your network" },
-  contactFixed: { ja: "人脈と主催者のみ", zh: "仅人脉和主办方", en: "Network and hosts only" },
   cancel: { ja: "キャンセル", zh: "取消", en: "Cancel" },
   save: { ja: "保存", zh: "保存", en: "Save" },
   saving: { ja: "保存しています…", zh: "正在保存…", en: "Saving…" },
@@ -95,6 +99,35 @@ export function ProfileEditPanel({ draft, initial, language, saving, saveError, 
   const bioOver = !profileBioWithinLimit(draft.bio);
   const dim = saving ? p.dim : "";
   const vis = draft.publicFields;
+  // 連絡先：点过保存后才标格式错误（UR-P13），改对一栏那一栏的提示就消失。
+  const [attempted, setAttempted] = useState(false);
+  const [more, setMore] = useState(false);
+  const contacts = draft.contacts;
+  const bad = invalidProfileContactMethods(contacts).filter((method): method is "email" | "phone" => method === "email" || method === "phone");
+  const shown = attempted ? bad : [];
+  const open = more || Boolean(contacts.email.trim() || contacts.phone.trim()) || shown.includes("email") || shown.includes("phone");
+  const setContact = (key: ProfileContactMethod, value: string) => onChange({ ...draft, contacts: { ...contacts, [key]: value } });
+  const save = () => {
+    if (bad.length) {
+      setAttempted(true);
+      setMore(true);
+      if (typeof document !== "undefined") setTimeout(() => document.getElementById(`pe-${bad[0]}`)?.focus(), 0);
+      return;
+    }
+    onSave();
+  };
+  const contactField = (key: ProfileContactMethod, label: string, placeholder: string, type: "text" | "email" | "tel", maxLength: number) => {
+    const error = (key === "email" || key === "phone") && shown.includes(key) ? t(key === "email" ? contactMethodsCopy.emailFormat : contactMethodsCopy.phoneFormat) : null;
+    return (
+      <label className={`${p.fld} ${error ? p.err : ""} ${dim}`} data-profile-contact={key}>
+        <span>{label}</span>
+        <input id={`pe-${key}`} className={p.in} type={type} inputMode={type === "text" ? undefined : type} value={contacts[key]} maxLength={maxLength} disabled={saving} placeholder={placeholder}
+          aria-invalid={error ? true : undefined} aria-describedby={error ? `pe-${key}-msg` : undefined} onChange={event => setContact(key, event.target.value)} />
+        {error ? <span className={p.msg} id={`pe-${key}-msg`} role="alert">{error}</span> : null}
+      </label>
+    );
+  };
+  const missLine = shown.length ? t(shown[0] === "email" ? contactMethodsCopy.emailFormatShort : contactMethodsCopy.phoneFormatShort) : null;
   return (
     <div className={p.backdrop} role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) close(); }}>
       <section className={p.panel} role="dialog" aria-modal="true" aria-label={t(C.title)} data-profile-editor="">
@@ -124,6 +157,19 @@ export function ProfileEditPanel({ draft, initial, language, saving, saveError, 
               {bioOver ? <span className={p.msg} role="alert">{t({ ja: `あと ${bioLength - bioLimit} 文字減らしてください`, zh: `还需删掉 ${bioLength - bioLimit} 个字`, en: `Remove ${bioLength - bioLimit} more characters` })}</span> : null}
             </label>
           </div>
+          <div className={p.card} data-profile-card="contacts">
+            <div className={p.gh}>{t(contactMethodsCopy.title)}</div>
+            <p className={p.see}>{t(contactMethodsCopy.see)}</p>
+            <div className={p.grid2}>
+              {contactField("lineId", LINE_NAME, LINE_PLACEHOLDER, "text", 80)}
+              {contactField("wechatId", wechatLabel(language), WECHAT_PLACEHOLDER, "text", 80)}
+              {open ? <>
+                {contactField("email", t(contactMethodsCopy.email), t(contactMethodsCopy.emailPh), "email", 120)}
+                {contactField("phone", t(contactMethodsCopy.phone), t(contactMethodsCopy.phonePh), "tel", 40)}
+              </> : null}
+            </div>
+            {open ? null : <button type="button" className={`btn ${p.addMore}`} disabled={saving} onClick={() => setMore(true)} data-profile-contact-more=""><Icon name="plus" size={16} />{t(contactMethodsCopy.addMore)}</button>}
+          </div>
           <div className={`${p.card} ${p.visCard}`} data-profile-card="visibility">
             <div className={p.gh}>{t(C.visibility)}</div>
             {([["companyRole", C.visCompany], ["offeringSeeking", C.visTags], ["intro", C.visIntro]] as const).map(([key, label]) => (
@@ -132,17 +178,14 @@ export function ProfileEditPanel({ draft, initial, language, saving, saveError, 
                 <Toggle checked={vis[key]} label={t(label)} onChange={next => onChange({ ...draft, publicFields: { ...vis, [key]: next } })} />
               </div>
             ))}
-            <div className={p.vrow}>
-              <div className={p.grow}><b>{t(C.contact)}</b><span>{t(C.contactWho)}</span></div>
-              <span className={p.fix}><Icon name="users" size={16} />{t(C.contactFixed)}</span>
-            </div>
           </div>
           {saveError ? <div className={p.ngCard} role="alert"><span className={p.ngMark}><Icon name="alert" size={16} /></span><span>{t(C.saveError)}</span></div> : null}
         </div>
         <footer className={p.foot}>
+          {missLine ? <span className={p.miss} data-profile-miss=""><Icon name="flag" size={16} />{missLine}</span> : null}
           <span className={p.spacer} />
           <button type="button" className={`btn ${p.btn} ${p.cancel}`} disabled={saving} onClick={onCancel}>{t(C.cancel)}</button>
-          <button type="button" className={`btn ${p.btn} ${p.primary} ${saving ? p.saving : ""}`} disabled={saving || bioOver} onClick={onSave} data-profile-save>{saving ? t(C.saving) : t(C.save)}</button>
+          <button type="button" className={`btn ${p.btn} ${p.primary} ${saving ? p.saving : ""}`} disabled={saving || bioOver} onClick={save} data-profile-save>{saving ? t(C.saving) : t(C.save)}</button>
         </footer>
       </section>
       <ConfirmDialog open={confirm} title={t(C.discardTitle)} confirmLabel={t(C.discard)} cancelLabel={t(C.keep)} destructive onConfirm={() => { setConfirm(false); onCancel(); }} onCancel={() => setConfirm(false)} />

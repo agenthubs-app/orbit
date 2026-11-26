@@ -9,6 +9,7 @@ import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/
 import { createStorageContactGraphProvider } from "../../features/contacts/storage/contact-live-record-provider";
 import { createEventRelationshipContactGraphReader } from "../../features/contacts/storage/event-relationship-contact-reader";
 import { readExchangedContactMethods } from "../../features/contacts/exchanged-contact-methods";
+import { setProfileContactConsent, type ProfileContactConsentPayload } from "../../features/profile/contact-consent";
 import { createPostgresHumanEncounterProjectionRepository } from "../../features/encounters/projection-repository";
 import { projectPendingHumanEncounters } from "../../features/encounters/projector";
 import type { HumanEncounterRecord } from "../../features/encounters/service";
@@ -193,6 +194,25 @@ test(
       assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:ren", acceptedForRen.contactId),
         { lineId: "aiko-line", phone: "+81 90 1111 1111" });
       assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:mei", acceptedForAiko.contactId), {});
+      // 「保存即确认」：已走完旧引导、没有引导标记的老用户（ren），在编辑资料面板里保存联系方式后才分享；清空后撤销。
+      const consentStore = createPostgresLiveRecordStore<ProfileContactConsentPayload>({ client: runtime.client });
+      await runtime.client.query(`delete from orbit_records where workspace_id = $1 || ':profile-onboarding-actor:' || $2 and collection_name = 'profileOnboardingFlow'`, [workspaceId, "actor:ren"]);
+      assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:aiko", acceptedForAiko.contactId), {});
+      await setProfileContactConsent({ store: consentStore, workspaceId, actorId: "actor:ren", confirmed: true });
+      assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:aiko", acceptedForAiko.contactId),
+        { wechatId: "ren-wechat", email: "ren@example.com" });
+      await setProfileContactConsent({ store: consentStore, workspaceId, actorId: "actor:ren", confirmed: false });
+      assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:aiko", acceptedForAiko.contactId), {});
+      // The panel's record wins over the onboarding flag either way: revoked stays revoked even with the step-1 flag.
+      await runtime.client.query(
+        `insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
+         values ($1 || ':profile-onboarding-actor:' || $2,'profileOnboardingFlow','current',$2,'fixture','current',
+           '{"contactMethodsConfirmed":true}'::jsonb,now(),now())`, [workspaceId, "actor:ren"],
+      );
+      assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:aiko", acceptedForAiko.contactId), {});
+      await setProfileContactConsent({ store: consentStore, workspaceId, actorId: "actor:ren", confirmed: true });
+      assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:aiko", acceptedForAiko.contactId),
+        { wechatId: "ren-wechat", email: "ren@example.com" });
       // A deleted contact on either side stops the sharing (UR-S).
       await runtime.client.query(
         `insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,lifecycle_state,created_at,updated_at)

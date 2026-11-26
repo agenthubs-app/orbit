@@ -12,11 +12,12 @@ import { eventsApi } from "../events/events-api";
 import { accountCopy } from "../copy/account";
 import { pickCopy } from "../copy/types";
 import { InviteCodeModal } from "../add/invite/InviteCodeModal";
-import { Bone, Button, Chip, Icon, MacTile, Toggle, useStandardCopy } from "../ui";
+import { Bone, Button, Chip, Icon, MacTile, Toggle, useStandardCopy, useToast } from "../ui";
 import { AccountLayout, type AccountSection } from "./AccountLayout";
 import { validSaveReceipt } from "./SuggestionsApi";
 import { PROFILE_ANSWER_KEY, cardProgress, previewForProfile, profileSaveInput, type CardKey } from "./profile-model";
 import { normalizeProfileTagValues } from "./profile-tag-normalization";
+import { PROFILE_CONTACT_METHODS, type ProfileContactMethod } from "../../../../../shared/compute/profile-contact-methods";
 import { ProfileEditPanel, type ProfileEditDraft } from "./ProfileEditPanel";
 import s from "./AccountProfilePage.module.css";
 
@@ -53,7 +54,21 @@ function draftOf(profile: ManualProfileContract): Draft {
     organization: profile.organization, role: profile.role,
     offering: [...(profile.offering ?? [])], seeking: [...(profile.seeking ?? [])],
     bio: profile.bio ?? "", publicFields: { ...defaultVisibility, ...profile.publicFields },
+    contacts: { lineId: profile.handles?.lineId ?? "", wechatId: profile.handles?.wechatId ?? "", email: profile.handles?.email ?? "", phone: profile.handles?.phone ?? "" },
   };
+}
+
+type ProfileSaveEdit = ManualProfileUpdateInput & { contactMethodsConfirmed?: true };
+
+/**
+ * 只有联系方式改过才提交 handles，并带 contactMethodsConfirmed：本人在写明「谁能看到」的面板里亲手保存 = 确认分享
+ * （全部清空 = 撤销，服务端判断）。handles 整体替换，所以带上网站等其他项；值去空格、空的不写，与服务端存下的一致。
+ */
+function contactEdit(profile: ManualProfileContract, draft: Draft): Pick<ProfileSaveEdit, "handles" | "contactMethodsConfirmed"> {
+  if (JSON.stringify(draftOf(profile).contacts) === JSON.stringify(draft.contacts)) return {};
+  const others = Object.fromEntries(Object.entries(profile.handles ?? {}).filter(([key, value]) => !PROFILE_CONTACT_METHODS.includes(key as ProfileContactMethod) && typeof value === "string" && value.trim()));
+  const mine = Object.fromEntries(PROFILE_CONTACT_METHODS.flatMap(key => draft.contacts[key].trim() ? [[key, draft.contacts[key].trim()]] : []));
+  return { handles: { ...others, ...mine }, contactMethodsConfirmed: true };
 }
 
 function lines(values: readonly string[]): string[] {
@@ -102,7 +117,8 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
-  const [saved, setSaved] = useState(false);
+  // 保存成功的次数：每次 +1，触发站内统一的提示条（UR-P14 / UR-P3：「保存しました」2 秒）。
+  const [saved, setSaved] = useState(0);
   const [dismissed, setDismissed] = useState<readonly string[]>([]);
   const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -121,7 +137,6 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
     if (!background) {
       setPayload(null);
       setDraft(null);
-      setSaved(false);
       pendingSave.current = null;
     }
     try {
@@ -196,7 +211,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
   const missingLabels: Record<CardKey, keyof typeof accountCopy> = { companyRole: "companyRole", offering: "canHelp", seeking: "whatSeek", intro: "intro" };
   const introValid = !draft || profileBioWithinLimit(draft.bio);
 
-  async function persistEdit(edit: ManualProfileUpdateInput): Promise<boolean> {
+  async function persistEdit(edit: ProfileSaveEdit): Promise<boolean> {
     if (!profile || saving) return false;
     setSaving(true);
     setSaveError(false);
@@ -208,11 +223,12 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
         body: JSON.stringify(profileSaveInput(profile, edit, pendingSave.current.id)),
       });
       const envelope = await response.json() as Envelope;
-      if (!response.ok || !envelope.success || !validSaveReceipt(envelope.data, profile, edit, pendingSave.current.id)) throw new Error("save failed");
+      const { contactMethodsConfirmed: _confirmed, ...patch } = edit;
+      if (!response.ok || !envelope.success || !validSaveReceipt(envelope.data, profile, patch, pendingSave.current.id)) throw new Error("save failed");
       setPayload(envelope.data);
       if (!design) rememberAnswer(PROFILE_ANSWER_KEY, envelope.data);
       pendingSave.current = null;
-      setSaved(true);
+      setSaved(count => count + 1);
       return true;
     } catch { setSaveError(true); return false; }
     finally { setSaving(false); }
@@ -220,7 +236,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
 
   async function save() {
     if (!draft || !introValid) return;
-    if (await persistEdit(editOf(draft))) setDraft(null);
+    if (await persistEdit({ ...editOf(draft), ...(profile ? contactEdit(profile, draft) : {}) })) setDraft(null);
   }
 
   async function acceptSuggestion(value: string) {
@@ -276,10 +292,22 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
       <InviteCodeModal open={inviteOpen} onClose={() => setInviteOpen(false)} language={language} />
     </> : null}
     {draft && profile ? <ProfileEditPanel draft={draft} initial={draftOf(profile)} language={language} saving={saving} saveError={saveError} onChange={setDraft} onCancel={() => { setDraft(null); setSaveError(false); }} onSave={() => void save()} /> : null}
-    {saved ? <div className={s.toast} role="status">{t("saved")}</div> : null}
+    <SavedToast count={saved} text={t("saved")} />
   </AccountLayout>;
 }
 
 export function AccountProfilePage(props: { initialPayload?: ProfilePayload; design?: "25" | "50" | "100"; active?: AccountSection; edit?: string; suggestions?: readonly string[]; eventSummary?: EventSummary }) {
   return <ProfileContent {...props} />;
+}
+
+/** 放在 AccountLayout（ToastProvider）里面：保存成功一次弹一次站内统一的提示条。 */
+function SavedToast({ count, text }: { count: number; text: string }) {
+  const toast = useToast();
+  const shown = useRef(count);
+  useEffect(() => {
+    if (count === shown.current) return;
+    shown.current = count;
+    toast.success(text);
+  }, [count, text, toast]);
+  return null;
 }

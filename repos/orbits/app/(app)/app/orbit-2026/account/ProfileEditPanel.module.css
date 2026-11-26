@@ -19,7 +19,12 @@
 .in:focus, .ta:focus { border-color: var(--plum-500); }
 .ta { height: auto; min-height: 96px; padding: 12px 14px; line-height: 1.75; resize: none; }
 .count { margin-left: auto; color: var(--ink-3); font-family: var(--font-num); font-size: var(--fs-label); font-style: normal; }
-.err .ta { border-color: var(--coral); background: var(--coral-soft); }
+.err .ta, .err .in { border-color: var(--coral); background: var(--coral-soft); }
+/* UR-P9–P15 連絡先：一句谁能看（同 UR-C .contactSee）、「＋ メール・電話を入れる」整行 48 高虚线（同 UR-C .addMore）。 */
+.see { margin: 2px 0 0; color: var(--ink-2); font-size: var(--fs-control); font-weight: var(--fw-semibold); line-height: 1.6; }
+.addMore:global(.btn) { display: flex; width: 100%; height: 48px; margin-top: 12px; align-items: center; justify-content: center; gap: 6px; border: 1.5px dashed var(--ink-4); border-radius: var(--r-md); background: transparent; color: var(--ink-2); font-size: var(--fs-row); font-weight: var(--fw-bold); }
+/* 点保存后格式不对：按钮旁一句（手机在保存按钮上方居中），同 UR-C .miss。 */
+.miss { display: inline-flex; align-items: center; gap: 6px; color: var(--coral-text); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
 .err .count { color: var(--coral-text); }
 .fld > .msg { display: block; margin: 6px 0 0; color: var(--coral-text); font-size: var(--fs-label); font-weight: var(--fw-semibold); line-height: 1.55; }
 .tagin { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
@@ -37,7 +42,6 @@
 .grow { flex: 1 1 0%; min-width: 0; }
 .grow b { display: block; font-size: var(--fs-row); font-weight: var(--fw-bold); }
 .grow span { display: block; color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-semibold); }
-.fix { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-3); font-size: var(--fs-meta); font-weight: var(--fw-bold); white-space: nowrap; }
 .ngCard { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; padding: 14px; border-radius: var(--r-bubble); background: var(--coral-soft); color: var(--coral-text); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); line-height: 1.55; }
 .ngMark { display: grid; width: 24px; height: 24px; flex: none; place-items: center; border-radius: var(--r-pill); background: var(--surface); color: var(--coral); }
 .foot { display: flex; align-items: center; gap: 8px; padding: 14px 22px 18px; flex: none; border-top: 1px solid var(--line); background: var(--bg); }
@@ -64,4 +68,6 @@
   .foot { position: fixed; left: 0; right: 0; bottom: 0; padding: 22px 18px calc(env(safe-area-inset-bottom, 0px) + 14px); border-top: 0; background: linear-gradient(to bottom, transparent, var(--bg) 28%); }
   .spacer, .cancel:global(.btn) { display: none; }
   .primary:global(.btn) { width: 100%; height: 52px; font-size: var(--fs-card-title); }
+  .foot { flex-direction: column; gap: 10px; }
+  .miss { justify-content: center; }
 }

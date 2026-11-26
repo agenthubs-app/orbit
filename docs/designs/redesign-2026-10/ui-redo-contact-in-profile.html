@@ -221,6 +221,9 @@
   .drawer .card .cg-s, .phone .card .cg-s { margin-top: 2px; }
   .card .addmore { border-color: var(--ink-4); }
   .pcard-me { min-height: 168px; background: linear-gradient(135deg, var(--mac-lav), var(--surface) 62%); }
+
+/* 编辑资料「連絡先滚动定位标记夹在两张卡之间时，后一张卡照常保持卡间距（同 .urx，2026-11-27） */
+.card + .scrollto + .card { margin-top: 14px; }
 </style>
 </head>
 <body>
@@ -508,7 +511,7 @@ const profFormC = (c, two) => profForm('def', two).replace(/<div class="card k-p
 const SCROLL = '<div class="scrollto" data-off="12"></div>';
 const profDrawerC = (c) => `<div class="overlay"></div><div class="drawer ed k-drawer"><div class="dh"><b>プロフィールを編集</b>${rb('x', 'soft')}</div><div class="db">${profFormC(c, true).replace('<div class="card k-pbio">', SCROLL + '<div class="card k-pbio">')}</div>
   <div class="df"><span style="flex:1"></span><button class="btn">キャンセル</button><button class="btn primary k-psave">保存</button></div></div>`;
-const profPhoneC = (c) => tb52('プロフィールを編集', rb('x')) + profFormC(c, false).replace('<div class="card k-pcon">', '<div class="scrollto" data-off="70"></div><div class="card k-pcon">') + `<div style="height:140px"></div>` +
+const profPhoneC = (c) => tb52('プロフィールを編集', rb('x')) + profFormC(c, false).replace('<div class="card k-pcon">', `<div class="scrollto" data-off="${c === 'empty' ? 113 : 56}"></div><div class="card k-pcon">`) + `<div style="height:140px"></div>` +
   foot(`${c === 'fmt' ? miss('メールの形式を確認してください') : ''}<button class="btn primary block xl k-psave">保存</button>`);
 const meProfPhone = tb52('プロフィール', rb('left')) + `<div class="card pcard-me"><div class="lbl">Orbit 名刺</div><div class="row" style="gap:14px;margin-top:44px"><div class="av lg c1">佐</div><div><div style="font-size:21px;font-weight:800">佐藤 健一</div><div class="sub">株式会社ミナトリンク · 代表取締役 CEO</div></div></div></div>
   <div class="card" style="margin-top:14px"><div class="lbl">提供できること</div><div class="chips" style="margin-top:6px">${GIVE.map(t => `<span class="chip lav">${t}</span>`).join('')}</div></div>`;
@@ -519,7 +522,7 @@ h += sec('UR-P9 起 · 编辑资料里的「連絡先」', '位置：自己紹�
 h += board('UR-P9 · Web 1440 · 空', '提案', W(setPage, profDrawerC('empty')), [
   ['.k-pcon .gh', '新分组「連絡先」：与上面几张卡同一写法（卡 + 小标题）。选填，不写「1つ以上」'],
   ['.k-see', '一句谁能看。zh：只给人脉里的人和你报名活动的主办方看。en: Only people in your network and hosts of events you apply to can see this.'],
-  ['.k-line', 'LINE、WeChat 两栏直接给出；空栏位不放占位（标签已说明）'],
+  ['.k-line', 'LINE、WeChat 两栏直接给出；空栏位带与引导第①步相同的占位（LINE ID / WeChat ID）'],
   ['.k-more', 'メール・電話收在「＋」里，点一下原位展开两栏；有值时默认展开'],
   ['.k-pvis', '「公開する項目」去掉原来那行固定的「連絡先 · 人脈と主催者のみ」，只留三个开关——谁能看已写在上面的分组里，不说两遍'],
 ]);

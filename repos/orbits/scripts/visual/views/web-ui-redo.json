@@ -844,7 +844,7 @@
    "width": 1440,
    "height": 960,
    "viewport": true,
-   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
    "wait-for": "[data-profile-edit]",
    "steps": [
     {
@@ -879,7 +879,7 @@
    "width": 1440,
    "height": 960,
    "viewport": true,
-   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
    "wait-for": "[data-profile-edit]",
    "steps": [
     {
@@ -919,7 +919,7 @@
    "width": 834,
    "height": 1194,
    "viewport": true,
-   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
    "wait-for": "[data-profile-edit]",
    "steps": [
     {
@@ -960,7 +960,7 @@
    "width": 834,
    "height": 1194,
    "viewport": true,
-   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
    "wait-for": "[data-profile-edit]",
    "steps": [
     {
@@ -1012,7 +1012,7 @@
    "width": 390,
    "height": 844,
    "viewport": true,
-   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
    "wait-for": "[data-profile-edit]",
    "steps": [
     {
@@ -1046,7 +1046,7 @@
    "width": 390,
    "height": 844,
    "viewport": true,
-   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
    "wait-for": "[data-profile-edit]",
    "steps": [
     {
@@ -1089,7 +1089,7 @@
    "width": 390,
    "height": 844,
    "viewport": true,
-   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
    "wait-for": "[data-profile-edit]",
    "steps": [
     {
@@ -1145,7 +1145,7 @@
    "width": 390,
    "height": 844,
    "viewport": true,
-   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
    "wait-for": "[data-profile-edit]",
    "steps": [
     {
@@ -1643,6 +1643,274 @@
    "design-clip": ".k-toast",
    "app-clip": "[role=status]",
    "note": "UR-S8 390 · 复制后提示（只比提示条）"
+  },
+  {
+   "id": "URP9",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 100,
+   "width": 1440,
+   "height": 960,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const c = document.querySelector(\"[data-profile-card='bio']\"); const body = c && c.parentElement; if (body) body.scrollTop = c.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 12; })()"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P9 Web 1440 · 連絡先 空",
+   "design-clip": ".k-drawer",
+   "app-clip": "[data-profile-editor]",
+   "design-scroll-anchor": ".scrollto"
+  },
+  {
+   "id": "URP10",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 101,
+   "width": 1440,
+   "height": 960,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {\"lineId\": \"sato.kenichi\", \"email\": \"k.sato@minatolink.example\"} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const c = document.querySelector(\"[data-profile-card='bio']\"); const body = c && c.parentElement; if (body) body.scrollTop = c.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 12; })()"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P10 Web 1440 · 連絡先 已填两种",
+   "design-clip": ".k-drawer",
+   "app-clip": "[data-profile-editor]",
+   "design-scroll-anchor": ".scrollto"
+  },
+  {
+   "id": "URP11",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 102,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const panel = document.querySelector('[data-profile-editor]'); const c = document.querySelector(\"[data-profile-card='contacts']\"); if (panel && c) panel.scrollTop = c.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 70; })()"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P11 390 · 連絡先 空",
+   "design-scroll-anchor": ".scrollto",
+   "design-as-mweb": true,
+   "themes": [
+    "light",
+    "dark"
+   ]
+  },
+  {
+   "id": "URP12",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 103,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {\"lineId\": \"sato.kenichi\", \"email\": \"k.sato@minatolink.example\"} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const panel = document.querySelector('[data-profile-editor]'); const c = document.querySelector(\"[data-profile-card='contacts']\"); if (panel && c) panel.scrollTop = c.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 70; })()"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P12 390 · 連絡先 已填",
+   "design-scroll-anchor": ".scrollto",
+   "design-as-mweb": true
+  },
+  {
+   "id": "URP13",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 104,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {\"lineId\": \"sato.kenichi\", \"email\": \"k.sato@minatolink\"} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "[data-profile-save]"
+    },
+    {
+     "wait": 400
+    },
+    {
+     "eval": "(() => { const panel = document.querySelector('[data-profile-editor]'); const c = document.querySelector(\"[data-profile-card='contacts']\"); if (panel && c) panel.scrollTop = c.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 70; })()"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P13 390 · 邮箱格式错误（点保存后）",
+   "design-scroll-anchor": ".scrollto",
+   "design-as-mweb": true
+  },
+  {
+   "id": "URP14",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 105,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {\"lineId\": \"sato.kenichi\", \"email\": \"k.sato@minatolink.example\"} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "fill": [
+      "#pe-lineId",
+      "sato.kenichi2"
+     ]
+    },
+    {
+     "fill": [
+      "#pe-lineId",
+      "sato.kenichi"
+     ]
+    },
+    {
+     "click": "[data-profile-save]"
+    },
+    {
+     "wait": 900
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P14 390 · 保存成功（只比提示条）",
+   "design-clip": ".k-toast",
+   "app-clip": "[role=status]"
+  },
+  {
+   "id": "URP15",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 106,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD, handles: {\"lineId\": \"sato.kenichi\", \"email\": \"k.sato@minatolink.example\"} }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const panel = document.querySelector('[data-profile-editor]'); const c = document.querySelector(\"[data-profile-card='contacts']\"); if (panel && c) panel.scrollTop = c.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 70; })()"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P15 390 · 深色（已填）",
+   "design-scroll-anchor": ".scrollto",
+   "design-as-mweb": true,
+   "themes": [
+    "dark"
+   ]
   }
  ]
 }
