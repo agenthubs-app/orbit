@@ -7,7 +7,7 @@ import type { ZodType } from "zod";
 import type { OrbitApiClient } from "../../api/client";
 import type { ApiResult } from "../../api/types";
 import type { HostCheckInEventsResponse, HostCohostAcceptResult, HostCohostInvitePreview } from "../../api/contract/host-cohosts";
-import type { HostCheckInResult, HostKioskHeartbeatResult, HostKioskResponse, HostKioskRosterResponse, HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleDecisionResult, HostPeopleResponse, HostPersonResponse, HostReportResponse } from "../../api/contract/host-console";
+import type { HostAdmissionDecision, HostCheckInResult, HostKioskHeartbeatResult, HostKioskResponse, HostKioskRosterResponse, HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleDecisionResult, HostPeopleResponse, HostPersonResponse, HostReportResponse } from "../../api/contract/host-console";
 import type { HostNoticePreview, HostNoticeSendResult } from "../../api/contract/host-notices";
 import type { HostCenterFilter, HostCenterResponse, HostCenterSummary, HostDesktopLinkResult, HostEventSlugResolveResult, HostEventView } from "../../api/contract/host-events";
 import type { OrganizerFollowResult } from "../../api/contract/organizer-follow";
@@ -52,6 +52,16 @@ export async function hostRead<T>(call: Promise<ApiResult<unknown>>, schema: Zod
 const id = (value: string) => encodeURIComponent(value);
 const ops = (eventId: string) => `/api/events/${id(eventId)}/operations`;
 
+/** 参加者一覧的查询：区分、搜索（名前・会社・回答）、「プロフィール未完了」、さらに表示 的游标（同 Web peopleQueryString）。 */
+export type HostPeopleQuery = { bucket: HostPeopleBucket; q: string; incomplete: boolean; cursor?: string | null };
+export function peopleQueryString(query: HostPeopleQuery): string {
+  const parts = [`bucket=${query.bucket}`];
+  if (query.q.trim()) parts.push(`q=${encodeURIComponent(query.q.trim())}`);
+  if (query.incomplete) parts.push("incomplete=1");
+  if (query.cursor) parts.push(`cursor=${encodeURIComponent(query.cursor)}`);
+  return parts.join("&");
+}
+
 export function createHostApi(client: OrbitApiClient) {
   return {
     center: (filter: HostCenterFilter = "all") => hostRead(client.get<unknown>(`/api/host/center?filter=${filter}`), hostCenterResponseSchema as ZodType<HostCenterResponse>),
@@ -65,10 +75,10 @@ export function createHostApi(client: OrbitApiClient) {
     publishMatching: (eventId: string, generationId: string, overridesVersion: number) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/matching/publish`, { body: { generationId, overridesVersion } }), hostMatchingResponseSchema as ZodType<HostMatchingResponse>),
     noticePreview: (eventId: string) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/notices/preview`, { body: { kind: "profile_incomplete" } }), hostNoticePreviewSchema as ZodType<HostNoticePreview>),
     noticeSend: (eventId: string) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/notices/send`, { body: { idempotencyKey: newIdempotencyKey(), kind: "profile_incomplete" } }), hostNoticeSendResultSchema as ZodType<HostNoticeSendResult>),
-    people: (eventId: string, bucket: HostPeopleBucket) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/people?bucket=${bucket}`), hostPeopleResponseSchema as ZodType<HostPeopleResponse>),
+    people: (eventId: string, query: HostPeopleQuery) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/people?${peopleQueryString(query)}`), hostPeopleResponseSchema as ZodType<HostPeopleResponse>),
     /** 参加者詳細：只读这一个人（申込回答 / プロフィール / マッチング結果）。 */
     person: (eventId: string, actorId: string) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/people/${id(actorId)}`), hostPersonResponseSchema as ZodType<HostPersonResponse>),
-    approve: (eventId: string, actorId: string, expectedVersion: number) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/people/${id(actorId)}/decision`, { body: { decision: "approve", expectedVersion } }), hostPeopleDecisionResultSchema as ZodType<HostPeopleDecisionResult>),
+    decide: (eventId: string, actorId: string, decision: HostAdmissionDecision, expectedVersion: number) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/people/${id(actorId)}/decision`, { body: { decision, expectedVersion } }), hostPeopleDecisionResultSchema as ZodType<HostPeopleDecisionResult>),
     report: (eventId: string) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/report?view=all`), hostReportResponseSchema as ZodType<HostReportResponse>),
     kiosk: (eventId: string, q = "") => hostRead(q.trim() ? client.get<unknown>(`/api/host/events/${id(eventId)}/kiosk?q=${encodeURIComponent(q.trim())}`) : client.get<unknown>(`/api/host/events/${id(eventId)}/kiosk`), hostKioskResponseSchema as ZodType<HostKioskResponse>),
     roster: (eventId: string) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/kiosk/roster`), hostKioskRosterResponseSchema as ZodType<HostKioskRosterResponse>),

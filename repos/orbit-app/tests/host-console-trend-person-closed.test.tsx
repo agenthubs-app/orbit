@@ -12,7 +12,8 @@ import { en } from "../src/i18n/en";
 import { ja } from "../src/i18n/ja";
 import { zh } from "../src/i18n/zh";
 import { CheckInBody, checkInRefusalKey, kioskClosed } from "../src/screens/host/check-in-view";
-import { canDecide, OverviewBody, PeopleBody, ReportBody } from "../src/screens/host/console-view";
+import { OverviewBody, ReportBody } from "../src/screens/host/console-view";
+import { decidable as canDecide, PeoplePanel, type PeoplePanelProps } from "../src/screens/host/people-view";
 import { HostPersonView, personMeta } from "../src/screens/host/person-view";
 import { SignupTrend, signupTrendModel, trendDayLabel } from "../src/screens/host/signup-trend";
 import { renderedText, renderToHtml } from "./helpers/render";
@@ -95,24 +96,24 @@ test("概要 and レポート show the trend; an ended event says 開催まで; 
   assert.match(report, /受付率.*申込の推移 開催まで.*詳しいレポートは PC で/);
 });
 
+const panel = (data: HostPeopleResponse, patch: Partial<PeoplePanelProps> = {}) => renderToHtml(<PeoplePanel data={data} rows={data.rows} t={t} query={{ bucket: data.bucket, incomplete: false, q: "" }} loading={false} busy={false}
+  selecting={false} selected={new Set()} issues={new Map()} onBucket={noop} onSearch={noop} onIncomplete={noop} onSelecting={noop} onSelect={noop} onSelectAll={noop} onOpen={noop} onDecide={noop} onMore={noop} onMenu={noop} {...patch} />);
+
 test("参加者: members registered without an application (applicationVersion 0) are view-only; rows open the detail", () => {
   assert.equal(canDecide({ applicationVersion: 0, status: "approved" }), false);
   assert.equal(canDecide({ applicationVersion: 0, status: "pending" }), false);
   assert.equal(canDecide({ applicationVersion: 2, status: "waitlisted" }), true);
   const member = { ...people.rows[0]!, actorId: "actor:member", applicationVersion: 0, name: "移行 太郎", status: "approved" as const };
-  const approved: HostPeopleResponse = { ...people, bucket: "approved", rows: [member] };
-  const html = renderToHtml(<PeopleBody data={approved} t={t} approving={null} onBucket={noop} onApprove={noop} onOpen={noop} />);
+  const html = panel({ ...people, bucket: "approved", rows: [member] });
   assert.doesNotMatch(html, /host-approve-/);
   assert.match(html, /aria-label="移行 太郎 の詳細"/);
-  const pending = renderToHtml(<PeopleBody data={people} t={t} approving={null} onBucket={noop} onApprove={noop} onOpen={noop} />);
-  assert.match(pending, /host-approve-actor:hp-morita/);
+  assert.match(panel(people), /host-approve-actor:hp-morita/);
 });
 
 test("参加者: switching tab shows a placeholder, never the previous tab's rows", () => {
-  const html = renderToHtml(<PeopleBody data={people} bucket="approved" t={t} approving={null} onBucket={noop} onApprove={noop} />);
+  const html = panel(people, { loading: true, rows: [] });
   assert.match(html, /host-people-loading/);
   assert.doesNotMatch(html, new RegExp(people.rows[0]!.name));
-  assert.match(renderToHtml(<PeopleBody data={people} bucket="pending" t={t} approving={null} onBucket={noop} onApprove={noop} />), new RegExp(people.rows[0]!.name));
 });
 
 const recs = Array.from({ length: 7 }, (_, index) => ({ name: `相手 ${index + 1}`, org: index === 0 ? "みずほ台ベンチャーズ" : null, participantId: `p-${index}`, rank: index + 1, reason: index === 0 ? "同じ業界で資金調達を経験" : null, role: index === 0 ? "パートナー" : null }));

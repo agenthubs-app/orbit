@@ -15,7 +15,8 @@ import { organizerPublicResponseSchema } from "../src/api/schema/organizer-profi
 import { ja } from "../src/i18n/ja";
 import { HostCenterBody, normalizeCode } from "../src/screens/host/center-view";
 import { CheckInBody } from "../src/screens/host/check-in-view";
-import { MatchingBody, OverviewBody, PeopleBody, ReportBody, SegChips } from "../src/screens/host/console-view";
+import { MatchingBody, OverviewBody, ReportBody, SegChips } from "../src/screens/host/console-view";
+import { PeoplePanel } from "../src/screens/host/people-view";
 import { JoinCard } from "../src/screens/host/join-view";
 import { OrganizerBody } from "../src/screens/host/organizer-view";
 import { consoleHref, consoleSubtitle, hostEventsRowSub, parseSeg, rowNote, openingPeopleBucket } from "../src/screens/host/host-model";
@@ -73,9 +74,10 @@ test("マッチング結果 (b12 #422, view only) and 参加者 · 審査 (b12 #
   const text = renderedText(<MatchingBody data={matching} t={t} onRound={noop} />);
   assert.match(text, /見るだけです/); assert.match(text, /テーブル A/); assert.match(text, /第1ラウンド/);
   assert.match(renderedText(<MatchingBody data={{ ...matching, state: "none", tables: [] }} t={t} onRound={noop} />), /マッチングはまだ生成されていません/);
-  const list = renderedText(<PeopleBody data={people} t={t} approving={null} onBucket={noop} onApprove={noop} />);
-  assert.match(list, /審査待ち 12/); assert.match(list, /承認/); assert.match(list, /まとめて審査・見送りの理由メモは PC で/);
-  assert.match(renderedText(<PeopleBody data={{ ...people, rows: [] }} t={t} approving={null} onBucket={noop} onApprove={noop} />), /条件に合う申込者はいません/);
+  const props = { busy: false, issues: new Map(), loading: false, onBucket: noop, onDecide: noop, onIncomplete: noop, onMenu: noop, onMore: noop, onOpen: noop, onSearch: noop, onSelect: noop, onSelectAll: noop, onSelecting: noop, selected: new Set<string>(), selecting: false, t };
+  const list = renderedText(<PeoplePanel {...props} data={people} rows={people.rows} query={{ bucket: "pending", incomplete: false, q: "" }} />);
+  assert.match(list, /審査待ち 12/); assert.match(list, /承認/); assert.doesNotMatch(list, /PC で/);
+  assert.match(renderedText(<PeoplePanel {...props} data={{ ...people, rows: [] }} rows={[]} query={{ bucket: "pending", incomplete: true, q: "" }} />), /条件に合う申込者はいません/);
 });
 
 const queued: KioskQueueItem = { at: "2026-10-07T10:46:00.000Z", eventId: kiosk.eventId, idempotencyKey: "k-1", initial: "木", name: "木村 洋平", org: "みずほ台ベンチャーズ", participantId: "participant:hp-kimura" };

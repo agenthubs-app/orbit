@@ -171,6 +171,10 @@ export const hostPersonResponseObject = z.object({
     tables: readableItems(z.object({ round: z.number().int().min(1), table: z.string().min(1), theme: z.string().nullable(), why: z.string().nullable(), mates: readableItems(hostPersonMateObject) })),
     recommendations: readableItems(z.object({ rank: count, participantId: z.string().min(1), name: z.string(), org: z.string().nullable(), role: z.string().nullable(), reason: z.string().nullable() })),
   }).nullable(),
+  profileScore: z.number().int().min(0).max(100).optional(),
+  missing: z.array(z.enum(["company", "purpose", "topics", "target", "offer"])).max(5).optional(),
+  intro: z.string().max(1000).nullable().optional(),
+  applicationVersion: z.number().int().min(0).nullable().optional(),
   sample: z.literal(true).optional(),
 });
 export const hostPersonResponseSchema = hostPersonResponseObject as unknown as z.ZodType<HostPersonResponse>;

@@ -170,62 +170,6 @@ export function MatchingBody({ data, t, onRound }: { data: HostMatchingResponse;
   );
 }
 
-export const BUCKETS: readonly HostPeopleBucket[] = ["pending", "approved", "waitlisted", "rejected"];
-const BUCKET_LABEL: Record<HostPeopleBucket, string> = { approved: "appBApproved", pending: "appBPending", rejected: "appBRejected", waitlisted: "appBWaitlisted" };
-
-/**
- * 审核按钮只给走过申込的 審査待ち / キャンセル待ち。申込なしで登録した人（先着・移行した回）以 applicationVersion 0
- * 出现在「承認済み」，只能查看（服务端也会拒绝）。
- */
-export function canDecide(row: Pick<HostPeopleRow, "status" | "applicationVersion">): boolean {
-  return (row.status === "pending" || row.status === "waitlisted") && row.applicationVersion > 0;
-}
-
-export interface PeopleBodyProps {
-  data: HostPeopleResponse;
-  t: HostT;
-  approving: string | null;
-  onBucket: (bucket: HostPeopleBucket) => void;
-  onApprove: (row: HostPeopleRow) => void;
-  /** 当前选中的分组；和 data.bucket 不同 = 新分组还在读，先显示占位，不显示上一个分组的行。 */
-  bucket?: HostPeopleBucket;
-  /** 点名字打开参加者詳細。 */
-  onOpen?: (row: HostPeopleRow) => void;
-}
-
-/** 参加者 · 審査（b12 #424）。 */
-export function PeopleBody({ data, t, approving, onBucket, onApprove, bucket = data.bucket, onOpen }: PeopleBodyProps) {
-  const { styles } = useHostStyles();
-  const c = useConsoleStyles().styles;
-  const loading = bucket !== data.bucket;
-  return (
-    <View testID="host-people">
-      <View style={c.mb12}><Segmented segments={BUCKETS.map((key) => ({ key, label: t(BUCKET_LABEL[key], { n: data.counts[key] }) }))} value={bucket} onChange={onBucket} accessibilityLabel={t("tPeople")} /></View>
-      {loading ? (
-        <View style={c.loading} accessibilityState={{ busy: true }} testID="host-people-loading"><View style={c.loadingRow} /><View style={c.loadingRow} /><View style={c.loadingRow} /></View>
-      ) : data.rows.length ? (
-        <View style={[styles.card, c.listCard]}>
-          {data.rows.map((row, index) => (
-            <View key={row.actorId} style={c.li}>
-              {index ? <View style={c.liLine} /> : null}
-              <UiPressable accessibilityRole="button" accessibilityLabel={t("pdOpen", { name: row.name })} disabled={!onOpen} onPress={() => onOpen?.(row)} style={[styles.row, c.liMain]} testID={`host-person-open-${row.actorId}`}>
-                <Avatar initial={row.initial} tone={avatarTone(row.name)} size="sm" />
-                <View style={styles.grow}>
-                  <UiText style={c.metaB} numberOfLines={1}>{row.name}</UiText>
-                  {row.org ? <UiText style={c.metaS} numberOfLines={1}>{row.org}</UiText> : null}
-                  {row.answer ? <UiText style={[c.metaS, c.answer]} numberOfLines={1}>{row.answer}</UiText> : null}
-                </View>
-              </UiPressable>
-              {canDecide(row) ? <BtnSm label={approving === row.actorId ? "…" : t("pApprove")} primary onPress={() => onApprove(row)} testID={`host-approve-${row.actorId}`} /> : null}
-            </View>
-          ))}
-        </View>
-      ) : <View style={styles.card}><UiText style={styles.sub}>{t("pNoMatch")}</UiText></View>}
-      <UiText style={[styles.lbl, c.center, c.mt8]}>{t("appPeoplePc")}</UiText>
-    </View>
-  );
-}
-
 // kit（b6 #23 / b12 #422 #424 #430）：.carousel gap6 mb12、外扩 18 · chip 段 7/14 12.5 · .cnt3 mt0 · .li 11 0 gap12、分隔线 left 50。
 export const useConsoleStyles = createThemedStyles((colors) => StyleSheet.create({
   carousel: { flexGrow: 0, marginBottom: 12, marginHorizontal: -18 },
