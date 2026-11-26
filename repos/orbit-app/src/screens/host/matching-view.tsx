@@ -274,7 +274,7 @@ export function MatchingResult({ data, t, busy, onRound, onConditions, onRegener
                 </UiPressable>
               ))}
             </View>
-            <UiText style={[h.lbl, h.grow]} numberOfLines={1}>{data.unplaced.map((member) => member.name.split(/\s+/u)[0]).join("・")}</UiText>
+            <UiText style={[h.lbl, h.grow]} numberOfLines={1}>{data.unplaced.map((member) => member.name.split(/\s+/u)[0]).join(t("listSep"))}</UiText>
             <BtnSm label={t("mFillSeats")} primary onPress={() => { if (canMove) onFillSeats(); }} testID="host-matching-fill" />
           </View>
         </View>
@@ -314,7 +314,7 @@ export function MoveSheet({ moving, tables, round, t, onPick, onClose }: { movin
             {list.map((table) => {
               const current = table.table === moving.from;
               const n = table.members.length;
-              const standings = [...new Set(table.members.map((member) => member.standing).filter(Boolean))].slice(0, 3).join("・");
+              const standings = [...new Set(table.members.map((member) => member.standing).filter(Boolean))].slice(0, 3).join(t("listSep"));
               return (
                 <UiPressable key={table.table} accessibilityRole="button" accessibilityState={{ disabled: current }} disabled={current} accessibilityLabel={`${table.theme ?? t("mTableN", { n, t: table.table })} ${current ? t("mCurTable") : t("mCountTo", { a: n, b: n + 1 })}`}
                   onPress={() => { setQ(""); onPick(table.table); }} style={[h.row, styles.tpick, current ? styles.cur : null]} testID={`host-move-to-${table.table}`}>
