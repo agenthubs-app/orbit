@@ -80,7 +80,7 @@
 .addMore:global(.btn) { display: flex; width: 100%; height: 48px; margin-top: 12px; align-items: center; justify-content: center; gap: 6px; border: 1.5px dashed var(--ink-4); border-radius: var(--r-md); background: transparent; color: var(--ink-2); font-size: var(--fs-row); font-weight: var(--fw-bold); }
 .contactNone .addMore:global(.btn) { border-color: var(--coral); }
 .contactGroup .errLine { margin-top: 10px; font-size: var(--fs-control); line-height: 1.55; }
-.chipRec { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface-3); color: var(--ink-3); font-size: var(--fs-caption); font-weight: var(--fw-bold); white-space: nowrap; }
+.chipRec { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface-3); color: var(--ink-2); font-size: var(--fs-caption); font-weight: var(--fw-bold); white-space: nowrap; }
 .field { min-width: 0; margin-top: 12px; }
 .fieldLabel { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; color: var(--ink-2); font-size: var(--fs-meta); font-weight: var(--fw-bold); }
 .input { width: 100%; height: 48px; padding: 0 14px; border: 1.5px solid transparent; border-radius: var(--r-md); outline: none; background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body); text-overflow: ellipsis; }
@@ -301,6 +301,10 @@ select.input option { color: var(--ink); }
 .optRows .rad { width: 22px; height: 22px; }
 @media (max-width: 1023px) { .igrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 767px) {
+  /* iOS 聚焦小于 16px 的输入框会放大整页：手机上所有可输入控件统一 16px。 */
+  .page input:not([type=checkbox]):not([type=radio]):not([type=range]), .page textarea, .page select, .page .input { font-size: var(--fs-input-phone); }
+  /* 手机上「連絡先」组不在卡片里（画板 .cg .chip.rec = surface-2 / ink-3）；卡片里才是 surface-3 / ink-2。 */
+  .chipRec { background: var(--surface-2); color: var(--ink-3); }
   .phoneOnlyBlock { display: block; }
   .wideOnlyBlock { display: none; }
   .repairTitle { margin-top: 16px; font-size: var(--fs-title-sm); line-height: 1.35; letter-spacing: -.01em; }

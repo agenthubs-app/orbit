@@ -50,6 +50,8 @@
 .saving:global(.btn) { opacity: .55; }
 @media (min-width: 768px) and (max-width: 1279px) { .panel { width: min(560px, calc(100vw - 28px)); } }
 @media (max-width: 767px) {
+  /* iOS 聚焦小于 16px 的输入框会放大整页：手机上所有可输入控件统一 16px。 */
+  .panel input:not([type=checkbox]):not([type=radio]):not([type=range]), .panel textarea, .panel select { font-size: var(--fs-input-phone); }
   /* 手机：顶栏随内容滚走（不吸顶），整个面板一起滚；保存按钮固定在底部。 */
   .panel { display: block; inset: 0; width: 100%; overflow-y: auto; border-radius: var(--r-none); box-shadow: none; }
   .body { overflow: visible; }

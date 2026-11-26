@@ -38,7 +38,11 @@
    "note": "UR-C1 Web 1440 · 空",
    "design-clip": ".cg",
    "app-clip": "[data-onboarding-contact]",
-   "viewport": false
+   "viewport": false,
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URC2",
@@ -218,7 +222,11 @@
    "design-clip": ".cg",
    "app-clip": "[data-onboarding-contact]",
    "viewport": false,
-   "design-scroll-anchor": ".cg"
+   "design-scroll-anchor": ".cg",
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URC7",
@@ -323,7 +331,11 @@
    "design-clip": ".cg",
    "app-clip": "[data-onboarding-contact]",
    "viewport": false,
-   "design-scroll-anchor": ".cg"
+   "design-scroll-anchor": ".cg",
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URC10",
@@ -398,7 +410,11 @@
     }
    ],
    "note": "UR-R1 Web 1440 · 默认（旧值预填：姓名「引き継ぎ」）",
-   "height": 960
+   "height": 960,
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URR2",
@@ -457,7 +473,11 @@
     }
    ],
    "note": "UR-R3 Web 1440 · 缺项",
-   "height": 960
+   "height": 960,
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URR4",
@@ -559,7 +579,11 @@
     }
    ],
    "note": "UR-R6 390 · 默认",
-   "height": 844
+   "height": 844,
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URR7",
@@ -633,7 +657,11 @@
     }
    ],
    "note": "UR-R8 390 · 缺项",
-   "height": 844
+   "height": 844,
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URR9",
@@ -711,7 +739,11 @@
    ],
    "design-clip": ".k-hsec",
    "app-clip": "[data-host-person-contacts]",
-   "note": "UR-S2 Web 1440 · 报名者详情 · 只有 LINE（mock 松本 隆）；只比「連絡先」一段"
+   "note": "UR-S2 Web 1440 · 报名者详情 · 只有 LINE（mock 松本 隆）；只比「連絡先」一段",
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URS4",
@@ -769,7 +801,11 @@
    ],
    "design-clip": ".k-hsec",
    "app-clip": "[data-host-person-contacts]",
-   "note": "UR-S6 390 · 报名者详情（底部面板）"
+   "note": "UR-S6 390 · 报名者详情（底部面板）",
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URS7",
@@ -829,7 +865,11 @@
    ],
    "note": "UR-P1 Web 1440 · 默认（design=100）",
    "design-clip": ".k-drawer",
-   "app-clip": "[data-profile-editor]"
+   "app-clip": "[data-profile-editor]",
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URP2",
@@ -906,7 +946,11 @@
    ],
    "note": "UR-P3 Web 834 · 保存中（桩挂起保存）",
    "design-clip": ".k-drawer",
-   "app-clip": "[data-profile-editor]"
+   "app-clip": "[data-profile-editor]",
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URP4",
@@ -988,7 +1032,11 @@
     }
    ],
    "note": "UR-P5 390 · 默认",
-   "design-as-mweb": true
+   "design-as-mweb": true,
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URP6",
@@ -1083,7 +1131,11 @@
    ],
    "note": "UR-P7 390 · 出错；已知不过：画板可视区扣掉了状态栏与 Safari 栏（约 90px），面板滚到底也到不了画板画的位置——内容本身在 URP4（834）与 URP5 / URP6 已逐像素核对",
    "design-scroll-anchor": ".scrollto",
-   "design-as-mweb": true
+   "design-as-mweb": true,
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URP8",
@@ -1158,7 +1210,11 @@
    ],
    "note": "UR-E1 Web 1440 · 默认（:3017 人脈第一位；示例人物不同，只比编辑面板）",
    "design-clip": ".k-drawer",
-   "app-clip": "[data-network-edit]"
+   "app-clip": "[data-network-edit]",
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URE2",
@@ -1205,7 +1261,11 @@
    ],
    "note": "UR-E2 Web 1440 · 删除确认（只比确认框；背后人脈页另有门禁）",
    "design-clip": ".k-dlg",
-   "app-clip": "[role=alertdialog]"
+   "app-clip": "[role=alertdialog]",
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URE3",
@@ -1286,7 +1346,11 @@
     }
    ],
    "note": "UR-E4 390 · 默认",
-   "design-as-mweb": true
+   "design-as-mweb": true,
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URE5",
@@ -1386,7 +1450,11 @@
    ],
    "note": "UR-E6 390 · 删除确认（确认框标题用原联系人名＝数据）",
    "design-as-mweb": true,
-   "design-scroll-anchor": ".scrollto"
+   "design-scroll-anchor": ".scrollto",
+   "themes": [
+    "light",
+    "dark"
+   ]
   },
   {
    "id": "URE7",
@@ -1447,6 +1515,134 @@
    "design-as-mweb": true,
    "design-clip": ".k-toast",
    "app-clip": "[role=status]"
+  },
+  {
+   "id": "URS1",
+   "app": "/app/contacts?lang=ja",
+   "app-origin": "http://localhost:3300",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 75,
+   "width": 1440,
+   "height": 960,
+   "viewport": true,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-network-row]",
+   "steps": [
+    {
+     "eval": "fetch('/api/dev/network-design-fixture',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({variant:'many286'})})"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "reload": true
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "click": "tr[data-network-row='design-person-001']"
+    },
+    {
+     "waitFor": "[data-network-shared-contact-methods]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "design-clip": ".k-sc",
+   "app-clip": "[data-network-shared-contact-methods]",
+   "note": "UR-S1 Web 1440 · 人脉详情 · 四种都有（:3300 network-analysis mock，fixture 高橋 美咲）",
+   "themes": [
+    "light",
+    "dark"
+   ]
+  },
+  {
+   "id": "URS5",
+   "app": "/app/contacts?lang=ja",
+   "app-origin": "http://localhost:3300",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 79,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-network-row]",
+   "steps": [
+    {
+     "eval": "fetch('/api/dev/network-design-fixture',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({variant:'many286'})})"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "reload": true
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-network-mobile-card='design-person-001']"
+    },
+    {
+     "waitFor": "[data-network-shared-contact-methods]"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "design-clip": ".k-sc",
+   "app-clip": "[data-network-shared-contact-methods]",
+   "note": "UR-S5 390 · 人脉详情的联系方式卡",
+   "themes": [
+    "light",
+    "dark"
+   ]
+  },
+  {
+   "id": "URS8",
+   "app": "/app/contacts?lang=ja",
+   "app-origin": "http://localhost:3300",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 82,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {})()",
+   "wait-for": "[data-network-row]",
+   "steps": [
+    {
+     "eval": "fetch('/api/dev/network-design-fixture',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({variant:'many286'})})"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "reload": true
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "click": "[data-network-mobile-card='design-person-001']"
+    },
+    {
+     "waitFor": "[data-network-shared-contact-methods]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "click": "[data-network-shared-contact-methods] [data-contact-copy]"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "design-clip": ".k-toast",
+   "app-clip": "[role=status]",
+   "note": "UR-S8 390 · 复制后提示（只比提示条）"
   }
  ]
 }

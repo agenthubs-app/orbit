@@ -534,7 +534,7 @@ docNav(''); orbitChrome();
   .urx .cg-h small { font-size: 12px; font-weight: 700; color: var(--ink-3); }
   .urx .cg-s { font-size: 12.5px; color: var(--ink-2); font-weight: 600; line-height: 1.6; margin-top: 4px; }
   .urx .cg .chip.rec { background: var(--surface-2); color: var(--ink-3); }
-  .urx .card .cg .chip.rec { background: var(--surface-3); }
+  .urx .card .cg .chip.rec { background: var(--surface-3); color: var(--ink-2); }
   .urx .addmore { margin-top: 12px; height: 48px; width: 100%; border-radius: 14px; border: 1.5px dashed var(--ink-4); background: transparent; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: var(--ink-2); }
   .urx .cg.err .addmore { border-color: var(--coral); }
 
@@ -651,6 +651,9 @@ docNav(''); orbitChrome();
 .urx .mweb .dialog .dd { margin: 6px 0 0 !important; font-size: 12.5px; line-height: 1.65; }
 .urx .mweb .dialog .dacts { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px !important; }
 .urx .mweb .dialog .dacts .btn { height: 40px; padding: 0 16px; font-size: 13px; font-weight: 700; flex: none; width: auto; }
+
+/* 手机网页输入框 16px：iOS Safari / Chrome 聚焦小于 16px 的输入框会自动放大页面（2026-11-27 定，不用禁止缩放绕开）。App 原生输入框不受影响。 */
+.urx .mweb .fld .in, .urx .mweb .tagadd.k-typing { font-size: 16px; }
 </style>
 <script>
 {
@@ -990,7 +993,7 @@ h += boards([
 h += boards([
   ['UR-P5 · 390 · 默认', '提案', M(profPhone('def')), [['.tb52 .rbtn', '顶栏 52：左上 ✕ 关闭（有改动时先问「変更を破棄しますか？」），标题居中，不吸顶'], ['.k-pco', '单列，每栏 48 高'], ['.k-psave', '「保存」固定在 Safari 栏之上；不再有右下角挤着的两个小按钮']]],
   ['UR-P6 · 390 · 编辑中', '状态', M(profPhone('edit').replace('<div class="card k-ptags', '<div class="scrollto" data-off="40"></div><div class="card k-ptags')), [['.k-typing', '标签原位输入'], ['.k-ptags .gh small', '计数']]],
-  ['UR-P7 · 390 · 出错', '状态', M(profPhone('err').replace('<div class="card k-pbio', '<div class="scrollto" data-off="84"></div><div class="card k-pbio')), [['.k-bio', '超字数'], ['.k-perr', '保存失败']]],
+  ['UR-P7 · 390 · 出错', '状态', M(profPhone('err').replace('<div class="card k-pbio', '<div class="scrollto" data-off="42"></div><div class="card k-pbio')), [['.k-bio', '超字数'], ['.k-perr', '保存失败']]],
   ['UR-P8 · 390 · 公开范围（滚到底）', '状态', M(profPhone('def').replace('<div class="card k-pvis', '<div class="scrollto" data-off="400"></div><div class="card k-pvis')), [['.k-pvis', '开关整行可点'], ['.k-pfix', '联系方式固定规则']]],
 ]);
 
