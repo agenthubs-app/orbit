@@ -440,3 +440,18 @@ test("changing a registration: the worst case (5 organizer questions + every int
   assert.equal(ten.length, 10);
   assert.equal((await service.next("ev", ten, "ja", true, "actor:a", "target"))?.question?.field, "targetAttendees");
 });
+
+test("closed or decided registrations come back read-only with what was submitted; nobody registered on a closed event is told at once (no first question)", async () => {
+  const late = { now: () => Date.parse("2026-10-04T00:00:00.000Z") };
+  const closed = (await createJoinService({ ports: editPorts(late).ports }).current("a", "ev", "ja"))!;
+  assert.deepEqual([closed.blocked, closed.ask.length, closed.selfIntro], ["JOIN_CLOSED", 0, "前回の自己紹介"]);
+  assert.ok(closed.answers.some((item) => item.field === "targetAttendees"), "the submitted answers, for the read-only card");
+  const locked = (await createJoinService({ ports: editPorts({}, { decided: true, status: "waitlisted" }).ports }).current("a", "ev", "ja"))!;
+  assert.deepEqual([locked.blocked, locked.ask.length, locked.answers.length > 0], ["JOIN_LOCKED", 0, true]);
+  for (const status of ["none", "cancelled"]) {
+    const fresh = (await createJoinService({ ports: editPorts(late, { status }).ports }).current("a", "ev", "ja"))!;
+    assert.deepEqual([fresh.blocked, fresh.answers.length], ["JOIN_CLOSED", 0], status);
+  }
+  const rejected = (await createJoinService({ ports: editPorts({}, { status: "rejected" }).ports }).current("a", "ev", "ja"))!;
+  assert.deepEqual([rejected.blocked, rejected.answers.length], ["JOIN_REJECTED", 0]);
+});

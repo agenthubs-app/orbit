@@ -147,7 +147,7 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     async current(actorId, eventId, language) {
       const row = (await input.query(`/* events:r17-join:current */ select
           a.status as application_status, a.decided_at is not null as decided, a.profile_payload -> 'interviewResponses' as application_responses,
-          m.status as membership_status, p.profile_payload #> '{registrationProfile,interviewResponses}' as membership_responses,
+          m.status as membership_status, p.profile_payload #> '{registrationProfile,interviewResponses}' as membership_responses, p.profile_payload #> '{registrationProfile,answers}' as membership_answers,
           (select r.payload -> 'answers' from orbit_records r where r.workspace_id = $1 and r.collection_name = 'eventHostAnswers' and r.record_id = $4 and r.user_id = $3 and r.lifecycle_state <> 'deleted') as host_answers,
           (select r.payload ->> 'text' from orbit_records r where r.workspace_id = $1 and r.collection_name = 'eventJoinIntros' and r.record_id = $5 and r.user_id = $3 and r.lifecycle_state <> 'deleted') as intro
         from (select 1) one
@@ -160,7 +160,15 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
         : row.membership_status === "rsvped" ? "registered" as const
         : application || row.membership_status ? "cancelled" as const : "none" as const;
       const responses = (status === "registered" ? row.membership_responses : row.application_responses) as readonly EventProfileResponseSnapshot[] | null | undefined;
-      const answers = await signStoredJoinAnswers({ actorId, eventId: await tokenEventId(eventId, actorId), language, responses: Array.isArray(responses) ? responses : [] });
+      const tokenEvent = await tokenEventId(eventId, actorId);
+      let answers = await signStoredJoinAnswers({ actorId, eventId: tokenEvent, language, responses: Array.isArray(responses) ? responses : [] });
+      // 旧报名只有字段 → 回答（没有题面）：按字段的固定题带回（没有固定题的字段，如公司・职位，提交时照旧由资料补）。
+      const legacy = status === "registered" && !answers.length && row.membership_answers && typeof row.membership_answers === "object" ? Object.entries(row.membership_answers as Record<string, unknown>) : [];
+      for (const [field, value] of legacy) {
+        if (typeof value !== "string" || !value.trim()) continue;
+        const question = await signFixedQuestion({ actorId, eventId: tokenEvent, field, language });
+        if (question) answers = [...answers, { answer: value.trim().slice(0, 1000), fixed: false, question }];
+      }
       return { answers, decided: row.decided === true, hostAnswers: (row.host_answers as Record<string, string> | null) ?? {}, selfIntro: typeof row.intro === "string" ? row.intro : null, status };
     },
     async fixedQuestion(actorId, eventId, field, language) {

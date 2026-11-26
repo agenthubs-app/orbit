@@ -355,6 +355,8 @@ export const eventsJourneyCopy = {
   coverageTitle: { ja: "カバー率 {n}%", zh: "完整度{n}%", en: "Coverage {n}%", kind: "cardTitle" },
   coverageAddable: { ja: "足りない項目を追加できます", zh: "可以补上缺少的项目", en: "Add what's missing", kind: "label" },
   introDrafting: { ja: "自己紹介を作成中…", zh: "正在生成自我介绍…", en: "Writing your intro…", kind: "label" },
+  profileSubmitted: { ja: "提出済み", zh: "已提交", en: "Submitted", kind: "chip" },
+  introDrafted: { ja: "自己紹介ができました", zh: "自我介绍已生成", en: "Your introduction is ready", kind: "label" },
   introDraftFailed: { ja: "自己紹介を作成できませんでした。自分で書くか、このまま申し込めます", zh: "没能生成自我介绍，可以自己写或直接报名", en: "Couldn't write your intro. Write your own or apply as it is", kind: "label" },
   introLbl: { ja: "自己紹介", zh: "自我介绍", en: "Intro", kind: "label" },
   introWhy: { ja: "作成の根拠", zh: "写作依据", en: "How this was written", kind: "label" },

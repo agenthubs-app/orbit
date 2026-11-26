@@ -35,6 +35,7 @@
 .drafting { padding-top: 2px; }
 .draftNote.draftNote { margin-top: 8px; }
 .draftNote:empty { display: none; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .railCard.railCard { padding: 16px; }
 .railName { font-size: var(--fs-row); display: block; }

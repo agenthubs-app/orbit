@@ -398,11 +398,13 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       if (!event) return null;
       const mine = (await ports.current?.(actorId, eventId, language)) ?? null;
       const fresh = { answers: [], ask: [], blocked: null, selfIntro: null } as const;
-      if (!mine || mine.status === "none" || mine.status === "cancelled") return { ...fresh, status: mine?.status ?? "none" };
-      if (mine.status === "rejected") return { ...fresh, blocked: "JOIN_REJECTED", status: mine.status };
       const closesAt = Date.parse(event.registrationClosesAt ?? event.startsAt);
-      if (Number.isFinite(closesAt) && (ports.now?.() ?? Date.now()) >= closesAt) return { ...fresh, blocked: "JOIN_CLOSED", status: mine.status };
-      if (mine.status !== "pending_review" && (mine.decided || event.review)) return { ...fresh, blocked: "JOIN_LOCKED", status: mine.status };
+      const closed = Number.isFinite(closesAt) && (ports.now?.() ?? Date.now()) >= closesAt;
+      // 没报名 / 已取消：截止了就直接说（不问第一题、不调 AI）；否则新报名。
+      if (!mine || mine.status === "none" || mine.status === "cancelled") return { ...fresh, blocked: closed ? "JOIN_CLOSED" : null, status: mine?.status ?? "none" };
+      if (mine.status === "rejected") return { ...fresh, blocked: "JOIN_REJECTED", status: mine.status };
+      // 已截止 / 主办方已决定：不能改，但照样带回上次的内容，页面只读显示。
+      const blocked = closed ? "JOIN_CLOSED" as const : mine.status !== "pending_review" && (mine.decided || event.review) ? "JOIN_LOCKED" as const : null;
       const hostQuestions = ports.hostQuestions ? await ports.hostQuestions(eventId).catch(() => []) : [];
       const tags = await profileTags(actorId, language);
       // 主办方题：删掉的丢弃；选项改得对不上的、新增的必答题要补问；其余按当前语言带回。
@@ -425,12 +427,12 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       });
       const answers = [...host, ...interview];
       const asked = [...answers.map((entry) => entry.field), ...ask.map((question) => question.field)].map((field) => itemOfAnswer(field));
-      for (const item of CORE_ITEMS) {
+      for (const item of blocked ? [] : CORE_ITEMS) {
         if (asked.includes(item) || fromProfile[item]) continue;
         const question = await ports.fixedQuestion?.(actorId, eventId, FIELD_OF_ITEM[item], language);
         if (question) ask.push({ ...prefillQuestion({ ...question, ...questionShape(question.field, language) }, tags, language), item });
       }
-      return { answers, ask, blocked: null, selfIntro: mine.selfIntro?.trim() || null, status: mine.status };
+      return { answers, ask: blocked ? [] : ask, blocked, selfIntro: mine.selfIntro?.trim() || null, status: mine.status };
     },
     async profile(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], draft: boolean, language: JourneyLanguage, edit = false): Promise<EventJoinProfile | null> {
       const event = await ports.event(eventId);

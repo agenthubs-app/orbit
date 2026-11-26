@@ -66,7 +66,7 @@ const refusalKey = (code: string | undefined) => (code ? REFUSAL_KEY[code] : und
 
 const ITEM_OF_FIELD: Readonly<Record<string, EventJoinProfileItemKey>> = { desiredOutcome: "purpose", experienceHighlight: "topics", targetAttendees: "target", valueOffered: "offer" };
 
-type ProfileMode = "live" | "review" | "applied";
+type ProfileMode = "live" | "review" | "applied" | "readonly";
 
 export function ProfileCard({ profile, t, mode, introPending = false }: { profile: EventJoinProfile | null; t: JourneyT; mode: ProfileMode; introPending?: boolean }) {
   const drafting = mode === "live";
@@ -76,7 +76,8 @@ export function ProfileCard({ profile, t, mode, introPending = false }: { profil
     <div className={`${styles.card} ${styles.span5} ${r.persona}`} data-join-profile={mode}>
       <div className={styles.cardH}>
         <h3>{t("profileTitle")}</h3>
-        {mode === "applied"
+        {mode === "readonly" ? <span className={styles.chip}>{t("profileSubmitted")}</span>
+          : mode === "applied"
           ? <span className={`${styles.chip} ${styles.c_teal}`}>{t("appliedEditable", { date: monthDaySlash(profile?.editableUntil) })}</span>
           : <span className={`${styles.chip} ${styles.c_lav}`}>{t("updatingLive")}</span>}
       </div>
@@ -99,7 +100,7 @@ export function ProfileCard({ profile, t, mode, introPending = false }: { profil
       </div>
       <div className={`${styles.lbl} ${r.sectionLbl}`}>{t("topicsLbl")}</div>
       <div className={`${styles.chips} ${r.chips}`}>{(profile?.topics ?? []).map((topic) => <span key={topic} className={`${styles.chip} ${styles.c_lav}`}>{topic}</span>)}</div>
-      <div className={`${styles.lbl} ${r.sectionLbl}`}>{t(introWait ? "introDraftLbl" : "introLbl")}</div>
+      {mode === "readonly" && !profile?.selfIntro ? null : <div className={`${styles.lbl} ${r.sectionLbl}`}>{t(introWait ? "introDraftLbl" : "introLbl")}</div>}
       {profile?.selfIntro && !introPending ? <div className={drafting ? `${styles.sub} ${r.intro}` : r.introSide}>{profile.selfIntro.text}</div> : introWait ? (
         <>
           <div className={r.shimmer} /><div className={r.shimmer} style={{ width: "85%" }} /><div className={r.shimmer} style={{ width: "60%" }} />
@@ -127,7 +128,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const [intro, setIntro] = useState<string | null>(null);
   const introRef = useRef<string | null>(null);
   introRef.current = intro;
-  const [draft, setDraft] = useState<"idle" | "running" | "failed">("idle");
+  const [draft, setDraft] = useState<"idle" | "running" | "ready" | "failed">("idle");
   const draftSeq = useRef(0);
   const [editingIntro, setEditingIntro] = useState(false);
   const [why, setWhy] = useState(false);
@@ -170,7 +171,16 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     void joinApi.current(eventId).then(async (current) => {
       if (!live) return;
       if (!current.ok) { setLoadFailed(true); return; }
-      if (current.data.blocked) { setBlocked(REFUSAL_KEY[current.data.blocked] as "joinRejected" | "joinClosed" | "joinLocked"); return; }
+      if (current.data.blocked) {
+        setBlocked(REFUSAL_KEY[current.data.blocked] as "joinRejected" | "joinClosed" | "joinLocked");
+        // 报过名的人：右栏只读显示已提交的资料；没有报名就不画空卡。
+        const given = current.data.answers.map(({ answer, field, prompt, questionToken }) => ({ answer, field, prompt, questionToken }));
+        if (!given.length) return;
+        setIntro(current.data.selfIntro ?? "");
+        const read = await joinApi.profile(eventId, given, false, true);
+        if (live && read.ok) setProfile(read.data);
+        return;
+      }
       const edit = ["registered", "pending_review", "waitlisted"].includes(current.data.status);
       setMode(edit ? "edit" : "new");
       if (!edit) {
@@ -240,7 +250,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       if (drafted.ok) setProfile(drafted.data);
       const outcome = introDraftOutcome(drafted.ok ? { ok: true, selfIntro: drafted.data.selfIntro } : { ok: false });
       setIntro(outcome.text);
-      setDraft(outcome.state);
+      setDraft(outcome.state === "idle" ? "ready" : outcome.state);
     };
     const first = await waitForIntroDraft(request);
     if (seq !== draftSeq.current) return;
@@ -445,7 +455,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
           </div>
         ) : <div className={r.introText}>{shownIntro}</div>}
         {why && profile?.selfIntroBasis ? <div className={r.whyBody}>{profile.selfIntroBasis}</div> : null}
-        <div className={`${styles.lbl} ${r.draftNote}`} role="status" aria-live="polite" data-join-intro-draft={draft}>{draft === "running" ? t("introDrafting") : draft === "failed" ? t("introDraftFailed") : ""}</div>
+        <div className={`${styles.lbl} ${r.draftNote}`} role="status" aria-live="polite" data-join-intro-draft={draft}>{draft === "running" ? t("introDrafting") : draft === "failed" ? t("introDraftFailed") : draft === "ready" ? <span className={r.srOnly}>{t("introDrafted")}</span> : ""}</div>
       </div>
       <div className={`${styles.card} ${r.inner} ${r.gap} ${r.scope}`}>
         <div className={`${styles.lbl} ${r.scopeLbl}`}>{t("visibilityTitle")}</div>
@@ -524,7 +534,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       />
       <div className={styles.wgrid} data-join={eventId}>
         {done ?? loadError ?? (reviewing ? review : chat)}
-        <ProfileCard introPending={draft === "running"} profile={profile ? { ...profile, selfIntro: intro && (profile.selfIntro || editing) ? { source: profile.selfIntro?.source ?? "profile", text: intro } : profile.selfIntro } : null} t={t} mode={result ? "applied" : reviewing ? "review" : "live"} />
+        {blocked && !profile ? null : <ProfileCard introPending={draft === "running"} profile={profile ? { ...profile, selfIntro: intro && (profile.selfIntro || editing) ? { source: profile.selfIntro?.source ?? "profile", text: intro } : profile.selfIntro } : null} t={t} mode={result ? "applied" : blocked ? "readonly" : reviewing ? "review" : "live"} />}
       </div>
       </>}
       {result ? <HostContactModal open={contactOpen} contact={result.hostContact} t={t} reviewLine={contactLine} onClose={() => setContactOpen(false)} /> : null}

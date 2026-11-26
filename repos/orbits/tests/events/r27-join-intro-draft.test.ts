@@ -43,3 +43,10 @@ test("while drafting: apply waits and says why, the intro cannot be edited, the 
   assert.match(flow, /const confirmed = \(intro \?\? profile\?\.selfIntro\?\.text \?\? ""\)/, "what is shown is what is submitted");
   for (const key of ["introDrafting", "introDraftFailed"] as const) for (const language of ["ja", "zh", "en"] as const) assert.ok(eventsJourneyCopy[key][language]);
 });
+
+test("a finished draft is announced (same words as the App); a blocked page shows no empty card, only what was submitted, read-only", () => {
+  assert.match(flow, /draft === "ready" \? <span className=\{r\.srOnly\}>\{t\("introDrafted"\)\}<\/span>/);
+  assert.match(flow, /\{blocked && !profile \? null : <ProfileCard/);
+  assert.match(flow, /blocked \? "readonly"/);
+  assert.deepEqual([eventsJourneyCopy.introDrafted.ja, eventsJourneyCopy.introDrafted.zh, eventsJourneyCopy.introDrafted.en], ["自己紹介ができました", "自我介绍已生成", "Your introduction is ready"]);
+});
