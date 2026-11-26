@@ -341,7 +341,7 @@ export function HostConsoleView({ data, tab, language, now = new Date(), busy = 
       <div className={s.avs}>{event.cohosts.slice(0, 3).map((person, index) => <div key={person.actorId} className={`${s.av} ${s[AVATAR_TONES[index % AVATAR_TONES.length]!]}`} title={person.name}>{person.initial}</div>)}</div>
       <a className={`btn ${s.btn}`} href={`${consoleHref(event.eventId, tab)}&drawer=cohosts`} onClick={onOpenCohosts} data-host-cohosts-open=""><Icon name="users" size={16} />{t("cohostsBtn")}</a>
       {tab === "report" ? (
-        <div className={s.seg} role="tablist" aria-label={t("rpViews")} data-host-report-views="">
+        <div className={`${s.seg} ${s.hdrReportSeg}`} role="tablist" aria-label={t("rpViews")} data-host-report-views="">
           {(["all", "mine"] as const).map((view) => (
             <a key={view} role="tab" aria-selected={reportView === view} className={`btn ${s.segBtn} ${reportView === view ? s.segOn : ""}`}
               href={`${consoleHref(event.eventId, "report")}${view === "mine" ? "&view=mine" : ""}`}
@@ -362,8 +362,9 @@ export function HostConsoleView({ data, tab, language, now = new Date(), busy = 
         tabs={HOST_CONSOLE_TABS.map((key) => ({ key, label: t(TAB_LABEL[key]), href: key === "checkin" ? checkInHref(event.eventId) : consoleHref(event.eventId, key), badge: key === "people" && tab !== "people" && data.pendingReview > 0 ? data.pendingReview : undefined }))} />
       <div className={s.wgrid} data-host-console={tab}>
         <StatusBanner event={event} t={t} busy={busy} onPublish={() => onPublish?.()} onArchive={(archived) => onArchive?.(archived)} />
-        {phone && tab === "report" ? (
-          <div className={`${s.seg} ${s.phReportSeg}`} role="tablist" aria-label={t("rpViews")} data-host-report-views="">
+        {tab === "report" ? (
+          // < 1024（手机与 iPad 竖屏）：视角切换放在页签下面，页头右侧放不下（2026-11-26 iPad 834 压住标题）。≥1024 只显示页头里的那个。
+          <div className={`${s.seg} ${s.phReportSeg}`} role="tablist" aria-label={t("rpViews")} data-host-report-views-inline="">
             {(["all", "mine"] as const).map((view) => (
               <a key={view} role="tab" aria-selected={reportView === view} className={`btn ${s.segBtn} ${reportView === view ? s.segOn : ""}`}
                 href={`${consoleHref(event.eventId, "report")}${view === "mine" ? "&view=mine" : ""}`}

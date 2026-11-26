@@ -94,3 +94,9 @@
 .warn b { display: block; margin-top: 6px; }
 .warnEmo { font-size: var(--fs-emoji-hero); }
 .warnHint { opacity: .72; margin-top: 6px; font-size: var(--fs-meta); }
+
+/* 触屏（pointer: coarse）：可点区域扩到至少 44×44，外观尺寸不变（2026-11-26 iPad 检查；只限主办方后台）。 */
+@media (pointer: coarse) {
+  .lbtn.lbtn { position: relative; }
+  .lbtn.lbtn::before { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+}

@@ -6,7 +6,7 @@
 import { useMemo, useState } from "react";
 
 import type { HostMatchingConditions, HostMatchingMember, HostMatchingTable } from "../../../../../shared/contract/host-console";
-import { Avatar, BottomSheet, Icon } from "../ui";
+import { Avatar, BottomSheet, Icon, Modal } from "../ui";
 import { ConditionRowsToggles, Options, StandingChip, standingToneMap, tableSizeText, type HostMatchingViewProps, type StandingTone } from "./HostMatching";
 import { consoleHref, hostTime, type HostT } from "./host-model";
 import s from "./host.module.css";
@@ -52,12 +52,26 @@ function TableRow({ table, t, tones, open, why, canMove, onToggle, onWhy, onMove
   );
 }
 
+/** 选目标桌（手机 = 底部抽屉；`wide` = 同内容的居中弹层，768 以上用）。 */
+export function MovePicker({ moving, tables, round, t, onPick, onClose, wide = false }: { moving: Moving; tables: readonly HostMatchingTable[]; round: number; t: HostT; onPick: (to: string | null) => void; onClose: () => void; wide?: boolean }) {
+  if (wide) return <Modal open onClose={onClose} title={t("mMoveTitle", { name: moving.member.name })} size={480}><div className={mp.wide}><MoveSheetBody moving={moving} tables={tables} round={round} t={t} onPick={onPick} onClose={onClose} /></div></Modal>;
+  return <MoveSheet moving={moving} tables={tables} round={round} t={t} onPick={onPick} onClose={onClose} />;
+}
+
 function MoveSheet({ moving, tables, round, t, onPick, onClose }: { moving: Moving; tables: readonly HostMatchingTable[]; round: number; t: HostT; onPick: (to: string | null) => void; onClose: () => void }) {
+  return (
+    <BottomSheet open onClose={onClose} label={t("mMoveTitle", { name: moving.member.name })} className={mp.sheet}>
+      <MoveSheetBody moving={moving} tables={tables} round={round} t={t} onPick={onPick} onClose={onClose} />
+    </BottomSheet>
+  );
+}
+
+function MoveSheetBody({ moving, tables, round, t, onPick, onClose }: { moving: Moving; tables: readonly HostMatchingTable[]; round: number; t: HostT; onPick: (to: string | null) => void; onClose: () => void }) {
   const [q, setQ] = useState("");
   const needle = q.trim().toLowerCase();
   const list = tables.filter((table) => !needle || table.table.toLowerCase() === needle || (table.theme ?? "").toLowerCase().includes(needle) || table.members.some((member) => member.name.toLowerCase().includes(needle)));
   return (
-    <BottomSheet open onClose={onClose} label={t("mMoveTitle", { name: moving.member.name })} className={mp.sheet}>
+    <>
       <div className={mp.sh}>
         <Avatar name={moving.member.name} />
         <div className={mp.meta}><b className={mp.shT}>{t("mMoveTitle", { name: moving.member.name })}</b><span className={s.lbl}>{moving.from ? t("mMoveFrom", { n: round, t: moving.from }) : t("mMoveFromNone", { n: round })}</span></div>
@@ -79,7 +93,7 @@ function MoveSheet({ moving, tables, round, t, onPick, onClose }: { moving: Movi
         })}
       </div>
       {moving.from ? <div className={mp.sf}><button type="button" className={`btn ${s.btn}`} onClick={() => onPick(null)} data-host-move-to="unplaced"><Icon name="layers" size={16} />{t("mToUnplaced")}</button></div> : null}
-    </BottomSheet>
+    </>
   );
 }
 

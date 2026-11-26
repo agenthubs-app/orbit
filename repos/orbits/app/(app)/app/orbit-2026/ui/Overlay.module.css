@@ -62,6 +62,8 @@
 .actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: var(--space-20); }
 /* kit .macts .lbl.hint: inline text (kbd, a space, the words), 11.5 / 500. */
 .hint { margin-right: auto; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3-text); }
+/* 「Esc 先不」只对有键盘的设备有意义：触屏（无悬停 + 粗指针）不显示（2026-11-26 iPad 检查）。 */
+@media (hover: none) and (pointer: coarse) { .keyHint { display: none; } }
 /* Existing Modal ✕ stays 36 / transparent; new board heads use kit .lbtn, 34 / surface-2. */
 .close {
   width: 36px;

@@ -124,3 +124,9 @@
 /* 申込フォームの質問（新規作成）：カード見出しの下の一行説明。 */
 .qNote { margin: -4px 0 12px; line-height: var(--lh-prose); }
 .contents { display: contents; }
+
+/* 触屏（pointer: coarse）：可点区域扩到至少 44×44，外观尺寸不变（2026-11-26 iPad 检查；只限主办方后台）。 */
+@media (pointer: coarse) {
+  .link { position: relative; }
+  .link::before { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+}

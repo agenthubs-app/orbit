@@ -229,3 +229,20 @@
 .pubSheetNote.pubSheetNote { margin-top: 8px; font-size: var(--fs-meta); line-height: var(--lh-prose); }
 .pubSheetActs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
 .pubSheetActs > :global(.btn) { height: 46px; }
+
+/* 换桌「移動」（2026-11-26）：触屏或窄于 1280 时显示在成员行尾；鼠标 + 宽屏仍以拖拽 / ⋮⋮ 为主（b6 画板不变）。 */
+.mvRow.mvRow { display: none; height: 30px; min-height: 0; padding: 0 10px; border: 0; border-radius: var(--r-pill); background: transparent; font-size: var(--fs-meta); font-weight: var(--fw-bold); color: var(--ink-2); flex: none; }
+@media (max-width: 1279px), (pointer: coarse) { .mvRow.mvRow { display: inline-flex; align-items: center; } }
+
+/* 768–1023（iPad 竖屏 834）：表格放不下「报名回答」列——不删信息，把回答折到姓名下面一行（单行截断），列头与该列隐藏。 */
+.foldAns { display: none; }
+@media (min-width: 768px) and (max-width: 1023px) {
+  .colAnswer, .tdAnswer { display: none; }
+  .foldAns { display: block; margin-top: 2px; font-size: var(--fs-meta); color: var(--ink-2); }
+}
+
+/* 触屏（pointer: coarse）：可点区域扩到至少 44×44，外观尺寸不变（2026-11-26 iPad 检查；只限主办方后台）。 */
+@media (pointer: coarse) {
+  .cbx.cbx, .tgl.tgl, .lbtn.lbtn, .handle.handle, .mvRow.mvRow { position: relative; }
+  .cbx.cbx::before, .tgl.tgl::before, .lbtn.lbtn::before, .handle.handle::before, .mvRow.mvRow::before { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+}

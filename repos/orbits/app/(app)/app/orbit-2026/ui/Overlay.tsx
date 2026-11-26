@@ -148,7 +148,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel,
   const tile = destructive || icon || emoji ? <ModalIcon icon={icon} emoji={emoji} tone={destructive ? "danger" : "apricot"} /> : undefined;
   return (
     <Modal open={open} onClose={onCancel} title={title} description={message} icon={tile} closable={false} closeOnScrim={!destructive} role="alertdialog"
-      initialFocus={destructive ? undefined : confirmRef} hint={<><Kbd>Esc</Kbd> {cancel}</>}
+      initialFocus={destructive ? undefined : confirmRef} hint={<span className={styles.keyHint}><Kbd>Esc</Kbd> {cancel}</span>}
       actions={<><Button label={cancel} variant="secondary" onClick={onCancel} /><Button ref={confirmRef} label={confirmLabel} variant={destructive ? "danger" : "primary"} onClick={onConfirm} /></>} />
   );
 }

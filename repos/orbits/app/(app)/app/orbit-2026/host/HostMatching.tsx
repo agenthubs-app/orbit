@@ -11,7 +11,7 @@ import type { HostMatchingConditions, HostMatchingMember, HostMatchingMove, Host
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { Avatar, BottomSheet, ConfirmDialog, ContextMenu, Icon, Modal, Segmented, useToast } from "../ui";
 import { failureOf, hostApi } from "./host-api";
-import { HostMatchingPhone } from "./HostMatchingPhone";
+import { HostMatchingPhone, MovePicker } from "./HostMatchingPhone";
 import { usePhone } from "../events/EventDetail";
 import { consoleHref, hostTime, hostTranslator, type HostT } from "./host-model";
 import { matchingSampleTables } from "./matching-sample";
@@ -68,11 +68,13 @@ type TableCardProps = {
   onToggleWhy: () => void;
   picked: Picked | null;
   canMove: boolean;
+  /** 点按换桌（2026-11-26：触屏 / 窄于 1280 时成员行尾出「移動」，打开选桌列表；拖拽是额外的快捷方式）。 */
+  onMoveStart?: (member: HostMatchingMember, from: string) => void;
   onPick?: (member: HostMatchingMember, from: string) => void;
   onDrop?: (toTable: string) => void;
 };
 
-export function TableCard({ table, t, tones, span, open, onToggleWhy, picked, canMove, onPick, onDrop }: TableCardProps) {
+export function TableCard({ table, t, tones, span, open, onToggleWhy, picked, canMove, onPick, onDrop, onMoveStart }: TableCardProps) {
   const menuRef = useRef<HTMLButtonElement>(null);
   const [menu, setMenu] = useState(false);
   const target = Boolean(picked && picked.from !== table.table);
@@ -108,6 +110,7 @@ export function TableCard({ table, t, tones, span, open, onToggleWhy, picked, ca
               <Avatar name={member.name} size="sm" />
               <div className={m.meta}><b>{member.name}</b><span>{[member.org, member.role].filter(Boolean).join(" · ")}</span></div>
               <StandingChip standing={member.standing} tones={tones} />
+              {canMove && onMoveStart ? <button type="button" className={`btn ${m.mvRow}`} onClick={(event) => { event.stopPropagation(); onMoveStart(member, table.table); }} data-host-move="">{t("mMove")}</button> : null}
             </div>
           );
         })}
@@ -264,6 +267,7 @@ export type HostMatchingViewProps = {
   onPublish?: () => void;
   onFillSeats?: () => void;
   onShowAll?: () => void;
+  onMoveStart?: (member: HostMatchingMember, from: string) => void;
 };
 
 /** 纯描画：マッチング页签的网格子项（放在 HostConsoleView 的 .wgrid 里）。 */
@@ -353,7 +357,7 @@ export function HostMatchingView(props: HostMatchingViewProps) {
       </div>
       {visible.map((table) => (
         <TableCard key={`${table.round}-${table.table}`} table={table} t={t} tones={tones} span={many ? "span4" : "span6"} open={openWhy.has(table.table)} onToggleWhy={() => props.onToggleWhy?.(table.table)}
-          picked={picked} canMove={canMove} onPick={(member, from) => props.onPick?.(member, from)} onDrop={(to) => props.onDrop?.(to)} />
+          picked={picked} canMove={canMove} onPick={(member, from) => props.onPick?.(member, from)} onDrop={(to) => props.onDrop?.(to)} onMoveStart={props.onMoveStart} />
       ))}
       {data.unplaced.length || rest > 0 || unplacedTarget ? (
         <div className={`${s.card} ${s.span12} ${s.flat} ${m.unplacedCard} ${unplacedTarget ? m.dropOk : ""}`} data-host-unplaced={data.unplaced.length}
@@ -387,6 +391,7 @@ export function HostMatchingTab({ eventId, language, onChanged }: { eventId: str
   const [showAll, setShowAll] = useState(false);
   const [modal, setModal] = useState<"conditions" | "regen" | "publish" | null>(null);
   const [pendingConditions, setPendingConditions] = useState<HostMatchingConditions | null>(null);
+  const [moving, setMoving] = useState<{ member: HostMatchingMember; from: string | null } | null>(null);
 
   const load = useCallback(async () => {
     const res = await hostApi.matching(eventId, round);
@@ -511,7 +516,13 @@ export function HostMatchingTab({ eventId, language, onChanged }: { eventId: str
         onRegenerate={() => { setPendingConditions(current); setModal("regen"); }}
         onPublish={() => setModal("publish")}
         onFillSeats={() => { const moves = fillSeatsMoves(data); if (!moves.length) toast.info(t("mNoSeats")); else void move(moves, t("mFilled", { n: moves.length })); }}
-        onShowAll={() => setShowAll(true)} />
+        onShowAll={() => setShowAll(true)}
+        onMoveStart={(member, from) => { setPicked(null); setMoving({ from, member }); }} />
+      {moving ? (
+        <MovePicker wide moving={moving} tables={data.tables.filter((table) => table.round === data.round || data.tables.every((item) => item.round !== data.round))} round={data.round} t={t}
+          onClose={() => setMoving(null)}
+          onPick={(to) => { const target = moving; setMoving(null); if (target.from === to) return; void move([{ participantId: target.member.participantId, round: data.round, toTable: to }], to ? t("mMoved", { name: target.member.name, t: to }) : t("mMovedOut", { name: target.member.name })); }} />
+      ) : null}
       {modal === "conditions" ? (
         <ConditionsModal initial={current} t={t} remaining={remaining} regenerate={data.state !== "none"} busy={busy} onClose={() => setModal(null)}
           onApply={(next) => { if (data.state === "none") { setConditions(next); setModal(null); } else { setPendingConditions(next); setModal("regen"); } }} />

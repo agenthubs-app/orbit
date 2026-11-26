@@ -159,7 +159,7 @@ export function HostPeopleView(props: HostPeopleViewProps) {
             <tr>
               <th className={m.colCheck} />
               <th className={m.colApplicant}>{t("pColApplicant")}</th>
-              <th>{answerHead}</th>
+              <th className={m.colAnswer}>{answerHead}</th>
               <th className={m.colProfile}>{t("pColProfile")}</th>
               <th className={m.colHistory}>{t("pColHistory")}</th>
               <th className={m.colActs} />
@@ -181,6 +181,7 @@ export function HostPeopleView(props: HostPeopleViewProps) {
                       <div className={s.minw0}>
                         <b className={`${s.clamp1} ${m.whoName}`}>{row.name}</b>
                         <div className={`${s.lbl} ${s.clamp1}`}>{[row.org, row.role].filter(Boolean).join(" · ")}</div>
+                        {answerOf(row) ? <div className={`${m.foldAns} ${s.clamp1}`} data-host-fold-answer="">{answerOf(row)}</div> : null}
                         {issue ? <span className={m.rowNote} role="status">{issue === "conflict" ? t("pRowConflict") : t("pRowFailed")}</span> : null}
                       </div>
                     </button>

@@ -63,6 +63,9 @@
 
   /* ===== 页签栏：横向滚动，两端渐隐（被截的一项露半个） ===== */
   .tabs-m { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -18px 14px; padding: 2px 18px; }
+  /* 2026-11-26 用户定：页签行保留实现的「自动滚到当前页签」，画板画成已滚动的状态——同实现：右端渐隐、按页签起点吸附（scroll-snap）。 */
+  .tabs-m { scroll-snap-type: x mandatory; scroll-padding-left: 18px; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); }
+  .tabs-m button { scroll-snap-align: start; }
   .tabs-m::-webkit-scrollbar { display: none; }
   .tabs-m.fr { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); }
   .tabs-m.fl { -webkit-mask-image: linear-gradient(90deg, transparent, #000 48px); mask-image: linear-gradient(90deg, transparent, #000 48px); }
@@ -904,6 +907,21 @@ document.querySelectorAll('.board').forEach(b => {
   const p = b.querySelectorAll('.pin').length, n = b.querySelectorAll('.note-list li').length;
   if (p !== n) console.error('pins/notes mismatch', b.querySelector('.board-label').textContent, p, n);
 });
+
+/* 页签行滚到当前页签（同实现 UnderlineTabs：当前页签超出右边时 scrollLeft = right − clientWidth + 8，再由 scroll-snap 吸到最近的页签起点）。字体就绪后再算一次。 */
+const scrollTabs = () => document.querySelectorAll('.tabs-m').forEach((bar) => {
+  bar.scrollLeft = 0;
+  const tab = bar.querySelector('button.on');
+  if (!tab || bar.scrollWidth <= bar.clientWidth) return;
+  const left = tab.offsetLeft - bar.offsetLeft, right = left + tab.offsetWidth;
+  let target = 0;
+  if (right > bar.clientWidth) target = right - bar.clientWidth + 8;
+  const max = bar.scrollWidth - bar.clientWidth;
+  const starts = [...bar.querySelectorAll('button')].map((b) => Math.min(max, Math.max(0, b.offsetLeft - bar.offsetLeft - 18)));
+  bar.scrollLeft = starts.reduce((best, x) => (Math.abs(x - target) < Math.abs(best - target) ? x : best), 0);
+});
+scrollTabs();
+if (document.fonts) document.fonts.ready.then(scrollTabs);
 </script>
 </body>
 </html>

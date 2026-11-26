@@ -51,3 +51,9 @@
 .pAdds .add { height: 34px; }
 .ghost.ghost { background: transparent; }
 .pCount { margin-left: auto; }
+
+/* 触屏（pointer: coarse）：可点区域扩到至少 44×44，外观尺寸不变（2026-11-26 iPad 检查；只限主办方后台）。 */
+@media (pointer: coarse) {
+  .addDetail.addDetail, .x.x, .add.add { position: relative; }
+  .addDetail.addDetail::before, .x.x::before, .add.add::before { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+}

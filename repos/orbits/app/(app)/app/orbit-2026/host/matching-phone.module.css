@@ -77,3 +77,12 @@
 .tcnt { font-family: var(--font-num); font-weight: var(--fw-heavy); font-size: var(--fs-body-sm); white-space: nowrap; }
 .sf { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); margin-top: 4px; }
 .sf > :global(.btn) { flex: 1 1 0%; height: 46px; }
+/* 768 以上的选桌弹层（同手机抽屉内容） */
+.wide .sh { display: none; }
+.wide .sb { max-height: 56vh; margin: 0; padding: 0; }
+
+/* 触屏（pointer: coarse）：可点区域扩到至少 44×44，外观尺寸不变（2026-11-26 iPad 检查；只限主办方后台）。 */
+@media (pointer: coarse) {
+  .mvBtn.mvBtn, .tjBtn.tjBtn, .x.x { position: relative; }
+  .mvBtn.mvBtn::before, .tjBtn.tjBtn::before, .x.x::before { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+}
