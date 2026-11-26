@@ -87,3 +87,8 @@
 .imp3 > div { background: var(--surface); border-radius: var(--r-tile); padding: 10px 12px; min-width: 0; }
 .imp3 b { display: block; margin-top: 4px; font-family: var(--font-num); font-size: var(--fs-number); font-weight: var(--fw-heavy); white-space: nowrap; }
 .imp3 b small { font-size: var(--fs-caption); color: var(--ink-3); font-weight: var(--fw-bold); margin-left: 2px; }
+
+/* 读取失败（b13 HM-R5 .k-rerr）：居中标题 +「↻ 再読み込み」。 */
+.fail.fail { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 24px 18px; text-align: center; }
+.failT { font-size: var(--fs-emph); font-weight: var(--fw-heavy); }
+.failBtn.failBtn { gap: 6px; }

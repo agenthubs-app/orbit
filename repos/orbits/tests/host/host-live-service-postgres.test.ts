@@ -126,7 +126,7 @@ test("live host service end to end", hostDatabaseTest, async () => {
     assert.deepEqual([applicant!.source, applicant!.status, applicant!.name], ["application", "waitlisted", "森 拓也"]);
     assert.ok(applicant!.profile.length > 0, "application answers are listed");
     // b13 HM-P6（2026-11-26）：詳細にも一覧と同じ完整度・未入力項目・申込の版。
-    const listed = (await service.people(HOST, eventId, { bucket: "waitlisted", incomplete: false, q: "" })).rows.find((row) => row.actorId === "actor:p2");
+    const listed = (await service.people(HOST, eventId, { bucket: "waitlisted", cursor: null, incomplete: false, q: "" })).rows.find((row) => row.actorId === "actor:p2");
     assert.equal(applicant!.profileScore, listed!.profileScore, "same completeness as the list");
     assert.equal(applicant!.applicationVersion, listed!.applicationVersion);
     assert.ok(Array.isArray(applicant!.missing));

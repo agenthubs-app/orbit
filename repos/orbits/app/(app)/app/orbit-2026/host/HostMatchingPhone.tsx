@@ -82,7 +82,7 @@ function MoveSheetBody({ moving, tables, round, t, onPick, onClose }: { moving: 
         {list.map((table) => {
           const current = table.table === moving.from;
           const n = table.members.length;
-          const standings = [...new Set(table.members.map((member) => member.standing).filter(Boolean))].slice(0, 3).join("・");
+          const standings = [...new Set(table.members.map((member) => member.standing).filter(Boolean))].slice(0, 3).join(t("listSep"));
           return (
             <button key={table.table} type="button" className={`btn ${mp.tpick} ${current ? mp.cur : ""}`} disabled={current} onClick={() => onPick(table.table)} data-host-move-to={table.table}>
               <span className={`${mp.tno} ${mp.tnoSm}`}>{table.table}</span>
@@ -223,7 +223,7 @@ export function HostMatchingPhone(props: HostMatchingPhoneProps) {
           <div className={mp.unplHead}><span className={`${s.emo} ${s.e_apricot}`}>🧩</span><div className={s.grow}><b>{t("mUnplacedTitle", { n: data.unplaced.length })}</b><div className={`${s.lbl} ${mp.unplSub}`}>{t("mUnplacedSub")}</div></div></div>
           <div className={mp.unplRow}>
             <span className={mp.avs}>{data.unplaced.slice(0, 4).map((member) => <button key={member.participantId} type="button" className={`btn ${mp.avBtn}`} disabled={!canMove} aria-label={t("mMoveTitle", { name: member.name })} onClick={() => setMoving({ from: null, member })}><Avatar name={member.name} size="sm" /></button>)}</span>
-            <span className={`${s.lbl} ${mp.names}`}>{data.unplaced.map((member) => member.name.split(/\s+/u)[0]).join("・")}</span>
+            <span className={`${s.lbl} ${mp.names}`}>{data.unplaced.map((member) => member.name.split(/\s+/u)[0]).join(t("listSep"))}</span>
             <button type="button" className={`btn ${s.btn} ${s.sm} ${s.primary}`} disabled={!canMove} onClick={props.onFillSeats}>{t("mFillSeats")}</button>
           </div>
         </div>

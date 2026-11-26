@@ -95,3 +95,26 @@
 .mi.mi { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 4px; width: 100%; font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--ink); cursor: pointer; border-top: 1px solid var(--line); }
 .pvSheet.pvSheet { top: 58px; display: flex; flex-direction: column; max-height: none; overflow: hidden; padding-bottom: 14px; }
 .pvBody { flex: 1 1 0%; min-height: 0; overflow: hidden auto; margin: 0 -18px 10px; padding: 0 18px; }
+
+/* お知らせの文面（b13 HM-S8 .ntr / .fld / .nprev / .nn） */
+.ntList.ntList { display: block; padding: 4px 16px; }
+.ntr { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 0; border-top: 1px solid var(--line); cursor: pointer; }
+.ntr:first-child { border-top: 0; }
+.ntr b { font-size: var(--fs-row); }
+.ntr .grow { display: block; }
+.ntr .grow > span { display: block; font-size: var(--fs-label); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ntr svg { color: var(--ink-3); flex: none; }
+.ntrOn b { color: var(--accent); }
+.ntr:focus-visible { outline: 2px solid var(--plum-500); outline-offset: 2px; border-radius: var(--r-sm); }
+.noteIn.noteIn { min-height: 76px; align-items: flex-start; padding-top: 12px; padding-bottom: 8px; }
+.noteIn textarea { flex: 1 1 0%; min-width: 0; min-height: 52px; border: 0; outline: 0; padding: 0; resize: none; background: transparent; font: inherit; font-size: var(--fs-body); line-height: 1.6; color: var(--ink); }
+.noteIn > :last-child { flex: none; }
+.fldErr .in { border-color: var(--coral); background: var(--coral-soft); }
+.msg { display: block; font-size: var(--fs-label); margin-top: 6px; font-weight: var(--fw-semibold); color: var(--ink-3); line-height: 1.55; }
+.fldErr .msg { color: var(--coral-text); }
+.nprev { margin-top: 14px; background: var(--surface-2); border-radius: var(--r-bubble); padding: 14px; }
+.nprevL { margin-bottom: 8px; }
+.nprevHead { display: flex; align-items: center; gap: 10px; }
+.nprevT { font-size: var(--fs-body-sm); }
+.nprevText.nprevText { margin-top: 8px; line-height: 1.6; }
+.nn { margin-top: 10px; padding: 10px 12px; border-radius: var(--r-row); background: var(--surface); font-size: var(--fs-control); color: var(--ink-2); line-height: 1.6; }

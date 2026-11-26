@@ -6,17 +6,17 @@
 // 子页是盖在页面上的全屏层（自带 ‹ 顶栏），数据与保存逻辑和电脑版同一套（HostSetupTab 的 draft / 自动保存 / 公開）。
 import { useState, type ReactNode } from "react";
 
-import type { HostQuestionKind, HostSetupQuestion } from "../../../../../shared/contract/host-console";
+import type { HostNoticeTemplateKind, HostQuestionKind, HostSetupQuestion } from "../../../../../shared/contract/host-console";
 import { BottomSheet, Icon } from "../ui";
 import {
-  KIND_LABEL, KINDS, NoticesSection, Preview, QuestionLine, SetupAgendaCard, SetupContactCard, TEMPLATES,
+  KIND_LABEL, KINDS, NOTICE_LABEL, NOTICE_TITLE, Preview, QuestionLine, SetupAgendaCard, SetupContactCard, TEMPLATES,
   closeBeforeStart, fromLocalInput, toLocalInput, type HostSetupViewProps,
 } from "./HostSetup";
 import { ReorderList } from "./ReorderList";
 import { QuestionLibraryDrawer } from "./QuestionLibrary";
 import { addLibraryQuestions } from "../../../../../shared/domain/host-question-library";
-import { hostDateDay, hostDateLong, type HostT } from "./host-model";
-import { DESC_MAX, QUESTION_MAX, agoText, applyLinkText, blankQuestion, charCount, clampText, inertWhen, moveItem, switchKind } from "./setup-model";
+import { eventTone, hostDateDay, hostDateLong, type HostT } from "./host-model";
+import { DESC_MAX, NOTE_MAX, QUESTION_MAX, agoText, applyLinkText, blankQuestion, charCount, clampText, hasLink, inertWhen, moveItem, switchKind } from "./setup-model";
 import s from "./host.module.css";
 import m from "./tabs.module.css";
 import sp from "./setup-phone.module.css";
@@ -90,6 +90,46 @@ function QuestionEditPage({ question, index, count, t, onChange, onDelete, onBac
   );
 }
 
+/** < 768 お知らせの文面（b13 HM-S8 / S8b）：6 种定型文（点开一种），一条共用的「ひとこと」，下面是申込者收到的通知预览。 */
+export function NoticesPhone({ data, t, kind, note, readOnly, onKind, onNote }: { data: HostSetupViewProps["data"]; t: HostT; kind: HostNoticeTemplateKind; note: string; readOnly: boolean; onKind?: (kind: HostNoticeTemplateKind) => void; onNote?: (text: string) => void }) {
+  const selected = data.notices.find((item) => item.kind === kind) ?? data.notices[0];
+  const link = hasLink(note);
+  return (
+    <>
+      <div className={`${s.card} ${sp.ntList}`} data-host-notices="">
+        {data.notices.map((item) => {
+          const on = item.kind === selected?.kind;
+          return (
+            <button key={item.kind} type="button" className={`${sp.ntr} ${on ? sp.ntrOn : ""}`} aria-pressed={on} onClick={() => onKind?.(item.kind)}>
+              <span className={sp.grow}><b>{t(NOTICE_LABEL[item.kind])}</b><span>{item.text}</span></span>
+              <Icon name={on ? "down" : "right"} size={16} />
+            </button>
+          );
+        })}
+      </div>
+      <label className={`${sp.fld} ${link ? sp.fldErr : ""}`}>
+        <span className={sp.fldL}>{t("ntNoteLbl")}</span>
+        <span className={`${sp.in} ${sp.noteIn}`}>
+          <textarea value={note} readOnly={readOnly} maxLength={NOTE_MAX} rows={2} placeholder={t("ntNotePh")} onChange={(event) => onNote?.(clampText(event.target.value, NOTE_MAX))} data-host-note="" />
+          <span className={s.lbl}>{t("ntCounter", { n: charCount(note) })}</span>
+        </span>
+        <span className={sp.msg}>{link ? t("ntNoLink") : t("ntNoteHint")}</span>
+      </label>
+      {selected ? (
+        <div className={sp.nprev} data-host-notice-preview={selected.kind}>
+          <div className={`${s.lbl} ${sp.nprevL}`}>{t("ntPreviewTo")}</div>
+          <div className={sp.nprevHead}>
+            <span className={`${s.emo} ${s.emoSm} ${s[`e_${eventTone(data.event.emoji, data.event.eventId)}`]}`}>{data.event.emoji ?? "📅"}</span>
+            <div className={sp.grow}><b className={sp.nprevT}>{t(NOTICE_TITLE[selected.kind])}</b><div className={s.lbl}>{t("ntNow", { who: data.event.organizerName ?? data.event.title })}</div></div>
+          </div>
+          <div className={`${s.sub} ${sp.nprevText}`}>{selected.text}</div>
+          {note.trim() && !link ? <div className={sp.nn}><b>{t("ntFrom")}</b>{note.trim()}</div> : null}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eventVersion: number; onEventVersion: (version: number) => void }) {
   const { data, draft, t, language, now = new Date(), saveState = "saved", busy = false, host = "", noteDraft = data.hostNote ?? "", ended } = props;
   const [sub, setSub] = useState<Sub>(null);
@@ -160,11 +200,9 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
   }
   if (sub?.kind === "notice") {
     return (
-      <SubPage testId="notice" title={t("ntToggle")} sub={t("ntSub")} onBack={() => setSub(null)}>
-        <div className={sp.notices}>
-          <NoticesSection data={data} t={t} open kind={props.noticeKind ?? "admission_approved"} note={noteDraft} busy={busy} readOnly={ended}
-            onOpen={() => undefined} onKind={props.onNoticeKind} onNote={props.onNoteDraft} onSave={props.onNoteSave} />
-        </div>
+      <SubPage testId="notice" title={t("ntToggle")} sub={t("ntSub")} onBack={() => setSub(null)}
+        foot={ended ? undefined : <button type="button" className={`btn ${s.btn} ${s.primary} ${sp.block}`} disabled={busy || hasLink(noteDraft) || (noteDraft.trim() || null) === (data.hostNote?.trim() || null)} onClick={props.onNoteSave} data-host-note-save="">{t("ntSave")}</button>}>
+        <NoticesPhone data={data} t={t} kind={props.noticeKind ?? "admission_approved"} note={noteDraft} readOnly={ended} onKind={props.onNoticeKind} onNote={props.onNoteDraft} />
       </SubPage>
     );
   }

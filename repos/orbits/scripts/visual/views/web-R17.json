@@ -992,6 +992,75 @@
     }
    ],
    "note": "HM-S4 申込設定 · 質問集（b13 #26；先删到 3 問才能打开）"
+  },
+  {
+   "id": "HM-R5",
+   "app": "/app/events/demo-host-founders-lunch-11/operations?tab=report",
+   "design": "b13-host-mobile.html",
+   "board-index": 43,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-report=after]",
+   "host": {
+    "report": "suppressed"
+   },
+   "note": "HM-R5 レポート · 少数抑制（b13 #43，Founders Lunch #11，host report=suppressed）；画板把「读取失败」卡拼在同一屏——实现是一次读取，失败时整页一张卡（测试 host-phone-states）"
+  },
+  {
+   "id": "HM-S8",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 31,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "click": [
+    "[data-host-setup-open=notice]"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-setup-sub=notice]"
+    },
+    {
+     "fill": [
+      "[data-host-note]",
+      "当日は 18:45 から受付を開始します"
+     ],
+     "wait": 300
+    }
+   ],
+   "note": "HM-S8 申込設定 · お知らせの文面（b13 #31）"
+  },
+  {
+   "id": "HM-S8b",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 32,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "click": [
+    "[data-host-setup-open=notice]"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-setup-sub=notice]"
+    },
+    {
+     "fill": [
+      "[data-host-note]",
+      "当日の資料は https://example.com に置きました"
+     ],
+     "wait": 300
+    }
+   ],
+   "note": "HM-S8b お知らせ · ひとことにリンク（b13 #32；赤框 + 「ひとことにリンクは入れられません」、保存不可）"
   }
  ]
 }

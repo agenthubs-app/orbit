@@ -240,6 +240,10 @@ export function HostReportView({ data, t, why = false, onWhy, logOpen = true, on
   return data.all.state === "before" ? <Before all={data.all} t={t} /> : <After all={data.all} t={t} why={why} onWhy={() => onWhy?.()} />;
 }
 
+export function ReportLoadFailure({ t, onRetry }: { t: HostT; onRetry?: () => void }) {
+  return <div className={`${s.card} ${s.span12} ${r.fail}`} data-host-failure="report"><b className={r.failT}>{t("loadError")}</b><button type="button" className={`btn ${s.btn} ${s.sm} ${r.failBtn}`} onClick={onRetry}><Icon name="refresh" size={16} />{t("retry")}</button></div>;
+}
+
 export function HostReportTab({ eventId, language, view }: { eventId: string; language: OrbitLanguage; view: "all" | "mine" }) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const [data, setData] = useState<HostReportResponse | null>(null);
@@ -251,7 +255,8 @@ export function HostReportTab({ eventId, language, view }: { eventId: string; la
     if (res.ok) { setData(res.data); setFailed(false); } else setFailed(true);
   }, [eventId, view]);
   useEffect(() => { setWhy(false); void load(); }, [load]);
-  if (failed && !data) return <div className={`${s.card} ${s.span12} ${s.empty}`} data-host-failure="report">{t("loadError")} <button type="button" className={`btn ${s.btn} ${s.sm}`} onClick={() => void load()}>{t("retry")}</button></div>;
+  // b13 HM-R5：读取失败的卡（标题 +「↻ 再読み込み」）。レポート是一次读取，失败时整页一张卡，不会只坏一块。
+  if (failed && !data) return <ReportLoadFailure t={t} onRetry={() => void load()} />;
   if (!data || data.view !== view) return null;
   return <HostReportView data={data} t={t} why={why} onWhy={() => setWhy(!why)} logOpen={logOpen} onLog={setLogOpen} />;
 }

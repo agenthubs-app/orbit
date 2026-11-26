@@ -5,12 +5,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { HostImportView } from "../../app/(app)/app/orbit-2026/host/HostImport";
 import { HostMatchingPhone } from "../../app/(app)/app/orbit-2026/host/HostMatchingPhone";
+import { ReportLoadFailure } from "../../app/(app)/app/orbit-2026/host/HostReport";
+import { NoticesPhone } from "../../app/(app)/app/orbit-2026/host/HostSetupPhone";
 import { HostPeopleView } from "../../app/(app)/app/orbit-2026/host/HostPeople";
 import { HostSetupView } from "../../app/(app)/app/orbit-2026/host/HostSetup";
 import { KioskPhoneView } from "../../app/(app)/app/orbit-2026/host/KioskPhone";
 import { hostTranslator } from "../../app/(app)/app/orbit-2026/host/host-model";
 import { draftOf } from "../../app/(app)/app/orbit-2026/host/setup-model";
-import { HOST_EVENT_IDS, hostEventView, hostKiosk, hostMatching, hostPeople, hostSetup } from "../../shared/mock/demo-world/host-events";
+import { DEFAULT_HOST_MOCK_STATE, HOST_EVENT_IDS, hostEventView, hostKiosk, hostMatching, hostPeople, hostReport, hostSetup } from "../../shared/mock/demo-world/host-events";
 
 const t = hostTranslator("ja");
 const NOW = new Date("2026-10-07T03:00:00.000Z");
@@ -76,4 +78,27 @@ test("名簿の取り込み phone (b13 HM-P10): full-screen sub-page, three tile
   const empty = renderToStaticMarkup(<HostImportView phone event={event} language="zh" file={null} origin="https://orbit.app" />);
   assert.match(empty, /data-host-import-pick/);
   assert.doesNotMatch(empty, /data-host-import-table/);
+});
+
+test("お知らせ phone (b13 HM-S8 / S8b): six templates, the open one first with ▾, one shared note, preview with the note; a link turns the field red", () => {
+  const data = hostSetup(HOST_EVENT_IDS.cfo18)!;
+  const html = renderToStaticMarkup(<NoticesPhone data={data} t={t} kind="admission_approved" note="当日は 18:45 から受付を開始します" readOnly={false} />);
+  assert.equal([...html.matchAll(/aria-pressed="(true|false)"/gu)].length, 6);
+  assert.match(html, /aria-pressed="true"[^>]*><span[^>]*><b>承認<\/b>/u);
+  assert.match(html, /主催者より：<\/b>当日は 18:45 から受付を開始します/u);
+  assert.match(html, /定型文は変更できません/);
+  const bad = renderToStaticMarkup(<NoticesPhone data={data} t={t} kind="admission_approved" note="資料は https://example.com に" readOnly={false} />);
+  assert.match(bad, /ひとことにリンクは入れられません/);
+  assert.doesNotMatch(bad, /主催者より/);
+});
+
+test("レポート (b13 HM-R5): under 5 people the numbers show —; a failed read is one card with 再読み込み", () => {
+  const all = hostReport(HOST_EVENT_IDS.founders11, "all", { ...DEFAULT_HOST_MOCK_STATE, report: "suppressed" })!.all!;
+  assert.equal(all.exchanges, null);
+  assert.equal(all.followups, null);
+  assert.deepEqual(all.standing, []);
+  assert.equal(hostReport(HOST_EVENT_IDS.founders11, "all")!.all!.exchanges, 48, "normal state unchanged");
+  const html = renderToStaticMarkup(<ReportLoadFailure t={t} />);
+  assert.match(html, /data-host-failure="report"/);
+  assert.match(html, /読み込めませんでした[\s\S]*再読み込み/u);
 });

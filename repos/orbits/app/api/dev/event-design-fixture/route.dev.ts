@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (body && "host" in body) {
     if (redesignContractMode("host-operations") !== "mock") return notFound();
     const raw = body.host as Record<string, unknown> | null;
-    const allowed: Record<string, readonly string[]> = { center: ["empty", "few", "many", "inactive"], kiosk: ["before", "live", "offline"], organizer: ["empty", "few", "many"], overview: ["pre_open", "live"], setup: ["few", "many"] };
+    const allowed: Record<string, readonly string[]> = { center: ["empty", "few", "many", "inactive"], kiosk: ["before", "live", "offline"], organizer: ["empty", "few", "many"], overview: ["pre_open", "live"], report: ["normal", "suppressed"], setup: ["few", "many"] };
     const patch: Record<string, string> = {};
     for (const [key, values] of Object.entries(allowed)) if (raw && typeof raw[key] === "string" && values.includes(raw[key] as string)) patch[key] = raw[key] as string;
     const state = setHostMockState(raw === null ? null : patch);

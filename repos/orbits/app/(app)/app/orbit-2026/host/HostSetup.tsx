@@ -36,10 +36,10 @@ export const TEMPLATES: ReadonlyArray<{ key: TemplateKey; emoji: string; tone: s
   { emoji: "🪑", key: "round", label: "tplRound", sub: "tplRoundSub", tone: "m_pink" },
   { emoji: "📄", key: "blank", label: "tplBlank", sub: "tplBlankSub", tone: "m_apricot" },
 ];
-const NOTICE_LABEL: Record<HostNoticeTemplateKind, "ntApproved" | "ntRejected" | "ntWaitlisted" | "ntPromoted" | "ntMatching" | "ntProfile"> = {
+export const NOTICE_LABEL: Record<HostNoticeTemplateKind, "ntApproved" | "ntRejected" | "ntWaitlisted" | "ntPromoted" | "ntMatching" | "ntProfile"> = {
   admission_approved: "ntApproved", admission_promoted: "ntPromoted", admission_rejected: "ntRejected", admission_waitlisted: "ntWaitlisted", matching_published: "ntMatching", profile_incomplete: "ntProfile",
 };
-const NOTICE_TITLE: Record<HostNoticeTemplateKind, "ntTitleApproved" | "ntTitleRejected" | "ntTitleWaitlisted" | "ntTitlePromoted" | "ntTitleMatching" | "ntTitleProfile"> = {
+export const NOTICE_TITLE: Record<HostNoticeTemplateKind, "ntTitleApproved" | "ntTitleRejected" | "ntTitleWaitlisted" | "ntTitlePromoted" | "ntTitleMatching" | "ntTitleProfile"> = {
   admission_approved: "ntTitleApproved", admission_promoted: "ntTitlePromoted", admission_rejected: "ntTitleRejected", admission_waitlisted: "ntTitleWaitlisted", matching_published: "ntTitleMatching", profile_incomplete: "ntTitleProfile",
 };
 

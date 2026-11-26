@@ -49,6 +49,8 @@ export interface HostMockState {
   kiosk: "before" | "live" | "offline";
   /** 公开主办方页：空 #33 / 少 #34 / 大 #35。 */
   organizer: HostVariant;
+  /** レポート：`suppressed` = Founders Lunch #11 的私人记录来源的数不足 5 人（b13 HM-R5：名刺交換・会後フォロー・参加者の立場 显示「—」）。 */
+  report?: "normal" | "suppressed";
 }
 
 export const DEFAULT_HOST_MOCK_STATE: HostMockState = { center: "many", kiosk: "live", organizer: "many", overview: "live", setup: "many" };
@@ -672,6 +674,9 @@ export function hostReport(eventId: string, view: "all" | "mine", state: HostMoc
   }
   if (eventId === HOST_EVENT_IDS.asakai3 || event.status === "upcoming" || event.status === "draft") {
     return { all: { ...nothing, applied: seed.applied, capacity: seed.capacity, daysSincePublish: 9, daysToStart: 14, followupWindowDays: 7, state: "before", suppressedBelow: 5, trend: trendBefore, trendLabels: [], trendStartDate: event.startsAt ? trendStartDateEnding(new Date(Date.parse(event.startsAt) - 14 * 86_400_000).toISOString(), trendBefore.length) : undefined }, event, mine: null, sample: true, view };
+  }
+  if (eventId === HOST_EVENT_IDS.founders11 && state.report === "suppressed") {
+    return { all: { applied: 24, capacity: 24, checkInRate: 92, checkedIn: 22, daysPublishToEvent: 21, daysSincePublish: null, daysToStart: null, exchangeRate: 95, exchanges: null, exchangesPerPerson: null, followupRate: null, followupWindowDays: 7, followups: null, funnel: { drafted: null, exchanged: 21, followed: null, meetings: null }, standing: [], standingQuestion: "申込回答 Q1", state: "after", suppressedBelow: 5, tableNote: null, tables: [["A", 14], ["B", 12], ["C", 11], ["D", 11]].map(([t, n]) => ({ exchanges: n as number, round: 1, table: t as string })), trend: trendFew, trendLabels: labels, trendMarks, trendStartDate: trendStartDateEnding(event.startsAt, trendFew.length) }, event, mine: null, sample: true, view };
   }
   if (eventId === HOST_EVENT_IDS.founders11) {
     return { all: { applied: 24, capacity: 24, checkInRate: 92, checkedIn: 22, daysPublishToEvent: 21, daysSincePublish: null, daysToStart: null, exchangeRate: 95, exchanges: 48, exchangesPerPerson: 2.2, followupRate: 73, followupWindowDays: 7, followups: 16, funnel: { drafted: 18, exchanged: 21, followed: 16, meetings: 6 }, standing, standingQuestion: "申込回答 Q1", state: "after", suppressedBelow: 5, tableNote: null, tables: [["A", 14], ["B", 12], ["C", 11], ["D", 11]].map(([t, n]) => ({ exchanges: n as number, round: 1, table: t as string })), trend: trendFew, trendLabels: labels, trendMarks, trendStartDate: trendStartDateEnding(event.startsAt, trendFew.length) }, event, mine: null, sample: true, view };

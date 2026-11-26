@@ -595,6 +595,7 @@ export const hostCopy = {
   ntSave: { ja: "ひとことを保存", zh: "保存附言", en: "Save note", kind: "button" },
   ntSaved: { ja: "ひとことを保存しました", zh: "已保存附言", en: "Note saved", kind: "toast" },
   ntPreview: { ja: "プレビュー", zh: "预览", en: "Preview", kind: "title" },
+  ntPreviewTo: { ja: "プレビュー · 申込者に届く通知", zh: "预览 · 报名者收到的通知", en: "Preview · what applicants receive", kind: "label" },
   ntPreviewSub: { ja: "参加者のアプリ · メール", zh: "参加者的应用 · 邮件", en: "Attendee app · email", kind: "label" },
   ntNow: { ja: "{who} · いま", zh: "{who} · 刚刚", en: "{who} · now", kind: "label" },
   ntFrom: { ja: "主催者より：", zh: "主办方：", en: "From the host: ", kind: "label" },
