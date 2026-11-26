@@ -799,6 +799,321 @@
    "design-clip": ".k-hsec",
    "app-clip": "[data-host-person-contacts]",
    "note": "UR-S7 390 · 没有"
+  },
+  {
+   "id": "URP1",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 85,
+   "width": 1440,
+   "height": 960,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P1 Web 1440 · 默认（design=100）",
+   "design-clip": ".k-drawer",
+   "app-clip": "[data-profile-editor]"
+  },
+  {
+   "id": "URP2",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 86,
+   "width": 1440,
+   "height": 960,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "[data-profile-tag-add='seeking']"
+    },
+    {
+     "fill": [
+      "[data-profile-tag-input='seeking']",
+      "CFO 候補"
+     ]
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P2 Web 1440 · 编辑中（求めていること 原位输入）",
+   "design-clip": ".k-drawer",
+   "app-clip": "[data-profile-editor]"
+  },
+  {
+   "id": "URP3",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 87,
+   "width": 834,
+   "height": 1194,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "localStorage.setItem('urp.hold','1')"
+    },
+    {
+     "click": "[data-profile-save]"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P3 Web 834 · 保存中（桩挂起保存）",
+   "design-clip": ".k-drawer",
+   "app-clip": "[data-profile-editor]"
+  },
+  {
+   "id": "URP4",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 88,
+   "width": 834,
+   "height": 1194,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "localStorage.setItem('urp.fail','1')"
+    },
+    {
+     "click": "[data-profile-save]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "fill": [
+      "[data-profile-bio]",
+      "工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。名古屋と東京を行き来しながら、工場の現場を回っています。"
+     ]
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur()"
+    },
+    {
+     "eval": "(() => { const b = document.querySelector('[data-profile-editor] [data-profile-bio]'); b && b.scrollIntoView({ block: 'center' }); })()"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P4 Web 834 · 出错（超字数 + 保存失败）",
+   "design-clip": ".k-drawer",
+   "app-clip": "[data-profile-editor]"
+  },
+  {
+   "id": "URP5",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 89,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P5 390 · 默认"
+  },
+  {
+   "id": "URP6",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 90,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "click": "[data-profile-tag-add='seeking']"
+    },
+    {
+     "fill": [
+      "[data-profile-tag-input='seeking']",
+      "CFO 候補"
+     ]
+    },
+    {
+     "eval": "(() => { const panel = document.querySelector('[data-profile-editor]'); const c = document.querySelector(\"[data-profile-card='tags']\"); if (panel && c) panel.scrollTop = c.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 54; })()"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P6 390 · 编辑中",
+   "design-scroll-anchor": ".scrollto"
+  },
+  {
+   "id": "URP7",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 91,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "localStorage.setItem('urp.fail','1')"
+    },
+    {
+     "click": "[data-profile-save]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "fill": [
+      "[data-profile-bio]",
+      "工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。名古屋と東京を行き来しながら、工場の現場を回っています。"
+     ]
+    },
+    {
+     "eval": "document.activeElement && document.activeElement.blur()"
+    },
+    {
+     "eval": "(() => { const panel = document.querySelector('[data-profile-editor]'); const c = document.querySelector(\"[data-profile-card='bio']\"); if (panel && c) panel.scrollTop = c.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 54; })()"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P7 390 · 出错；已知不过：画板可视区扣掉了状态栏与 Safari 栏（约 90px），面板滚到底也到不了画板画的位置——内容本身在 URP4（834）与 URP5 / URP6 已逐像素核对",
+   "design-scroll-anchor": ".scrollto"
+  },
+  {
+   "id": "URP8",
+   "app": "/app/profile?design=100&lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 92,
+   "width": 390,
+   "height": 844,
+   "viewport": true,
+   "init-script": "(() => {\n  const real = window.fetch.bind(window);\n  const BOARD = { organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", offering: [\"製造業 DX の導入事例\", \"SaaS の営業組織づくり\", \"中部の製造業ネットワーク\"], seeking: [\"シリーズA のリード投資家\", \"製造業の決裁者\"], bio: \"工場の稼働データを可視化する SaaS を運営しています。製造業の DX と、シリーズA の調達に取り組んでいます。\", publicFields: { companyRole: true, offeringSeeking: true, intro: true } };\n  window.fetch = async (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    if (url.startsWith(\"/api/profile\") && init.method === \"PUT\") {\n      if (localStorage.getItem(\"urp.hold\")) return new Promise(() => {});\n      if (localStorage.getItem(\"urp.fail\")) return new Response(JSON.stringify({ success: false }), { status: 503, headers: { \"content-type\": \"application/json\" } });\n    }\n    const response = await real(input, init);\n    if (url.startsWith(\"/api/profile?design=\") && (init.method || \"GET\") === \"GET\") {\n      const body = await response.clone().json().catch(() => null);\n      if (body && body.data && body.data.profile) { body.data.profile = { ...body.data.profile, ...BOARD }; return new Response(JSON.stringify(body), { status: 200, headers: { \"content-type\": \"application/json\" } }); }\n    }\n    return response;\n  };\n})();",
+   "wait-for": "[data-profile-edit]",
+   "steps": [
+    {
+     "wait": 1200
+    },
+    {
+     "click": "[data-profile-edit]"
+    },
+    {
+     "waitFor": "[data-profile-editor]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const panel = document.querySelector('[data-profile-editor]'); const c = document.querySelector(\"[data-profile-card='visibility']\"); if (panel && c) panel.scrollTop = c.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 214; })()"
+    },
+    {
+     "wait": 500
+    }
+   ],
+   "note": "UR-P8 390 · 公开范围（滚到底）；已知不过：画板可视区扣掉了状态栏与 Safari 栏（约 90px），面板滚到底也到不了画板画的位置——内容本身在 URP4（834）与 URP5 / URP6 已逐像素核对",
+   "design-scroll-anchor": ".scrollto"
   }
  ]
 }

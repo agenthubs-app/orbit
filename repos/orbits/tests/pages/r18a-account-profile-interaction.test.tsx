@@ -36,7 +36,8 @@ test("visibility switch changes preview before a confirmed CAS PUT", async t => 
   const bio = initial.profile.bio;
   assert.ok(bio);
   await act(async () => { root.root.findByProps({ "data-profile-edit": true }).props.onClick(); });
-  await act(async () => { root.root.findByProps({ "data-public-field": "intro" }).props.onChange({ target: { checked: false } }); });
+  // UR-P：公開する項目只在编辑面板里，用开关（role=switch）。
+  await act(async () => { root.root.findByProps({ "data-public-field": "intro" }).findByProps({ role: "switch" }).props.onClick(); });
   const preview = root.root.findByProps({ "aria-label": "公开预览" });
   assert.ok(!preview.findAllByType("p").some(item => item.children.join("").includes(bio)));
   await act(async () => { await root.root.findByProps({ "data-profile-save": true }).props.onClick(); });
@@ -148,7 +149,18 @@ test("profile editor confirms a save when the live service normalizes duplicate 
   await act(async () => { root = create(createElement(AccountProfilePage, { initialPayload: initial })); });
   t.after(() => { void act(() => root.unmount()); });
   await act(async () => { root.root.findByProps({ "data-profile-edit": true }).props.onClick(); });
-  await act(async () => { root.root.findAllByType("textarea")[0]!.props.onChange({ target: { value: "ＡＢＣ\nＡＢＣ" } }); });
+  // UR-P：提供できること是标签输入——全角与半角写法服务端归一成同一项。
+  for (;;) {
+    const remove = root.root.findByProps({ "data-profile-tags": "offering" }).findAll(node => node.type === "button" && node.props["data-profile-tag-add"] === undefined);
+    if (!remove.length) break;
+    await act(async () => { remove[0]!.props.onClick(); });
+  }
+  for (const value of ["ＡＢＣ", "ABC"]) {
+    await act(async () => { root.root.findByProps({ "data-profile-tag-add": "offering" }).props.onClick(); });
+    const input = root.root.findByProps({ "data-profile-tag-input": "offering" });
+    await act(async () => { input.props.onChange({ target: { value } }); });
+    await act(async () => { input.props.onKeyDown({ key: "Enter", nativeEvent: { isComposing: false }, preventDefault() {} }); });
+  }
   await act(async () => { await root.root.findByProps({ "data-profile-save": true }).props.onClick(); });
   assert.equal(root.root.findAllByProps({ role: "status" }).length, 1);
   assert.ok(root.root.findAllByType("span").some(span => span.children.join("") === "ABC"));

@@ -17,10 +17,11 @@ import { AccountLayout, type AccountSection } from "./AccountLayout";
 import { validSaveReceipt } from "./SuggestionsApi";
 import { PROFILE_ANSWER_KEY, cardProgress, previewForProfile, profileSaveInput, type CardKey } from "./profile-model";
 import { normalizeProfileTagValues } from "./profile-tag-normalization";
+import { ProfileEditPanel, type ProfileEditDraft } from "./ProfileEditPanel";
 import s from "./AccountProfilePage.module.css";
 
 type Envelope = { success: boolean; data?: ProfilePayload };
-type Draft = { organization: string; role: string; offering: string; seeking: string; bio: string; publicFields: ProfilePublicFieldsContract };
+type Draft = ProfileEditDraft;
 type EventSummary = { hosted: number; active: number; attending: number };
 
 // The browser read cache (orbit-last-answer.ts): the profile is a slow resource, the event counts a list.
@@ -50,13 +51,13 @@ const defaultVisibility: ProfilePublicFieldsContract = { companyRole: true, offe
 function draftOf(profile: ManualProfileContract): Draft {
   return {
     organization: profile.organization, role: profile.role,
-    offering: profile.offering?.join("\n") ?? "", seeking: profile.seeking?.join("\n") ?? "",
+    offering: [...(profile.offering ?? [])], seeking: [...(profile.seeking ?? [])],
     bio: profile.bio ?? "", publicFields: { ...defaultVisibility, ...profile.publicFields },
   };
 }
 
-function lines(value: string): string[] {
-  return normalizeProfileTagValues(value.split("\n")).slice(0, 5);
+function lines(values: readonly string[]): string[] {
+  return normalizeProfileTagValues([...values]).slice(0, 5);
 }
 
 function editOf(draft: Draft): ManualProfileUpdateInput {
@@ -87,12 +88,6 @@ function ProfilePreview({ profile, draft, t, onVisibility, busy }: { profile: Ma
       <small className={s.seekLabel}>{t("whatSeek")}</small>{chips(projected.seeking, "pink")}
     </div>
     {!profile.offering?.length ? <div className={s.publicNotice}>{t("publicNotice")}</div> : null}
-    <div className={s.previewCard}>
-      <small className={s.visibilityLabel}>{t("visibility")}</small>
-      {(["companyRole", "offeringSeeking", "intro"] as const).map(key => <div className={s.visibilityRow} key={key}><span>{t(key)}</span>
-        <Toggle checked={visibility[key]} label={t(key)} disabled={busy} onChange={next => onVisibility({ ...visibility, [key]: next })} /></div>)}
-      <div className={s.visibilityRow}><span>{t("contactsAfterExchangeShort")}</span><Toggle checked={false} label={t("contactsAfterExchangeShort")} disabled onChange={() => undefined} /></div>
-    </div>
   </section>;
 }
 
@@ -280,17 +275,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
       <div className={s.mobilePreview}>{preview}</div>
       <InviteCodeModal open={inviteOpen} onClose={() => setInviteOpen(false)} language={language} />
     </> : null}
-    {draft && profile ? <div className={s.drawerBackdrop} role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setDraft(null); }}><section className={s.drawer} role="dialog" aria-modal="true" aria-label={t("editDetails")}>
-      <div className={s.drawerHead}><strong>{t("editDetails")}</strong><Button label={t("close")} size="sm" onClick={() => setDraft(null)} /></div>
-      <label>{t("companyRole")}<input value={draft.organization} onChange={event => setDraft({ ...draft, organization: event.target.value })} placeholder={t("companyRole")} /><input value={draft.role} onChange={event => setDraft({ ...draft, role: event.target.value })} placeholder={t("companyRole")} /></label>
-      <label>{t("whatOffer")}<textarea value={draft.offering} onChange={event => setDraft({ ...draft, offering: event.target.value })} placeholder={t("eachOnLine")} /></label>
-      <label>{t("whatSeek")}<textarea value={draft.seeking} onChange={event => setDraft({ ...draft, seeking: event.target.value })} placeholder={t("eachOnLine")} /></label>
-      <label>{t("intro")}<textarea value={draft.bio} onChange={event => setDraft({ ...draft, bio: event.target.value })} /></label>
-      {!introValid ? <p role="alert">{t("bioLong")}</p> : null}
-      <fieldset><legend>{t("visibility")}</legend>{(["companyRole", "offeringSeeking", "intro"] as const).map(key => <label key={key}><input type="checkbox" data-public-field={key} checked={draft.publicFields[key]} onChange={event => setDraft({ ...draft, publicFields: { ...draft.publicFields, [key]: event.target.checked } })} />{t(key === "offeringSeeking" ? "offeringSeeking" : key === "intro" ? "intro" : "companyRole")}</label>)}<p>{t("contactsAfterExchange")}</p></fieldset>
-      {saveError ? <p role="alert">{t("saveError")}</p> : null}
-      <div className={s.drawerActions}><Button label={t("cancel")} size="sm" onClick={() => setDraft(null)} /><Button label={t("save")} size="sm" data-profile-save disabled={saving || !introValid} onClick={() => void save()} /></div>
-    </section></div> : null}
+    {draft && profile ? <ProfileEditPanel draft={draft} initial={draftOf(profile)} language={language} saving={saving} saveError={saveError} onChange={setDraft} onCancel={() => { setDraft(null); setSaveError(false); }} onSave={() => void save()} /> : null}
     {saved ? <div className={s.toast} role="status">{t("saved")}</div> : null}
   </AccountLayout>;
 }

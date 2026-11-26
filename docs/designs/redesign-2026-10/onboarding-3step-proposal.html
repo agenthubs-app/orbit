@@ -444,6 +444,8 @@ docNav(''); orbitChrome();
 
 <!-- ===== 2026-11-27 并入：五处界面重做（原 ui-redo-proposal.html，用户 11-27 确认「可以开工」）；样式加 .urx 前缀、脚本独立块，不影响上面的画板 ===== -->
 <style>
+/* 滚动定位标记夹在两张卡之间时，后一张卡照常保持卡间距（同 b13，2026-11-27） */
+.urx .card + .scrollto + .card { margin-top: 14px; }
 
   ._urx_unused{ min-width: 1520px; }
   .urx .web.bare { display: block; }
