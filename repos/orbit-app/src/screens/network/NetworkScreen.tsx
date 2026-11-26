@@ -154,7 +154,7 @@ function useDeletedContacts(): ReadonlySet<string> {
   useEffect(() => {
     const announced = takeAnnouncedContactDelete();
     if (!announced) return;
-    toast.success(announced.queued ? t("network.delete.queued") : t("network.delete.done"), {
+    toast.success(announced.queued ? t("network.delete.queued") : t("network.delete.done", { name: announced.name }), {
       undo: () => {
         void (async () => {
           const stillQueued = announced.queued && session ? await session.cancelOfflineContactDelete(announced.contactId).catch(() => false) : false;

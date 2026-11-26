@@ -19,7 +19,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useLocalContacts } from "../../hooks/useLocalContacts";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { localContactDetail } from "../../view-models/contacts-local";
-import { detailContactFrom, localizedMeetingValue } from "./contact-detail-model";
+import { detailContactFrom, localizedMeetingValue, tokyoMonthDay } from "./contact-detail-model";
 import { GROUP_COPY, IndustryPickerSheet } from "./IndustryPickerSheet";
 import { useDeleteContact } from "./useDeleteContact";
 import { useNetworkDesignContacts } from "./network-design-fixture";
@@ -100,12 +100,17 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
   };
 
   return (
-    <FormScreen title={t("network.edit.title")} cancelLabel={t("network.edit.cancel")} saveLabel={t("network.edit.save")} onCancel={() => router.back()}
+    <FormScreen title={t("network.edit.title")} cancelLabel={t("network.edit.cancel")} saveLabel={saving ? t("network.edit.saving") : t("network.edit.save")} onCancel={() => router.back()}
       onSave={() => void save()} saveDisabled={offline || saving}>
       <View testID="network-edit">
         {offline ? <View style={styles.gapBottom}><OfflineBar offline pending={0} /><UiText style={styles.lbl}>{t("network.edit.needsNetwork")}</UiText></View> : null}
         {/* UR-E4/E5：头像在左；三组卡（基本情報 / 分類 / 連絡先），卡内栏位浅灰底；删除在最下面整行，先确认。 */}
-        <View style={styles.head}><Avatar name={value.displayName || contact.displayName} size="lg" /></View>
+        {/* 头像旁「最終更新 M/D」：只写日期（接口没有来源）。保存中三组卡变淡、不可改（同 Web .dim）。 */}
+        <View style={[styles.row, styles.head]}>
+          <Avatar name={value.displayName || contact.displayName} size="lg" />
+          {contact.updatedAt && tokyoMonthDay(contact.updatedAt) ? <UiText style={styles.lbl} testID="network-edit-updated">{t("network.edit.updated", { date: tokyoMonthDay(contact.updatedAt) })}</UiText> : null}
+        </View>
+        <View pointerEvents={saving ? "none" : "auto"} style={saving ? styles.dim : null} testID="network-edit-groups">
         <View style={styles.card} testID="network-edit-basic">
           <UiText style={styles.cardTitle} accessibilityRole="header">{t("network.edit.groupBasic")}</UiText>
           <TextField onCard label={t("network.edit.name")} value={value.displayName} onChangeText={(text) => set({ displayName: text })} />
@@ -140,15 +145,14 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
           <UiText style={styles.cardTitle} accessibilityRole="header">{t("network.edit.groupContact")}</UiText>
           <TextField onCard label={t("network.edit.email")} value={value.email} onChangeText={(text) => set({ email: text })} keyboardType="email-address" autoCapitalize="none" />
           <TextField onCard label={t("network.edit.phone")} value={value.phone} onChangeText={(text) => set({ phone: text })} keyboardType="phone-pad" />
-          {/* QA-C / UR-E：出会った場所只读，写成一行文字（来自名片备注），只在知道时显示。 */}
-          {met ? (
-            <View style={[styles.row, styles.met]}>
-              <Icon name="pin" size={16} color={colors.ink3} />
-              <UiText style={[styles.metText, styles.grow]}>{`${t("network.edit.met")}：${localizedMeetingValue(met, { intro: t("network.metReferral"), formerColleague: t("add.completion.optionFormerColleague"), forgot: t("add.completion.optionUnknown") })}`}</UiText>
-            </View>
-          ) : null}
+          {/* UR-E：出会った場所只读，写成一行文字（来自名片备注）；不知道时写「未登録」（同 Web editMetLine）。 */}
+          <View style={[styles.row, styles.met]} testID="network-edit-met">
+            <Icon name="pin" size={16} color={colors.ink3} />
+            <UiText style={[styles.metText, styles.grow]}>{t("network.edit.metLine", { place: met ? localizedMeetingValue(met, { intro: t("network.metReferral"), formerColleague: t("add.completion.optionFormerColleague"), forgot: t("add.completion.optionUnknown") }) : t("network.edit.metUnknown") })}</UiText>
+          </View>
         </View>
-        <UiPressable accessibilityRole="button" accessibilityLabel={t("network.edit.delete")} onPress={() => setDeleteOpen(true)} style={styles.deleteRow} testID="network-edit-delete">
+        </View>
+        <UiPressable accessibilityRole="button" accessibilityLabel={t("network.edit.delete")} disabled={saving} onPress={() => setDeleteOpen(true)} style={[styles.deleteRow, saving ? styles.dim : null]} testID="network-edit-delete">
           <Icon name="x" size={16} color={colors.coralText} />
           <UiText style={styles.deleteText}>{t("network.edit.delete")}</UiText>
         </UiPressable>
@@ -170,7 +174,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   row: { alignItems: "center", flexDirection: "row", gap: 8 },
   gapBottom: { marginBottom: 12, gap: 6 },
-  head: { alignItems: "flex-start", marginBottom: 12 },
+  head: { gap: 12, marginBottom: 12 },
   card: { backgroundColor: colors.surface, borderRadius: 22, gap: 12, marginBottom: 12, padding: 18 },
   cardTitle: { color: colors.ink, fontSize: 15, fontWeight: "800", lineHeight: 22 },
   fld: { gap: 6 },
@@ -182,6 +186,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, alignItems: "center" },
   tagInput: { minWidth: 80, color: colors.ink, fontSize: 15, paddingVertical: 4 },
   met: { paddingTop: 2 },
+  dim: { opacity: 0.55 },
   metText: { color: colors.ink2, fontSize: 15, fontWeight: "600", lineHeight: 22 },
   deleteRow: { alignItems: "center", borderColor: colors.line, borderRadius: 14, borderStyle: "dashed", borderWidth: 1.5, flexDirection: "row", gap: 6, height: 48, justifyContent: "center", marginTop: 4 },
   deleteText: { color: colors.coralText, fontSize: 15, fontWeight: "700", lineHeight: 22 },

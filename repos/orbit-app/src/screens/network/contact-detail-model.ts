@@ -44,6 +44,8 @@ export interface DetailContact {
   /** 系统按联系人与关系记录生成的背景说明；记了交流后 lastInteraction 被替换，它仍保留在往来里。 */
   generatedInteraction: { occurredAt: string; summary: string } | null;
   fieldHistory: DetailFieldHistoryEntry[];
+  /** 编辑页「最終更新 M/D」（UR-E；接口没有来源字段，只写日期）。 */
+  updatedAt?: string;
 }
 
 const str = (value: unknown) => (typeof value === "string" ? value : "");
@@ -76,6 +78,7 @@ export function detailContactFrom(payload: Record<string, unknown> | null | unde
     primaryPhone: str(raw.primaryPhone),
     ...(str(raw.cardNotes) ? { cardNotes: str(raw.cardNotes) } : {}),
     nextAction: str(raw.nextAction),
+    ...(str(raw.updatedAt) ? { updatedAt: str(raw.updatedAt) } : {}),
     tags: list(raw.tags),
     // W0060: relationship fallback values are not the person's own; only real values are shown.
     offering: fallback.has("offering") ? [] : list(profile.offering),

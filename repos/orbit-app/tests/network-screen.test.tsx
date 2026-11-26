@@ -438,13 +438,14 @@ test("delete online: confirm → DELETE → back to the list, gone, with 元に�
   await page.getByRole("button", { name: "その他の操作" }).click();
   await page.getByRole("button", { name: "削除" }).click();
   await page.getByText("伊藤 直子さんを削除しますか？", { exact: true }).waitFor();
+  await page.getByText(/^やりとり \d+件・メモ \d+件は消えません。削除したあとも「元に戻す」で取り消せます。$/u).waitFor();
   await page.getByRole("button", { name: "削除する" }).click();
   await page.waitForFunction(() => (window as any).fixture.requests.includes("delete:/api/contacts/c-ito"));
   assert.ok((await navigation(page)).includes("/contacts"));
   await page.evaluate(() => (window as any).showScreen("list"));
   await page.getByText("高橋 美咲", { exact: true }).waitFor();
   assert.equal(await page.getByTestId("network-row-c-ito").count(), 0, "gone from the list");
-  await page.getByText("削除しました", { exact: true }).waitFor();
+  await page.getByText("伊藤 直子さんを削除しました", { exact: true }).waitFor();
   await page.getByRole("button", { name: "元に戻す" }).click();
   await page.waitForFunction(() => (window as any).fixture.requests.includes("post:/api/contacts/c-ito/restore"));
   await page.getByTestId("network-row-c-ito").waitFor();
@@ -474,6 +475,7 @@ test("edit (b5 #42 / #43): fields → PATCH …/fields, industry / level / stage
   for (const [id, title] of [["network-edit-basic", "基本情報"], ["network-edit-class", "分類"], ["network-edit-contact", "連絡先"]] as const) assert.match(await page.getByTestId(id).innerText(), new RegExp(`^${title}`, "u"));
   assert.equal(await page.getByTestId("form-save").innerText(), "保存");
   await page.getByTestId("network-edit-delete").waitFor();
+  assert.match(await page.getByTestId("network-edit-met").innerText(), /^出会った場所：\S/u);
   await page.getByRole("textbox", { name: "役職" }).fill("CFO・取締役");
   await page.getByTestId("network-edit-industry").click();
   await page.getByTestId("network-industry-picker").waitFor();

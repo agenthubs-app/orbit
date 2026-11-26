@@ -76,6 +76,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
     { scopeKey: `${auth.actorId ?? ""}:${contactId}`, cachePolicy: "network-only",
       enabled: !fixture.enabled && Boolean(auth.actorId) && contactId.startsWith("contact:event-consent:") },
   );
+  const fixtureShared = fixture.enabled ? fixture.data?.sharedContactMethods?.[contactId] : undefined;
   const row = useMemo(() => localRows.find((candidate) => candidate.card?.id === contactId || candidate.id === contactId) ?? null, [localRows, contactId]);
   const card = row ? withLegacyNetworkFields(row).card : null;
   const contact: DetailContact | null = useMemo(() => {
@@ -325,10 +326,11 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
         {reachCard}
 
         {/* UR-S9：对方共享给人脉的联系方式。每行名称 + 值 + 能做的事；一个都没有时一行说明。 */}
-        {sharedMethods.kind === "success" ? (
+        {/* 样例模式（network）从 fixture 取，不问服务器；不是交换来的人没有这张卡（同 Web networkApi.sharedMethods）。 */}
+        {(fixture.enabled ? fixtureShared != null : sharedMethods.kind === "success") ? (
           <View style={[styles.card, styles.gapTop, styles.contactCard]} testID="network-shared-contact-methods">
             <UiText style={[styles.cardTitle, styles.contactTitle]} accessibilityRole="header">{t("network.contactMethods.title")}</UiText>
-            <ContactMethodRows methods={sharedMethods.data} />
+            <ContactMethodRows methods={fixture.enabled ? fixtureShared : sharedMethods.kind === "success" ? sharedMethods.data : null} />
           </View>
         ) : null}
         {connection ? (

@@ -14,6 +14,8 @@ export interface NetworkDesignContacts {
   fits: Record<string, PlanContactFit>;
   connections: Record<string, InviteConnectionView>;
   valueLines: Record<string, { relation: string; evidence: string[]; meetingCount?: number }>;
+  /** UR-S：交换后对方共享的联系方式（Web fixture 2c34c2e16；旧 fixture 没有）。 */
+  sharedContactMethods?: Record<string, unknown>;
 }
 
 export function networkDesignEnabled(env: string | undefined = process.env.EXPO_PUBLIC_ORBIT_REDESIGN_MOCK, dev: boolean = typeof __DEV__ !== "undefined" && __DEV__): boolean {
