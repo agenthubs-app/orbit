@@ -129,7 +129,7 @@ function After({ all, t, why, onWhy }: { all: HostReportAll; t: HostT; why: bool
       </div>
       <div className={`${s.card} ${s.span8}`}>
         <div className={s.cardH}><h3>{t("trendTitle")}</h3>{all.daysPublishToEvent != null ? <span className={s.lbl}>{t("rpPubToEvent", { n: all.daysPublishToEvent })}</span> : null}</div>
-        <SignupTrend values={all.trend} startDate={all.trendStartDate} t={t} marks={all.trendMarks} />
+        <SignupTrend values={all.trend} startDate={all.trendStartDate} t={t} marks={all.trendMarks} compact={phone} height={phone ? 104 : undefined} />
       </div>
       <div className={`${s.card} ${s.span4}`}>
         <div className={s.cardH}><h3>{t("rpAfterTitle")}</h3><span className={s.lbl}>{t("rpByAttendees")}</span></div>
@@ -163,12 +163,23 @@ function After({ all, t, why, onWhy }: { all: HostReportAll; t: HostT; why: bool
 }
 
 function Mine({ mine, t, why, onWhy, onLog, logOpen }: { mine: HostReportMine; t: HostT; why: boolean; onWhy: () => void; onLog: (open: boolean) => void; logOpen: boolean }) {
+  const phone = usePhone();
   const tones = new Map<string, Tone>();
   for (const person of mine.unfollowed) if (person.standing && !tones.has(person.standing)) tones.set(person.standing, STANDING_TONES[tones.size % STANDING_TONES.length]!);
   const contribPct = mine.contributionHave != null && mine.contributionTarget ? Math.round((mine.contributionHave / mine.contributionTarget) * 100) : 0;
   return (
     <>
-      {[["rpMet", mine.met, t("unitPeople")], ["rpExchanges", mine.exchanged, t("unitPeople")], ["rpFollowed", mine.followed, t("rpOf", { n: mine.followTotal })]].map(([label, value, unit]) => (
+      {phone ? (
+        // < 768（b13 HM-R3）：3 个数并排一行（.imp3）。
+        <div className={r.imp3}>
+          {[["rpMet", mine.met, t("unitPeople")], ["rpExchanges", mine.exchanged, t("unitPeople")], ["rpFollowed", mine.followed, t("rpOf", { n: mine.followTotal })]].map(([label, value, unit]) => (
+            <div key={label as string} data-host-report-mine={label as string}>
+              <div className={s.lbl}>{t(label as "rpMet")}</div>
+              <b>{value as number}<small>{unit as string}</small></b>
+            </div>
+          ))}
+        </div>
+      ) : [["rpMet", mine.met, t("unitPeople")], ["rpExchanges", mine.exchanged, t("unitPeople")], ["rpFollowed", mine.followed, t("rpOf", { n: mine.followTotal })]].map(([label, value, unit]) => (
         <div key={label as string} className={`${s.card} ${s.span3}`} data-host-report-mine={label as string}>
           <div className={s.lbl}>{t(label as "rpMet")}</div>
           <div className={`${s.big} ${r.mt6}`}>{value as number}<small>{unit as string}</small></div>
@@ -193,8 +204,8 @@ function Mine({ mine, t, why, onWhy, onLog, logOpen }: { mine: HostReportMine; t
             <div key={`${person.name}-${index}`} className={r.mrow}>
               <Avatar name={person.name} size="sm" />
               <div className={r.meta}><b>{person.name}</b><span>{t("rpPersonMeta", { org: person.org ?? "", role: person.role ?? "", t: person.table ?? DASH })}</span></div>
-              {person.standing ? <span className={`${s.chip} ${tone ? s[`c_${tone}`] : ""}`}>{person.standing}</span> : null}
-              <a className={`btn ${s.btn} ${s.sm} ${index === 0 ? s.primary : ""}`} href={href}><Icon name="mail" size={16} />{t("rpDraft")}</a>
+              {person.standing && !phone ? <span className={`${s.chip} ${tone ? s[`c_${tone}`] : ""}`}>{person.standing}</span> : null}
+              <a className={`btn ${s.btn} ${s.sm} ${index === 0 ? s.primary : ""}`} href={href}><Icon name="mail" size={16} />{t(phone ? "rpDraftShort" : "rpDraft")}</a>
             </div>
           );
         })}

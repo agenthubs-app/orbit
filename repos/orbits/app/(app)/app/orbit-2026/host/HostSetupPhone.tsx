@@ -13,8 +13,10 @@ import {
   closeBeforeStart, fromLocalInput, toLocalInput, type HostSetupViewProps,
 } from "./HostSetup";
 import { ReorderList } from "./ReorderList";
+import { QuestionLibraryDrawer } from "./QuestionLibrary";
+import { addLibraryQuestions } from "../../../../../shared/domain/host-question-library";
 import { hostDateDay, hostDateLong, type HostT } from "./host-model";
-import { DESC_MAX, QUESTION_MAX, agoText, applyLinkText, blankQuestion, charCount, clampText, moveItem, switchKind } from "./setup-model";
+import { DESC_MAX, QUESTION_MAX, agoText, applyLinkText, blankQuestion, charCount, clampText, inertWhen, moveItem, switchKind } from "./setup-model";
 import s from "./host.module.css";
 import m from "./tabs.module.css";
 import sp from "./setup-phone.module.css";
@@ -186,7 +188,7 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
         </div>
       )}
 
-      <div className={`${ended ? sp.ro : ""}`} inert={ended || undefined}>
+      <div className={`${ended ? sp.ro : ""}`} {...inertWhen(ended)}>
         <div className={`${s.card} ${sp.card}`} data-host-setup-settings="">
           <h3 className={sp.cardH}>{t("suSettings")}</h3>
           <div className={`${sp.srow} ${sp.first}`}>
@@ -265,6 +267,14 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
           <button type="button" className={`btn ${s.btn} ${s.primary} ${sp.xl}`} disabled={pubDisabled} onClick={props.onPublish} data-host-setup-publish="">{t(data.formPublished ? "suPublishChanges" : "suPublish")}</button>
         </div>
       )}
+
+      <QuestionLibraryDrawer open={props.libraryOpen ?? false} questions={questions} t={t} language={language} onClose={() => props.onLibrary?.(false)}
+        onAdd={(ids) => {
+          const result = addLibraryQuestions(questions, ids, language, QUESTION_MAX);
+          props.onLibrary?.(false);
+          if (result.added.length) { setQuestions(result.questions); props.onAdded?.(result.added.length); }
+          if (result.skipped.length) props.onLimit?.();
+        }} />
 
       <BottomSheet open={closeSheet} onClose={() => setCloseSheet(false)} label={t("suCloses")}>
         <b className={sp.sheetT}>{t("suCloses")}</b>

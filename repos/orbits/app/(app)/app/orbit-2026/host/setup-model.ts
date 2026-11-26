@@ -110,3 +110,8 @@ export const hasLink = (text: string) => /https?:\/\/|www\.|\b[a-z0-9-]+\.(?:com
 
 /** 申込ページの表示（「orbit.app/e/cfo-night-18」= ホスト + パス）。 */
 export const applyLinkText = (host: string, path: string | null) => (path ? `${host}${path}` : null);
+
+/** React 18 は boolean の `inert` を描画しない（属性が消える）ので文字列で渡す：開催済みの申込設定を本当に操作不可にする。 */
+export function inertWhen(on: boolean): Record<string, string> {
+  return on ? { inert: "" } : {};
+}

@@ -926,6 +926,49 @@
     }
    ],
    "note": "HM-T3 页头 ⋯ 菜单（b13 #56）"
+  },
+  {
+   "id": "HM-M8",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=matching",
+   "design": "b13-host-mobile.html",
+   "board-index": 19,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-matching-phone][data-host-matching=draft]",
+   "click": [
+    "[data-host-publish]"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-publish-sheet]"
+    }
+   ],
+   "note": "HM-M8 マッチング · 公開確認 底部抽屉（b13 #19）"
+  },
+  {
+   "id": "HM-S4",
+   "app": "/app/events/demo-event-cfo-night-18/operations?tab=setup",
+   "design": "b13-host-mobile.html",
+   "board-index": 26,
+   "width": 390,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-host-setup-phone]",
+   "host": {
+    "setup": "few"
+   },
+   "click": [
+    "[data-host-qlib-open]"
+   ],
+   "steps": [
+    {
+     "waitFor": "[data-host-qlib]"
+    }
+   ],
+   "note": "HM-S4 申込設定 · 質問集（b13 #26；先删到 3 問才能打开）"
   }
  ]
 }

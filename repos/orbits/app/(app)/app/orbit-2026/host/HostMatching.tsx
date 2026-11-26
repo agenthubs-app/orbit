@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type
 
 import type { HostMatchingConditions, HostMatchingMember, HostMatchingMove, HostMatchingResponse, HostMatchingTable } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import { Avatar, ConfirmDialog, ContextMenu, Icon, Modal, Segmented, useToast } from "../ui";
+import { Avatar, BottomSheet, ConfirmDialog, ContextMenu, Icon, Modal, Segmented, useToast } from "../ui";
 import { failureOf, hostApi } from "./host-api";
 import { HostMatchingPhone } from "./HostMatchingPhone";
 import { usePhone } from "../events/EventDetail";
@@ -185,12 +185,40 @@ export function ConditionRowsToggles({ conditions, t, onChange }: { conditions: 
 }
 
 /** 公開確認（b6 #6）。 */
-export function PublishConfirm({ data, t, busy, onCancel, onPublish }: { data: HostMatchingResponse; t: HostT; busy: boolean; onCancel: () => void; onPublish: (notifyCohosts: boolean) => void }) {
+export function PublishConfirm({ data, t, busy, onCancel, onPublish, phone = false }: { data: HostMatchingResponse; t: HostT; busy: boolean; onCancel: () => void; onPublish: (notifyCohosts: boolean) => void; /** < 768（b13 HM-M8）：底部抽屉。 */ phone?: boolean }) {
   // 「共同運営者にも公開を知らせる」→ HostMatchingPublishInput.notifyCohosts（bb24efda）；没有共同运营者时不显示、不通知。
   const [notifyCohosts, setNotifyCohosts] = useState(true);
   const placed = Math.max(0, data.participantCount - data.unplaced.length);
   const rounds = data.rounds.length ? data.rounds.map((round) => round.index) : [1];
   const title = t("pubTitle");
+  if (phone) {
+    return (
+      <BottomSheet open onClose={onCancel} label={title}>
+        <div data-host-publish-sheet="">
+          <span className={`${s.emo} ${s.e_lav}`}>📣</span>
+          <div className={m.pubSheetT}>{title}</div>
+          <div className={`${s.sub} ${m.pubSheetS}`}>{t("pubSub", { n: data.participantCount })}</div>
+          <div className={m.pubSheetList}>
+            {rounds.map((index) => (
+              <div key={index} className={m.pubSheetRow}><span className={`${s.chip} ${s.c_teal}`}><Icon name="check" size={16} /></span><b>{t("mRoundShort", { n: index })}</b><span className={s.lbl}>{t("pubRoundStat", { p: placed, t: data.tableCount })}</span></div>
+            ))}
+            {data.unplaced.length ? <div className={m.pubSheetRow}><span className={`${s.chip} ${s.c_coral}`}>!</span><b>{t("pubUnplaced")}</b><span className={s.lbl}>{t("pubUnplacedStat", { n: data.unplaced.length })}</span></div> : null}
+          </div>
+          <div className={`${m.mac} ${m.macApricot} ${m.pubSheetNote}`}>{t("pubNote")}</div>
+          {data.event.cohostCount > 0 ? (
+            <div className={`${s.row} ${m.pubCheck}`}>
+              <button type="button" role="checkbox" aria-checked={notifyCohosts} aria-label={t("pubCohosts", { n: data.event.cohostCount })} className={`btn ${m.cbx} ${notifyCohosts ? m.cbxOn : ""}`} onClick={() => setNotifyCohosts(!notifyCohosts)}>{notifyCohosts ? <Icon name="check" size={16} /> : null}</button>
+              <span aria-hidden>{t("pubCohosts", { n: data.event.cohostCount })}</span>
+            </div>
+          ) : null}
+          <div className={m.pubSheetActs}>
+            <button type="button" className={`btn ${s.btn}`} onClick={onCancel}>{t("cancel")}</button>
+            <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={busy} onClick={() => onPublish(data.event.cohostCount > 0 && notifyCohosts)} data-host-publish-confirm="">{t("aPublish")}</button>
+          </div>
+        </div>
+      </BottomSheet>
+    );
+  }
   return (
     <Modal open onClose={onCancel} title={title} size={480} header={<span className={`${s.emo} ${s.e_lav}`}>📣</span>}>
       <div className={m.pubTitle}>{title}</div>
@@ -466,7 +494,7 @@ export function HostMatchingTab({ eventId, language, onChanged }: { eventId: str
           onMoveTo={(member, from, to) => { if (from === to) return; void move([{ participantId: member.participantId, round: data.round, toTable: to }], to ? t("mMoved", { name: member.name, t: to }) : t("mMovedOut", { name: member.name })); }} />
         <ConfirmDialog open={modal === "regen"} title={t("mRegenTitle")} message={t("mRegenBody", { n: remaining })} confirmLabel={t("mRegenConfirm")} cancelLabel={t("cancel")} icon="refresh"
           onCancel={() => setModal(null)} onConfirm={() => void generate(pendingConditions ?? current)} />
-        {modal === "publish" ? <PublishConfirm data={data} t={t} busy={busy} onCancel={() => setModal(null)} onPublish={(notify) => void publish(notify)} /> : null}
+        {modal === "publish" ? <PublishConfirm phone data={data} t={t} busy={busy} onCancel={() => setModal(null)} onPublish={(notify) => void publish(notify)} /> : null}
       </>
     );
   }

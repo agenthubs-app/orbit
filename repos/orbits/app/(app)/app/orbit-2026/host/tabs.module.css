@@ -219,3 +219,13 @@
 .phoneAnswer { color: var(--ink-2); font-size: var(--fs-label); }
 .ghostRow i { display: block; height: 36px; flex: 1; border-radius: var(--r-sm); background: var(--surface-2); }
 .phoneFoot.phoneFoot { margin-top: 8px; text-align: center; }
+
+/* < 768 公開確認 底部抽屉（b13 HM-M8） */
+.pubSheetT { font-size: var(--fs-title-xs); font-weight: var(--fw-heavy); margin-top: 10px; }
+.pubSheetS.pubSheetS { margin-top: 6px; line-height: var(--lh-prose-lg); }
+.pubSheetList { margin-top: 10px; }
+.pubSheetRow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.pubSheetRow b { flex: 1 1 0%; font-size: var(--fs-body-sm); }
+.pubSheetNote.pubSheetNote { margin-top: 8px; font-size: var(--fs-meta); line-height: var(--lh-prose); }
+.pubSheetActs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.pubSheetActs > :global(.btn) { height: 46px; }

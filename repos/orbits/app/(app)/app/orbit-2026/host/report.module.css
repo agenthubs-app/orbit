@@ -82,3 +82,8 @@
   .sampleGrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .sampleGrid.sampleGrid > * { grid-column: 1 / -1; }
 }
+/* < 768 自分の視点（b13 HM-R3 .imp3）：3 个数并排 */
+.imp3 { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.imp3 > div { background: var(--surface); border-radius: var(--r-tile); padding: 10px 12px; min-width: 0; }
+.imp3 b { display: block; margin-top: 4px; font-family: var(--font-num); font-size: var(--fs-number); font-weight: var(--fw-heavy); white-space: nowrap; }
+.imp3 b small { font-size: var(--fs-caption); color: var(--ink-3); font-weight: var(--fw-bold); margin-left: 2px; }

@@ -638,6 +638,7 @@ export const hostCopy = {
   rpUnfollowed: { ja: "まだフォローしていない人", zh: "还没跟进的人", en: "Not followed up yet", kind: "title" },
   rpUnfollowedSub: { ja: "{n}名 · 交換から {d}日", zh: "{n}人 · 交换后{d}天", en: "{n} · {d} days since exchange", kind: "label" },
   rpPersonMeta: { ja: "{org} · {role} · テーブル {t}", zh: "{org} · {role} · {t}桌", en: "{org} · {role} · Table {t}", kind: "label" },
+  rpDraftShort: { ja: "下書き", zh: "草稿", en: "Draft", kind: "button" },
   rpDraft: { ja: "下書きを作成", zh: "写草稿", en: "Draft", kind: "button" },
   rpNoSend: { ja: "送信はしません · 送信はあなたが行います", zh: "不会自动发送 · 由你自己发送", en: "Orbit won't mail it · you do", kind: "label" },
   rpAllFollowed: { ja: "全員フォロー済みです", zh: "已全部跟进", en: "You've followed up with everyone", kind: "body" },
@@ -997,6 +998,7 @@ export const hostCopy = {
   // 日付
   dateLong: { ja: "{mon}{d}日（{wd}）{time}", zh: "{mon}{d}日（周{wd}）{time}", en: "{wd}, {mon} {d} {time}", kind: "label" },
   dateShort: { ja: "{m}/{d}", zh: "{m}/{d}", en: "{m}/{d}", kind: "label" },
+  dateMD: { ja: "{m}月{d}日", zh: "{m}月{d}日", en: "{m}/{d}", kind: "label" },
   dateDay: { ja: "{mon}{d}日", zh: "{mon}{d}日", en: "{mon} {d}", kind: "label" },
   // 2026-11-20 カバー画像（event-web-revisit-cover-width-proposal 第 9 张）：只在 Web 主办表单上传。
   evCover: { ja: "カバー画像", zh: "封面图片", en: "Cover image", kind: "label" },

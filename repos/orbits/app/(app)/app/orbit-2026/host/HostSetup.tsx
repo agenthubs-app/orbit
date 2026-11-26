@@ -21,6 +21,7 @@ import { eventTone, hostDateDay, hostDateLong, hostTranslator, tokyoParts, type 
 import {
   DESC_MAX, DESC_WARN, NOTE_MAX, QUESTION_MAX, addSuggested, agoText, applyLinkText, blankQuestion, charCount, clampText, draftInput, draftOf, draftProblems, hasLink, moveItem, sameDraft, switchKind, templateQuestions,
   type SetupDraft, type TemplateKey,
+  inertWhen,
 } from "./setup-model";
 import s from "./host.module.css";
 import m from "./tabs.module.css";
@@ -499,7 +500,7 @@ export function HostSetupView(props: HostSetupViewProps) {
           <div className={s.lbl}>{t("suEndedSub")}</div>
         </div>
       ) : null}
-      <div className={`${u.col} ${u.span7} ${ended ? u.readOnly : ""}`} inert={ended || undefined} data-host-setup={ended ? "ended" : empty ? "empty" : data.formPublished ? "published" : "draft"}>
+      <div className={`${u.col} ${u.span7} ${ended ? u.readOnly : ""}`} {...inertWhen(ended)} data-host-setup={ended ? "ended" : empty ? "empty" : data.formPublished ? "published" : "draft"}>
         <div className={`${s.card} ${u.blk}`}>
           <div className={s.cardH}><h3>{t("suDesc")}</h3><span className={s.lbl}>{t("suDescMax")}</span></div>
           <label className={u.ta}>
@@ -557,7 +558,7 @@ export function HostSetupView(props: HostSetupViewProps) {
       </div>
       <div className={`${u.col} ${u.span5}`}>
         <Preview data={data} draft={draft} t={t} language={language} mode={preview} onMode={props.onPreview} />
-        <div className={ended ? u.readOnly : undefined} inert={ended || undefined}><Settings data={data} draft={draft} t={t} language={language} host={host} onChange={change} /></div>
+        <div className={ended ? u.readOnly : undefined} {...inertWhen(ended)}><Settings data={data} draft={draft} t={t} language={language} host={host} onChange={change} /></div>
         <SetupContactCard key={`${data.event.eventId}:${data.event.version}`} event={data.event} t={t} disabled={ended} version={eventVersion} onVersion={setEventVersion} />
       </div>
       <NoticesSection data={data} t={t} open={notesOpen} kind={props.noticeKind ?? "admission_approved"} note={noteDraft} busy={busy} readOnly={ended}

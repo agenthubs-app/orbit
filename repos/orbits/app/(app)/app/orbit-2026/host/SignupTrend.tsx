@@ -23,21 +23,23 @@ function dayLabel(startDate: string | undefined, index: number): string {
   return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 }
 
-export function SignupTrend({ values, startDate, t, height = 120, marks }: { values: readonly number[]; startDate?: string; t: HostT; height?: number; marks?: readonly SignupTrendMark[] }) {
+export function SignupTrend({ values, startDate, t, height = 120, marks, compact = false }: { values: readonly number[]; startDate?: string; t: HostT; height?: number; marks?: readonly SignupTrendMark[]; /** < 768 レポート（b13 HM-R1）：合計行と柱上の人数なし、日付は「8月20日」、柱は低め。 */ compact?: boolean }) {
   const [active, setActive] = useState<number | null>(null);
   const total = values.reduce((sum, value) => sum + value, 0);
   const max = Math.max(0, ...values);
   const peak = max > 0 ? values.indexOf(max) : -1;
   const step = Math.max(1, Math.ceil(values.length / 7));
   const labels = values.map((_, index) => dayLabel(startDate, index));
+  const axisLabels = compact ? labels.map((label) => { const [m, d] = label.split("/"); return m && d ? t("dateMD", { d, m }) : label; }) : labels;
+  const axisStep = compact ? Math.max(1, Math.ceil((values.length - 1) / 3)) : step;
   const markOf = new Map((marks ?? []).map((mark) => [mark.index, mark.label]));
   const shown = active ?? peak;
   return (
     <div className={st.wrap}>
-      <div className={st.summary}>
+      {compact ? null : <div className={st.summary}>
         <span><b className={st.total}>{total}</b>{t("unitPeople")}</span>
         {peak >= 0 ? <span className={st.peak}>{t("trendPeak", { d: labels[peak] || "", n: max })}</span> : <span className={st.peak}>{t("trendNone")}</span>}
-      </div>
+      </div>}
       {markOf.size ? (
         <div className={st.marks} style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
           {values.map((_, index) => <span key={index} data-trend-mark={markOf.has(index) ? "" : undefined}>{markOf.get(index) ?? ""}</span>)}
@@ -59,14 +61,14 @@ export function SignupTrend({ values, startDate, t, height = 120, marks }: { val
               onFocus={() => setActive(index)}
               onBlur={() => setActive(null)}
             >
-              {index === shown && value > 0 ? <span className={st.value}>{index === active ? tip : value}</span> : null}
+              {index === shown && value > 0 && (!compact || index === active) ? <span className={st.value}>{index === active ? tip : value}</span> : null}
               <i className={`${st.bar} ${value === 0 ? st.zero : ""} ${index === peak ? st.hi : ""} ${index === active ? st.on : ""}`} style={value > 0 ? { height: Math.max(4, h) } : undefined} />
             </button>
           );
         })}
       </div>
       <div className={st.axis} style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }} aria-hidden>
-        {labels.map((label, index) => <span key={index} className={index % step === 0 && index < labels.length - 1 && labels.length - 1 - index < step ? st.nearLast : undefined}>{index % step === 0 || index === labels.length - 1 ? label : ""}</span>)}
+        {axisLabels.map((label, index) => <span key={index} className={index % axisStep === 0 && index < labels.length - 1 && labels.length - 1 - index < axisStep ? st.nearLast : undefined}>{index % axisStep === 0 || index === labels.length - 1 ? label : ""}</span>)}
       </div>
       <table className={st.srOnly}>
         <caption>{t("trendTitle")}</caption>
