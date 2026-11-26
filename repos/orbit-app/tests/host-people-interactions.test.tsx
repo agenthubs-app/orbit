@@ -142,3 +142,12 @@ test("a long press starts selecting with that row already chosen", async (t) => 
   await page.waitForTimeout(200);
   assert.equal(await page.getByText("1名を選択中").count() > 0, true);
 });
+
+test("the detail shows the profile score with what is missing, and this event's introduction", async (t) => {
+  const page = await open(t, { responses: { [`${base}/people`]: people, [`${base}/people/${encodeURIComponent(morita!.actorId)}`]: { ...person, intro: "SaaS をやっています。", missing: ["topics", "offer"], profileScore: 60 } } });
+  await page.getByTestId(`host-person-open-${morita!.actorId}`).click();
+  const score = page.getByTestId("host-person-score");
+  await score.waitFor();
+  assert.match(await score.innerText(), /プロフィール 60%[\s\S]*話したいテーマ・提供できることが未入力/u);
+  assert.match(await page.getByTestId("host-person-intro").innerText(), /SaaS をやっています。/u);
+});

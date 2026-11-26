@@ -10,6 +10,7 @@ import { UiText } from "../../components/ui";
 import { avatarTone } from "../../components/ui/Avatar";
 import { createThemedStyles } from "../../design/theme";
 import { radius } from "../../design/tokens";
+import { ScoreRing } from "../events/v2/ScoreRing";
 import { Avatar, Chip, type Tone } from "../events/v2/venue-ui";
 import { hostDateShort, hostTime, type HostT } from "./host-model";
 import { BtnSm, numFont, useHostStyles } from "./host-ui";
@@ -31,7 +32,7 @@ export function personMeta(data: HostPersonResponse, t: HostT): string[] {
 }
 
 export function HostPersonView({ data, t }: { data: HostPersonResponse; t: HostT }) {
-  const { styles: h } = useHostStyles();
+  const { styles: h, colors } = useHostStyles();
   const { styles } = usePersonStyles();
   const [allRecs, setAllRecs] = useState(false);
   const meta = personMeta(data, t);
@@ -53,10 +54,29 @@ export function HostPersonView({ data, t }: { data: HostPersonResponse; t: HostT
         </View>
       </View>
 
+      {data.profileScore != null ? (
+        <View style={[h.row, styles.cmp]} testID="host-person-score">
+          <ScoreRing size={44} stroke={5} value={data.profileScore} color={data.profileScore < 50 ? colors.coral : colors.plum500} label={t("pProfileScore", { n: data.profileScore })} fontSize={13}>
+            <UiText style={styles.cmpN}>{data.profileScore}</UiText>
+          </ScoreRing>
+          <View style={h.grow}>
+            <UiText style={styles.cmpT}>{t("pdScore", { n: data.profileScore })}</UiText>
+            <UiText style={h.lbl}>{data.missing?.length ? t("pdMissing", { items: data.missing.map((item) => t(`cov_${item}`)).join(t("listSep")) }) : t("pdComplete")}</UiText>
+          </View>
+        </View>
+      ) : null}
+
       {data.hostAnswers.length ? (
         <View style={styles.section} testID="host-person-answers">
           <UiText style={styles.h} accessibilityRole="header">{t("pdHostAnswers")}</UiText>
           {data.hostAnswers.map((item, index) => <QA key={index} label={item.label} value={item.value} />)}
+        </View>
+      ) : null}
+
+      {data.intro ? (
+        <View style={styles.section} testID="host-person-intro">
+          <UiText style={styles.h} accessibilityRole="header">{t("pdIntro")}</UiText>
+          <UiText style={styles.dd}>{data.intro}</UiText>
         </View>
       ) : null}
 
@@ -141,6 +161,9 @@ export function HostPersonLoading() {
 // body gap 18 · section 上分隔线 pt16 gap10 · 卓 p12 r-tile surface-2 · 卓号 32 r-input-sm plum-100/900 · 推荐序号 24 圆 plum-100/900。
 const usePersonStyles = createThemedStyles((colors) => StyleSheet.create({
   body: { gap: 18, paddingBottom: 8 },
+  cmp: { backgroundColor: colors.surface2, borderRadius: radius.tile, gap: 12, padding: 12 },
+  cmpN: { color: colors.ink, fontFamily: numFont, fontSize: 13, fontWeight: "800" },
+  cmpT: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   head: { alignItems: "flex-start", flexDirection: "row", gap: 14 },
   name: { color: colors.ink, fontSize: 19, fontWeight: "800", lineHeight: 27 },
   orgLine: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22, marginTop: 2 },
