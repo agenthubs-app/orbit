@@ -27,6 +27,7 @@ import {
   type OnboardingMissing,
 } from "./onboarding-model";
 import styles from "./OnboardingFlow.module.css";
+import { invalidProfileContactMethods } from "../../../../../shared/compute/profile-contact-methods";
 
 export type T = (copy: Copy) => string;
 export type Lang = "zh" | "en" | "ja";
@@ -76,7 +77,12 @@ export const MISSING_LABELS: Record<OnboardingMissing, Copy> = {
 };
 
 /** 「次へ」左侧（手机在上方）的一句汇总：还差几项、分别是什么；生成中与超字数直接说原因。 */
-export function missingSummary(missing: readonly OnboardingMissing[], t: T, language: Lang): string {
+export function missingSummary(missing: readonly OnboardingMissing[], t: T, language: Lang, contactFormat: readonly string[] = []): ReactNode {
+  // UR-C：连络方式填了但格式不对——只说「メールの形式」（手机上补一句「を確認してください」）。
+  if (contactFormat.length && missing.length === 1 && missing[0] === "contact") {
+    const what = contactFormat.map(method => t(method === "phone" ? { ja: "電話番号", zh: "电话", en: "phone number" } : { ja: "メール", zh: "邮箱", en: "email" })).join(t({ ja: "・", zh: "、", en: ", " }));
+    return <><span className={styles.wideOnly}>{t({ ja: `${what}の形式`, zh: `${what}格式`, en: `Check the ${what}` })}</span><span className={styles.phoneOnly}>{t({ ja: `${what}の形式を確認してください`, zh: `请检查${what}格式`, en: `Check the ${what} format` })}</span></>;
+  }
   if (missing.includes("introGenerating")) return t({ ja: "自己紹介文をつくっています。できあがるまでお待ちください", zh: "自我介绍还在生成，请稍等", en: "Your introduction is still being drafted" });
   if (missing.includes("introOver")) return t({ ja: "自己紹介を文字数の上限に収めてください", zh: "自我介绍超过字数上限", en: "Your introduction is over the length limit" });
   const names = missing.map(key => t(MISSING_LABELS[key])).join(language === "en" ? ", " : "、");
@@ -98,8 +104,12 @@ export function OnceNote({ t, withScan }: { t: T; withScan: boolean }) {
   );
 }
 
-function Field({ children, className = "", error, help, id, label, origin, phoneLabel, t }: {
+function Field({ children, className = "", error, help, helpAlways = false, id, label, origin, phoneLabel, tag, t }: {
   children: ReactNode;
+  /** The help line shows at every width (otherwise only on phones). */
+  helpAlways?: boolean;
+  /** A grey chip after the label (「おすすめ」). */
+  tag?: Copy;
   className?: string;
   error?: string;
   help?: string;
@@ -115,9 +125,10 @@ function Field({ children, className = "", error, help, id, label, origin, phone
         {phoneLabel ? <><span className={styles.wideOnly}>{t(label)}</span><span className={styles.phoneOnly}>{t(phoneLabel)}</span></> : t(label)}
         {origin === "card" ? <span className={styles.chipLav}>{t({ ja: "名刺から", zh: "来自名片", en: "From card" })}</span> : null}
         {origin === "ai" ? <span className={styles.chipBlue}>{t({ ja: "AI 推定", zh: "AI 推断", en: "AI guess" })}</span> : null}
+        {tag && !origin ? <span className={styles.chipRec}>{t(tag)}</span> : null}
       </label>
       {children}
-      {error ? <span className={styles.msg} id={`${id}-msg`}>{error}</span> : help ? <span className={`${styles.msg} ${styles.phoneOnly}`}>{help}</span> : null}
+      {error ? <span className={styles.msg} id={`${id}-msg`}>{error}</span> : help ? <span className={helpAlways ? styles.msg : `${styles.msg} ${styles.phoneOnly}`}>{help}</span> : null}
     </div>
   );
 }
@@ -277,7 +288,7 @@ export function ProfileStep({
           <input className={styles.input} disabled={disabled} id="onb-title" maxLength={80} onChange={text("title")} placeholder={t({ ja: "例）代表取締役", zh: "例如：总经理", en: "e.g. CEO" })} value={basic.title} />
         </Field>
         </>}
-        {!repair || repair.birthDate ? <Field className={styles.fBirth} error={errors.birthDate} help={t({ ja: "相手に公開されません。", zh: "不会公开给对方。", en: "Not shown to others." })} id="onb-birth" label={{ ja: "生年月日（任意）", zh: "生日（选填）", en: "Birthday (optional)" }} t={t}>
+        {!repair || repair.birthDate ? <Field className={styles.fBirth} error={errors.birthDate} help={t({ ja: "だれにも公開されません", zh: "不会公开给任何人", en: "Never shown to anyone" })} helpAlways id="onb-birth" label={{ ja: "生年月日（任意）", zh: "生日（选填）", en: "Birthday (optional)" }} t={t}>
           <span className={styles.wrap}><input className={`${styles.input} ${styles.date} ${basic.birthDate ? "" : styles.empty}`} disabled={disabled} id="onb-birth" max={todayIso} onChange={text("birthDate")} type="date" value={basic.birthDate} {...invalid("onb-birth", errors.birthDate)} />{basic.birthDate ? null : <span className={styles.hint} aria-hidden>{t({ ja: "年 / 月 / 日", zh: "年 / 月 / 日", en: "YYYY / MM / DD" })}</span>}<Icon name="calendar" size={16} /></span>
           {repair && basic.birthDate ? <button className={`btn ${styles.ghost}`} type="button" disabled={disabled} onClick={() => onUserEdit({ birthDate: "" })}>{t(LEGACY_REPAIR_COPY.clearBirth)}</button> : null}
         </Field> : null}
@@ -316,41 +327,72 @@ export function ProfileStep({
         </Field>
         </>}
       </div>
-      {repair ? null : <fieldset className={styles.contactMethods} aria-labelledby="onb-contact-title" aria-describedby="onb-contact-hint">
-        <h2 className={styles.contactTitle} id="onb-contact-title">{t({
-          ja: "ここでつながった相手は、どうやってあなたに連絡できますか？",
-          zh: "你在此添加的朋友如何联系到你？",
-          en: "How can the people you connect with here reach you?",
-        })}</h2>
-        <div id="onb-contact-hint" className={`${styles.once} ${styles.contactHint}`}>
-          <span className={styles.onceTile} aria-hidden><Icon name="info" size={16} /></span>
-          <span>{t({
-            ja: "1 つ以上必須。LINE または WeChat がおすすめです。交換した相手と、申し込んだイベントの主催者が確認できます。",
-            zh: "至少填一种，推荐 LINE 或微信。完成交换的人脉和你报名活动的主办方可查看。",
-            en: "Enter at least one. LINE or WeChat makes it easier to stay in touch. Mutual contacts and organizers of events you apply to can view these details.",
-          })}</span>
-        </div>
-        <div className={styles.contactGrid}>
-          <Field id="onb-lineId" label={{ ja: "LINE", zh: "LINE", en: "LINE" }} origin={origins.lineId} t={t}>
-            <input className={styles.input} disabled={disabled} id="onb-lineId" maxLength={80} onChange={text("lineId")} value={basic.lineId ?? ""} />
-          </Field>
-          <Field id="onb-wechatId" label={{ ja: "WeChat", zh: "微信", en: "WeChat" }} origin={origins.wechatId} t={t}>
-            <input className={styles.input} disabled={disabled} id="onb-wechatId" maxLength={80} onChange={text("wechatId")} value={basic.wechatId ?? ""} />
-          </Field>
-          <Field id="onb-email" label={{ ja: "メール", zh: "邮箱", en: "Email" }} origin={origins.email} t={t}>
-            <input className={styles.input} disabled={disabled} id="onb-email" inputMode="email" maxLength={120} onChange={text("email")} type="email" value={basic.email} />
-          </Field>
-          <Field id="onb-phone" label={{ ja: "電話", zh: "电话", en: "Phone" }} origin={origins.phone} t={t}>
-            <input className={styles.input} disabled={disabled} id="onb-phone" inputMode="tel" maxLength={40} onChange={text("phone")} type="tel" value={basic.phone} />
-          </Field>
-        </div>
-        {missing.includes("contact") ? <div className={styles.errLine} role="alert">{t({
-          ja: "連絡先を 1 つ以上入力し、メールや電話番号の形式を確認してください。",
-          zh: "请至少填写一种联系方式，并检查邮箱或电话号码的格式。",
-          en: "Enter at least one contact method and check any email address or phone number.",
-        })}</div> : null}
-      </fieldset>}
+      {repair ? null : <ContactGroup basic={basic} disabled={disabled} missing={missing.includes("contact")} onUserEdit={onUserEdit} origins={origins} t={t} />}
     </div>
+  );
+}
+
+/** Who can see contact methods (UR-C / UR-S; decided 2026-11-27). */
+export const CONTACT_SEE: Copy = { ja: "人脈の相手と、申し込んだイベントの主催者だけに表示されます。", zh: "只有人脉里的人和你报名活动的主办方能看到。", en: "Only people in your network and hosts of events you apply to can see this." };
+const CONTACT_PRIVACY: Copy = {
+  ja: "生年月日はだれにも公開されません。連絡先は、人脈の相手と申し込んだイベントの主催者だけに表示されます。",
+  zh: "生日不会公开给任何人。联系方式只给人脉里的人和你报名活动的主办方看。",
+  en: "Your birthday is never shown to anyone. Only people in your network and hosts of events you apply to can see your contact details.",
+};
+const CONTACT_FORMAT: Record<"email" | "phone", Copy> = {
+  email: { ja: "メールアドレスの形式を確認してください（例：name@example.com）", zh: "请检查邮箱格式（例：name@example.com）", en: "Check the email address (e.g. name@example.com)" },
+  phone: { ja: "電話番号の形式を確認してください（例：090-1234-5678）", zh: "请检查电话号码格式（例：090-1234-5678）", en: "Check the phone number (e.g. 090-1234-5678)" },
+};
+/** Brand names stay as they are in every language. */
+const brand = (name: string): Copy => ({ en: name, ja: name, zh: name });
+const WECHAT_NAME = "WeChat";
+const WECHAT: Copy = { en: WECHAT_NAME, ja: WECHAT_NAME, zh: "微信" };
+const RECOMMENDED: Copy = { ja: "おすすめ", zh: "推荐", en: "Recommended" };
+
+/**
+ * UR-C 連絡先（引導 ①）：与上面的栏位同一种样式，一条细线分开；LINE、WeChat 直接给出（おすすめ），
+ * メール・電話收在「＋」里——有值（名片读到 / 已填）或格式出错时自动展开。至少一种的校验不变（profileContactMethodsValid）：
+ * 一种都没填 → LINE、WeChat 标红 + 组下一句；填了但格式不对 → 只标那一栏并给例子。
+ */
+function ContactGroup({ basic, disabled, missing, onUserEdit, origins, t }: {
+  basic: BasicDraft;
+  disabled: boolean;
+  missing: boolean;
+  onUserEdit: (patch: Partial<BasicDraft>) => void;
+  origins: Partial<Record<BasicField, FieldOrigin>>;
+  t: T;
+}) {
+  const handles = { email: basic.email, lineId: basic.lineId ?? "", phone: basic.phone, wechatId: basic.wechatId ?? "" };
+  const bad = missing ? invalidProfileContactMethods(handles) : [];
+  const none = missing && bad.length === 0;
+  const [more, setMore] = useState(false);
+  const open = more || Boolean(basic.email.trim() || basic.phone.trim()) || bad.includes("email") || bad.includes("phone");
+  const text = (key: "email" | "phone" | "lineId" | "wechatId") => (event: ChangeEvent<HTMLInputElement>) => onUserEdit({ [key]: event.target.value });
+  const err = (method: "email" | "phone") => (bad.includes(method) ? t(CONTACT_FORMAT[method]) : undefined);
+  const noneAria = none ? { "aria-describedby": "onb-contact-none", "aria-invalid": true as const } : {};
+  return (
+    <fieldset className={`${styles.contactGroup} ${none ? styles.contactNone : ""}`} aria-labelledby="onb-contact-title" aria-describedby="onb-contact-see" data-onboarding-contact={none ? "none" : bad.length ? "format" : "ok"}>
+      <h2 className={styles.contactTitle} id="onb-contact-title">{t({ ja: "連絡先", zh: "联系方式", en: "Contact" })}<small>{t({ ja: "1つ以上", zh: "至少一种", en: "at least one" })}</small></h2>
+      <p className={styles.contactSee} id="onb-contact-see">{t(CONTACT_SEE)}</p>
+      <div className={styles.contactGrid}>
+        <Field className={none ? styles.err : ""} id="onb-lineId" label={brand("LINE")} origin={origins.lineId} tag={RECOMMENDED} t={t}>
+          <input className={styles.input} disabled={disabled} id="onb-lineId" maxLength={80} onChange={text("lineId")} placeholder="LINE ID" value={basic.lineId ?? ""} {...noneAria} />
+        </Field>
+        <Field className={none ? styles.err : ""} id="onb-wechatId" label={WECHAT} origin={origins.wechatId} tag={RECOMMENDED} t={t}>
+          <input className={styles.input} disabled={disabled} id="onb-wechatId" maxLength={80} onChange={text("wechatId")} placeholder="WeChat ID" value={basic.wechatId ?? ""} {...noneAria} />
+        </Field>
+        {open ? <>
+          <Field error={err("email")} id="onb-email" label={{ ja: "メール", zh: "邮箱", en: "Email" }} origin={origins.email} t={t}>
+            <input className={styles.input} disabled={disabled} id="onb-email" inputMode="email" maxLength={120} onChange={text("email")} placeholder={t({ ja: "例）name@example.com", zh: "例如：name@example.com", en: "e.g. name@example.com" })} type="email" value={basic.email} {...invalid("onb-email", err("email"))} />
+          </Field>
+          <Field error={err("phone")} id="onb-phone" label={{ ja: "電話", zh: "电话", en: "Phone" }} origin={origins.phone} t={t}>
+            <input className={styles.input} disabled={disabled} id="onb-phone" inputMode="tel" maxLength={40} onChange={text("phone")} placeholder={t({ ja: "例）090-1234-5678", zh: "例如：090-1234-5678", en: "e.g. 090-1234-5678" })} type="tel" value={basic.phone} {...invalid("onb-phone", err("phone"))} />
+          </Field>
+        </> : null}
+      </div>
+      {open ? null : <button className={`btn ${styles.addMore}`} disabled={disabled} onClick={() => setMore(true)} type="button" data-onboarding-contact-more=""><Icon name="plus" size={16} />{t({ ja: "メール・電話を入れる", zh: "填写邮箱或电话", en: "Add email or phone" })}</button>}
+      {none ? <div className={styles.errLine} id="onb-contact-none" role="alert">{t({ ja: "どれか 1 つを入力してください", zh: "填写其中一种即可", en: "Fill in any one" })}</div> : null}
+    </fieldset>
   );
 }
 
@@ -572,7 +614,7 @@ export function ProfileAside({ basic, initial, language, t }: { basic: BasicDraf
       </div>
     </div>
     <div className={`${styles.asideCard} ${styles.flat}`}>
-      <div className={styles.row}><MacTile emoji="🔒" tone="lav" size="sm" /><div className={styles.sub}>{t({ ja: "生年月日と連絡先は相手に公開されません。", zh: "生日和联系方式不会公开给对方。", en: "Your birthday and contact details stay private." })}</div></div>
+      <div className={styles.row}><MacTile emoji="🔒" tone="lav" size="sm" /><div className={styles.sub}>{t(CONTACT_PRIVACY)}</div></div>
     </div>
   </>;
 }

@@ -73,14 +73,16 @@
 .pickerOption:global(.btn)[aria-pressed="true"] { background: var(--accent-soft); }
 .pickerOption:global(.btn):focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
-.contactMethods { container-type: inline-size; min-width: 0; margin: 18px 0 0; padding: 16px; border: 1px solid var(--line); border-radius: var(--r-tile); background: var(--surface-2); }
-.contactTitle { margin: 0 0 10px; font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); }
-.contactMethods .contactHint { margin: 0; }
-.contactGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; }
-.contactGrid .field { display: flex; flex-direction: column; }
-.contactGrid .fieldLabel { flex-wrap: wrap; row-gap: 3px; }
-.contactGrid .input { margin-top: auto; background: var(--surface); }
-@container (max-width: 16rem) { .contactGrid { grid-template-columns: minmax(0, 1fr); } }
+/* UR-C 連絡先：一条细线分开，不套框；标题 16/800 +「1つ以上」；一句谁能看；LINE · WeChat 两栏（手机单列）；「＋ メール・電話」虚线整行。 */
+.contactGroup { min-width: 0; margin: 24px 0 0; padding: 20px 0 0; border: 0; border-top: 1px solid var(--line); }
+.contactTitle { display: flex; align-items: baseline; gap: 8px; margin: 0; color: var(--ink); font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); }
+.contactTitle small { color: var(--ink-3); font-size: var(--fs-meta); font-weight: var(--fw-bold); }
+.contactSee { margin: 4px 0 0; color: var(--ink-2); font-size: var(--fs-control); font-weight: var(--fw-semibold); line-height: 1.6; }
+.contactGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 14px; }
+.addMore:global(.btn) { display: flex; width: 100%; height: 48px; margin-top: 12px; align-items: center; justify-content: center; gap: 6px; border: 1.5px dashed var(--ink-4); border-radius: var(--r-md); background: transparent; color: var(--ink-2); font-size: var(--fs-row); font-weight: var(--fw-bold); }
+.contactNone .addMore:global(.btn) { border-color: var(--coral); }
+.contactGroup .errLine { margin-top: 10px; font-size: var(--fs-control); line-height: 1.55; }
+.chipRec { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface-3); color: var(--ink-3); font-size: var(--fs-caption); font-weight: var(--fw-bold); white-space: nowrap; }
 .field { min-width: 0; margin-top: 12px; }
 .fieldLabel { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; color: var(--ink-2); font-size: var(--fs-meta); font-weight: var(--fw-bold); }
 .input { width: 100%; height: 48px; padding: 0 14px; border: 1.5px solid transparent; border-radius: var(--r-md); outline: none; background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body); text-overflow: ellipsis; }
@@ -227,6 +229,8 @@ select.input option { color: var(--ink); }
   .input, .pickerTrigger:global(.btn) { background: var(--surface); }
   .wideOnly { display: none; }
   .phoneOnly { display: inline; }
+  .contactGrid { grid-template-columns: minmax(0, 1fr); }
+  .chipRec { background: var(--surface-2); }
   .msg.phoneOnly { display: block; }
   .goals { grid-template-columns: 1fr 1fr; margin-top: 14px; }
   .goal:global(.btn) { background: var(--surface); }

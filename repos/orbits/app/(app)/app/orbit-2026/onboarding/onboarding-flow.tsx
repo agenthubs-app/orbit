@@ -74,7 +74,7 @@ import {
   type T,
 } from "./onboarding-steps";
 import { LEGACY_REPAIR_COPY, ONBOARDING_COPY } from "../copy/onboarding";
-import { PROFILE_CONTACT_METHODS, profileContactMethods, profileContactMethodsValid } from "../../../../../shared/compute/profile-contact-methods";
+import { PROFILE_CONTACT_METHODS, invalidProfileContactMethods, profileContactMethods, profileContactMethodsValid } from "../../../../../shared/compute/profile-contact-methods";
 import styles from "./OnboardingFlow.module.css";
 
 export interface OnboardingFlowProps {
@@ -666,7 +666,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
               {stepIndex > 0 ? <button className={`btn ${styles.back}`} disabled={saving} onClick={onBack} type="button"><Icon name="left" size={16} />{back}</button> : null}
               {!repair && shown.length === 0 && (confirmed > 0 || draftSaved) ? <span className={styles.saved}><Icon name="check" size={16} /> {t({ zh: "已自动保存", en: "Saved automatically", ja: "自動保存済み" })}</span> : null}
               <span className={styles.spacer} />
-              {shown.length && attempted === view ? <span className={styles.miss} role="alert"><Icon name="flag" size={16} />{missingSummary(shown, t, language)}</span> : null}
+              {shown.length && attempted === view ? <span className={styles.miss} role="alert"><Icon name="flag" size={16} />{missingSummary(shown, t, language, shown.includes("contact") ? invalidProfileContactMethods({ email: basic.email, lineId: basic.lineId ?? "", phone: basic.phone, wechatId: basic.wechatId ?? "" }) : [])}</span> : null}
               <button aria-busy={saving || undefined} className={`btn ${styles.primary}`} data-onboarding-next="" onClick={() => void onNext()} type="button">
                 {nextLabel}{view === "goals" && goalChoices.length ? <span className={styles.goalCount}>{t({ ja: ` · 目標 ${goalChoices.length} / 2`, zh: ` · 目标 ${goalChoices.length} / 2`, en: ` · Goals ${goalChoices.length} / 2` })}</span> : null}<Icon name="right" size={16} />
               </button>

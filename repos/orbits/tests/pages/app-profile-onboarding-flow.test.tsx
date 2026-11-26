@@ -418,11 +418,26 @@ test("a completed basic profile still needs one contact method before continuing
   const root = await mountFlow("u-contact");
   await click(root, nextButton(root));
   assert.equal(api.puts.length, 0);
-  assert.ok(alerts(root).some(alert => alert.includes("至少填写一种联系方式")));
-  assert.ok(["onb-lineId", "onb-wechatId", "onb-email", "onb-phone"].every(id => field(root, id)));
+  // UR-C：一种都没填 → 组下「填写其中一种即可」；LINE、WeChat 直接给出，邮箱电话收在「＋」里（点开后才有栏位）。
+  assert.ok(alerts(root).some(alert => alert.includes("填写其中一种即可")));
+  assert.ok(["onb-lineId", "onb-wechatId"].every(id => field(root, id)));
+  assert.ok(["onb-email", "onb-phone"].every(id => !field(root, id)));
   await act(async () => { field(root, "onb-lineId")!.props.onChange({ target: { value: "line-handle" } }); });
   await click(root, nextButton(root));
   assert.deepEqual(api.puts[0]?.handles, { lineId: "line-handle" });
+  act(() => root.unmount());
+});
+
+test("contact: an email in the wrong format marks only that field and says so; the group opens by itself when email or phone has a value", async (t) => {
+  stubWindow(t, new Map());
+  const api = stubProfileApi(t, "", { displayName: "张三", primaryIndustryId: "other", secondaryIndustryId: "other.other", handles: { email: "zhang@example" } });
+  const root = await mountFlow("u-contact-format");
+  assert.ok(field(root, "onb-email"), "a stored email opens the email / phone pair");
+  await click(root, nextButton(root));
+  assert.equal(api.puts.length, 0);
+  assert.equal(field(root, "onb-email")!.props["aria-invalid"], true);
+  assert.notEqual(field(root, "onb-lineId")!.props["aria-invalid"], true, "LINE is not marked when the problem is the email format");
+  assert.ok(alerts(root).some(alert => alert.includes("邮箱格式")));
   act(() => root.unmount());
 });
 

@@ -1,0 +1,379 @@
+{
+ "_note": "五处界面重做 UR-C / R / S / P / E（onboarding-3step-proposal.html 第 49–99 块，2026-11-27 并入）。实现侧沿用 web-onboarding-3step 的浏览器桩（不调模型、不写库）；画板里卡片 / 页面滚到连絡先组的位置，门禁用同一公式（标记顶距滚动容器 off px）。 UR-C 只比「連絡先」这一组（design-clip .cg / app-clip [data-onboarding-contact]）：画板用卡片内滚动画出这一组，实现是整页滚动，组外的部分由 web-onboarding-3step 门禁管。",
+ "defaults": {
+  "app-origin": "http://localhost:3040",
+  "login": "qa@orbit.test",
+  "grid": 30,
+  "attribution": "scripts/visual/attribution-ui-redo.json",
+  "viewport": true,
+  "init-script": "(() => {\n  if (!location.pathname.startsWith(\"/app/profile/onboarding\")) return;\n  try { Object.keys(localStorage).filter(k => k.startsWith(\"orbit.onboarding\")).forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}\n  const real = window.fetch.bind(window);\n  const ok = (data) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  let rev = 0, flow = null, updated = 0, mutationId;\n  let profile = { displayName: \"\", organization: \"\", role: \"\", headline: \"\", bio: \"\", relationshipGoal: \"\", handles: {}, offering: [], seeking: [], topics: [], updatedAt: \"2026-11-25T00:00:00.000Z\" };\n  const payload = () => ({ state: \"success\", profile, mutationId, onboarding: { policyVersion: 2, status: profile.displayName && profile.secondaryIndustryId ? \"complete\" : \"incomplete\", missingFields: [] } });\n  window.fetch = (input, init = {}) => {\n    const url = String(input && input.url ? input.url : input);\n    const body = () => JSON.parse(String(init.body || \"{}\"));\n    if (url.includes(\"/api/profile/onboarding-progress\")) {\n      if ((init.method || \"GET\") === \"POST\") { const c = body(); rev += 1;\n        if (c.action === \"initialize\") flow = flow || { version: 1, lastConfirmedScreen: 0, currentScreen: 1, deferred: false, finishedAt: null };\n        if (c.action === \"confirm\") flow = { ...flow, lastConfirmedScreen: c.screen, currentScreen: c.screen >= 5 ? null : c.screen + 1 };\n        flow = { ...flow, revision: \"r\" + rev }; }\n      return ok(flow);\n    }\n    if (url.includes(\"/api/profile/autofill-inference\")) return ok({ status: \"ready\", primaryIndustryId: null, secondaryIndustryId: null, seniorityLevel: \"c_level\", offering: [\"資本政策の知見\", \"SaaS の営業組織づくり\", \"エンジニア採用\"], topics: [\"SaaS\", \"製造業 DX\", \"組織づくり\"] });\n    if (url.includes(\"/api/profile/seek-suggestions\")) return ok({ suggestions: [\"企業の意思決定者\"] });\n    if (url.includes(\"/api/profile/intro-draft\")) return ok({ headline: \"業務 SaaS の代表\", bio: \"株式会社ミナトリンク代表の佐藤です。製造業向けの業務 SaaS を展開しています。シリーズAの資金調達と新規顧客開拓に力を入れています。\", model: \"fixture\", provider: \"fixture\" });\n    if (url.includes(\"/api/contact-drafts/business-card/scan\")) return ok({ draft: { displayName: \"佐藤 健一\", organization: \"株式会社ミナトリンク\", role: \"代表取締役 CEO\", email: \"sato@minatolink.example\", phone: \"03-5555-0142\" }, ocr: { structuredExtraction: { primaryIndustryId: \"finance_investment\", secondaryIndustryId: \"finance_investment.insurance\", seniorityLevel: \"c_level\", regionCountryCode: \"JP\", regionCity: \"Tokyo\" } } });\n    if (/\\/api\\/profile(\\?|$)/.test(url)) {\n      if (init.method === \"PUT\") { const { expectedUpdatedAt, mutationId: id, ...f } = body(); mutationId = id; updated += 1; profile = { ...profile, ...f, updatedAt: \"2026-11-25T00:00:0\" + updated + \".000Z\" }; }\n      return ok(payload());\n    }\n    return real(input, init);\n  };\n})();",
+  "themes": [
+   "light"
+  ]
+ },
+ "views": [
+  {
+   "id": "URC1",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 49,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const m = document.querySelector('[data-onboarding-contact]'); if (!m) return; let sc = m.parentElement; while (sc && sc !== document.body) { const o = getComputedStyle(sc).overflowY; if ((o === 'auto' || o === 'scroll') && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; } document.activeElement && document.activeElement.blur(); if (!sc || sc === document.body) { window.scrollTo(0, m.getBoundingClientRect().top + window.scrollY - 12); } else { sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 12; } })()"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "UR-C1 Web 1440 · 空",
+   "design-clip": ".cg",
+   "app-clip": "[data-onboarding-contact]",
+   "viewport": false
+  },
+  {
+   "id": "URC2",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 50,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 2100
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const m = document.querySelector('[data-onboarding-contact]'); if (!m) return; let sc = m.parentElement; while (sc && sc !== document.body) { const o = getComputedStyle(sc).overflowY; if ((o === 'auto' || o === 'scroll') && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; } document.activeElement && document.activeElement.blur(); if (!sc || sc === document.body) { window.scrollTo(0, m.getBoundingClientRect().top + window.scrollY - 12); } else { sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 12; } })()"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "UR-C2 Web 1440 · 从名片读到（桩：名片带邮箱、电话）",
+   "design-clip": ".cg",
+   "app-clip": "[data-onboarding-contact]",
+   "viewport": false
+  },
+  {
+   "id": "URC3",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 51,
+   "width": 1440,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const m = document.querySelector('[data-onboarding-contact]'); if (!m) return; let sc = m.parentElement; while (sc && sc !== document.body) { const o = getComputedStyle(sc).overflowY; if ((o === 'auto' || o === 'scroll') && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; } document.activeElement && document.activeElement.blur(); if (!sc || sc === document.body) { window.scrollTo(0, m.getBoundingClientRect().top + window.scrollY - 12); } else { sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 12; } })()"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "UR-C3 Web 1440 · 一种都没填点「次へ」",
+   "design-clip": ".cg",
+   "app-clip": "[data-onboarding-contact]",
+   "viewport": false
+  },
+  {
+   "id": "URC4",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 52,
+   "width": 834,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "fill": [
+      "#onb-lineId",
+      "sato.kenichi"
+     ]
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const m = document.querySelector('[data-onboarding-contact]'); if (!m) return; let sc = m.parentElement; while (sc && sc !== document.body) { const o = getComputedStyle(sc).overflowY; if ((o === 'auto' || o === 'scroll') && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; } document.activeElement && document.activeElement.blur(); if (!sc || sc === document.body) { window.scrollTo(0, m.getBoundingClientRect().top + window.scrollY - 12); } else { sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 12; } })()"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "UR-C4 Web 834 · 填了一种",
+   "design-clip": ".cg",
+   "app-clip": "[data-onboarding-contact]",
+   "viewport": false
+  },
+  {
+   "id": "URC5",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 53,
+   "width": 834,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "click": "[data-onboarding-contact-more]"
+    },
+    {
+     "wait": 300
+    },
+    {
+     "fill": [
+      "#onb-email",
+      "sato@minatolink"
+     ]
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "wait": 400
+    },
+    {
+     "click": "#onb-email"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const m = document.querySelector('[data-onboarding-contact]'); if (!m) return; let sc = m.parentElement; while (sc && sc !== document.body) { const o = getComputedStyle(sc).overflowY; if ((o === 'auto' || o === 'scroll') && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; } document.activeElement && document.activeElement.blur(); if (!sc || sc === document.body) { window.scrollTo(0, m.getBoundingClientRect().top + window.scrollY - 12); } else { sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 12; } })()"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "UR-C5 Web 834 · 邮箱格式错误",
+   "design-clip": ".cg",
+   "app-clip": "[data-onboarding-contact]",
+   "viewport": false
+  },
+  {
+   "id": "URC6",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 54,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const m = document.querySelector('[data-onboarding-contact]'); if (!m) return; let sc = m.parentElement; while (sc && sc !== document.body) { const o = getComputedStyle(sc).overflowY; if ((o === 'auto' || o === 'scroll') && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; } document.activeElement && document.activeElement.blur(); if (!sc || sc === document.body) { window.scrollTo(0, m.getBoundingClientRect().top + window.scrollY - 150); } else { sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 150; } })()"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "UR-C6 390 · 空",
+   "design-clip": ".cg",
+   "app-clip": "[data-onboarding-contact]",
+   "viewport": false,
+   "design-scroll-anchor": ".cg"
+  },
+  {
+   "id": "URC7",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 55,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "fill": [
+      "#onb-lineId",
+      "sato.kenichi"
+     ]
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const m = document.querySelector('[data-onboarding-contact]'); if (!m) return; let sc = m.parentElement; while (sc && sc !== document.body) { const o = getComputedStyle(sc).overflowY; if ((o === 'auto' || o === 'scroll') && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; } document.activeElement && document.activeElement.blur(); if (!sc || sc === document.body) { window.scrollTo(0, m.getBoundingClientRect().top + window.scrollY - 150); } else { sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 150; } })()"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "UR-C7 390 · 填了一种",
+   "design-clip": ".cg",
+   "app-clip": "[data-onboarding-contact]",
+   "viewport": false,
+   "design-scroll-anchor": ".cg"
+  },
+  {
+   "id": "URC8",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 56,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "upload": [
+      "input[type=file]",
+      "public/iorbit-starfield/avatars/mobile/ava11.png"
+     ]
+    },
+    {
+     "wait": 2100
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const m = document.querySelector('[data-onboarding-contact]'); if (!m) return; let sc = m.parentElement; while (sc && sc !== document.body) { const o = getComputedStyle(sc).overflowY; if ((o === 'auto' || o === 'scroll') && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; } document.activeElement && document.activeElement.blur(); if (!sc || sc === document.body) { window.scrollTo(0, m.getBoundingClientRect().top + window.scrollY - 150); } else { sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 150; } })()"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "UR-C8 390 · 从名片读到",
+   "design-clip": ".cg",
+   "app-clip": "[data-onboarding-contact]",
+   "viewport": false,
+   "design-scroll-anchor": ".cg"
+  },
+  {
+   "id": "URC9",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 57,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const m = document.querySelector('[data-onboarding-contact]'); if (!m) return; let sc = m.parentElement; while (sc && sc !== document.body) { const o = getComputedStyle(sc).overflowY; if ((o === 'auto' || o === 'scroll') && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; } document.activeElement && document.activeElement.blur(); if (!sc || sc === document.body) { window.scrollTo(0, m.getBoundingClientRect().top + window.scrollY - 150); } else { sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 150; } })()"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "UR-C9 390 · 缺项",
+   "design-clip": ".cg",
+   "app-clip": "[data-onboarding-contact]",
+   "viewport": false,
+   "design-scroll-anchor": ".cg"
+  },
+  {
+   "id": "URC10",
+   "app": "/app/profile/onboarding?lang=ja",
+   "design": "onboarding-3step-proposal.html",
+   "board-index": 58,
+   "width": 390,
+   "steps": [
+    {
+     "waitFor": "[data-onboarding-view]"
+    },
+    {
+     "wait": 800
+    },
+    {
+     "click": "[data-onboarding-contact-more]"
+    },
+    {
+     "wait": 300
+    },
+    {
+     "fill": [
+      "#onb-email",
+      "sato@minatolink"
+     ]
+    },
+    {
+     "click": "button[data-onboarding-next]"
+    },
+    {
+     "wait": 400
+    },
+    {
+     "click": "#onb-email"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "eval": "(() => { const m = document.querySelector('[data-onboarding-contact]'); if (!m) return; let sc = m.parentElement; while (sc && sc !== document.body) { const o = getComputedStyle(sc).overflowY; if ((o === 'auto' || o === 'scroll') && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; } document.activeElement && document.activeElement.blur(); if (!sc || sc === document.body) { window.scrollTo(0, m.getBoundingClientRect().top + window.scrollY - 150); } else { sc.scrollTop = m.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 150; } })()"
+    },
+    {
+     "wait": 800
+    }
+   ],
+   "note": "UR-C10 390 · 格式错误",
+   "design-clip": ".cg",
+   "app-clip": "[data-onboarding-contact]",
+   "viewport": false,
+   "design-scroll-anchor": ".cg"
+  }
+ ]
+}
