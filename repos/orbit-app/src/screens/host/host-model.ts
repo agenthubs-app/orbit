@@ -104,8 +104,9 @@ export function consoleSubtitle(startsAt: string | null, status: HostEventStatus
   return [when, t(statusChip(status).label)].filter(Boolean).join(" · ");
 }
 
-export type HostSeg = "overview" | "matching" | "people" | "check-in" | "report";
-export const HOST_SEGS: readonly HostSeg[] = ["overview", "matching", "people", "check-in", "report"];
+// b13 HM-T1：概要 マッチング 参加者 受付 申込設定 レポート（受付 是独立的签到页）。
+export type HostSeg = "overview" | "matching" | "people" | "check-in" | "setup" | "report";
+export const HOST_SEGS: readonly HostSeg[] = ["overview", "matching", "people", "check-in", "setup", "report"];
 export const parseSeg = (value: unknown): HostSeg => (HOST_SEGS.includes(value as HostSeg) ? (value as HostSeg) : "overview");
 
 export const centerHref = "/events/center";

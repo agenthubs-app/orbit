@@ -60,13 +60,14 @@ test("運営センター: one event has no filter and the PC card (b12 #420); ma
 
 test("イベント運営 概要 (b6 #23): counts, arrival, matching draft and the two todos; レポート摘要 (b12 #430)", () => {
   const text = renderedText(<OverviewBody data={overview} t={t} onCheckIn={noop} onNotify={noop} onPublish={noop} onResults={noop} onReview={noop} />);
-  for (const phrase of ["到着 86 / 128 · 67%", "2ラウンド · 22テーブル", "下書き", "結果を見る", "公開する", "未配置 3名", "要対応", "審査待ち 12名", "当日枠 8名分", "プロフィール未完了 16名", "申込設定とレポートの詳細は PC で編集できます"]) assert.match(text, new RegExp(phrase));
+  for (const phrase of ["到着 86 / 128 · 67%", "2ラウンド · 22テーブル", "下書き", "結果を見る", "公開する", "未配置 3名", "要対応", "審査待ち 12名", "当日枠 8名分", "プロフィール未完了 16名"]) assert.match(text, new RegExp(phrase));
+  assert.doesNotMatch(text, /PC/u, "nothing sends the organizer to a computer (b13)");
   const quiet = renderedText(<OverviewBody data={{ ...overview, matching: { ...overview.matching, state: "none" }, todos: [] }} t={t} onCheckIn={noop} onNotify={noop} onPublish={noop} onResults={noop} onReview={noop} />);
   assert.doesNotMatch(quiet, /要対応|公開する/);
   const report = renderedText(<ReportBody data={overview} t={t} now={new Date("2026-10-07T13:00:00Z")} onPc={noop} />);
   assert.match(report, /受付率/); assert.match(report, /到着 86 \/ 128名 · 名刺交換 312件 · 本日 21:40 時点/); assert.match(report, /PC で詳細/);
   assert.match(renderedText(<ReportBody data={{ ...overview, reportSummary: null }} t={t} now={new Date()} onPc={noop} />), /開催後に受付率/);
-  assert.match(renderedText(<SegChips seg="overview" t={t} pending={12} onSeg={noop} />), /参加者 12/);
+  assert.match(renderedText(<SegChips seg="overview" t={t} pending={12} onSeg={noop} />), /概要.*マッチング.*参加者 12.*受付.*申込設定.*レポート/u);
   assert.equal(consoleSubtitle(overview.event.startsAt, "live", new Date("2026-10-07T12:00:00Z"), "ja", t), "本日 19:00 · 開催中");
 });
 

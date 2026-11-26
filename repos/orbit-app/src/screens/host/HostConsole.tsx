@@ -5,14 +5,18 @@
 // notices/preview + send（プロフィール未完了 的定型お知らせ，发前确认）。App 不做申込設定 / 报告详情（画板「PC で」）。
 import { Redirect, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
+import { Linking, View } from "react-native";
 
 import type { HostMatchingResponse, HostOverviewResponse, HostPeopleBucket } from "../../api/contract/host-console";
-import type { HostEventView } from "../../api/contract/host-events";
-import { IconButton, presentConfirm, useToast } from "../../components/ui";
+import type { HostEventView, HostEventWriteResult } from "../../api/contract/host-events";
+import { IconButton, presentActionSheet, presentConfirm, UiText, useToast } from "../../components/ui";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { JourneyPage } from "../events/v2/JourneyPage";
-import { useHostApi } from "./host-api";
+import { useHostApi, type HostApiResult } from "./host-api";
 import { checkInHref, consoleHref, consoleSubtitle, desktopPath, parseSeg, type HostSeg } from "./host-model";
-import { PcCard } from "./host-ui";
+import { PcCard, useHostStyles } from "./host-ui";
+import { CancelEventSheet, hostMenuActions, MENU_LABEL, PublishEventSheet, StatusBanner, type HostMenuAction } from "./console-manage";
+import { HostCohostsSheet } from "./HostCohostsSheet";
 import { useHostT } from "./useHostT";
 import { MatchingBody, OverviewBody, ReportBody, SegChips } from "./console-view";
 import { PEOPLE_BUCKETS } from "./people-view";
@@ -33,6 +37,7 @@ export function HostConsoleScreen() {
   const [failed, setFailed] = useState(false);
   const [round, setRound] = useState(Number(params.round) || 1);
   const now = new Date();
+  const { styles: hs } = useHostStyles();
 
   const loadOverview = useCallback(async () => {
     const res = await api.overview(eventId);
@@ -40,13 +45,17 @@ export function HostConsoleScreen() {
   }, [api, eventId]);
   useEffect(() => {
     let live = true;
-    if (seg === "overview" || seg === "report") void loadOverview();
+    // 概要的数字给页签角标与页头也用：每一页都读。
+    void loadOverview();
     if (seg === "matching") void api.matching(eventId, round).then((res) => { if (!live) return; if (res.ok) { setMatching(res.data); setEvent(res.data.event); } else setFailed(true); });
     return () => { live = false; };
   }, [api, eventId, loadOverview, round, seg]);
 
   const go = (next: HostSeg) => router.setParams({ seg: next === "overview" ? undefined : next });
   const sendPc = async (path: string) => { const res = await api.desktopLink(path); if (res.ok) toast.success(t("appPcSent")); else toast.error(t("saveError")); };
+  const { baseUrl } = useOrbitApiBaseUrl();
+  const [busy, setBusy] = useState(false);
+  const [sheet, setSheet] = useState<"publish" | "cancel" | "cohosts" | null>(null);
   const publish = async () => {
     const current = await api.matching(eventId, 1);
     if (!current.ok || !current.data.generationId) { toast.error(t("saveError")); return; }
@@ -63,30 +72,75 @@ export function HostConsoleScreen() {
     const sent = await api.noticeSend(eventId);
     if (sent.ok) toast.success(t("appNotified", { n: sent.data.queued })); else toast.error(sent.reason === "sample" ? t("appSampleReadOnly") : t("saveError"));
   };
-
+  /** 活动级写操作：成功提示 + 重读概要；冲突 / 示例 / 其他失败各一句。 */
+  const write = async (task: () => Promise<HostApiResult<HostEventWriteResult>>, done: (result: HostEventWriteResult) => string) => {
+    if (busy) return;
+    setBusy(true);
+    const res = await task();
+    setBusy(false);
+    setSheet(null);
+    if (!res.ok) { toast.error(res.reason === "conflict" ? t("conflictError") : res.reason === "sample" ? t("evSample") : t("saveError")); return; }
+    toast.success(done(res.data));
+    await loadOverview();
+  };
+  const current = overview?.event ?? event;
+  const pick = async (action: HostMenuAction) => {
+    if (!current) return;
+    if (action === "cohosts") setSheet("cohosts");
+    else if (action === "edit") router.push(`/events/${encodeURIComponent(eventId)}/edit` as Href);
+    else if (action === "open" && current.publicSlug) void Linking.openURL(`${baseUrl.replace(/\/$/, "")}/e/${encodeURIComponent(current.publicSlug)}`);
+    else if (action === "cancel") setSheet("cancel");
+    else if (action === "reissue") {
+      if (await presentConfirm({ cancelLabel: t("cancel"), confirmLabel: t("cfReissue"), icon: "ticket", message: t("cfReissueSub", { code: current.participationCode ?? "" }), title: t("cfReissueTitle") }))
+        void write(() => api.reissueCode(eventId, current.version), (next) => t("cfReissued", { code: next.event.participationCode ?? "" }));
+    } else if (action === "archive") {
+      if (await presentConfirm({ cancelLabel: t("cancel"), confirmLabel: t("archive"), message: t("cfArchiveSub"), title: t("cfArchiveTitle") }))
+        void write(() => api.archive(eventId, current.version, true), () => t("archivedToast"));
+    }
+  };
+  const openMenu = async () => {
+    if (!current) return;
+    const key = await presentActionSheet({ options: hostMenuActions(current).map((action) => ({ destructive: action === "cancel", key: action, label: t(MENU_LABEL[action]) })), title: current.title });
+    if (key) void pick(key as HostMenuAction);
+  };
 
   if (seg === "check-in") return <Redirect href={checkInHref(eventId) as Href} />;
-  const title = event?.title ?? "";
+  const title = current?.title ?? "";
   const back = { fallback: "/events/center", leftLabel: t("appBack") };
-  const cohosts = <IconButton icon="users" accessibilityLabel={t("appCohosts")} onPress={() => void sendPc(`/app/events/${encodeURIComponent(eventId)}/operations?drawer=cohosts`)} />;
+  // b13 HM-T1–T3：每一页同一个页头（活动名 + 一句状态 + 右上 ⋯）和同一排页签。
+  const more = current ? <IconButton icon="more" accessibilityLabel={t("hmMore")} onPress={() => void openMenu()} /> : undefined;
+  const subtitle = current ? consoleSubtitle(current.startsAt, current.status, now, language, t) : undefined;
+  const tabs = <SegChips seg={seg} t={t} pending={overview?.pendingReview ?? null} onSeg={go} />;
+  const sheets = current ? (
+    <>
+      <PublishEventSheet event={current} t={t} language={language} busy={busy} visible={sheet === "publish"} onCancel={() => setSheet(null)} onPublish={() => void write(() => api.publishEvent(eventId, current.version), () => t("publishedToast"))} />
+      <CancelEventSheet event={current} t={t} busy={busy} visible={sheet === "cancel"} onKeep={() => setSheet(null)} onCancelEvent={(note) => void write(() => api.cancelEvent(eventId, current.version, note), (result) => t("cfCancelled", { n: result.notified }))} />
+      <HostCohostsSheet api={api} eventId={eventId} t={t} visible={sheet === "cohosts"} onClose={() => setSheet(null)} onChanged={() => void loadOverview()} />
+    </>
+  ) : null;
 
   if (seg === "matching") {
     return (
-      <JourneyPage title={t("appMatchTitle")} subtitle={title ? `${title} · ${t("mRoundShort", { n: round })}` : undefined} {...back} onLeft={() => go("overview")} testID="host-console-matching">
+      <JourneyPage title={title} subtitle={subtitle} {...back} right={more} testID="host-console-matching">
+        {tabs}
         {matching ? <MatchingBody data={matching} t={t} onRound={setRound} /> : failed ? <PcCard text={t("appLoadError")} emoji="⚠️" tone="apricot" /> : null}
+        {sheets}
       </JourneyPage>
     );
   }
   if (seg === "people") {
-    return <HostPeopleTab api={api} eventId={eventId} t={t} title={title} initialBucket={PEOPLE_BUCKETS.includes(params.bucket as HostPeopleBucket) ? (params.bucket as HostPeopleBucket) : null} onBack={() => go("overview")} onChanged={() => void loadOverview()} />;
+    return <HostPeopleTab api={api} eventId={eventId} t={t} title={title} subtitle={subtitle} right={more} top={<>{tabs}{sheets}</>} initialBucket={PEOPLE_BUCKETS.includes(params.bucket as HostPeopleBucket) ? (params.bucket as HostPeopleBucket) : null} onChanged={() => void loadOverview()} />;
   }
   return (
-    <JourneyPage title={title} subtitle={overview ? consoleSubtitle(overview.event.startsAt, overview.event.status, now, language, t) : undefined} {...back} right={cohosts} testID={`host-console-${seg}`}>
-      <SegChips seg={seg} t={t} pending={seg === "overview" ? overview?.pendingReview ?? null : null} onSeg={go} />
-      {overview ? (seg === "report"
-        ? <ReportBody data={overview} t={t} now={now} onPc={() => void sendPc(desktopPath.report(eventId))} />
-        : <OverviewBody data={overview} t={t} onCheckIn={() => router.push(checkInHref(eventId) as Href)} onResults={() => go("matching")} onPublish={() => void publish()} onReview={() => go("people")} onNotify={() => void notify()} onEditOnPc={() => void sendPc(desktopPath.edit(eventId))} />)
-        : failed ? <PcCard text={t("appLoadError")} emoji="⚠️" tone="apricot" /> : null}
+    <JourneyPage title={title} subtitle={subtitle} {...back} right={more} testID={`host-console-${seg}`}>
+      {tabs}
+      {current ? <StatusBanner event={current} t={t} busy={busy} onEdit={() => void pick("edit")} onPublish={() => setSheet("publish")} onArchive={(archived) => void write(() => api.archive(eventId, current.version, archived), () => t(archived ? "archivedToast" : "unarchivedToast"))} /> : null}
+      {seg === "setup" ? <View style={hs.card} testID="host-setup-soon"><UiText style={hs.sub}>{t("tabSoon")}</UiText></View>
+        : overview ? (seg === "report"
+          ? <ReportBody data={overview} t={t} now={now} onPc={() => void sendPc(desktopPath.report(eventId))} />
+          : <OverviewBody data={overview} t={t} onCheckIn={() => router.push(checkInHref(eventId) as Href)} onResults={() => go("matching")} onPublish={() => void publish()} onReview={() => go("people")} onNotify={() => void notify()} />)
+          : failed ? <PcCard text={t("appLoadError")} emoji="⚠️" tone="apricot" /> : null}
+      {sheets}
     </JourneyPage>
   );
 }

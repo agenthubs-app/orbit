@@ -2,7 +2,7 @@
 // 决定：POST …/people/[actorId]/decision（approve / waitlist / reject，各带自己的 expectedVersion；批量 = 逐条调用，同 Web runDecisions）。
 // 見送り 一律先确认（会通知对方、不能撤回；单条・批量・详情都一样）。成功的行离开当前区分；失败的行留着、标红、保持勾选。
 import * as Clipboard from "expo-clipboard";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { View } from "react-native";
 
 import type { HostAdmissionDecision, HostPeopleBucket, HostPeopleResponse, HostPeopleRow } from "../../api/contract/host-console";
@@ -33,13 +33,16 @@ export async function runDecisions(
   return { failed, ok };
 }
 
-export function HostPeopleTab({ api, eventId, t, title, initialBucket, onBack, onChanged }: {
+export function HostPeopleTab({ api, eventId, t, title, subtitle, right, top, initialBucket, onChanged }: {
   api: HostApi;
   eventId: string;
   t: HostT;
   title: string;
+  subtitle?: string | undefined;
+  /** 运营台共用的页头右侧（⋯）与页签排（b13 HM-T1–T3）。 */
+  right?: ReactNode;
+  top?: ReactNode;
   initialBucket: HostPeopleBucket | null;
-  onBack: () => void;
   /** 有人的状态变了：概要的数字要重读。 */
   onChanged?: () => void;
 }) {
@@ -144,12 +147,12 @@ export function HostPeopleTab({ api, eventId, t, title, initialBucket, onBack, o
 
   const selCount = rows.filter((row) => selected.has(row.actorId)).length;
   const empty = data && !loading && noApplicants(data) && !query.q.trim() && !query.incomplete;
-  const pending = data?.counts.pending ?? 0;
   const name = data?.event.title || title;
   return (
-    <JourneyPage title={t("tPeople")} subtitle={name ? `${name} · ${t("todoReview", { n: pending })}` : undefined} fallback={`/events/${encodeURIComponent(eventId)}/operations`} leftLabel={t("appBack")} onLeft={onBack}
+    <JourneyPage title={name} subtitle={subtitle} fallback="/events/center" leftLabel={t("appBack")} right={right}
       footer={selecting && data ? <BulkBar t={t} bucket={query.bucket} count={selCount} busy={busy} onBulk={(decision) => void request(rows.filter((row) => selected.has(row.actorId)), decision)} /> : undefined}
       testID="host-console-people">
+      {top}
       {!data ? (failed ? <PcCard text={t("appLoadError")} emoji="⚠️" tone="apricot" /> : null)
         : empty ? <PeopleEmpty t={t} link={link} onCopy={() => void copy()} onQr={() => setQr(true)} />
           : (

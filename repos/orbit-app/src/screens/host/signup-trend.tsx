@@ -91,7 +91,7 @@ export function SignupTrend({ values, startDate, t, height = 120, marks }: { val
       ) : null}
       <View style={[styles.plot, { height }]} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
         {width > 0 ? (
-          <Svg width={width} height={1} style={[styles.grid, { top: VALUE_ROOM }]} pointerEvents="none">
+          <Svg width={width} height={1} style={StyleSheet.flatten([styles.grid, { top: VALUE_ROOM }])} pointerEvents="none">
             <Path d={`M0 0.5 H${width}`} stroke={colors.line} strokeWidth={1} strokeDasharray="3 3" />
           </Svg>
         ) : null}

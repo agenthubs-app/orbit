@@ -11,9 +11,9 @@ import { Avatar, Chip } from "../events/v2/venue-ui";
 import { hostDateShort, hostTime, sameTokyoDay, type HostSeg, type HostT } from "./host-model";
 import { Bar, BtnSm, Btn, Emo, numFont, PcCard, useHostStyles } from "./host-ui";
 import { SignupTrend } from "./signup-trend";
-export const SEG_LABEL: Record<HostSeg, string> = { "check-in": "tCheckIn", matching: "tMatching", overview: "tOverview", people: "tPeople", report: "tReport" };
+export const SEG_LABEL: Record<HostSeg, string> = { "check-in": "tCheckIn", matching: "tMatching", overview: "tOverview", people: "tPeople", report: "tReport", setup: "tSetup" };
 
-export const CHIP_SEGS: readonly HostSeg[] = ["overview", "matching", "people", "check-in", "report"];
+export const CHIP_SEGS: readonly HostSeg[] = ["overview", "matching", "people", "check-in", "setup", "report"];
 
 /** kit .carousel 里的 chip 段（padding 7/14、12.5；当前段 ink 底）。 */
 export function SegChips({ seg, t, pending, onSeg }: { seg: HostSeg; t: HostT; pending: number | null; onSeg: (seg: HostSeg) => void }) {
@@ -33,10 +33,10 @@ export function SegChips({ seg, t, pending, onSeg }: { seg: HostSeg; t: HostT; p
   );
 }
 
-export interface OverviewProps { data: HostOverviewResponse; t: HostT; onCheckIn: () => void; onResults: () => void; onPublish: () => void; onReview: () => void; onNotify: () => void; onEditOnPc?: () => void }
+export interface OverviewProps { data: HostOverviewResponse; t: HostT; onCheckIn: () => void; onResults: () => void; onPublish: () => void; onReview: () => void; onNotify: () => void }
 
 /** 概要（b6 #23）：三格 + 到着条 + 受付を開く · マッチング卡 · 要対応 · 💻。 */
-export function OverviewBody({ data, t, onCheckIn, onResults, onPublish, onReview, onNotify, onEditOnPc }: OverviewProps) {
+export function OverviewBody({ data, t, onCheckIn, onResults, onPublish, onReview, onNotify }: OverviewProps) {
   const { styles, colors } = useHostStyles();
   const c = useConsoleStyles().styles;
   const m = data.matching;
@@ -53,14 +53,8 @@ export function OverviewBody({ data, t, onCheckIn, onResults, onPublish, onRevie
         </View>
         <Bar share={data.applied ? data.checkedIn / data.applied : 0} />
         <UiText style={styles.lbl}>{t("appArrival", { a: data.checkedIn, n: data.applied, r: data.arrivalRate ?? 0 })}</UiText>
-        {/* A draft is not open yet: 打开签到 made no sense; say it is unpublished and where to publish it. */}
-        {data.event.status === "draft" ? (
-          <View style={c.mt12} testID="host-overview-draft">
-            <UiText style={styles.b13}>{t("bDraft")}</UiText>
-            <UiText style={styles.lbl}>{t("appPublishOnPc")}</UiText>
-            {onEditOnPc ? <Btn label={t("appSendPc")} variant="ghost" onPress={onEditOnPc} style={c.mt12} testID="host-overview-send-pc" /> : null}
-          </View>
-        ) : <Btn label={t("openCheckIn")} variant="primary" icon="check" height={46} onPress={onCheckIn} style={c.mt12} testID="host-open-check-in" />}
+        {/* Not open (draft / cancelled / archived): no 受付を開く; the banner above says what to do instead. */}
+        {TREND_HIDDEN.has(data.event.status) ? null : <Btn label={t("openCheckIn")} variant="primary" icon="check" height={46} onPress={onCheckIn} style={c.mt12} testID="host-open-check-in" />}
       </View>
       {TREND_HIDDEN.has(data.event.status) ? null : <TrendCard data={data} t={t} testID="host-overview-trend" />}
       <View style={[styles.card, styles.next]} testID="host-overview-matching">
@@ -98,7 +92,6 @@ export function OverviewBody({ data, t, onCheckIn, onResults, onPublish, onRevie
           ) : null}
         </View>
       ) : null}
-      <PcCard text={t("appPcSetup")} style={styles.next} />
     </View>
   );
 }

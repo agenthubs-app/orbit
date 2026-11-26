@@ -6,15 +6,15 @@ import type { ZodType } from "zod";
 
 import type { OrbitApiClient } from "../../api/client";
 import type { ApiResult } from "../../api/types";
-import type { HostCheckInEventsResponse, HostCohostAcceptResult, HostCohostInvitePreview } from "../../api/contract/host-cohosts";
+import type { HostCheckInEventsResponse, HostCohostAcceptResult, HostCohostInvitePreview, HostCohostInviteResult, HostCohostRole, HostCohostsResponse } from "../../api/contract/host-cohosts";
 import type { HostAdmissionDecision, HostCheckInResult, HostKioskHeartbeatResult, HostKioskResponse, HostKioskRosterResponse, HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleDecisionResult, HostPeopleResponse, HostPersonResponse, HostReportResponse } from "../../api/contract/host-console";
 import type { HostNoticePreview, HostNoticeSendResult } from "../../api/contract/host-notices";
-import type { HostCenterFilter, HostCenterResponse, HostCenterSummary, HostDesktopLinkResult, HostEventSlugResolveResult, HostEventView } from "../../api/contract/host-events";
+import type { HostCenterFilter, HostCenterResponse, HostCenterSummary, HostDesktopLinkResult, HostEventSlugResolveResult, HostEventView, HostEventWriteResult } from "../../api/contract/host-events";
 import type { OrganizerFollowResult } from "../../api/contract/organizer-follow";
 import type { OrganizerProfileListResponse, OrganizerPublicResponse } from "../../api/contract/organizer-profile";
-import { hostCheckInEventsResponseSchema, hostCohostAcceptResultSchema, hostCohostInvitePreviewSchema } from "../../api/schema/host-cohosts";
+import { hostCheckInEventsResponseSchema, hostCohostAcceptResultSchema, hostCohostInvitePreviewSchema, hostCohostInviteResultSchema, hostCohostsResponseSchema } from "../../api/schema/host-cohosts";
 import { hostCheckInResultSchema, hostKioskHeartbeatResultSchema, hostKioskResponseSchema, hostKioskRosterResponseSchema, hostMatchingResponseSchema, hostOverviewResponseSchema, hostPeopleDecisionResultSchema, hostPeopleResponseSchema, hostPersonResponseSchema, hostReportResponseSchema } from "../../api/schema/host-console";
-import { hostCenterResponseSchema, hostCenterSummarySchema, hostDesktopLinkResultSchema, hostEventSlugResolveResultSchema, hostEventViewSchema } from "../../api/schema/host-events";
+import { hostCenterResponseSchema, hostCenterSummarySchema, hostDesktopLinkResultSchema, hostEventSlugResolveResultSchema, hostEventViewSchema, hostEventWriteResultSchema } from "../../api/schema/host-events";
 import { hostNoticePreviewSchema, hostNoticeSendResultSchema } from "../../api/schema/host-notices";
 import { organizerFollowResultSchema } from "../../api/schema/organizer-follow";
 import { organizerProfileListResponseSchema, organizerPublicResponseSchema } from "../../api/schema/organizer-profile";
@@ -78,6 +78,17 @@ export function createHostApi(client: OrbitApiClient) {
     people: (eventId: string, query: HostPeopleQuery) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/people?${peopleQueryString(query)}`), hostPeopleResponseSchema as ZodType<HostPeopleResponse>),
     /** 参加者詳細：只读这一个人（申込回答 / プロフィール / マッチング結果）。 */
     person: (eventId: string, actorId: string) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/people/${id(actorId)}`), hostPersonResponseSchema as ZodType<HostPersonResponse>),
+    // 活动级写操作（b13 HM-T3 / 概要横幅）：公開 · アーカイブ · 中止（ひとこと任意）· 参加コード再発行；都带 expectedVersion。
+    publishEvent: (eventId: string, expectedVersion: number) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/publish`, { body: { expectedVersion } }), hostEventWriteResultSchema as ZodType<HostEventWriteResult>),
+    archive: (eventId: string, expectedVersion: number, archived: boolean) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/archive`, { body: { archived, expectedVersion } }), hostEventWriteResultSchema as ZodType<HostEventWriteResult>),
+    cancelEvent: (eventId: string, expectedVersion: number, hostNote: string | null) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/cancel`, { body: hostNote ? { expectedVersion, hostNote } : { expectedVersion } }), hostEventWriteResultSchema as ZodType<HostEventWriteResult>),
+    reissueCode: (eventId: string, expectedVersion: number) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/code/reissue`, { body: { expectedVersion } }), hostEventWriteResultSchema as ZodType<HostEventWriteResult>),
+    // 共同運営者（b6 #20 / b13 HM-T3）：读、招待（链接与 H- 码只返回这一次）、取消招待、改角色 / 移除（理由 1–100 字 + revision）。
+    cohosts: (eventId: string) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/cohosts`), hostCohostsResponseSchema as ZodType<HostCohostsResponse>),
+    inviteCohost: (eventId: string, role: HostCohostRole, target: string) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/cohost-invites`, { body: { idempotencyKey: newIdempotencyKey(), role, target: target.trim() || null } }), hostCohostInviteResultSchema as ZodType<HostCohostInviteResult>),
+    revokeInvite: (eventId: string, inviteId: string) => hostRead(client.delete<unknown>(`/api/host/events/${id(eventId)}/cohost-invites/${id(inviteId)}`), hostCohostsResponseSchema as ZodType<HostCohostsResponse>),
+    changeRole: (eventId: string, actorId: string, role: HostCohostRole, reason: string, expectedRevision: number) => hostRead(client.patch<unknown>(`/api/host/events/${id(eventId)}/cohosts/${id(actorId)}`, { body: { expectedRevision, reason, role } }), hostCohostsResponseSchema as ZodType<HostCohostsResponse>),
+    removeCohost: (eventId: string, actorId: string, reason: string, expectedRevision: number) => hostRead(client.delete<unknown>(`/api/host/events/${id(eventId)}/cohosts/${id(actorId)}`, { body: { expectedRevision, reason } }), hostCohostsResponseSchema as ZodType<HostCohostsResponse>),
     decide: (eventId: string, actorId: string, decision: HostAdmissionDecision, expectedVersion: number) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/people/${id(actorId)}/decision`, { body: { decision, expectedVersion } }), hostPeopleDecisionResultSchema as ZodType<HostPeopleDecisionResult>),
     report: (eventId: string) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/report?view=all`), hostReportResponseSchema as ZodType<HostReportResponse>),
     kiosk: (eventId: string, q = "") => hostRead(q.trim() ? client.get<unknown>(`/api/host/events/${id(eventId)}/kiosk?q=${encodeURIComponent(q.trim())}`) : client.get<unknown>(`/api/host/events/${id(eventId)}/kiosk`), hostKioskResponseSchema as ZodType<HostKioskResponse>),
