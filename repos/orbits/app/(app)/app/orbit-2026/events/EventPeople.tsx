@@ -72,7 +72,7 @@ function PeopleInner({ eventId, language }: { eventId: string; language: OrbitLa
   if (answer.failure === "not_found") body = <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div>;
   else if (!data && answer.failure) body = <RetryCard title={assessTranslator(language)("genericError")} onRetry={() => void answer.reload()} />;
   else if (!data) body = <JourneySkeleton kind="people" />;
-  else if (!openable) body = <div className={`${styles.card} ${x.peopleGate}`} data-people-gate=""><div className={x.gateNote}><Icon name="users" size={16} />{t("railGateBody")}</div><Link className={`btn ${styles.btn} ${styles.sm} ${x.allBtn}`} href={detailHref}>{t("back")}</Link></div>;
+  else if (!openable) body = <div className={`${styles.card} ${x.peopleGate}`} data-people-gate=""><div className={x.gateNote}><Icon name="users" size={16} />{t(data.registration.status === "pending_review" || data.registration.status === "waitlisted" ? "railGatePending" : "railGateBody")}</div><Link className={`btn ${styles.btn} ${styles.sm} ${x.allBtn}`} href={detailHref}>{t("back")}</Link></div>;
   else {
     const visible = people.slice(0, shown);
     const row = (item: EventOverviewAttendee, index: number) => {

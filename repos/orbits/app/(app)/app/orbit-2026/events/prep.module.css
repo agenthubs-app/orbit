@@ -62,3 +62,5 @@
 .pFollowTitle { font-size: var(--fs-body-sm); }
 .pFollowSub.pFollowSub { margin: 6px 0 10px; }
 .phone .box :global(svg) { color: var(--surface); stroke: var(--surface); }
+
+.missingAct.missingAct { margin-top: 12px; }

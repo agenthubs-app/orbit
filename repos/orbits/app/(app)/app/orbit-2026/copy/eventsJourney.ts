@@ -223,6 +223,9 @@ export const eventsJourneyCopy = {
   goVenue: { ja: "会場モード", zh: "会场模式", en: "Venue mode", kind: "button" },
   goAfter: { ja: "ふりかえり", zh: "回顾", en: "Review", kind: "button" },
   shareCopied: { ja: "リンクをコピーしました", zh: "已复制链接", en: "Link copied", kind: "toast" },
+  prepPending: { ja: "審査に通ったら会う準備ができます", zh: "审核通过后可以做见面准备", en: "You can get ready once your application is approved", kind: "label" },
+  prepUnregistered: { ja: "参加登録すると会う準備ができます", zh: "报名后可以做见面准备", en: "Register to get ready for this event", kind: "label" },
+  railGatePending: { ja: "審査に通ったら、名前と一言が見られます", zh: "审核通过后可以看到名字和一句话介绍", en: "Once approved, you can see their names and notes", kind: "label" },
   notFound: { ja: "このイベントは見つかりません", zh: "找不到这个活动", en: "Event not found", kind: "label" },
   // 未登録（公開）
   navFeatures: { ja: "機能", zh: "功能", en: "Features", kind: "nav" },

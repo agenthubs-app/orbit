@@ -450,7 +450,7 @@ function JoinCard({ data, t, language, onRegister, actions }: { data: EventOverv
         : status === "attended" ? <span className={`${styles.chip} ${styles.c_teal}`}>{t("stAttended")}</span>
           : <span className={styles.chip}>{t("stWaitlisted")}</span>;
     const main = live && (status === "registered" || status === "attended") ? <Link className={`btn ${styles.btn} ${styles.primary} ${x.joinMain}`} href={`/app/events/${id}/live`}>{t("goVenue")}</Link>
-      : status === "registered" || status === "pending_review" ? <Link className={`btn ${styles.btn} ${styles.primary} ${x.joinMain}`} href={`/app/events/${id}/prep`}>{t("goPrep")}</Link> : null;
+      : status === "registered" ? <Link className={`btn ${styles.btn} ${styles.primary} ${x.joinMain}`} href={`/app/events/${id}/prep`}>{t("goPrep")}</Link> : null;
     const menu = actions && status !== "attended" && !live ? <MoreMenu eventId={data.eventId} t={t} actions={actions} variant="card" /> : null;
     return (
       <div className={`${styles.card} ${x.joinCard}`} data-detail-going="">
@@ -520,7 +520,7 @@ export function PhoneDetailBody({ data, language, t, onRegister, onOpenPerson, a
   const bar: { label: string; href?: string; onClick?: () => void; star?: boolean } | null = ended ? null
     : status === "none" ? (canRegister ? { label: data.signedOut ? t("signupRegister") : t("register"), onClick: onRegister, star: true } : null)
       : live && (status === "registered" || status === "attended") ? { href: `/app/events/${id}/live`, label: t("goVenue") }
-        : status === "registered" || status === "pending_review" ? { href: `/app/events/${id}/prep`, label: t("goPrep") } : null;
+        : status === "registered" ? { href: `/app/events/${id}/prep`, label: t("goPrep") } : null;
   return (
     <div className={`${x.phone} ${bar ? x.phoneBar : ""}`} data-event-detail={data.eventId} data-detail-phone="">
       <div className={`${styles.card} ${x.pCover}`} data-detail-cover="">
@@ -677,7 +677,7 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
   const headMain = ended ? (data?.venueRecord ? <Link className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${id}/live`} data-detail-record=""><Icon name="layers" size={16} />{t("venueRecord")}</Link> : status === "attended" ? <Link className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${id}/after`}>{t("goAfter")}</Link> : null)
     : status === "none" ? (canRegister ? <button type="button" className={`btn ${styles.btn} ${x.accent}`} onClick={register} data-detail-head-register="">{t("register")}</button> : null)
       : live && (status === "registered" || status === "attended") ? <Link className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${id}/live`}>{t("goVenue")}</Link>
-        : status === "registered" || status === "pending_review" ? <Link className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${id}/prep`}>{t("goPrep")}</Link>
+        : status === "registered" ? <Link className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${id}/prep`}>{t("goPrep")}</Link>
           : status === "waitlisted" ? <span className={styles.chip}>{t("stWaitlisted")}</span>
             : status === "cancelled" ? <span className={styles.chip}>{t("stCancelled")}</span>
               : status === "rejected" ? <span className={styles.chip}>{t("stRejected")}</span> : null;

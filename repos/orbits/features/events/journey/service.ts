@@ -4,6 +4,7 @@
  * - 外部评估（R26 私有）不在公共目录里，所以探す / 搜索天然读不到别人的。
  * - 会場：先查报名状态，未报名直接 `not_registered`，不读运营数据。
  */
+import { AppError } from "../../../shared/errors/app-error";
 import { canSeeRoster } from "./roster-policy";
 import { isCanonicalPublicOrganizerLabel } from "../core/public-organizer-identity";
 import type { EventRecommendationDismissReason, EventRecommendationDismissResult } from "../../../shared/contract/event-recommendation-feedback";
@@ -80,6 +81,11 @@ function historyText(contact: JourneyContact | undefined, now: Date, language: J
     return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
   };
   return contact.history.slice(0, 2).map((item) => `${day(item.at)} ${label(item.kind)}`).join(" · ");
+}
+
+/** 读得到活动、但这个人现在不能看这一页（403 + context.reason，页面按原因说明）。 */
+export class JourneyRefusedError extends AppError {
+  constructor(readonly reason: "PREP_PENDING_REVIEW" | "PREP_NOT_REGISTERED") { super("FORBIDDEN", "This page is for confirmed attendees."); }
 }
 
 export function createJourneyService(deps: { ports: JourneyLivePorts; records: JourneyRecords; now?: () => Date }): JourneyService {
@@ -294,8 +300,12 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
     async prep(actorId, eventId, language) {
       const event = await ports.event(eventId);
       if (!event) return null;
-      // 会う準備只给已报名的人（名单与话しかけ方都来自同场参加者的资料）。
-      if (!(await ports.registered(actorId, eventId).catch(() => false))) return null;
+      // 会う準備只给已确定参加的人（名单与话しかけ方都来自同场参加者的资料）。其余的人说清原因（不是「找不到活动」）：
+      // 审核中 / 候补 → 等审核；没报名 / 已取消 / 被拒 → 先报名。
+      if (!(await ports.registered(actorId, eventId).catch(() => false))) {
+        const mine = (await ports.myEvents(actorId).catch(() => [])).find((item) => item.eventId === eventId)?.status;
+        throw new JourneyRefusedError(mine === "pending_review" || mine === "waitlisted" ? "PREP_PENDING_REVIEW" : "PREP_NOT_REGISTERED");
+      }
       const at = now();
       const [roster, contacts, checklist, selfIntro, workspace] = await Promise.all([
         ports.publicAttendees(eventId),

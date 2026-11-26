@@ -32,7 +32,7 @@ import { createEventFeedbackService, createOrganizerFollowService, createPrepChe
 import { createJourneyMockService } from "./mock";
 import type { JourneyLanguage } from "./prep-core";
 import { venueRecordView } from "./venue-core";
-import { createJourneyService, type JourneyService } from "./service";
+import { createJourneyService, JourneyRefusedError, type JourneyService } from "./service";
 import { createJoinService, JoinRefusedError, type JoinService } from "./join";
 import { createJoinMockPorts } from "./join-mock";
 import { eventJoinCancelInputObject, eventJoinCancelResultSchema, eventJoinCurrentSchema, eventJoinNextInputObject, eventJoinProfileInputObject, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinSubmitInputObject, eventJoinTentativeInputObject, eventJoinTentativeResultSchema } from "../../../shared/api-schema/event-join";
@@ -142,7 +142,14 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
     }, deps),
     // 2026-11-23 探す 简介栏：按活动 ID 的轻量读取（未登录也可读公开部分）。
     summary: journeyRoute({ auth: "optional", schema: eventSummaryResponseSchema }, async ({ actorId, language, params, service }) => service.summary(actorId, eventId(params), language), deps),
-    prep: journeyRoute({ auth: "required", schema: eventPrepResponseSchema }, async ({ actorId, language, params, service }) => service.prep(actorId!, eventId(params), language), deps),
+    prep: journeyRoute({ auth: "required", schema: eventPrepResponseSchema }, async ({ actorId, language, params, service }) => {
+      try {
+        return await service.prep(actorId!, eventId(params), language);
+      } catch (error) {
+        if (error instanceof JourneyRefusedError) return { context: { reason: error.reason }, error };
+        throw error;
+      }
+    }, deps),
     patchChecklist: journeyRoute({ auth: "required", schema: eventPrepResponseSchema, write: true }, async ({ actorId, language, params, request, service }) => {
       const parsed = await body(request, eventPrepChecklistPatchSchema);
       if (parsed.ok === false) return parsed.reply;

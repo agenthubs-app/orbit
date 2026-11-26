@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../../../shared/contract/event-prep";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { ShellPage } from "../shell/slots";
-import { Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { Icon, Orbit2026Scope, RetryCard, ToastProvider, useToast } from "../ui";
 import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { journeyTranslator, type JourneyT } from "./DiscoverTab";
 import { avTone, eventRange, parts, usePhone, useWide } from "./EventDetail";
@@ -63,20 +63,27 @@ function PrepInner({ eventId, language }: { eventId: string; language: OrbitLang
   const at = useMemo(() => assessTranslator(language), [language]);
   const toast = useToast();
   const [data, setData] = useState<EventPrepResponse | null>(null);
-  const [missing, setMissing] = useState(false);
+  // 读不到时为什么：活动不存在 / 审核中 / 没报名 / 读取失败（重试）。
+  const [missing, setMissing] = useState<"not_found" | "pending" | "unregistered" | "failed" | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [nowMs, setNowMs] = useState<number | null>(null);
   const [cards, setCards] = useState<number | null>(null);
   const [editingCards, setEditingCards] = useState(false);
   const [followDone, setFollowDone] = useState<"added" | "skipped" | null>(null);
 
   useEffect(() => {
+    setMissing(null);
     void journeyApi.prep(eventId).then((result) => {
-      if (!result.ok) { setMissing(true); return; }
+      if (result.ok === false) {
+        const code = "code" in result ? result.code : undefined;
+        setMissing(result.reason === "not_found" ? "not_found" : code === "PREP_PENDING_REVIEW" ? "pending" : code === "PREP_NOT_REGISTERED" ? "unregistered" : "failed");
+        return;
+      }
       setData(result.data);
       setNowMs(Date.parse(result.data.now));
     });
     setCards(readCards(eventId));
-  }, [eventId]);
+  }, [eventId, attempt]);
   useEffect(() => {
     if (nowMs === null) return;
     const timer = setInterval(() => setNowMs((value) => (value === null ? value : value + 60_000)), 60_000);
@@ -102,7 +109,13 @@ function PrepInner({ eventId, language }: { eventId: string; language: OrbitLang
     if (response?.ok) { setFollowDone("added"); toast.success(t("followAdded")); } else toast.error(at("genericError"));
   };
 
-  if (missing) return <><ShellPage title={t("prepTitle")} rightRail={false} /><div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div></>;
+  if (missing === "failed") return <><ShellPage title={t("prepTitle")} rightRail={false} /><RetryCard title={at("genericError")} onRetry={() => setAttempt((value) => value + 1)} /></>;
+  if (missing) {
+    const detailHref = `/app/events/${encodeURIComponent(eventId)}`;
+    const action = missing === "pending" ? <Link className={`btn ${styles.btn} ${styles.sm}`} href={detailHref}>{t("toDetail")}</Link>
+      : missing === "unregistered" ? <Link className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} href={`${detailHref}/register`}>{t("register")}</Link> : null;
+    return <><ShellPage title={t("prepTitle")} rightRail={false} /><div className={`${styles.card} ${x.missing}`} data-prep-missing={missing}>{t(missing === "pending" ? "prepPending" : missing === "unregistered" ? "prepUnregistered" : "notFound")}{action ? <div className={q.missingAct}>{action}</div> : null}</div></>;
+  }
   if (!data || nowMs === null) return <ShellPage title={t("prepTitle")} rightRail={false} />;
 
   const until = countdown(data.startsAt, nowMs);
