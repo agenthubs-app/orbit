@@ -48,6 +48,9 @@ test("live host service end to end", hostDatabaseTest, async () => {
     const admission = createPostgresEventAdmissionRepository({ client, workspaceId });
     await admission.submitApplication({ actorId: "actor:p1", eventId, profilePayload: { answers: answers(true), displayName: "井上 早紀" } });
     await admission.submitApplication({ actorId: "actor:p2", eventId, profilePayload: { answers: answers(false), displayName: "森 拓也" } });
+    await lockedFixtureQuery(pool, `insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
+      values ($1,'profiles','profile:actor:p2','actor:p2','fixture','contact-methods',$2::jsonb,now(),now())`,
+    [workspaceId, JSON.stringify({ accountId: "actor:p2", handles: { lineId: "mori-line", email: "mori@example.com", website: "https://private.example.com" } })]);
     const center = await service.center(HOST, { filter: "all", page: 1, q: "" });
     assert.deepEqual([center.events.length, center.events[0]?.applied, center.events[0]?.note.kind, center.events[0]?.note.count], [1, 2, "review_pending", 2]);
     assert.equal(center.todo[0]?.kind, "review_pending");
@@ -131,6 +134,17 @@ test("live host service end to end", hostDatabaseTest, async () => {
     assert.equal(applicant!.applicationVersion, listed!.applicationVersion);
     assert.ok(Array.isArray(applicant!.missing));
     assert.equal(applicant!.intro ?? null, null, "no introduction written");
+    assert.equal(hostPersonResponseObject.parse(applicant).contactMethods, undefined, "a profile imported without confirmation is private");
+    await client.query(
+      `insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
+       values ($1 || ':profile-onboarding-actor:actor:p2','profileOnboardingFlow','current','actor:p2','fixture','current',
+         '{"contactMethodsConfirmed":true}'::jsonb,now(),now())`, [workspaceId],
+    );
+    assert.deepEqual(hostPersonResponseObject.parse(await service.person(HOST, eventId, "actor:p2")).contactMethods, { lineId: "mori-line", email: "mori@example.com" });
+    const attendeeList = await service.people(HOST, eventId, { bucket: "waitlisted", cursor: null, incomplete: false, q: "" });
+    assert.doesNotMatch(JSON.stringify(attendeeList), /mori-line|mori@example\.com/u);
+    await access.grant({ actingActorId: HOST, eventId, expectedRevision: 0, reason: "review fixture", role: "reviewer", subjectActorId: "actor:reviewer" });
+    assert.equal((await service.person("actor:reviewer", eventId, "actor:p2")).contactMethods, undefined);
     await assert.rejects(service.person(HOST, eventId, "actor:nobody"), isHost("NOT_FOUND"));
     await assert.rejects(service.person("actor:stranger", eventId, "actor:p2"), isHost("NOT_FOUND"));
     assert.equal((await service.kiosk(HOST, eventId, "")).closed, false, "the event has not ended: check-in is open");

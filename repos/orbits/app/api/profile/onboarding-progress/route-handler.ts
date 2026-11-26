@@ -25,19 +25,25 @@ function funnelStep(command: ProfileOnboardingProgressCommand) {
   return command.action === "confirm" ? FUNNEL_STEP[command.screen as keyof typeof FUNNEL_STEP] ?? null : null;
 }
 
-const ALLOWED = new Set(["action", "screen", "expectedRevision", "mutationId"]);
+const ALLOWED = new Set(["action", "screen", "expectedRevision", "mutationId", "contactMethodsConfirmed"]);
 
 function parseCommand(body: unknown): ProfileOnboardingProgressCommand {
   if (!body || typeof body !== "object" || Array.isArray(body)) throw new AppError("VALIDATION_ERROR", "Expected a command object.");
   const input = body as Record<string, unknown>;
   if (Object.keys(input).some((key) => !ALLOWED.has(key))) throw new AppError("VALIDATION_ERROR", "Unknown command field.");
+  if ("contactMethodsConfirmed" in input && (input.action !== "confirm" || input.screen !== 1 || input.contactMethodsConfirmed !== true)) {
+    throw new AppError("VALIDATION_ERROR", "Contact methods can only be confirmed on the first screen.");
+  }
   if (typeof input.mutationId !== "string" || !input.mutationId.trim() || input.mutationId.length > 128 ||
       !(input.expectedRevision === null || typeof input.expectedRevision === "string")) {
     throw new AppError("VALIDATION_ERROR", "A mutation id and expected revision are required.");
   }
   const expectedRevision = input.expectedRevision as string | null;
   if (input.action === "confirm" && [1, 2, 3, 4, 5].includes(input.screen as number)) {
-    return { action: "confirm", screen: input.screen as 1 | 2 | 3 | 4 | 5, expectedRevision, mutationId: input.mutationId };
+    return {
+      action: "confirm", screen: input.screen as 1 | 2 | 3 | 4 | 5, expectedRevision, mutationId: input.mutationId,
+      ...(input.contactMethodsConfirmed === true ? { contactMethodsConfirmed: true } : {}),
+    };
   }
   if ((input.action === "initialize" || input.action === "defer" || input.action === "finish") && !("screen" in input)) {
     return { action: input.action, expectedRevision, mutationId: input.mutationId };

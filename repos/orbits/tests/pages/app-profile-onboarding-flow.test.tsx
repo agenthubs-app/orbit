@@ -30,9 +30,13 @@ test("three steps over the server's five screens: ① = 1, ② = 2 + 3, ③ = 4 
 });
 
 test("missing items: the industry detail only counts once an industry is chosen; intro reasons are exclusive", () => {
-  assert.deepEqual(missingBasics({ birthValid: true, industryValid: false, name: " ", primaryIndustryId: "" }), ["name", "industry"]);
-  assert.deepEqual(missingBasics({ birthValid: false, industryValid: false, name: "a", primaryIndustryId: "other" }), ["birthDate", "industryDetail"]);
-  assert.deepEqual(missingBasics({ birthValid: true, industryValid: true, name: "a", primaryIndustryId: "other" }), []);
+  assert.deepEqual(missingBasics({ birthValid: true, industryValid: false, name: " ", primaryIndustryId: "", contacts: {} }), ["name", "industry", "contact"]);
+  assert.deepEqual(missingBasics({ birthValid: false, industryValid: false, name: "a", primaryIndustryId: "other", contacts: { lineId: "a-line" } }), ["birthDate", "industryDetail"]);
+  const basic = { birthValid: true, industryValid: true, name: "a", primaryIndustryId: "other" };
+  for (const contacts of [{ lineId: "a-line" }, { wechatId: "a-wechat" }, { email: "a@example.com" }, { phone: "+81 90 1234 5678" }]) {
+    assert.deepEqual(missingBasics({ ...basic, contacts }), []);
+  }
+  assert.deepEqual(missingBasics({ ...basic, contacts: { email: "bad", phone: "bad" } }), ["contact"]);
   assert.deepEqual(missingIntro({ bio: "", bioOver: false, generating: true, headlineOver: false }), ["introGenerating"]);
   assert.deepEqual(missingIntro({ bio: " ", bioOver: false, generating: false, headlineOver: false }), ["introEmpty"]);
   assert.deepEqual(missingIntro({ bio: "x", bioOver: true, generating: false, headlineOver: false }), ["introOver"]);
@@ -352,6 +356,20 @@ test("次へ is never disabled: missing items are named, marked for screen reade
   act(() => root.unmount());
 });
 
+test("a completed basic profile still needs one contact method before continuing", async (t) => {
+  stubWindow(t, new Map());
+  const api = stubProfileApi(t, "", { displayName: "张三", primaryIndustryId: "other", secondaryIndustryId: "other.other", handles: {} });
+  const root = await mountFlow("u-contact");
+  await click(root, nextButton(root));
+  assert.equal(api.puts.length, 0);
+  assert.ok(alerts(root).some(alert => alert.includes("至少填写一种联系方式")));
+  assert.ok(["onb-lineId", "onb-wechatId", "onb-email", "onb-phone"].every(id => field(root, id)));
+  await act(async () => { field(root, "onb-lineId")!.props.onChange({ target: { value: "line-handle" } }); });
+  await click(root, nextButton(root));
+  assert.deepEqual(api.puts[0]?.handles, { lineId: "line-handle" });
+  act(() => root.unmount());
+});
+
 test("scan: printed items are 来自名片, the industry is AI 推断, a user edit drops the mark, and handles merge instead of replacing", async (t) => {
   stubWindow(t, new Map());
   const api = stubProfileApi(t, "", { ...BLANK, card: CARD, inference: INFERENCE });
@@ -376,7 +394,7 @@ test("scan: printed items are 来自名片, the industry is AI 推断, a user ed
   assert.equal(saved.seniorityLevel, "founder");
   assert.match(String(saved.homeMarket), /东京/);
   assert.equal(saved.secondaryIndustryId, "technology_internet.enterprise_software");
-  assert.deepEqual(api.commands.map(command => [command.action, command.screen]), [["initialize", undefined], ["confirm", 1]]);
+  assert.deepEqual(api.commands.map(command => [command.action, command.screen, command.contactMethodsConfirmed]), [["initialize", undefined, undefined], ["confirm", 1, true]]);
   // ② carries the AI's picks, marked until the person changes that group.
   assert.equal(root.root.findAll(node => node.props["data-onboarding-view"] === "goals").length, 1);
   assert.match(output(root), /资本政策的经验/);

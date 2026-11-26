@@ -15,6 +15,7 @@ import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
 import { encodeDirectScanImage } from "../../../api/batch-images";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../api/contract/industries";
 import type { ProfileOnboardingProgressCommandContract } from "../../../api/contract/profile";
+import { PROFILE_CONTACT_METHODS, profileContactMethods } from "../../../api/compute/profile-contact-methods";
 import { SENIORITY_LEVELS, SENIORITY_LEVEL_LABELS, type SeniorityLevelValue } from "../../../api/compute/seniority-group";
 import { INDUSTRY_CATALOG, listSecondaryIndustries } from "../../../api/domain/industries";
 import type { ProfileDetail } from "../../../api/profile-detail-contract";
@@ -75,6 +76,7 @@ type Notice = "failed" | "offline" | "conflict" | null;
 const STEP_NAME: Record<OnboardingStep, MessageKey> = { profile: "onboarding.v3.step.profile", goals: "onboarding.v3.step.goals", intro: "onboarding.v3.step.intro" };
 const MISSING_NAME: Record<OnboardingMissingField, MessageKey> = {
   name: "onboarding.v3.name", primaryIndustry: "onboarding.v3.primaryIndustry", secondaryIndustry: "onboarding.v3.secondaryIndustry", goals: "onboarding.v3.missGoalsName", intro: "onboarding.v3.bio",
+  contact: "onboarding.v3.contactName",
 };
 const DRAFT_DELAY_MS = 250;
 /** A chosen goal rests this long before candidates are asked for, and at most this many times per visit (paid AI). */
@@ -214,7 +216,9 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     setScan(draft?.scan ? { kind: "done", ...draft.scan } : { kind: "idle" });
     // Same step as before, but never past one that is not complete.
     const reached = progress.progress?.finishedAt ? "intro" : stepForConfirmedScreen(confirmed);
-    const incomplete = ONBOARDING_STEPS.find(step => onboardingMissing(step, saved).length > 0) ?? reached;
+    const incomplete = ONBOARDING_STEPS.find(step =>
+      onboardingMissing(step, saved).some(field => field !== "contact" || confirmed === 0),
+    ) ?? reached;
     const start = stepIndex(incomplete) < stepIndex(reached) ? incomplete : reached;
     setView(draft && stepIndex(draft.step) < stepIndex(start) ? draft.step : start);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -259,7 +263,10 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
       if (flow.finishedAt || flow.lastConfirmedScreen >= screen) { pendingConfirmRef.current = null; continue; }
       const pending = pendingConfirmRef.current;
       if (pending?.action !== "confirm" || pending.screen !== screen) {
-        pendingConfirmRef.current = { action: "confirm", screen, expectedRevision: flow.revision, mutationId: `ios:onboarding:screen:${Crypto.randomUUID()}` };
+        pendingConfirmRef.current = {
+          action: "confirm", screen, expectedRevision: flow.revision, mutationId: `ios:onboarding:screen:${Crypto.randomUUID()}`,
+          ...(screen === 1 ? { contactMethodsConfirmed: true } : {}),
+        };
       }
       const result = await updateProfileOnboardingProgress(client, pendingConfirmRef.current!);
       if (!result.ok || !result.progress) {
@@ -286,9 +293,11 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   function fieldsFor(step: OnboardingStep): OnboardingProfileFields {
     if (step === "goals") return { relationshipGoal: composeRelationshipGoal({ goals, focus, horizon }, locale.language), offering: offer, seeking: seek, topics };
     if (step === "intro") return { bio: bio.trim(), headline: headline.trim() };
-    // What the card prints only fills handles still empty. PUT replaces handles as a whole: keep what is saved, in the response schema's key order (the receipt is compared as text).
+    // PUT replaces handles as a whole. Keep other saved fields and the schema's key order.
     const saved = detail?.profile?.handles;
-    const merged: Record<string, string | undefined> = { ...cardHandles.current, ...Object.fromEntries(Object.entries(saved ?? {}).filter(([, value]) => value)), email: basic.email.trim(), phone: basic.phone.trim() };
+    const merged: Record<string, string | undefined> = { ...cardHandles.current, ...Object.fromEntries(Object.entries(saved ?? {}).filter(([, value]) => value)) };
+    for (const method of PROFILE_CONTACT_METHODS) delete merged[method];
+    Object.assign(merged, profileContactMethods(basic));
     const handles = Object.fromEntries(HANDLE_KEYS.filter(key => merged[key]).map(key => [key, merged[key]!]));
     const contacts = saved || Object.keys(handles).length ? { handles } : {};
     return {
@@ -308,6 +317,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     if (field === "name") return t("onboarding.v3.missName");
     if (field === "primaryIndustry") return t("onboarding.v3.missIndustry");
     if (field === "secondaryIndustry") return t("onboarding.v3.missDetail");
+    if (field === "contact") return t("onboarding.v3.missContact");
     if (field === "goals") return t("onboarding.v3.missGoals");
     if (introBlocked) return t("onboarding.v3.missIntroGenerating");
     return bioCount.over ? t("onboarding.v3.bioTooLong", { limit: bioCount.limit }) : t("onboarding.v3.missIntro");
@@ -435,8 +445,8 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
       const card = await scanOwnBusinessCard(client, image);
       if (!mounted.current) return;
       if (!card.ok) { setScan({ kind: "failed", message: t("onboarding.v3.scanFailed") }); return; }
-      const read = { name: card.name, company: card.company, title: card.title, email: card.email, phone: card.phone, homeMarket: card.region ? regionDisplay(card.region, t, locale.language) : "" };
-      const found = (Object.keys(read) as TextKey[]).filter(key => read[key]);
+      const read = { name: card.name, company: card.company, title: card.title, email: card.email, phone: card.phone, lineId: card.handles.lineId, wechatId: card.handles.wechatId, homeMarket: card.region ? regionDisplay(card.region, t, locale.language) : "" };
+      const found = (Object.keys(read) as TextKey[]).filter(key => read[key] && (!(PROFILE_CONTACT_METHODS as readonly string[]).includes(key) || !latest.current.basic[key]?.trim()));
       if (!found.length) { setScan({ kind: "failed", message: t("onboarding.v3.scanFailed") }); return; }
       setBasic(current => ({
         ...current, ...Object.fromEntries(found.map(key => [key, read[key]])),
@@ -448,7 +458,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
         ...(card.industry ? { primaryIndustryId: "ai" as const, secondaryIndustryId: "ai" as const } : {}),
         ...(card.seniorityLevel ? { seniorityLevel: "ai" as const } : {}),
       }));
-      cardHandles.current = card.handles;
+      cardHandles.current = card.handles.website ? { website: card.handles.website } : {};
       setScan({ kind: "done", card: found.length, ai: (card.industry ? 2 : 0) + (card.seniorityLevel ? 1 : 0) });
       seniorityTouched.current = false;
       void infer({ displayName: card.name, organization: card.company, role: card.title, industry: card.industry });
@@ -605,8 +615,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
         <OnceNotice scan={view === "profile"} />
         {view === "profile" ? (
           <ProfileStep basic={basic} birthLabel={birthLabel} disabled={saving} errors={errors} inputs={inputs} marks={marks} onBirth={() => { Keyboard.dismiss(); setDateOpen(true); }} onClearBirth={() => setBasic(current => ({ ...current, birthDate: "" }))} onFieldLayout={onFieldLayout}
-            onPick={key => { Keyboard.dismiss(); setPicker(key); }} onScan={source => void scanWith(source)} onText={(key, value) => { setBasic(current => ({ ...current, [key]: value })); unmark(key); }} scan={scan}
-            showEmail={Boolean(marks.email || basic.email || detail?.profile?.handles?.email)} showPhone={Boolean(marks.phone || basic.phone || detail?.profile?.handles?.phone)} />
+            onPick={key => { Keyboard.dismiss(); setPicker(key); }} onScan={source => void scanWith(source)} onText={(key, value) => { setBasic(current => ({ ...current, [key]: value })); unmark(key); }} scan={scan} />
         ) : view === "goals" ? (
           <GoalsStep disabled={saving} error={errors.has("goals")} focus={focus} goals={goals} marks={marks} offer={offer} onFocus={setFocus} onGoal={(goal, selected) => setGoals(current => (selected ? current.filter(value => value !== selected) : toggleValue(current, goal, GOAL_LIMIT)))}
             onGoalsLayout={event => onFieldLayout("goals", event)} onGroup={(group, values) => { (group === "offer" ? setOffer : group === "seek" ? setSeek : setTopics)(values); if (group !== "seek") unmark(group); }} revision={fillRevision} seek={seek} seekSuggestions={goals.length ? seekSuggestions : []} topics={topics} />

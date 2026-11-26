@@ -11,6 +11,7 @@ import {
 } from "../../profile/goal-editor/goal-editor-model";
 import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../../profile/profile-tag-options";
 import { profileBioLimit, profileVisibleLength } from "../../../../../shared/api-schema/profile-bio";
+import { profileContactMethodsValid, type ProfileContactMethods } from "../../../../../shared/compute/profile-contact-methods";
 
 export type Copy = { zh: string; en: string; ja?: string };
 export type Lang = "zh" | "en" | "ja";
@@ -46,14 +47,15 @@ export function migrateOnboardingView(value: unknown): OnboardingView {
 }
 
 // ── 缺项（「次へ」始终可点；点了才提示）──
-export type OnboardingMissing = "name" | "birthDate" | "industry" | "industryDetail" | "goal" | "introGenerating" | "introEmpty" | "introOver" | "headlineOver";
+export type OnboardingMissing = "name" | "birthDate" | "industry" | "industryDetail" | "contact" | "goal" | "introGenerating" | "introEmpty" | "introOver" | "headlineOver";
 
-export function missingBasics(input: { name: string; birthValid: boolean; primaryIndustryId: string; industryValid: boolean }): OnboardingMissing[] {
+export function missingBasics(input: { name: string; birthValid: boolean; primaryIndustryId: string; industryValid: boolean; contacts: ProfileContactMethods }): OnboardingMissing[] {
   return [
     ...(input.name.trim() ? [] : ["name" as const]),
     ...(input.birthValid ? [] : ["birthDate" as const]),
     // 没选一级时细分还不能选，只算一项。
     ...(!input.primaryIndustryId ? ["industry" as const] : input.industryValid ? [] : ["industryDetail" as const]),
+    ...(profileContactMethodsValid(input.contacts) ? [] : ["contact" as const]),
   ];
 }
 
@@ -115,7 +117,7 @@ export const INTRO_REGENERATE_LIMIT = 2;
 // ── 本地草稿：刷新/中途离开后回到同一步，未提交的输入不丢（「自動保存済み」）；只在完成引导时清除 ──
 /** 一项内容的来源：名片上印着的 / AI 推断的；用户一改就去掉。 */
 export type FieldOrigin = "card" | "ai";
-export type BasicField = "name" | "company" | "title" | "email" | "phone" | "homeMarket" | "seniorityLevel" | "primaryIndustryId" | "secondaryIndustryId";
+export type BasicField = "name" | "company" | "title" | "email" | "phone" | "lineId" | "wechatId" | "homeMarket" | "seniorityLevel" | "primaryIndustryId" | "secondaryIndustryId";
 
 export interface OnboardingBasicDraft {
   birthDate: string;
@@ -125,6 +127,8 @@ export interface OnboardingBasicDraft {
   homeMarket: string;
   name: string;
   phone: string;
+  lineId?: string;
+  wechatId?: string;
   primaryIndustryId: string;
   secondaryIndustryId: string;
   /** 役職層（SENIORITY_LEVELS 六档，空串 = 未选）。 */
@@ -170,7 +174,7 @@ function draftFields(value: unknown): OnboardingDraftFields | undefined {
   const text = (key: string) => (basicRaw && typeof basicRaw[key] === "string" ? basicRaw[key] as string : "");
   return {
     // 五步版草稿没有 email / phone / 役職層 / 所在地：读成空。
-    basic: basicRaw ? { birthDate: text("birthDate"), company: text("company"), email: text("email"), homeMarket: text("homeMarket"), name: text("name"), phone: text("phone"), primaryIndustryId: text("primaryIndustryId"), secondaryIndustryId: text("secondaryIndustryId"), seniorityLevel: text("seniorityLevel"), title: text("title") } : undefined,
+    basic: basicRaw ? { birthDate: text("birthDate"), company: text("company"), email: text("email"), homeMarket: text("homeMarket"), name: text("name"), phone: text("phone"), lineId: text("lineId"), wechatId: text("wechatId"), primaryIndustryId: text("primaryIndustryId"), secondaryIndustryId: text("secondaryIndustryId"), seniorityLevel: text("seniorityLevel"), title: text("title") } : undefined,
     offer: strings(raw.offer),
     seek: strings(raw.seek),
     topics: strings(raw.topics),
@@ -195,7 +199,7 @@ function draftScan(value: unknown): OnboardingScanDraft | undefined {
 /** 草稿里有没有人填的内容（打开页面就会写一份空草稿，不算）。 */
 export function hasDraftInput(draft: OnboardingDraft): boolean {
   const { basic, offer, seek, topics, bio } = draft.fields ?? {};
-  return [draft.goalText, bio ?? "", ...Object.values(basic ?? {})].some(value => value.trim())
+  return [draft.goalText, bio ?? "", ...Object.values(basic ?? {})].some(value => value?.trim())
     || [draft.goalChoices, offer, seek, topics].some(values => Boolean(values?.length));
 }
 

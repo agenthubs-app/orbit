@@ -25,6 +25,11 @@ test("参加者詳細: answers, profile, tables with tablemates and the first fi
   assert.match(html, /おすすめの相手/);
   assert.ok(((html.match(/<li /g) ?? []) as string[]).length <= 5, "the first five suggestions only");
   assert.doesNotMatch(html, /AI/);
+  assert.doesNotMatch(html, /連絡先/);
+  const withContacts = renderToStaticMarkup(<HostPersonView data={{ ...data, contactMethods: { wechatId: "morita-wechat", phone: "03-5555-0142" } }} t={t} />);
+  assert.match(withContacts, /連絡先/);
+  assert.match(withContacts, /morita-wechat/);
+  assert.match(withContacts, /03-5555-0142/);
 });
 
 test("参加者詳細: library questions and their choices follow the interface language (2026-11-26)", () => {

@@ -32,9 +32,12 @@ test("strict commands, CAS, and actor-owned readback", async () => {
   assert.equal(response.status, 200);
   const initial = (await response.json() as { data: { revision: string } }).data;
   assert.equal((await handlers.POST(post({ action: "confirm", screen: 2, expectedRevision: initial.revision, mutationId: "b" }))).status, 400);
-  const confirmed = await handlers.POST(post({ action: "confirm", screen: 1, expectedRevision: initial.revision, mutationId: "c" }));
+  assert.equal((await handlers.POST(post({ action: "confirm", screen: 1, expectedRevision: initial.revision, mutationId: "bad-flag", contactMethodsConfirmed: false }))).status, 400);
+  const confirmed = await handlers.POST(post({ action: "confirm", screen: 1, expectedRevision: initial.revision, mutationId: "c", contactMethodsConfirmed: true }));
   assert.equal(confirmed.status, 200);
-  assert.equal((await (await handlers.GET()).json() as { data: { lastConfirmedScreen: number } }).data.lastConfirmedScreen, 1);
+  const current = (await (await handlers.GET()).json() as { data: { lastConfirmedScreen: number; revision: string } }).data;
+  assert.equal(current.lastConfirmedScreen, 1);
+  assert.equal((await handlers.POST(post({ action: "confirm", screen: 2, expectedRevision: current.revision, mutationId: "late-flag", contactMethodsConfirmed: true }))).status, 400);
   assert.equal((await handlers.POST(post({ action: "confirm", screen: 2, expectedRevision: initial.revision, mutationId: "d" }))).status, 409);
 });
 

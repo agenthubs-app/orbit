@@ -8,6 +8,7 @@ import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 import { createStorageContactGraphProvider } from "../../features/contacts/storage/contact-live-record-provider";
 import { createEventRelationshipContactGraphReader } from "../../features/contacts/storage/event-relationship-contact-reader";
+import { readExchangedContactMethods } from "../../features/contacts/exchanged-contact-methods";
 import { createPostgresHumanEncounterProjectionRepository } from "../../features/encounters/projection-repository";
 import { projectPendingHumanEncounters } from "../../features/encounters/projector";
 import type { HumanEncounterRecord } from "../../features/encounters/service";
@@ -169,6 +170,29 @@ test(
       assert.ok(acceptedForAiko.contactId);
       assert.ok(acceptedForRen.contactId);
       assert.notEqual(acceptedForAiko.contactId, acceptedForRen.contactId);
+      for (const [actorId, handles] of [
+        ["actor:aiko", { lineId: "aiko-line", phone: "+81 90 1111 1111" }],
+        ["actor:ren", { wechatId: "ren-wechat", email: "ren@example.com", website: "https://private.example.com" }],
+      ] as const) {
+        await runtime.client.query(
+          `insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
+           values ($1,'profiles',$2,$3,'fixture',$2,$4::jsonb,now(),now())`,
+          [workspaceId, `profile:${actorId}`, actorId, JSON.stringify({ accountId: actorId, handles })],
+        );
+      }
+      assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:aiko", acceptedForAiko.contactId), {});
+      for (const actorId of ["actor:aiko", "actor:ren"]) {
+        await runtime.client.query(
+          `insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
+           values ($1 || ':profile-onboarding-actor:' || $2,'profileOnboardingFlow','current',$2,'fixture','current',
+             '{"contactMethodsConfirmed":true}'::jsonb,now(),now())`, [workspaceId, actorId],
+        );
+      }
+      assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:aiko", acceptedForAiko.contactId),
+        { wechatId: "ren-wechat", email: "ren@example.com" });
+      assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:ren", acceptedForRen.contactId),
+        { lineId: "aiko-line", phone: "+81 90 1111 1111" });
+      assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:mei", acceptedForAiko.contactId), {});
 
       const reader = createEventRelationshipContactGraphReader({
         client: runtime.client,
@@ -259,6 +283,7 @@ test(
          where workspace_id = $1 and request_id = $2`,
         [workspaceId, request.requestId],
       );
+      assert.deepEqual(await readExchangedContactMethods(runtime.client, workspaceId, "actor:aiko", acceptedForAiko.contactId), {});
       assert.equal(
         await reader.readAcceptedContactGraph({
           actorId: "actor:aiko",

@@ -7,6 +7,7 @@ import type { OrbitLanguage } from "../api/contract/language";
 import { isIndustryIdCode, validateIndustrySelection } from "../api/domain/industries";
 import type { ProfileDetail } from "../api/profile-detail-contract";
 import { profileBioLimit, profileVisibleLength } from "../api/schema/profile-bio";
+import { profileContactMethodsValid } from "../api/compute/profile-contact-methods";
 import { PROFILE_ONBOARDING_GOALS } from "../api/compute/profile-onboarding-goal";
 import { isSeniorityLevelValue, type SeniorityLevelValue } from "../api/compute/seniority-group";
 import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../api/compute/profile-tag-options";
@@ -208,9 +209,10 @@ export function isValidProfileBirthDate(value: unknown, today: string): value is
 export interface BasicDraft {
   birthDate: string;
   company: string;
-  /** Contact details read off the own card; kept private (no row when nothing was read). */
   email: string;
   phone: string;
+  lineId?: string;
+  wechatId?: string;
   /** 所在地: free text, the profile's homeMarket. */
   homeMarket: string;
   /** 役職層: one of the six levels, empty when not chosen. */
@@ -221,7 +223,7 @@ export interface BasicDraft {
   title: string;
 }
 
-export const EMPTY_BASIC: BasicDraft = { birthDate: "", company: "", email: "", phone: "", homeMarket: "", seniorityLevel: "", name: "", primaryIndustryId: "", secondaryIndustryId: "", title: "" };
+export const EMPTY_BASIC: BasicDraft = { birthDate: "", company: "", email: "", phone: "", lineId: "", wechatId: "", homeMarket: "", seniorityLevel: "", name: "", primaryIndustryId: "", secondaryIndustryId: "", title: "" };
 
 export function basicDraftFromProfile(profile: ProfileDetail["profile"]): BasicDraft {
   if (!profile) return EMPTY_BASIC;
@@ -230,6 +232,8 @@ export function basicDraftFromProfile(profile: ProfileDetail["profile"]): BasicD
     company: profile.organization ?? "",
     email: profile.handles?.email ?? "",
     phone: profile.handles?.phone ?? "",
+    lineId: profile.handles?.lineId ?? "",
+    wechatId: profile.handles?.wechatId ?? "",
     homeMarket: profile.homeMarket ?? "",
     seniorityLevel: isSeniorityLevelValue(profile.seniorityLevel) ? profile.seniorityLevel : "",
     name: profile.displayName ?? "",
@@ -248,7 +252,7 @@ export function basicDraftValid(draft: BasicDraft, today: string): boolean {
   return Boolean(draft.name.trim()) && basicIndustryValid(draft) && (!draft.birthDate || isValidProfileBirthDate(draft.birthDate, today));
 }
 
-export type OnboardingMissingField = "name" | "primaryIndustry" | "secondaryIndustry" | "goals" | "intro";
+export type OnboardingMissingField = "name" | "primaryIndustry" | "secondaryIndustry" | "contact" | "goals" | "intro";
 
 /** What still stops 「次へ」 on a step, in screen order. 詳細 is asked for only once 業界 is chosen. */
 export function onboardingMissing(step: OnboardingStep, draft: { basic: BasicDraft; goals: readonly string[]; bio: string }): OnboardingMissingField[] {
@@ -258,6 +262,7 @@ export function onboardingMissing(step: OnboardingStep, draft: { basic: BasicDra
   if (!draft.basic.name.trim()) missing.push("name");
   if (!draft.basic.primaryIndustryId) missing.push("primaryIndustry");
   else if (!basicIndustryValid(draft.basic)) missing.push("secondaryIndustry");
+  if (!profileContactMethodsValid(draft.basic)) missing.push("contact");
   return missing;
 }
 

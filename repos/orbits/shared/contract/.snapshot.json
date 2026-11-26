@@ -14285,6 +14285,32 @@
           "kind": "text",
           "type": "readonly HostPersonAnswer[]"
         },
+        "contactMethods": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "lineId": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "wechatId": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "email": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            },
+            "phone": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        },
         "profile": {
           "optional": false,
           "kind": "text",

@@ -1,14 +1,13 @@
 /** Actor-owned, monotone progress through the five profile onboarding screens. */
 import type { LiveRecord, LiveRecordStoreLike } from "../../shared/storage/live-record-store";
+import type { ProfileOnboardingProgressCommandContract } from "../../shared/contract/profile";
 
 export const PROFILE_ONBOARDING_PROGRESS_COLLECTION = "profileOnboardingFlow";
 const RECORD_ID = "current";
 const MAX_CAS_ATTEMPTS = 4;
 
 export type ProfileScreen = 1 | 2 | 3 | 4 | 5;
-export type ProfileOnboardingProgressCommand =
-  | { action: "initialize" | "defer" | "finish"; expectedRevision: string | null; mutationId: string }
-  | { action: "confirm"; screen: ProfileScreen; expectedRevision: string | null; mutationId: string };
+export type ProfileOnboardingProgressCommand = ProfileOnboardingProgressCommandContract;
 
 export interface ProfileOnboardingProgress {
   version: 1;
@@ -24,12 +23,13 @@ export interface ProfileOnboardingProgressPayload extends Record<string, unknown
   lastConfirmedScreen: 0 | ProfileScreen;
   finishedAt: string | null;
   deferred: boolean;
+  contactMethodsConfirmed?: true;
   /** Bounded by the number of user actions in this first, permanent flow. */
   mutations: Record<string, string>;
 }
 
 export class ProfileOnboardingProgressError extends Error {
-  constructor(readonly code: "REVISION_CONFLICT" | "MUTATION_CONFLICT" | "SCREEN_ORDER" | "FLOW_FINISHED" | "FLOW_NOT_INITIALIZED" | "STORAGE_UNAVAILABLE") {
+  constructor(readonly code: "REVISION_CONFLICT" | "MUTATION_CONFLICT" | "SCREEN_ORDER" | "FLOW_FINISHED" | "FLOW_NOT_INITIALIZED" | "STORAGE_UNAVAILABLE" | "CONTACT_METHOD_REQUIRED") {
     super(code);
   }
 }
@@ -49,6 +49,7 @@ function state(record: LiveRecord<ProfileOnboardingProgressPayload>): ProfileOnb
 }
 
 function fingerprint(command: ProfileOnboardingProgressCommand): string {
+  if (command.action === "confirm" && command.contactMethodsConfirmed) return `confirm:${command.screen}:contact-methods`;
   return `${command.action}:${command.action === "confirm" ? command.screen : ""}`;
 }
 
@@ -63,6 +64,7 @@ export function createStorageProfileOnboardingProgressService(input: {
   store: LiveRecordStoreLike<ProfileOnboardingProgressPayload>;
   workspaceId: string;
   now?: () => string;
+  hasContactMethod?: () => Promise<boolean>;
 }) {
   const actorId = input.actorId.trim();
   if (!actorId) throw new Error("Profile onboarding progress requires an actor.");
@@ -107,12 +109,17 @@ export function createStorageProfileOnboardingProgressService(input: {
         if (command.action === "finish" && previous?.lastConfirmedScreen !== 5) {
           throw new ProfileOnboardingProgressError("SCREEN_ORDER");
         }
+        const confirmsContactMethods = command.action === "confirm" && command.screen === 1 && command.contactMethodsConfirmed === true;
+        if (confirmsContactMethods && input.hasContactMethod && !await input.hasContactMethod()) {
+          throw new ProfileOnboardingProgressError("CONTACT_METHOD_REQUIRED");
+        }
         const updatedAt = nextTimestamp(now(), existing?.updatedAt);
         const payload: ProfileOnboardingProgressPayload = {
           version: 1,
           lastConfirmedScreen: command.action === "confirm" ? command.screen : previous?.lastConfirmedScreen ?? 0,
           finishedAt: command.action === "finish" ? updatedAt : previous?.finishedAt ?? null,
           deferred: command.action === "defer" ? true : command.action === "finish" ? false : previous?.deferred ?? false,
+          ...(confirmsContactMethods || previous?.contactMethodsConfirmed === true ? { contactMethodsConfirmed: true } : {}),
           mutations: { ...previous?.mutations, [command.mutationId]: fingerprint(command) },
         };
         const record: LiveRecord<ProfileOnboardingProgressPayload> = {

@@ -40,6 +40,8 @@ export interface BasicDraft {
   homeMarket: string;
   name: string;
   phone: string;
+  lineId?: string;
+  wechatId?: string;
   primaryIndustryId: IndustryIdCode | "";
   secondaryIndustryId: SecondaryIndustryIdCode | "";
   seniorityLevel: SeniorityLevelCode | "";
@@ -49,6 +51,7 @@ export interface BasicDraft {
 /** 缺项 → 滚到并聚焦的元素。 */
 export const MISSING_TARGETS: Record<OnboardingMissing, string> = {
   birthDate: "onb-birth",
+  contact: "onb-lineId",
   goal: "onb-goal-first",
   headlineOver: "onb-intro",
   industry: "onb-industry",
@@ -61,6 +64,7 @@ export const MISSING_TARGETS: Record<OnboardingMissing, string> = {
 
 export const MISSING_LABELS: Record<OnboardingMissing, Copy> = {
   birthDate: { ja: "生年月日", zh: "生日", en: "Birthday" },
+  contact: { ja: "連絡先", zh: "联系方式", en: "Contact method" },
   goal: { ja: "目標", zh: "目标", en: "Goal" },
   headlineOver: { ja: "自己紹介", zh: "自我介绍", en: "Introduction" },
   industry: { ja: "業界", zh: "行业", en: "Industry" },
@@ -125,7 +129,7 @@ function SelectHint({ phone, wide }: { phone: string; wide: string }) {
 const invalid = (id: string, error?: string) => (error ? { "aria-describedby": `${id}-msg`, "aria-invalid": true as const } : {});
 
 export function ProfileStep({
-  basic, cameraRef, cardScanAvailable, disabled, fileRef, language, missing, onCardDrop, onCardFile, onQr, onUserEdit, origins, scan, scanning, showContact, t, todayIso,
+  basic, cameraRef, cardScanAvailable, disabled, fileRef, language, missing, onCardDrop, onCardFile, onQr, onUserEdit, origins, scan, scanning, t, todayIso,
 }: {
   basic: BasicDraft;
   cameraRef: RefObject<HTMLInputElement | null>;
@@ -141,12 +145,11 @@ export function ProfileStep({
   origins: Partial<Record<BasicField, FieldOrigin>>;
   scan: { ai: number; card: number } | null;
   scanning: boolean;
-  showContact: { email: boolean; phone: boolean };
   t: T;
   todayIso: string;
 }) {
   const [over, setOver] = useState(false);
-  const text = (key: "name" | "company" | "title" | "email" | "phone" | "homeMarket" | "birthDate") => (event: ChangeEvent<HTMLInputElement>) => onUserEdit({ [key]: event.target.value });
+  const text = (key: "name" | "company" | "title" | "email" | "phone" | "lineId" | "wechatId" | "homeMarket" | "birthDate") => (event: ChangeEvent<HTMLInputElement>) => onUserEdit({ [key]: event.target.value });
   const drag = {
     onDragLeave: () => setOver(false),
     onDragOver: (event: DragEvent<HTMLDivElement>) => { event.preventDefault(); if (!disabled && !scanning) setOver(true); },
@@ -237,13 +240,38 @@ export function ProfileStep({
         <Field className={styles.fPlace} id="onb-place" label={origins.homeMarket ? { ja: "所在地", zh: "所在地", en: "Location" } : { ja: "所在地（任意）", zh: "所在地（选填）", en: "Location (optional)" }} origin={origins.homeMarket} t={t}>
           <input className={styles.input} disabled={disabled} id="onb-place" maxLength={80} onChange={text("homeMarket")} placeholder={t({ ja: "例）東京", zh: "例如：东京", en: "e.g. Tokyo" })} value={basic.homeMarket} />
         </Field>
-        {showContact.email ? <Field className={styles.fEmail} id="onb-email" label={{ ja: "メール", zh: "邮箱", en: "Email" }} origin={origins.email} t={t}>
-          <input className={styles.input} disabled={disabled} id="onb-email" inputMode="email" maxLength={120} onChange={text("email")} type="email" value={basic.email} />
-        </Field> : null}
-        {showContact.phone ? <Field className={styles.fPhone} id="onb-phone" label={{ ja: "電話", zh: "电话", en: "Phone" }} origin={origins.phone} t={t}>
-          <input className={styles.input} disabled={disabled} id="onb-phone" inputMode="tel" maxLength={40} onChange={text("phone")} type="tel" value={basic.phone} />
-        </Field> : null}
       </div>
+      <fieldset className={styles.contactMethods} aria-describedby="onb-contact-hint">
+        <legend className={styles.fieldLabel}>{t({
+          ja: "ここでつながった相手は、どうやってあなたに連絡できますか？",
+          zh: "你在此添加的朋友如何联系到你？",
+          en: "How can the people you connect with here reach you?",
+        })}</legend>
+        <p id="onb-contact-hint" className={styles.lbl}>{t({
+          ja: "1 つ以上必須。LINE または WeChat がおすすめです。交換した相手と、申し込んだイベントの主催者が確認できます。",
+          zh: "至少填一种，推荐 LINE 或微信。完成交换的人脉和你报名活动的主办方可查看。",
+          en: "Enter at least one. LINE or WeChat makes it easier to stay in touch. Mutual contacts and organizers of events you apply to can view these details.",
+        })}</p>
+        <div className={styles.grid2}>
+          <Field id="onb-lineId" label={{ ja: "LINE", zh: "LINE", en: "LINE" }} origin={origins.lineId} t={t}>
+            <input className={styles.input} disabled={disabled} id="onb-lineId" maxLength={80} onChange={text("lineId")} value={basic.lineId ?? ""} />
+          </Field>
+          <Field id="onb-wechatId" label={{ ja: "WeChat", zh: "微信", en: "WeChat" }} origin={origins.wechatId} t={t}>
+            <input className={styles.input} disabled={disabled} id="onb-wechatId" maxLength={80} onChange={text("wechatId")} value={basic.wechatId ?? ""} />
+          </Field>
+          <Field id="onb-email" label={{ ja: "メール", zh: "邮箱", en: "Email" }} origin={origins.email} t={t}>
+            <input className={styles.input} disabled={disabled} id="onb-email" inputMode="email" maxLength={120} onChange={text("email")} type="email" value={basic.email} />
+          </Field>
+          <Field id="onb-phone" label={{ ja: "電話", zh: "电话", en: "Phone" }} origin={origins.phone} t={t}>
+            <input className={styles.input} disabled={disabled} id="onb-phone" inputMode="tel" maxLength={40} onChange={text("phone")} type="tel" value={basic.phone} />
+          </Field>
+        </div>
+        {missing.includes("contact") ? <div className={styles.errLine} role="alert">{t({
+          ja: "連絡先を 1 つ以上入力し、メールや電話番号の形式を確認してください。",
+          zh: "请至少填写一种联系方式，并检查邮箱或电话号码的格式。",
+          en: "Enter at least one contact method and check any email address or phone number.",
+        })}</div> : null}
+      </fieldset>
     </div>
   );
 }

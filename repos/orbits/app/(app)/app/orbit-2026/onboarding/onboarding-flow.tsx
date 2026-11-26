@@ -73,6 +73,7 @@ import {
   type T,
 } from "./onboarding-steps";
 import { ONBOARDING_COPY } from "../copy/onboarding";
+import { PROFILE_CONTACT_METHODS, profileContactMethods, profileContactMethodsValid } from "../../../../../shared/compute/profile-contact-methods";
 import styles from "./OnboardingFlow.module.css";
 
 export interface OnboardingFlowProps {
@@ -92,6 +93,8 @@ function basicFromPayload(payload: ProfilePayload): BasicDraft {
     birthDate: profile.birthDate ?? "",
     company: profile.organization ?? "",
     email: profile.handles?.email ?? "",
+    lineId: profile.handles?.lineId ?? "",
+    wechatId: profile.handles?.wechatId ?? "",
     homeMarket: profile.homeMarket ?? "",
     name: profile.displayName ?? "",
     phone: profile.handles?.phone ?? "",
@@ -255,7 +258,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const birthValid = !basic.birthDate || isValidProfileBirthDate(basic.birthDate, todayIso);
   const bioCount = bioCounter(bio);
   const missing: OnboardingMissing[] = view === "basics"
-    ? missingBasics({ birthValid, industryValid, name: basic.name, primaryIndustryId: basic.primaryIndustryId })
+    ? missingBasics({ birthValid, industryValid, name: basic.name, primaryIndustryId: basic.primaryIndustryId, contacts: basic })
     : view === "goals" ? (goalChoices.length ? [] : ["goal"])
       : missingIntro({ bio, bioOver: bioCount.over, generating: introStatus === "generating", headlineOver: visibleCharacterCount(headline.trim()) > HEADLINE_LIMIT });
   const shown = attempted === view ? missing : [];
@@ -283,7 +286,10 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     const flow = await ensureProgress();
     if (flow.lastConfirmedScreen >= screen) { pendingConfirmRef.current = null; return; }
     if (!pendingConfirmRef.current || pendingConfirmRef.current.action !== "confirm" || pendingConfirmRef.current.screen !== screen) {
-      pendingConfirmRef.current = { action: "confirm", screen, expectedRevision: flow.revision, mutationId: crypto.randomUUID() };
+      pendingConfirmRef.current = {
+        action: "confirm", screen, expectedRevision: flow.revision, mutationId: crypto.randomUUID(),
+        ...(screen === 1 ? { contactMethodsConfirmed: true } : {}),
+      };
     }
     try {
       progressRef.current = await updateOnboardingProgress(pendingConfirmRef.current);
@@ -331,12 +337,9 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   }
 
   function basicsFields(): ProfileFields {
-    // 名片上的微信号、LINE、网址只补空的，不改本人已有的值。
     const handles: ContactHandlesContract = { ...cardHandlesRef.current, ...Object.fromEntries(Object.entries(handlesRef.current).filter(([, value]) => value)) };
-    const email = basic.email.trim();
-    const phone = basic.phone.trim();
-    if (email) handles.email = email; else delete handles.email;
-    if (phone) handles.phone = phone; else delete handles.phone;
+    for (const method of PROFILE_CONTACT_METHODS) delete handles[method];
+    Object.assign(handles, profileContactMethods(basic));
     return {
       birthDate: basic.birthDate || null,
       displayName: name,
@@ -406,8 +409,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     try {
       if (loaded) {
         if (view === "basics" && name) {
-          const { birthDate, primaryIndustryId, secondaryIndustryId, ...rest } = basicsFields();
-          await saveProfileFields({ ...rest, ...(birthValid ? { birthDate } : {}), ...(industryValid ? { primaryIndustryId, secondaryIndustryId } : {}) }, expectedUpdatedAt);
+          const { birthDate, handles, primaryIndustryId, secondaryIndustryId, ...rest } = basicsFields();
+          await saveProfileFields({ ...rest, ...(profileContactMethodsValid(basic) ? { handles } : {}), ...(birthValid ? { birthDate } : {}), ...(industryValid ? { primaryIndustryId, secondaryIndustryId } : {}) }, expectedUpdatedAt);
         } else if (view === "goals") await saveProfileFields(goalsFields(), expectedUpdatedAt);
         else if (view === "intro" && bio.trim() && !bioCount.over) await saveProfileFields(introFields(), expectedUpdatedAt);
       }
@@ -462,9 +465,10 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     setError("");
     try {
       const card = await scanOwnBusinessCard(file);
-      const printed = ([["name", card.name], ["company", card.company], ["title", card.title], ["email", card.email], ["phone", card.phone], ["homeMarket", card.region ? regionDisplayName({ city: card.region.city ?? null, countryCode: card.region.countryCode }, language) : ""]] as const).filter(([, value]) => value);
+      const scanned = { ...card.handles, email: card.email, phone: card.phone };
+      const printed = ([["name", card.name], ["company", card.company], ["title", card.title], ["homeMarket", card.region ? regionDisplayName({ city: card.region.city ?? null, countryCode: card.region.countryCode }, language) : ""], ...PROFILE_CONTACT_METHODS.map(method => [method, basicRef.current[method]?.trim() ? "" : scanned[method]] as const)] as const).filter(([, value]) => value);
       if (!printed.length) throw new Error("empty card");
-      cardHandlesRef.current = card.handles;
+      cardHandlesRef.current = card.handles.website ? { website: card.handles.website } : {};
       const filled: BasicDraft = { ...basicRef.current, ...Object.fromEntries(printed), ...(card.industry ?? {}), ...(card.seniorityLevel ? { seniorityLevel: card.seniorityLevel } : {}) };
       const nextOrigins: Origins = { ...origins };
       for (const [key] of printed) nextOrigins[key] = "card";
@@ -612,7 +616,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
           <section className={styles.card}>
             {view === "basics" ? <ProfileStep basic={basic} cameraRef={cameraRef} cardScanAvailable={cardScanAvailable} disabled={saving} fileRef={fileRef} language={language} missing={shown}
               onCardDrop={(file) => void scanCard(file)} onCardFile={(event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; event.target.value = ""; void scanCard(file); }} onQr={() => setQrOpen(true)}
-              onUserEdit={editBasic} origins={origins} scan={scan} scanning={scanning} showContact={{ email: Boolean(basic.email) || Boolean(origins.email) || scan !== null && Boolean(handlesRef.current.email), phone: Boolean(basic.phone) || Boolean(origins.phone) || scan !== null && Boolean(handlesRef.current.phone) }} t={t} todayIso={todayIso} /> : null}
+              onUserEdit={editBasic} origins={origins} scan={scan} scanning={scanning} t={t} todayIso={todayIso} /> : null}
             {view === "goals" ? <>
               <GoalsStep error={shown.includes("goal")} goals={goalChoices} setGoals={setGoalChoices} setGoalText={setGoalText} t={t} text={goalText} />
               <div className={styles.inline}><StrengthGroups {...groups} /></div>

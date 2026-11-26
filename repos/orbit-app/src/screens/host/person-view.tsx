@@ -39,6 +39,7 @@ export function HostPersonView({ data, t }: { data: HostPersonResponse; t: HostT
   const recs = data.matching?.recommendations ?? [];
   const shownRecs = allRecs ? recs : recs.slice(0, RECS_FIRST);
   const chips = ([["pdTopics", data.topics], ["pdOffers", data.offers], ["pdNeeds", data.needs]] as const).filter(([, items]) => items.length > 0);
+  const contactRows = [[t("evContactLine"), data.contactMethods?.lineId], [t("evContactWechat"), data.contactMethods?.wechatId], [t("pdEmail"), data.contactMethods?.email], [t("pdPhone"), data.contactMethods?.phone]] as const;
   const tone = STATUS_TONE[data.status];
   return (
     <View style={styles.body} testID={`host-person-${data.actorId}`}>
@@ -80,6 +81,12 @@ export function HostPersonView({ data, t }: { data: HostPersonResponse; t: HostT
         </View>
       ) : null}
 
+      {contactRows.some(([, value]) => Boolean(value)) ? (
+        <View style={styles.section} testID="host-person-contacts">
+          <UiText style={styles.h} accessibilityRole="header">{t("pdContactMethods")}</UiText>
+          {contactRows.map(([label, value]) => value ? <QA key={label} label={label} value={value} /> : null)}
+        </View>
+      ) : null}
       {data.profile.length || chips.length ? (
         <View style={styles.section} testID="host-person-profile">
           <UiText style={styles.h} accessibilityRole="header">{t("pdProfile")}</UiText>

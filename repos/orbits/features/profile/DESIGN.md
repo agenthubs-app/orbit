@@ -30,7 +30,9 @@ Service factory 提供 profile、document extraction 和 signal review queue ser
 
 `/app/profile` 使用服务端返回的 `onboarding.policyVersion = 1` 作为唯一引导状态。该政策只检查 `displayName`、`primaryIndustryId`、`secondaryIndustryId` 和私密 `birthDate`；页面不会用当前登录账号的显示名预填值冒充已保存完成。生日只进入本人编辑器和私密状态提示，不能进入名片、公开投影或 AI 资料上下文。
 
-邮箱密码注册产生的账号显示名只是认证层技术占位。认证建档以 `displayNameConfirmed: false` 标记，资料读取时投影为空，直到用户显式保存姓名；账号容器名称（例如“某某的 Orbit”）也不得回退为公司。Web 基础资料保存另要求 WeChat 或 LINE 至少填写一项。未保存字段按当前账号保存在标签页级 `sessionStorage`，从 iOrbit 设置或连接页返回时恢复，保存完成后清除。
+邮箱密码注册产生的账号显示名只是认证层技术占位。认证建档以 `displayNameConfirmed: false` 标记，资料读取时投影为空，直到用户显式保存姓名；账号容器名称（例如“某某的 Orbit”）也不得回退为公司。未保存字段按当前账号保存在标签页级 `sessionStorage`，从 iOrbit 设置或连接页返回时恢复，保存完成后清除。
+
+新用户的基础资料引导（Web、App）把 LINE、微信、邮箱和电话放在同一个联系方式组，至少填写一种。名片识别只补空白项，用户可在确认前核对并修改。登录邮箱继续仅用于认证，除非用户另行填写为联系邮箱。线上确认引导第一步时，服务端检查本人保存的联系方式并记录共享确认。人脉和活动后台读取其中四项前均检查这条确认记录。旧客户端仍可按原有流程完成，旧账号按现有完成判定继续使用。
 
 基础资料和匹配偏好分开保存。基础资料的「关于我」写入 `bio`，限制为 80 个可见字符；「一句话介绍」写入 `headline`，随基础资料保存。商务画像的「我的目标」写入 `relationshipGoal`，与 offering / seeking / topics 一起在匹配作用域保存；行业编辑使用稳定的父子 ID，旧 `industry` 文字只读保留。联系方式保存时先以服务端实际 handles 对象为基线，再应用可见字段，避免替换对象时丢失 phone、website、LinkedIn 等隐藏句柄。匹配保存只提交变更的 relationshipGoal、offering、seeking 或 topics；前两者各最多 5 项，topics 不在页面臆造数量上限，也不把它们镜像到市场、介绍渠道或关系类型字段。
 

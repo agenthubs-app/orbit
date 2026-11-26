@@ -162,6 +162,7 @@ test("a new account goes 名片与基本信息 → 目标与强项 → 自我介
   await shot(page, "01-profile");
   await page.getByRole("textbox", { name: "姓名" }).fill("林晓");
   await page.getByRole("textbox", { name: "职位" }).fill("产品负责人");
+  await page.getByRole("textbox", { name: "LINE" }).fill("lin-line");
   await pickIndustry(page);
   await pickBirthday(page, "1990-05-20");
   await page.getByRole("button", { name: "生日（可选）：1990年5月20日" }).waitFor();
@@ -174,7 +175,7 @@ test("a new account goes 名片与基本信息 → 目标与强项 → 自我介
   const first = await fx(page);
   const writes = first.requests.filter((r: any) => r.path === "/api/profile");
   assert.deepEqual(writes.map((r: any) => r.method), ["GET", "PUT", "GET"], "initial read, save, readback");
-  assert.deepEqual({ ...writes[1].body, mutationId: undefined }, { birthDate: "1990-05-20", displayName: "林晓", organization: "", role: "产品负责人", ...IT, homeMarket: "", expectedUpdatedAt: null, mutationId: undefined });
+  assert.deepEqual({ ...writes[1].body, mutationId: undefined }, { birthDate: "1990-05-20", displayName: "林晓", organization: "", role: "产品负责人", ...IT, homeMarket: "", handles: { lineId: "lin-line" }, expectedUpdatedAt: null, mutationId: undefined });
   for (const goal of ["获取客户", "寻找投资"]) await page.getByRole("button", { name: goal, exact: true }).click();
   assert.equal(await page.getByRole("button", { name: "招聘人才", exact: true }).isDisabled(), true, "a third goal is blocked");
   assert.equal((await next(page).textContent())!.replace(/\s+/gu, " "), "下一步 · 目标2/2");
@@ -196,8 +197,9 @@ test("a new account goes 名片与基本信息 → 目标与强项 → 自我介
   const done = await fx(page);
   assert.deepEqual(done.navigation, ["replace:/events/e1"]);
   assert.equal(done.profile.bio, "第1版：做 AI 会议纪要的产品负责人。");
-  const commands = done.requests.filter((r: any) => r.path === "/api/profile/onboarding-progress" && r.method === "POST").map((r: any) => r.body.screen ?? r.body.action);
-  assert.deepEqual(commands, ["initialize", 1, 2, 3, 4, 5, "finish"], "three steps on the server's five screens; never a deferral");
+  const commands = done.requests.filter((r: any) => r.path === "/api/profile/onboarding-progress" && r.method === "POST").map((r: any) => r.body);
+  assert.deepEqual(commands.map((command: any) => command.screen ?? command.action), ["initialize", 1, 2, 3, 4, 5, "finish"], "three steps on the server's five screens; never a deferral");
+  assert.deepEqual(commands.filter((command: any) => command.contactMethodsConfirmed === true).map((command: any) => command.screen), [1]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.verdicts), ["required", "clear"]);
   assert.deepEqual(await page.evaluate(() => Object.keys((window as any).fixture.storage)), [], "the draft is gone");
 });
@@ -209,17 +211,20 @@ test("「下一步」 is never greyed out: it lists what is missing, marks it, a
   assert.equal(Math.round((await next(page).boundingBox())!.height), 50, "the page's main button (.btn.xl)");
   await page.evaluate(() => document.querySelector('[data-testid="onboarding-scroll"]')!.scrollTo(0, 9999));
   await next(page).click();
-  assert.deepEqual(await alerts(page), ["请填写姓名", "请选择行业", "还差2项: 姓名、行业".replace(": ", "：")]);
+  const contactError = "请至少填写一种联系方式，并检查邮箱或电话号码的格式。";
+  assert.deepEqual(await alerts(page), ["请填写姓名", "请选择行业", contactError, "还差3项：姓名、行业、联系方式"]);
   assert.equal(await page.getByRole("textbox", { name: "姓名" }).evaluate(el => el === document.activeElement), true, "focus on the first missing field");
   await page.waitForFunction(() => document.querySelector('[data-testid="onboarding-scroll"]')!.scrollTop < 500);
   await shot(page, "04-missing");
   await page.getByRole("textbox", { name: "姓名" }).fill("林晓");
-  assert.deepEqual(await alerts(page), ["请选择行业", "还差1项：行业"]);
+  assert.deepEqual(await alerts(page), ["请选择行业", contactError, "还差2项：行业、联系方式"]);
   await page.getByRole("button", { name: /^行业：/u }).click();
   await page.getByRole("button", { name: "科技与互联网", exact: true }).click();
-  assert.deepEqual(await alerts(page), ["请选择细分行业", "还差1项：细分"], "the detail is asked for once there is an industry");
+  assert.deepEqual(await alerts(page), ["请选择细分行业", contactError, "还差2项：细分、联系方式"], "the detail is asked for once there is an industry");
   await page.getByRole("button", { name: /^细分：/u }).click();
   await page.getByRole("button", { name: "人工智能与数据", exact: true }).click();
+  assert.deepEqual(await alerts(page), [contactError, "还差1项：联系方式"]);
+  await page.getByRole("textbox", { name: "邮箱" }).fill("lin@orbit.example");
   assert.deepEqual(await alerts(page), []);
   assert.equal((await fx(page)).requests.filter((r: any) => r.method === "PUT").length, 0, "nothing was sent while something was missing");
   await next(page).click();
@@ -236,10 +241,12 @@ test("the card's WeChat, LINE and website only fill what the profile leaves empt
   const page = await open(t, { card: true, scan, ...withProfile({ handles: { wechatId: "my-wechat", website: "", xHandle: "lin" } }) });
   await page.getByRole("button", { name: "从相册选择" }).click();
   await page.getByText(/^名片读到/u).waitFor();
-  assert.equal(await page.getByText("card-line").count(), 0, "step 1 has no box for them");
+  assert.equal(await page.getByRole("textbox", { name: "LINE" }).inputValue(), "card-line");
+  assert.equal(await page.getByRole("textbox", { name: "微信" }).inputValue(), "my-wechat");
+  await page.getByRole("textbox", { name: "LINE" }).fill("reviewed-line");
   await next(page).click();
   await page.getByText("第2/3步 · 目标与强项", { exact: true }).waitFor();
-  assert.deepEqual((await fx(page)).profile.handles, { email: "lin@orbit.example", wechatId: "my-wechat", lineId: "card-line", website: "https://card.example", xHandle: "lin" });
+  assert.deepEqual((await fx(page)).profile.handles, { email: "lin@orbit.example", wechatId: "my-wechat", lineId: "reviewed-line", website: "https://card.example", xHandle: "lin" });
 });
 
 test("the own card fills what is printed and what AI judged, says which is which, and a change drops the mark", async t => {
@@ -288,6 +295,7 @@ test("level and place: optional, filled from the card with their own marks, chan
   for (const label of ["未选", "一般职员", "经理", "总监", "副总裁", "高管（C 级）", "创始人"]) assert.equal(await page.getByRole("button", { name: label, exact: true }).count(), 1, label);
   await page.getByRole("button", { name: "经理", exact: true }).click();
   assert.deepEqual([await page.getByText("来自名片", { exact: true }).count(), await page.getByText("AI推断", { exact: true }).count()], [3, 2]);
+  await page.getByRole("textbox", { name: "微信" }).fill("example-wechat");
   await next(page).click();
   await page.getByText("第2/3步 · 目标与强项", { exact: true }).waitFor();
   let saved = (await fx(page)).profile;
@@ -326,7 +334,7 @@ test("no industry on the card, AI unavailable or late: nothing blocks, nothing t
   const page = await open(t, { card: true, scan, inferHold: true, infer: { status: "ready", primaryIndustryId: "finance_investment", secondaryIndustryId: "finance_investment.venture_capital", offering: ["客户引荐"], topics: [] } });
   await page.getByRole("button", { name: "从相册选择" }).click();
   await page.getByText("名片读到2项", { exact: true }).waitFor();
-  assert.equal(await page.getByRole("textbox", { name: "邮箱" }).count(), 0, "no row for what was not read");
+  assert.equal(await page.getByRole("textbox", { name: "邮箱" }).inputValue(), "", "methods can be entered when a card has none");
   await pickIndustry(page);
   await page.evaluate(() => { const s = (window as any).fixture; s.inferHold = false; s.releaseInfer(); });
   await page.waitForTimeout(50);
@@ -335,6 +343,7 @@ test("no industry on the card, AI unavailable or late: nothing blocks, nothing t
   await failed.getByRole("button", { name: "从相册选择" }).click();
   await failed.getByText("没能识别这张名片。请换一张清晰的照片，或手动填写。", { exact: true }).waitFor();
   await failed.getByRole("textbox", { name: "姓名" }).fill("林晓");
+  await failed.getByRole("textbox", { name: "LINE" }).fill("lin-line");
   await pickIndustry(failed);
   await next(failed).click();
   await failed.getByText("第2/3步 · 目标与强项", { exact: true }).waitFor();
@@ -487,6 +496,7 @@ test("a save whose answer was lost goes on at the next tap; a real conflict is t
 test("a failed progress confirmation retains the saved step but does not drop later edits", async t => {
   const page = await open(t);
   await page.getByRole("textbox", { name: "姓名" }).fill("林晓");
+  await page.getByRole("textbox", { name: "LINE" }).fill("lin-line");
   await pickIndustry(page);
   await set(page, { flowConfirm: "fail" });
   await next(page).click();
@@ -560,8 +570,8 @@ test("intro tones are Web's two: a new one is drafted and counted, one already d
 
 test("every visible word is translated; the fixed notice and the button speak each language", async t => {
   for (const [language, step, notice, button, missing] of [
-    ["ja", "ステップ 1 / 3 · 名刺・基本情報", "名刺を読み取ると、ほとんどの項目が自動で入ります。", "次へ", "あと 2 項目：氏名、業界"],
-    ["en", "Step 1 of 3 · Card & basics", "Scan your business card to fill in most of it.", "Next", "2 left: Name, Industry"],
+    ["ja", "ステップ 1 / 3 · 名刺・基本情報", "名刺を読み取ると、ほとんどの項目が自動で入ります。", "次へ", "あと 3 項目：氏名、業界、連絡先"],
+    ["en", "Step 1 of 3 · Card & basics", "Scan your business card to fill in most of it.", "Next", "3 left: Name, Industry, Contact method"],
   ] as const) {
     const page = await open(t, { language });
     await page.getByText(step, { exact: true }).waitFor();

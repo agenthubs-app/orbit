@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { InviteConnectionView, InviteSharedFieldKey } from "../../../../../shared/contract/invite-codes";
 import type { PlanContactFit } from "../../../../../shared/contract/plan-v2";
+import { profileContactMethods, type ProfileContactMethods } from "../../../../../shared/compute/profile-contact-methods";
 import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { scheduleWithContactHref, stashScheduleContact } from "../calendar/schedule-contact-handoff";
@@ -127,6 +128,7 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   const [valueLine, setValueLine] = useState<ValueLine | null | undefined>(() => (contactId ? cachedValueLine(contactId, language) : undefined));
   const [fit, setFit] = useState<PlanContactFit | null>(null);
   const [connection, setConnection] = useState<InviteConnectionView | null>(null);
+  const [sharedMethods, setSharedMethods] = useState<{ id: string; fields: ProfileContactMethods } | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -167,8 +169,22 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
     void networkApi.eligibility(contactId).then((result) => { if (alive) setReach({ contactId, value: result.ok ? result.data : null }); });
     return () => { alive = false; };
   }, [contactId]);
+  useEffect(() => {
+    setSharedMethods(null);
+    if (!contactId?.startsWith("contact:event-consent:")) return;
+    const controller = new AbortController();
+    void fetch(`/api/contacts/${encodeURIComponent(contactId)}/shared-contact-methods`, { cache: "no-store", signal: controller.signal })
+      .then(async response => response.ok ? response.json() : null)
+      .then(reply => {
+        if (!controller.signal.aborted && reply?.success === true) setSharedMethods({ id: contactId, fields: profileContactMethods(reply.data) });
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [contactId]);
 
   const contact = useMemo(() => drawerContactFrom(payload), [payload]);
+  const methods = sharedMethods?.id === contactId ? sharedMethods?.fields : undefined;
+  const sharedRows = [[t("detailFieldLineId"), methods?.lineId], [t("detailFieldWechatId"), methods?.wechatId], [t("detailFieldEmail"), methods?.email], [t("detailFieldPhone"), methods?.phone]];
   const syncMoment = process.env.NODE_ENV !== "production" && contactId === "design-person-032" && designMoment === "sync";
   const fitMoment = process.env.NODE_ENV !== "production" && contactId === "design-person-032" && designMoment === "fit";
   const candidate = syncMoment ? null : fit?.fits.find((item) => item.status === "candidate") ?? null;
@@ -290,10 +306,16 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
                 </div>
               ) : null}
 
+              {sharedRows.some(([, value]) => Boolean(value)) ? (
+                <div className={styles.card} data-network-shared-contact-methods="">
+                  <div className={styles.cardH}><h3>{t("detailSharedContactMethods")}</h3></div>
+                  {sharedRows.map(([label, value]) => value ? <div key={label} className={styles.frow}><span className={styles.frowKey}>{label}</span><span className={styles.frowValue}>{value}</span></div> : null)}
+                </div>
+              ) : null}
               {self && connection ? (
                 <div className={styles.card} data-network-invite="">
-                  {(["organization", "role", "email", "offering", "seeking"] as const).map((field) => {
-                    const value = field === "organization" ? contact.organization : field === "role" ? stagedRole : field === "email" ? contact.primaryEmail : field === "offering" ? stagedOffering.join(" · ") : contact.seeking.join(" · ");
+                  {(["organization", "role", "email", "phone", "offering", "seeking"] as const).map((field) => {
+                    const value = field === "organization" ? contact.organization : field === "role" ? stagedRole : field === "email" ? contact.primaryEmail : field === "phone" ? contact.primaryPhone : field === "offering" ? stagedOffering.join(" · ") : contact.seeking.join(" · ");
                     if (!value) return null;
                     const paused = (connection.pausedFields as readonly string[]).includes(field);
                     return (

@@ -55,7 +55,7 @@ function OnboardingBoard({ board }: { board: Board }) {
       <OnceNotice scan={index === 0} />
       {step === "profile" ? (
         <ProfileStep basic={scanned ? { ...EMPTY_BASIC, ...samples.basic, seniorityLevel: "c_level" } : EMPTY_BASIC} birthLabel={null} disabled={false} errors={new Set<OnboardingMissingField>(board === "A3" ? ["name", "primaryIndustry"] : [])} inputs={inputs} marks={scanned ? CARD : {}}
-          onBirth={nothing} onClearBirth={nothing} onFieldLayout={nothing} onPick={nothing} onScan={nothing} onText={nothing} scan={scanned ? { kind: "done", card: 6, ai: 3 } : { kind: "idle" }} showEmail={scanned} showPhone={scanned}
+          onBirth={nothing} onClearBirth={nothing} onFieldLayout={nothing} onPick={nothing} onScan={nothing} onText={nothing} scan={scanned ? { kind: "done", card: 6, ai: 3 } : { kind: "idle" }}
           {...(scanned ? { industry: { primary: samples.industry, secondary: samples.detail } } : {})} />
       ) : step === "goals" ? (
         <GoalsStep disabled={false} error={error} focus={error ? "" : samples.focus} goals={goals} marks={{ offer: "ai", topics: "ai" }} offer={samples.offer.values} onFocus={nothing} onGoal={nothing} onGoalsLayout={nothing} onGroup={nothing}

@@ -162,6 +162,8 @@ export const hostPersonResponseObject = z.object({
   receptionNumber: z.string().nullable(),
   attendCount: count,
   hostAnswers: readableItems(hostPersonAnswerObject),
+  contactMethods: z.object({ lineId: z.string().max(80).optional(), wechatId: z.string().max(80).optional(),
+    email: z.string().max(120).optional(), phone: z.string().max(40).optional() }).optional(),
   profile: readableItems(hostPersonAnswerObject),
   topics: z.array(z.string()).max(40),
   offers: z.array(z.string()).max(40),

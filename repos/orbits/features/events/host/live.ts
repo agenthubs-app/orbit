@@ -553,7 +553,8 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     async person(actorId, eventId, subjectActorId) {
       const caps = await require(actorId, eventId, "admission.read");
       const facts = await factsOrThrow(actorId, eventId);
-      const found = await reads.person(eventId, subjectActorId, facts.organizerActorId);
+      const includeContactMethods = caps.includes("attendees.read_full");
+      const found = await reads.person(eventId, subjectActorId, facts.organizerActorId, includeContactMethods);
       if (!found) throw new HostError("NOT_FOUND");
       const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
       const list = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()).slice(0, 40) : []);
@@ -586,6 +587,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       }
       return {
         actorId: subjectActorId, attendCount: found.attendCount, checkedInAt: found.checkedInAt, eventId, hostAnswers, initial: name.charAt(0), matching, name,
+        ...(includeContactMethods && found.contactMethods && Object.keys(found.contactMethods).length ? { contactMethods: found.contactMethods } : {}),
         needs: list(p.needs), offers: list(p.offers), org, profile, receptionNumber: found.receptionNumber, role, source: fromApplication ? "application" : "member",
         status, submittedAt: found.submittedAt, topics: list(p.topics),
         ...personCoverage(found), intro: found.intro, applicationVersion: found.applicationVersion,

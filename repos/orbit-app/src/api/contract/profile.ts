@@ -34,7 +34,7 @@ export interface ProfileOnboardingContract {
 }
 
 // GET/POST /api/profile/onboarding-progress. The server owns the actor and all
-// derived fields; clients send only an action, CAS cursor and mutation id.
+// derived fields. Screen one can also record the user's contact methods review.
 export interface ProfileOnboardingProgressContract {
   version: 1;
   currentScreen: 1 | 2 | 3 | 4 | 5 | null;
@@ -46,7 +46,7 @@ export interface ProfileOnboardingProgressContract {
 
 export type ProfileOnboardingProgressCommandContract =
   | { action: "initialize" | "defer" | "finish"; expectedRevision: string | null; mutationId: string }
-  | { action: "confirm"; screen: 1 | 2 | 3 | 4 | 5; expectedRevision: string | null; mutationId: string };
+  | { action: "confirm"; screen: 1 | 2 | 3 | 4 | 5; expectedRevision: string | null; mutationId: string; contactMethodsConfirmed?: true };
 
 // New clients send both fields; omitting both preserves the legacy update API.
 export interface ProfileSaveConcurrencyContract {

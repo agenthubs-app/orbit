@@ -246,6 +246,8 @@ export interface HostPersonResponse {
   receptionNumber: string | null;
   attendCount: number;
   hostAnswers: readonly HostPersonAnswer[];
+  /** Only viewers with full attendee access receive these four contact methods. */
+  contactMethods?: { lineId?: string; wechatId?: string; email?: string; phone?: string };
   profile: readonly HostPersonAnswer[];
   topics: readonly string[];
   offers: readonly string[];

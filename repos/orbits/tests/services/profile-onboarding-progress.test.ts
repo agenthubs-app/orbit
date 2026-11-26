@@ -40,6 +40,38 @@ test("only the next confirmed screen advances; a stale concurrent command cannot
   await assert.rejects(flow.apply({ action: "defer", expectedRevision: first.revision, mutationId: "one" }), /MUTATION_CONFLICT/);
 });
 
+test("contact sharing is confirmed only after a method is stored, and its receipt remains replayable", async () => {
+  let storedContact = false;
+  const { store } = world();
+  const key = { workspaceId: `${workspaceId}:profile-onboarding-actor:alice`, collectionName: "profileOnboardingFlow", recordId: "current", userId: "alice" };
+  const flow = createStorageProfileOnboardingProgressService({
+    actorId: "alice", workspaceId, store,
+    hasContactMethod: async () => storedContact,
+  });
+  const initial = await flow.apply({ action: "initialize", expectedRevision: null, mutationId: "init" });
+  const legacy = { action: "confirm", screen: 1, expectedRevision: initial.revision, mutationId: "one" } as const;
+  const confirm = { ...legacy, contactMethodsConfirmed: true } as const;
+  await assert.rejects(flow.apply(confirm), /CONTACT_METHOD_REQUIRED/);
+  assert.deepEqual(await flow.get(), initial);
+  assert.equal((await store.getRecord(key))?.payload.contactMethodsConfirmed, undefined);
+  storedContact = true;
+  const saved = await flow.apply(confirm);
+  assert.equal(saved.lastConfirmedScreen, 1);
+  assert.equal((await store.getRecord(key))?.payload.contactMethodsConfirmed, true);
+  storedContact = false;
+  assert.deepEqual(await flow.apply(confirm), saved);
+  await assert.rejects(flow.apply(legacy), /MUTATION_CONFLICT/);
+  await flow.apply({ action: "confirm", screen: 2, expectedRevision: saved.revision, mutationId: "two" });
+  assert.equal((await store.getRecord(key))?.payload.contactMethodsConfirmed, true);
+
+  const olderApp = createStorageProfileOnboardingProgressService({
+    actorId: "olivia", workspaceId, store, hasContactMethod: async () => false,
+  });
+  const olderInitial = await olderApp.apply({ action: "initialize", expectedRevision: null, mutationId: "init" });
+  assert.equal((await olderApp.apply({ ...legacy, expectedRevision: olderInitial.revision })).lastConfirmedScreen, 1);
+  assert.equal((await store.getRecord({ ...key, workspaceId: `${workspaceId}:profile-onboarding-actor:olivia`, userId: "olivia" }))?.payload.contactMethodsConfirmed, undefined);
+});
+
 test("defer preserves the resume screen and finish latches after screen five", async () => {
   const flow = world().actor("alice");
   let state = await flow.apply({ action: "initialize", expectedRevision: null, mutationId: "init" });

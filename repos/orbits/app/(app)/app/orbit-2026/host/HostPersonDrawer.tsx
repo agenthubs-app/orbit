@@ -40,6 +40,7 @@ export function HostPersonView({ data, t, language, phone = false, onClose }: { 
   const recs = data.matching?.recommendations ?? [];
   const shownRecs = allRecs ? recs : recs.slice(0, RECS_FIRST);
   const chips = ([["pdTopics", data.topics], ["pdOffers", data.offers], ["pdNeeds", data.needs]] as const).filter(([, items]) => items.length > 0);
+  const contactRows = [[t("evContactLine"), data.contactMethods?.lineId], [t("evContactWechat"), data.contactMethods?.wechatId], [t("pdEmail"), data.contactMethods?.email], [t("pdPhone"), data.contactMethods?.phone]].filter(([, value]) => Boolean(value));
   return (
     <div className={`${pd.body} ${phone ? pd.phone : ""}`} data-host-person={data.actorId}>
       {phone ? (
@@ -94,6 +95,12 @@ export function HostPersonView({ data, t, language, phone = false, onClose }: { 
         </section>
       ) : null}
 
+      {contactRows.length ? (
+        <section className={pd.section} data-host-person-contacts="">
+          <h3 className={pd.h}>{t("pdContactMethods")}</h3>
+          <dl className={pd.qa}>{contactRows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+        </section>
+      ) : null}
       {data.profile.length || chips.length ? (
         <section className={pd.section}>
           <h3 className={pd.h}>{t("pdProfile")}</h3>

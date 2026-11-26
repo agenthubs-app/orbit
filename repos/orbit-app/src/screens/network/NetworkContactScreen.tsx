@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
 import { whenNotImplemented } from "../../api/compute/not-implemented";
+import { profileContactMethods, type ProfileContactMethods } from "../../api/compute/profile-contact-methods";
 import type { InviteConnectionView } from "../../api/contract/invite-codes";
 import type { PlanContactFit } from "../../api/contract/plan-v2";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
@@ -69,6 +70,13 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const localRows = fixture.enabled ? fixture.data?.rows ?? [] : local.rows;
   const merge = useNetworkMerge();
   const remote = useApiResource<Record<string, unknown>>(`/api/contacts/${encodeURIComponent(contactId)}`, () => false, { scopeKey: contactId, cachePolicy: "network-only", enabled: !fixture.enabled && !local.available });
+  const sharedMethods = useApiResource<ProfileContactMethods>(
+    `/api/contacts/${encodeURIComponent(contactId)}/shared-contact-methods`, () => false,
+    { scopeKey: `${auth.actorId ?? ""}:${contactId}`, cachePolicy: "network-only",
+      enabled: !fixture.enabled && Boolean(auth.actorId) && contactId.startsWith("contact:event-consent:") },
+  );
+  const methods = sharedMethods.kind === "success" ? profileContactMethods(sharedMethods.data) : {};
+  const sharedRows = [[t("network.detail.fieldLineId"), methods.lineId], [t("network.detail.fieldWechatId"), methods.wechatId], [t("network.detail.fieldEmail"), methods.email], [t("network.detail.fieldPhone"), methods.phone]] as const;
   const row = useMemo(() => localRows.find((candidate) => candidate.card?.id === contactId || candidate.id === contactId) ?? null, [localRows, contactId]);
   const card = row ? withLegacyNetworkFields(row).card : null;
   const contact: DetailContact | null = useMemo(() => {
@@ -317,11 +325,19 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
         {/* contact-reach: the invite card arrives with its own read; keep it below 「連絡する」 (same order as the Web drawer) so the button never moves. */}
         {reachCard}
 
+        {sharedRows.some(([, value]) => Boolean(value)) ? (
+          <View style={[styles.card, styles.gapTop]} testID="network-shared-contact-methods">
+            <UiText style={styles.cardTitle} accessibilityRole="header">{t("network.detail.sharedContactMethods")}</UiText>
+            {sharedRows.map(([label, value]) => value ? <View key={label} style={styles.frow}>
+              <UiText style={styles.frowKey}>{label}</UiText><UiText style={[styles.frowValue, styles.grow]}>{value}</UiText>
+            </View> : null)}
+          </View>
+        ) : null}
         {connection ? (
           <View style={[styles.card, styles.gapTop]} testID="network-invite-fields">
-            {(["organization", "role", "email", "offering", "seeking"] as const).map((field) => {
+            {(["organization", "role", "email", "phone", "offering", "seeking"] as const).map((field) => {
               if (fixture.enabled && contactId === "design-person-032" && field === "email") return null;
-              const value = field === "organization" ? contact.organization : field === "role" ? stagedRole : field === "email" ? contact.primaryEmail : field === "offering" ? stagedOffering.join(" · ") : contact.seeking.join(" · ");
+              const value = field === "organization" ? contact.organization : field === "role" ? stagedRole : field === "email" ? contact.primaryEmail : field === "phone" ? contact.primaryPhone : field === "offering" ? stagedOffering.join(" · ") : contact.seeking.join(" · ");
               if (!value) return null;
               const paused = connection.pausedFields.includes(field as never);
               return (

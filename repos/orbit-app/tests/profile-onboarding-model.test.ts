@@ -46,12 +46,13 @@ test("three steps sit on the server's five screens, both ways", () => {
 });
 
 test("missing: name, industry, then detail; one goal; an introduction within its limit", () => {
-  const basic = { ...EMPTY_BASIC, name: "林晓", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" } as const;
+  const basic = { ...EMPTY_BASIC, name: "林晓", lineId: "lin-line", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" } as const;
   const draft = { basic, goals: [], bio: "" };
-  assert.deepEqual(onboardingMissing("profile", { ...draft, basic: EMPTY_BASIC }), ["name", "primaryIndustry"]);
+  assert.deepEqual(onboardingMissing("profile", { ...draft, basic: EMPTY_BASIC }), ["name", "primaryIndustry", "contact"]);
   assert.deepEqual(onboardingMissing("profile", { ...draft, basic: { ...basic, secondaryIndustryId: "" } }), ["secondaryIndustry"]);
   assert.deepEqual(onboardingMissing("profile", { ...draft, basic: { ...basic, name: "  " } }), ["name"]);
-  assert.deepEqual(onboardingMissing("profile", draft), [], "company, title, contacts and birthday are optional");
+  assert.deepEqual(onboardingMissing("profile", draft), [], "company, title and birthday are optional");
+  assert.deepEqual(onboardingMissing("profile", { ...draft, basic: { ...basic, lineId: "", email: "not-an-email" } }), ["contact"]);
   assert.deepEqual(onboardingMissing("goals", draft), ["goals"]);
   assert.deepEqual(onboardingMissing("goals", { ...draft, goals: ["招聘人才"] }), []);
   assert.deepEqual(onboardingMissing("intro", draft), ["intro"]);

@@ -67,8 +67,12 @@ export const usePageCopyResource = (path, _isEmpty, options) => {
   return { kind: "success", data: accountProfile(state.myProfile ?? { offering: ["中日市場進出の相談"], seeking: ["製造業の顧客紹介"], topics: ["AI 活用", "日本市場", "採用", "資金調達", "海外展開", "SaaS"] }), meta: {}, status: 200, refreshing: false, refresh() {}, copy: null };
 };
 export const useApiResource = (path, _isEmpty, options) => {
-  if (options?.enabled !== false) state.requests.push("resource:" + path);
-  return options?.enabled === false ? { kind: "loading", refreshing: false, refresh() {} } : offline;
+  if (options?.enabled === false) return { kind: "loading", refreshing: false, refresh() {} };
+  state.requests.push("resource:" + path);
+  if (state.online && options?.cachePolicy === "network-only" && Object.hasOwn(state.answers ?? {}, path)) {
+    return { kind: "success", data: state.answers[path], refreshing: false, refresh() {} };
+  }
+  return offline;
 };
 const goal = { ids: ["c-takahashi"], truncated: false, asOf: "2026-10-18T00:00:00.000Z", links: [{ contactId: "c-takahashi", label: "VC パートナー", talked: true }], followUpContactIds: ["c-suzuki"] };
 const offlineResult = { success: false, status: 0, error: { message: "offline" } };
@@ -396,6 +400,32 @@ test("detail offline: the device copy still shows; network-only blocks are hidde
   assert.equal(await page.getByTestId("network-fit-card").count(), 0);
   assert.equal(await page.getByText("Led two Series A raises as CFO.", { exact: true }).count(), 0);
   await page.getByText("決算資料のお礼を送る", { exact: true }).waitFor();
+});
+
+test("an exchanged contact shows shared methods from the live read while the cached card still works offline", async (t) => {
+  const id = "contact:event-consent:test-peer";
+  const path = `/api/contacts/${encodeURIComponent(id)}/shared-contact-methods`;
+  const settings = {
+    screen: "detail", params: { id },
+    contacts: [{
+      id, card: null, tags: [],
+      search: { text: "山田 花", occurredAt: "2026-10-01T00:00:00Z", updatedAt: "2026-10-01T00:00:00Z", error: null },
+      detail: { state: "success", contact: { id, displayName: "山田 花" } },
+    }],
+    answers: { [path]: { lineId: "yamada-line", wechatId: "yamada-wechat", email: "yamada@example.test", phone: "03-5555-0142", website: "https://unused.example.test" } },
+  };
+  const page = await open(t, settings);
+  const methods = page.getByTestId("network-shared-contact-methods");
+  await methods.getByText("yamada-line", { exact: true }).waitFor();
+  for (const value of ["yamada-wechat", "yamada@example.test", "03-5555-0142"]) {
+    await methods.getByText(value, { exact: true }).waitFor();
+  }
+  assert.equal(await methods.getByText("https://unused.example.test", { exact: true }).count(), 0);
+  assert.ok((await requests(page)).includes(`resource:${path}`));
+
+  const offline = await open(t, { ...settings, online: false });
+  await offline.getByTestId("network-contact-head").getByText("山田 花", { exact: true }).waitFor();
+  assert.equal(await offline.getByTestId("network-shared-contact-methods").count(), 0);
 });
 
 test("delete online: confirm → DELETE → back to the list, gone, with 元に戻す (restore)", async (t) => {

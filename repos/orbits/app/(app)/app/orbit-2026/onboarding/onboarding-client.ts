@@ -120,7 +120,7 @@ export interface CardAutofill {
   industry: { primaryIndustryId: IndustryIdCode; secondaryIndustryId: SecondaryIndustryIdCode } | null;
   region: { countryCode: string; city?: string } | null;
   seniorityLevel: SeniorityLevelCode | null;
-  /** 名片上印的微信号、LINE、网址；第 ① 步没有输入框，只补进资料里还空着的 handles。 */
+  /** 名片上印的微信号、LINE 和网址。微信号与 LINE 可在基础资料中核对。 */
   handles: { lineId?: string; website?: string; wechatId?: string };
   title: string;
 }

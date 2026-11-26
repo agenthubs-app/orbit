@@ -9,7 +9,7 @@ const RETURN_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Where a field's value came from; the mark is dropped as soon as the person edits it. */
 export type OnboardingMark = "card" | "ai";
-export type OnboardingMarkedField = "name" | "company" | "title" | "email" | "phone" | "homeMarket" | "seniorityLevel" | "primaryIndustryId" | "secondaryIndustryId" | "offer" | "topics";
+export type OnboardingMarkedField = "name" | "company" | "title" | "email" | "phone" | "lineId" | "wechatId" | "homeMarket" | "seniorityLevel" | "primaryIndustryId" | "secondaryIndustryId" | "offer" | "topics";
 
 /** What was typed but not yet confirmed by 「次へ」, so leaving or killing the App loses nothing. */
 export interface OnboardingDraft {

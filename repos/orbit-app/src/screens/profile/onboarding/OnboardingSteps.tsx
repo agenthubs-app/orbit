@@ -30,7 +30,7 @@ import { Emo, KitButton, MarkChip, SelectField, TextField, Toggle, useOnboarding
 
 export type Marks = Partial<Record<OnboardingMarkedField, OnboardingMark>>;
 export type ScanState = { kind: "idle" } | { kind: "scanning" } | { kind: "failed"; message: string } | { kind: "done"; card: number; ai: number };
-export type TextKey = "name" | "company" | "title" | "homeMarket" | "email" | "phone";
+export type TextKey = "name" | "company" | "title" | "homeMarket" | "email" | "phone" | "lineId" | "wechatId";
 
 export interface ProfileStepProps {
   basic: BasicDraft;
@@ -48,12 +48,9 @@ export interface ProfileStepProps {
   onScan: (source: "camera" | "library") => void;
   onText: (key: TextKey, value: string) => void;
   scan: ScanState;
-  /** Contact rows exist only for what a card gave (字段表「没读到时不显示这一行」) or what is already saved. */
-  showEmail: boolean;
-  showPhone: boolean;
 }
 
-export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inputs, marks, onBirth, onClearBirth, onFieldLayout, onPick, onScan, onText, scan, showEmail, showPhone }: ProfileStepProps) {
+export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inputs, marks, onBirth, onClearBirth, onFieldLayout, onPick, onScan, onText, scan }: ProfileStepProps) {
   const { styles, colors } = useOnboardingStyles();
   const { t, language } = useOrbitLocale();
   const busy = scan.kind === "scanning";
@@ -61,7 +58,7 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
   const primary = industry?.primary ?? (basic.primaryIndustryId ? industryLabel(basic.primaryIndustryId, language) : null);
   const secondary = industry?.secondary ?? (basic.secondaryIndustryId && basicIndustryValid(basic) ? secondaryIndustryLabel(basic.secondaryIndustryId, language) : null);
   const text = (key: TextKey, label: string, placeholder: string, extra: object = {}) => (
-    <TextField accessibilityLabel={t(`onboarding.v3.${key === "title" ? "role" : key}`)} editable={!disabled} label={label} mark={marks[key]} maxLength={key === "name" ? 60 : 80} onChangeText={value => onText(key, value)} placeholder={placeholder} value={basic[key]} {...extra} />
+    <TextField accessibilityLabel={t(`onboarding.v3.${key === "title" ? "role" : key}`)} editable={!disabled} label={label} mark={marks[key]} maxLength={key === "email" ? 120 : key === "phone" ? 40 : key === "name" ? 60 : 80} onChangeText={value => onText(key, value)} placeholder={placeholder} value={basic[key] ?? ""} {...extra} />
   );
   const optional = (key: "company" | "role", filled: boolean) => t(filled ? `onboarding.v3.${key}` : key === "company" ? "onboarding.v3.companyOptional" : "onboarding.v3.roleOptional");
   return (
@@ -99,10 +96,17 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
       <SelectField accessibilityLabel={`${t("onboarding.v3.seniority")}：${basic.seniorityLevel ? SENIORITY_LEVEL_LABELS[basic.seniorityLevel][language] : t("onboarding.v3.select")}`} disabled={disabled} icon="down" label={t(marks.seniorityLevel ? "onboarding.v3.seniority" : "onboarding.v3.seniorityOptional")}
         mark={marks.seniorityLevel} onPress={() => onPick("seniority")} placeholder={t("onboarding.v3.select")} value={basic.seniorityLevel ? SENIORITY_LEVEL_LABELS[basic.seniorityLevel][language] : null} />
       {text("homeMarket", t(marks.homeMarket ? "onboarding.v3.homeMarket" : "onboarding.v3.homeMarketOptional"), t("onboarding.v3.homeMarketPlaceholder"))}
-      {showEmail ? text("email", t("onboarding.v3.email"), "", { autoCapitalize: "none", autoComplete: "email", keyboardType: "email-address", textContentType: "emailAddress" }) : null}
-      {showPhone ? text("phone", t("onboarding.v3.phone"), "", { autoComplete: "tel", keyboardType: "phone-pad", textContentType: "telephoneNumber" }) : null}
       <SelectField accessibilityLabel={`${t("onboarding.v3.birthDate")}：${birthLabel ?? t("onboarding.v3.birthDatePlaceholder")}`} disabled={disabled} hint={t("onboarding.v3.birthDateHelp")} icon="calendar" label={t("onboarding.v3.birthDate")} onPress={onBirth} placeholder={t("onboarding.v3.birthDatePlaceholder")} value={birthLabel}
         trailing={birthLabel ? <UiPressable accessibilityLabel={t("onboarding.v3.birthDateClear")} accessibilityRole="button" disabled={disabled} hitSlop={10} onPress={onClearBirth} style={styles.clear}><Icon color={colors.ink3Text} name="x" size={16} /></UiPressable> : null} />
+      <View onLayout={event => onFieldLayout("contact", event)}>
+        <UiText accessibilityRole="header" style={styles.scanDoneTitle}>{t("onboarding.v3.contactTitle")}</UiText>
+        <UiText style={styles.lbl}>{t("onboarding.v3.contactHint")}</UiText>
+        {text("lineId", t("onboarding.v3.lineId"), "", { autoCapitalize: "none" })}
+        {text("wechatId", t("onboarding.v3.wechatId"), "", { autoCapitalize: "none" })}
+        {text("email", t("onboarding.v3.email"), "", { autoCapitalize: "none", autoComplete: "email", keyboardType: "email-address", textContentType: "emailAddress" })}
+        {text("phone", t("onboarding.v3.phone"), "", { autoComplete: "tel", keyboardType: "phone-pad", textContentType: "telephoneNumber" })}
+        {errors.has("contact") ? <UiText accessibilityRole="alert" style={styles.errLine}>{t("onboarding.v3.missContact")}</UiText> : null}
+      </View>
     </>
   );
 }
