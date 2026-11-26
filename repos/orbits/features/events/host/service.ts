@@ -1,3 +1,4 @@
+import type { OrbitLanguage } from "../../../shared/contract/language";
 /**
  * R17 主催的服务接口（mock = `mock.ts` 示例世界；live = `live.ts`，Postgres + 现有 admission / operations / experience / access）。
  * Owner: 甲 (R17). DESIGN §4。
@@ -142,7 +143,8 @@ export interface HostService {
   acceptInvite(actorId: string, code: string, clientKey: string): Promise<HostCohostAcceptResult>;
   checkInEvents(actorId: string): Promise<HostCheckInEventsResponse>;
 
-  noticePreview(actorId: string, eventId: string, kind: HostSendableNoticeKind): Promise<HostNoticePreview | null>;
+  /** `language`：定型文的语言（请求的 x-orbit-lang / orbit-lang cookie；默认 ja）。 */
+  noticePreview(actorId: string, eventId: string, kind: HostSendableNoticeKind, language?: OrbitLanguage): Promise<HostNoticePreview | null>;
   sendNotice(actorId: string, eventId: string, input: HostNoticeSendInput): Promise<HostNoticeSendResult>;
   desktopLink(actorId: string, path: string): Promise<HostDesktopLinkResult>;
 

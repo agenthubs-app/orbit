@@ -339,8 +339,8 @@ export function createHostMockService(): HostService {
     async checkInEvents() {
       return hostCheckInEvents();
     },
-    async noticePreview(_actor, eventId, kind) {
-      return hostNoticePreview(eventId, kind, m().state);
+    async noticePreview(_actor, eventId, kind, language = "ja") {
+      return hostNoticePreview(eventId, kind, m().state, language);
     },
     async sendNotice(_actor, eventId, input) {
       const preview = hostNoticePreview(eventId, input.kind, m().state);

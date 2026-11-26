@@ -6,6 +6,8 @@
  * - 每个响应都过契约 schema。
  */
 import { NextResponse } from "next/server";
+import { resolveRequestOrbitLanguage } from "../../../app/(app)/app/orbit-language-core";
+import { requestCookie } from "../../signup-funnel/context";
 import type { ZodType } from "zod";
 
 import {
@@ -280,7 +282,9 @@ export function createHostRoutes(deps: HostRouteDeps = {}) {
     acceptInvite: r({ ...writes, schema: hostCohostAcceptResultSchema }, async ({ actorId, params, request, service }) => service.acceptInvite(actorId!, id(params, "code"), clientKey(request))),
     checkInEvents: r({ ...required, schema: hostCheckInEventsResponseSchema }, async ({ actorId, service }) => service.checkInEvents(actorId!)),
 
-    noticePreview: r({ ...required, schema: hostNoticePreviewSchema }, async ({ actorId, params, request, service }) => service.noticePreview(actorId!, id(params), (await body(request, hostNoticePreviewInputSchema)).kind)),
+    noticePreview: r({ ...required, schema: hostNoticePreviewSchema }, async ({ actorId, params, request, service }) => service.noticePreview(actorId!, id(params), (await body(request, hostNoticePreviewInputSchema)).kind, resolveRequestOrbitLanguage({
+      acceptLanguage: request.headers.get("accept-language"), cookie: requestCookie(request, "orbit-lang"), header: request.headers.get("x-orbit-lang"),
+    }))),
     sendNotice: r({ ...writes, schema: hostNoticeSendResultSchema }, async ({ actorId, params, request, service }) => service.sendNotice(actorId!, id(params), await body(request, hostNoticeSendInputSchema))),
     desktopLink: r({ ...writes, schema: hostDesktopLinkResultSchema }, async ({ actorId, request, service }) => {
       const raw = (await request.json().catch(() => null)) as { path?: unknown } | null;

@@ -71,6 +71,13 @@ test("live host service end to end", hostDatabaseTest, async () => {
 
     const preview = await service.noticePreview(HOST, eventId, "profile_incomplete");
     assert.equal(preview!.recipients, 0, "both profiles are complete");
+    // 2026-11-26（App 实测）：生成前「资料完成 a / n」与提醒收件人同一口径；提醒定型文按请求语言。
+    const before = await service.matching(HOST, eventId, 1);
+    assert.equal(before.state, "none");
+    assert.equal(before.profileComplete, before.applied - preview!.recipients, "profile complete = applied − reminder recipients");
+    const zh = await service.noticePreview(HOST, eventId, "profile_incomplete", "zh");
+    assert.equal(zh!.title, "请补全个人资料");
+    assert.match(zh!.body, /补全个人资料/);
     assert.equal((await service.sendNotice(HOST, eventId, { idempotencyKey: "send-key-1", kind: "profile_incomplete" })).queued, 0);
     assert.equal((await service.sendNotice(HOST, eventId, { idempotencyKey: "send-key-2", kind: "profile_incomplete" })).queued, 0);
     await assert.rejects(service.sendNotice(HOST, eventId, { idempotencyKey: "send-key-3", kind: "profile_incomplete" }), isHost("RATE_LIMITED"), "at most two reminders per event");

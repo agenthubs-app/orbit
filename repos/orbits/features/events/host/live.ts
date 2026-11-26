@@ -30,6 +30,7 @@ import { createHostLifecycle } from "./storage/lifecycle";
 import { GENERATIONS_PER_EVENT, createHostMatchingStore, draftTables, composeGrouping, memberFor } from "./storage/matching";
 import { createHostProfiles } from "./storage/profiles";
 import { HOST_QUESTION_LIBRARY, hostNoticeTemplates } from "./templates";
+import { renderHostNotice } from "./notices/templates";
 
 /** 现有 event-ops 能力（编组生成 / 发布 / 代签 / 任务产物），测试可注入。 */
 export interface HostOperationsPort {
@@ -308,14 +309,21 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     });
   }
 
+  /** 资料未完成的人（申込中 / 承認済み / キャンセル待ち；完整度 < 100，含主催者质问的回答）：提醒的收件人、生成前检查的人数用同一口径。 */
+  async function incompleteProfiles(eventId: string, organizerActorId: string) {
+    return (await reads.applicants(eventId, organizerActorId, ["admitted", "pending_review", "waitlisted"])).filter((item) => profileScore(item.payload as never, item.hostAnswers) < 100);
+  }
+
   async function matchingView(actorId: string, eventId: string, round: number): Promise<HostMatchingResponse> {
     const caps = await require(actorId, eventId, "operations.read_sensitive");
     const facts = await factsOrThrow(actorId, eventId);
     const latest = deps.operations ? await deps.operations.latestGeneration(eventId) : null;
     const conditions = await matching.conditions(eventId, latest?.tableSize ?? 5);
+    // 生成前检查「资料完成 a / n」：n = 申込数，a = n − 资料未完成（与提醒的收件人同一口径；以前误用了承認済み人数）。只在还没生成时读。
+    const profileComplete = facts.matched === null && !latest ? Math.max(0, facts.applied - (await incompleteProfiles(eventId, facts.organizerActorId)).length) : facts.admitted;
     const base: HostMatchingResponse = {
       applied: facts.applied, conditions, event: await view(actorId, facts, caps), generationId: latest?.generationId ?? null, generationsLimit: GENERATIONS_PER_EVENT, generationsUsed: facts.generations,
-      minimumApplied: 20, overridesVersion: 0, participantCount: 0, profileComplete: facts.admitted, round: 1, rounds: [], state: facts.matched !== null ? "published" : latest ? (latest.status === "completed" ? "draft" : "generating") : "none",
+      minimumApplied: 20, overridesVersion: 0, participantCount: 0, profileComplete, round: 1, rounds: [], state: facts.matched !== null ? "published" : latest ? (latest.status === "completed" ? "draft" : "generating") : "none",
       tableCount: 0, tableSizeMax: conditions.tableSize, tableSizeMin: conditions.tableSize, tables: [], unplaced: [], unsatisfiedTables: 0,
     };
     if (!latest?.grouping) return base;
@@ -834,15 +842,16 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       return { events: await cohosts.checkInEvents(actorId) };
     },
 
-    async noticePreview(actorId, eventId, kind) {
+    async noticePreview(actorId, eventId, kind, language = "ja") {
       await require(actorId, eventId, kind === "event_cancelled" ? "event.cancel" : "event.edit");
       const facts = await factsOrThrow(actorId, eventId);
       const recipients = kind === "profile_incomplete"
-        ? (await reads.applicants(eventId, facts.organizerActorId, ["admitted", "pending_review", "waitlisted"])).filter((item) => profileScore(item.payload as never, item.hostAnswers) < 100).length
+        ? await incompleteProfiles(eventId, facts.organizerActorId).then((list) => list.length)
         : kind === "event_cancelled" ? facts.applied + facts.waitlisted : facts.admitted + facts.waitlisted;
-      const template = { text: hostNoticeTemplates(facts.title).find((item) => item.kind === "profile_incomplete")!.text };
+      // 资料未完成提醒：定型文按请求语言（App 的 x-orbit-lang / Web 的 orbit-lang cookie），与收件人实际收到的同一份模板。
+      const template = renderHostNotice("profile_incomplete", { eventTitle: facts.title, organizerName: null }, null)[language];
       const sent = await reads.sendCount(eventId, kind);
-      return { body: kind === "profile_incomplete" ? template.text : `${facts.title}`, channels: ["inbox", "email"], hostNote: null, kind, recipients, remainingSends: kind === "profile_incomplete" ? Math.max(0, 2 - sent) : 1, title: kind === "profile_incomplete" ? "プロフィールを完成させてください" : facts.title };
+      return { body: kind === "profile_incomplete" ? template.body : `${facts.title}`, channels: ["inbox", "email"], hostNote: null, kind, recipients, remainingSends: kind === "profile_incomplete" ? Math.max(0, 2 - sent) : 1, title: kind === "profile_incomplete" ? template.title : facts.title };
     },
     async sendNotice(actorId, eventId, input) {
       // 中止 / 日時变更的通知在写入时已经发（lifecycle）；这里只发资料未完成提醒（每场 ≤2 次，同人同日 1 次）。
@@ -850,7 +859,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       await require(actorId, eventId, "event.edit");
       const facts = await factsOrThrow(actorId, eventId);
       if ((await reads.sendCount(eventId, "profile_incomplete")) >= 2) throw new HostError("RATE_LIMITED");
-      const targets = (await reads.applicants(eventId, facts.organizerActorId, ["admitted", "pending_review", "waitlisted"])).filter((item) => profileScore(item.payload as never) < 100);
+      const targets = await incompleteProfiles(eventId, facts.organizerActorId);
       const day = now().toISOString().slice(0, 10);
       let queued = 0;
       await client.transaction(async (executor) => {

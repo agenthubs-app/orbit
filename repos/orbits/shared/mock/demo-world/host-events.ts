@@ -701,10 +701,15 @@ export function hostCheckInEvents(): HostCheckInEventsResponse {
 
 // ─── 通知预览 ──────────────────────────────────────────
 
-export function hostNoticePreview(eventId: string, kind: HostNoticePreview["kind"], state: HostMockState = DEFAULT_HOST_MOCK_STATE): HostNoticePreview | null {
+/** 资料未完成提醒的示例正文（三语）。 */
+// 与 features/events/host/notices/templates.ts 的 profile_incomplete 同文。
+const PROFILE_NOTICE_BODY = { en: "Please complete your profile for the table matching (about 2 minutes).", ja: "マッチングのためにプロフィールを完成させてください（所要 2分）。", zh: "为了分桌匹配，请补全个人资料（约 2 分钟）。" } as const;
+const PROFILE_NOTICE_TITLE = { en: "Complete your profile", ja: "プロフィールを完成させてください", zh: "请补全个人资料" } as const;
+
+export function hostNoticePreview(eventId: string, kind: HostNoticePreview["kind"], state: HostMockState = DEFAULT_HOST_MOCK_STATE, language: "ja" | "zh" | "en" = "ja"): HostNoticePreview | null {
   const event = hostEventView(eventId, state);
   if (!event) return null;
-  if (kind === "profile_incomplete") return { body: "マッチングのためにプロフィールを完成させてください（所要 2分）。", channels: ["inbox", "email"], hostNote: null, kind, recipients: 16, remainingSends: 2, sample: true, title: "プロフィールを完成させてください" };
+  if (kind === "profile_incomplete") return { body: PROFILE_NOTICE_BODY[language], channels: ["inbox", "email"], hostNote: null, kind, recipients: 16, remainingSends: 2, sample: true, title: PROFILE_NOTICE_TITLE[language] };
   if (kind === "event_cancelled") return { body: `${event.title} は中止になりました。`, channels: ["inbox", "email"], hostNote: null, kind, recipients: event.appliedCount + event.waitlistedCount, remainingSends: 1, sample: true, title: `${event.title} は中止になりました` };
   return { body: `${event.title} の日時・会場が変わりました。`, channels: ["inbox", "email"], hostNote: null, kind, recipients: event.approvedCount + event.waitlistedCount, remainingSends: 1, sample: true, title: `${event.title} の日時・会場が変わりました` };
 }
