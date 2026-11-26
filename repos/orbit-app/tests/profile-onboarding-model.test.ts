@@ -50,6 +50,8 @@ test("missing: name, industry, then detail; one goal; an introduction within its
   const draft = { basic, goals: [], bio: "" };
   assert.deepEqual(onboardingMissing("profile", { ...draft, basic: EMPTY_BASIC }), ["name", "primaryIndustry", "contact"]);
   assert.deepEqual(onboardingMissing("profile", { ...draft, basic: { ...basic, secondaryIndustryId: "" } }), ["secondaryIndustry"]);
+  // UR-R repair: with no industry both are listed (「あと 2 項目：業界、業界の詳細」), and contact methods are not asked for.
+  assert.deepEqual(onboardingMissing("profile", { ...draft, basic: { ...EMPTY_BASIC, name: "林晓" } }, "2026-11-27"), ["primaryIndustry", "secondaryIndustry"]);
   assert.deepEqual(onboardingMissing("profile", { ...draft, basic: { ...basic, name: "  " } }), ["name"]);
   assert.deepEqual(onboardingMissing("profile", draft), [], "company, title and birthday are optional");
   assert.deepEqual(onboardingMissing("profile", { ...draft, basic: { ...basic, lineId: "", email: "not-an-email" } }), ["contact"]);

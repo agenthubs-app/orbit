@@ -10,7 +10,7 @@ import { createThemedStyles } from "../design/theme";
 import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
 
 const LABEL = { email: "network.contactMethods.email", lineId: "network.contactMethods.line", phone: "network.contactMethods.phone", wechatId: "network.contactMethods.wechat" } as const;
-const WHAT = { email: "network.contactMethods.whatEmail", lineId: "network.contactMethods.whatLine", phone: "network.contactMethods.whatPhone", wechatId: "network.contactMethods.whatWechat" } as const;
+const COPIED = { email: "network.contactMethods.copiedEmail", lineId: "network.contactMethods.copiedLine", phone: "network.contactMethods.copiedPhone", wechatId: "network.contactMethods.copiedWechat" } as const;
 const ORDER: readonly ProfileContactMethod[] = ["lineId", "wechatId", "email", "phone"];
 
 export function ContactMethodRows({ methods, testID }: { methods: unknown; testID?: string }) {
@@ -20,7 +20,7 @@ export function ContactMethodRows({ methods, testID }: { methods: unknown; testI
   const values = profileContactMethods(methods);
   const rows = ORDER.filter((method) => values[method]);
   const copy = async (method: ProfileContactMethod) => {
-    try { await Clipboard.setStringAsync(values[method]!); toast.success(t("network.contactMethods.copied", { what: t(WHAT[method]) })); } catch { toast.error(t("network.contactMethods.copyFailed")); }
+    try { await Clipboard.setStringAsync(values[method]!); toast.success(t(COPIED[method])); } catch { toast.error(t("network.contactMethods.copyFailed")); }
   };
   if (!rows.length) return <UiText style={styles.none} testID={testID ? `${testID}-none` : undefined}>{t("network.contactMethods.none")}</UiText>;
   return (

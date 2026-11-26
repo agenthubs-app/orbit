@@ -348,7 +348,8 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
 
   const missing = view === "loading" || view === "loadError" ? [] : onboardingMissing(view, { basic, goals, bio }, repair ? today : undefined);
   const introBlocked = view === "intro" && introStatus === "generating";
-  const shown = attempted || repair ? (introBlocked ? ["intro" as const] : missing) : [];
+  // UR-R：补资料页缺项点「保存」后才标；只有旧生日无效时一进来就标。
+  const shown = attempted ? (introBlocked ? ["intro" as const] : missing) : repair ? missing.filter(field => field === "birthDate") : [];
   const errors = new Set<OnboardingMissingField>(shown);
   const bioCount = bioCounter(bio);
   const fieldError = (field: OnboardingMissingField): string => {

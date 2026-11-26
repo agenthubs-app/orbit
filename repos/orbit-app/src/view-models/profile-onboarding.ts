@@ -266,7 +266,8 @@ export function onboardingMissing(step: OnboardingStep, draft: { basic: BasicDra
   if (step === "intro") return draft.bio.trim() && !bioCounter(draft.bio).over ? [] : ["intro"];
   const missing: OnboardingMissingField[] = [];
   if (!draft.basic.name.trim()) missing.push("name");
-  if (!draft.basic.primaryIndustryId) missing.push("primaryIndustry");
+  // 补资料页（UR-R）没选行业时两项都列（「あと 2 項目：業界、業界の詳細」）；引导里详细只在选了行业之后才问。
+  if (!draft.basic.primaryIndustryId) missing.push(...(repairToday ? ["primaryIndustry", "secondaryIndustry"] as const : ["primaryIndustry"] as const));
   else if (!basicIndustryValid(draft.basic)) missing.push("secondaryIndustry");
   if (repairToday) {
     if (draft.basic.birthDate && !isValidProfileBirthDate(draft.basic.birthDate, repairToday)) missing.push("birthDate");

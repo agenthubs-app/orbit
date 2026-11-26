@@ -67,11 +67,13 @@ export function HostPersonView({ data, t }: { data: HostPersonResponse; t: HostT
         </View>
       ) : null}
 
-      {/* UR-S10：报名者共享给主办方的联系方式；一个都没有时这一段仍在，一行说明（主办方知道不是漏看）。 */}
-      <View style={styles.section} testID="host-person-contacts">
-        <UiText style={styles.h} accessibilityRole="header">{t("pdContactMethods")}</UiText>
-        <View style={styles.scbox}><ContactMethodRows methods={data.contactMethods ?? {}} /></View>
-      </View>
+      {/* UR-S10：报名者共享给主办方的联系方式；一个都没有时这一段仍在，一行说明（主办方知道不是漏看）。已拒绝的报名者不显示（同 Web）。 */}
+      {data.status === "rejected" ? null : (
+        <View style={styles.section} testID="host-person-contacts">
+          <UiText style={styles.h} accessibilityRole="header">{t("pdContactMethods")}</UiText>
+          <View style={styles.scbox}><ContactMethodRows methods={data.contactMethods ?? {}} /></View>
+        </View>
+      )}
 
       {data.hostAnswers.length ? (
         <View style={styles.section} testID="host-person-answers">

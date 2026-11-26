@@ -103,7 +103,7 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
         <SelectField accessibilityLabel={`${t("onboarding.v3.primaryIndustry")}：${primary ?? t("onboarding.v3.select")}`} disabled={disabled} error={errors.has("primaryIndustry") ? t("onboarding.v3.missIndustry") : undefined} icon="down" label={t("onboarding.v3.primaryIndustry")}
           mark={marks.primaryIndustryId} onPress={() => onPick("primary")} placeholder={t("onboarding.v3.select")} pressRef={inputs.primary} style={repair ? {} : styles.fieldHalf} value={primary} />
         <SelectField accessibilityLabel={`${t("onboarding.v3.secondaryIndustry")}：${secondary ?? t("onboarding.v3.select")}`} disabled={disabled || !basic.primaryIndustryId} error={errors.has("secondaryIndustry") ? t("onboarding.v3.missDetail") : undefined} icon="down" label={t("onboarding.v3.secondaryIndustry")}
-          mark={marks.secondaryIndustryId} onPress={() => onPick("secondary")} placeholder={basic.primaryIndustryId ? t("onboarding.v3.select") : t("onboarding.v3.none")} pressRef={inputs.secondary} style={repair ? {} : styles.fieldHalf} value={secondary} />
+          mark={marks.secondaryIndustryId} onPress={() => onPick("secondary")} placeholder={basic.primaryIndustryId ? t("onboarding.v3.select") : repair ? t("onboarding.v3.repairDetailHint") : t("onboarding.v3.none")} pressRef={inputs.secondary} style={repair ? {} : styles.fieldHalf} value={secondary} />
       </View>
       {repair ? null : <>
       <SelectField accessibilityLabel={`${t("onboarding.v3.seniority")}：${basic.seniorityLevel ? SENIORITY_LEVEL_LABELS[basic.seniorityLevel][language] : t("onboarding.v3.select")}`} disabled={disabled} icon="down" label={t(marks.seniorityLevel ? "onboarding.v3.seniority" : "onboarding.v3.seniorityOptional")}
@@ -113,6 +113,8 @@ export function ProfileStep({ basic, birthLabel, disabled, errors, industry, inp
       {!repair || repair.birthDate ? <View onLayout={event => onFieldLayout("birthDate", event)}>
       <SelectField error={errors.has("birthDate") ? t("onboarding.v3.missBirthDate") : undefined} accessibilityLabel={`${t("onboarding.v3.birthDate")}：${birthLabel ?? t("onboarding.v3.birthDatePlaceholder")}`} disabled={disabled} hint={t("onboarding.v3.birthDateHelp")} icon="calendar" label={t("onboarding.v3.birthDate")} onPress={onBirth} placeholder={t("onboarding.v3.birthDatePlaceholder")} value={birthLabel}
         trailing={basic.birthDate ? <UiPressable accessibilityLabel={t("onboarding.v3.birthDateClear")} accessibilityRole="button" disabled={disabled} hitSlop={10} onPress={onClearBirth} style={styles.clear}><Icon color={colors.ink3Text} name="x" size={16} /></UiPressable> : null} />
+      {/* UR-R5/R9：旧生日无效时可以「生年月日を消す」（生日不是必填，谁都看不到）。 */}
+      {repair?.birthDate && errors.has("birthDate") ? <View style={styles.clearBirth}><KitButton disabled={disabled} label={t("onboarding.v3.repairClearBirth")} onPress={onClearBirth} size="sm" variant="surface" /></View> : null}
       </View> : null}
       {repair ? null : <ContactGroup basic={basic} disabled={disabled} errors={errors} marks={marks} onLayout={event => onFieldLayout("contact", event)} text={text} />}
     </>

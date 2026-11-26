@@ -394,6 +394,7 @@ export const useOnboardingStyles = createThemedStyles(colors => StyleSheet.creat
   radDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.plum700 },
   optFade: { position: "absolute", left: 0, right: 0, bottom: 0, height: 40 },
   repairNotice: { marginTop: 4 },
+  clearBirth: { alignItems: "flex-start", marginTop: 8 },
   dim: { opacity: 0.55 },
   sheetRow: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48, paddingHorizontal: 14, borderRadius: 14, backgroundColor: colors.surface2, marginBottom: 6 },
   sheetRowOn: { backgroundColor: colors.accentSoft },

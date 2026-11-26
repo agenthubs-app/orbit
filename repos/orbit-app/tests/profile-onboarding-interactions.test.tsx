@@ -422,14 +422,17 @@ test("a migrated account repairs its required fields on one page, keeps saved de
     ...flowAt(3), legacyRepair: true,
   });
   // UR-R10：顶部一句来由；标题「确认个人资料」。
-  await page.getByText("确认个人资料", { exact: true }).first().waitFor();
-  assert.equal(await page.getByTestId("onboarding-repair-notice").innerText(), "📦\n已沿用你之前报名活动时填写的内容。补齐缺少的项目并保存后，会回到你刚才打开的页面。");
-  await page.getByText("行业用于在活动中帮你找到聊得来的人。", { exact: true }).waitFor();
+  await page.getByText("确认资料", { exact: true }).first().waitFor();
+  assert.equal(await page.getByTestId("onboarding-repair-notice").innerText(), "📦\n已沿用你之前活动报名的资料。补上缺的项目并保存后，回到刚才打开的页面。");
+  await page.getByText("行业用来在活动中帮你找到聊得来的人。", { exact: true }).waitFor();
+  // 缺项点「保存」后才标。
+  assert.deepEqual(await alerts(page), []);
   assert.equal(await page.getByTestId("onboarding-contact-methods").count(), 0);
   assert.equal(await page.getByRole("textbox", { name: "公司" }).count(), 0);
   assert.equal(await page.getByText(/第1\/3步/).count(), 0);
   await next(page).click();
   assert.equal((await fx(page)).requests.filter((request: any) => request.method === "PUT").length, 0);
+  assert.equal((await alerts(page)).at(-1), "还差2项：姓名、细分");
   await page.getByRole("textbox", { name: "姓名" }).fill("林晓");
   // UR-R11：行业面板标题旁写件数，选项是单选。
   await page.getByRole("button", { name: /^细分：/u }).click();
