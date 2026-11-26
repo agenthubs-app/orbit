@@ -28,8 +28,8 @@ const ITEM_LABEL: Record<EventJoinProfileItemKey, string> = { company: "itemComp
 const REFUSAL: Readonly<Record<string, "joinCancelled" | "joinClosed" | "joinLocked" | "joinRejected">> = { JOIN_CANCELLED: "joinCancelled", JOIN_CLOSED: "joinClosed", JOIN_LOCKED: "joinLocked", JOIN_REJECTED: "joinRejected" };
 
 const ITEM_OF_FIELD: Readonly<Record<string, EventJoinProfileItemKey>> = { desiredOutcome: "purpose", experienceHighlight: "topics", targetAttendees: "target", valueOffered: "offer" };
-/** How long the self-introduction draft may take before the review offers writing one instead (TODO: Web's number). */
-export const INTRO_DRAFT_TIMEOUT_MS = 25_000;
+/** How long the review waits for the self-introduction draft: one model call (60 s) plus the network (as Web). */
+export const INTRO_DRAFT_TIMEOUT_MS = 70_000;
 
 /** A question of an existing registration, and the review item its answer fills (null = its own row). */
 type AskedQuestion = { item: EventJoinProfileItemKey | null; question: EventJoinQuestion };
@@ -115,20 +115,30 @@ function RegisterFlow() {
     const said = drafting === "running" ? "introDrafting" : drafting === "failed" ? "introDraftFailed" : "introDrafted";
     AccessibilityInfo.announceForAccessibility(tRef.current(said));
   }, [drafting]);
+  // 答完后 AI 写自我介绍：写好之前确认页说「正在写」，不能报名、不能改介绍。已经有介绍（写过或本人改过）就不再写（同 Web）。
+  // 最多等 INTRO_DRAFT_TIMEOUT_MS；没写成 / 超时 → 资料里的介绍或空，并说明可以自己写或直接报名。超时后才回来的 AI 稿，介绍还空着就放进去。
   const draftIntro = useCallback(async (answered: readonly EventJoinAnswer[]) => {
+    if (given.current.intro !== null) return;
     const run = ++draftRun.current;
     setDrafting("running");
+    const take = (drafted: Awaited<ReturnType<typeof api.joinProfile>>) => {
+      if (drafted.ok) setProfile(drafted.data);
+      const self = drafted.ok ? drafted.data.selfIntro : null;
+      setIntro(self?.text ?? "");
+      setDrafting(self?.source === "ai_draft" ? "idle" : "failed");
+    };
+    const request = api.joinProfile(eventId, answered, true);
     let timer: ReturnType<typeof setTimeout> | undefined;
     // Tests shorten the wait through window.orbitIntroDraftTimeoutMs.
     const limit = (globalThis as { orbitIntroDraftTimeoutMs?: number }).orbitIntroDraftTimeoutMs ?? INTRO_DRAFT_TIMEOUT_MS;
-    const late = new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), limit); });
-    const drafted = await Promise.race([api.joinProfile(eventId, answered, true), late]);
+    const first = await Promise.race([request, new Promise<"timeout">((resolve) => { timer = setTimeout(() => resolve("timeout"), limit); })]);
     clearTimeout(timer);
     if (run !== draftRun.current) return;
-    const text = drafted?.ok ? drafted.data.selfIntro?.text?.trim() : "";
-    if (drafted?.ok) setProfile(drafted.data);
-    if (text) setIntro((current) => current ?? text);
-    setDrafting(text ? "idle" : "failed");
+    if (first !== "timeout") { take(first); return; }
+    setIntro("");
+    setDrafting("failed");
+    const late = await request;
+    if (run === draftRun.current && given.current.intro === "" && late.ok && late.data.selfIntro?.source === "ai_draft") take(late);
   }, [api, eventId]);
   const showEdit = useCallback((list: readonly EventJoinQuestion[], answered: readonly EventJoinAnswer[], byChoice: boolean) => {
     const [first, ...rest] = list;
@@ -412,28 +422,25 @@ function RegisterFlow() {
             <View style={[styles.row, { gap: 8 }]}><UiText style={styles.h3}>{t("introLbl")}</UiText><UiText style={styles.lbl}>{t("introShown")}</UiText></View>
             <View style={[styles.row, { gap: 6 }]}>
               {profile?.selfIntroBasis ? <UiPressable accessibilityRole="button" accessibilityLabel={t("introWhy")} accessibilityState={{ expanded: why }} onPress={() => setWhy((value) => !value)} style={styles.why}><UiText style={styles.whyText}>?</UiText></UiPressable> : null}
-              {drafting === "running" ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("edit")} onPress={() => setEditingIntro((value) => !value)} style={styles.lbtn}><Icon name="pen" size={16} color={colors.ink2} /></UiPressable>}
+              <UiPressable accessibilityRole="button" accessibilityLabel={t("edit")} disabled={drafting === "running"} accessibilityState={{ disabled: drafting === "running" }} onPress={() => setEditingIntro((value) => !value)} style={[styles.lbtn, drafting === "running" ? styles.blockWait : null]}><Icon name="pen" size={16} color={colors.ink2} /></UiPressable>
             </View>
           </View>
           {drafting === "running" ? (
-            <View testID="events-join-intro-drafting">
-              <UiText style={styles.lbl}>{t("introDrafting")}</UiText>
-              <Bones style={{ marginTop: 10 }}><Bone h={14} /><Bone w="88%" h={14} style={{ marginTop: 9 }} /><Bone w="62%" h={14} style={{ marginTop: 9 }} /></Bones>
+            <View testID="events-join-intro-drafting" accessibilityState={{ busy: true }}>
+              <Bones><Bone h={14} /><Bone w="88%" h={14} style={{ marginTop: 9 }} /><Bone w="62%" h={14} style={{ marginTop: 9 }} /></Bones>
             </View>
-          ) : drafting === "failed" && !shownIntro.trim() && !editingIntro ? (
-            <UiText style={styles.sub} testID="events-join-intro-failed">{t("introDraftFailed")}</UiText>
           ) : editingIntro ? (
             <TextInput value={shownIntro} onChangeText={setIntro} multiline maxLength={400} accessibilityLabel={t("introLbl")} style={styles.textarea} />
           ) : <UiText style={styles.introText}>{shownIntro}</UiText>}
+          {drafting === "idle" ? null : <UiText accessibilityLiveRegion="polite" style={[styles.lbl, { marginTop: 8 }]} testID={drafting === "running" ? "events-join-intro-status" : "events-join-intro-failed"}>{t(drafting === "running" ? "introDrafting" : "introDraftFailed")}</UiText>}
           {why && profile?.selfIntroBasis ? <View style={styles.whyBody}><UiText style={styles.whyBodyText}>{profile.selfIntroBasis}</UiText></View> : null}
         </View>
         <View style={[styles.card, styles.gap, styles.flat]}>
           <UiText style={[styles.lbl, { marginBottom: 8 }]}>{t("visibilityTitle")}</UiText>
           <View style={[styles.row, { gap: 8 }]}><View style={[styles.chip, { backgroundColor: colors.macTeal }]}><UiText style={[styles.chipText, { color: colors.macTealInk }]}>{t("visAll")}</UiText></View><UiText style={[styles.sub, styles.fill]}>{t("visAllFields")}</UiText></View>
         </View>
-        {drafting === "running" ? <UiText style={[styles.lbl, { marginBottom: 8, textAlign: "center" }]} testID="events-join-apply-wait">{t("applyWaitIntro")}</UiText> : null}
-        <UiPressable accessibilityRole="button" accessibilityLabel={t(editing ? "joinSave" : "applyNow")} accessibilityHint={drafting === "running" ? t("applyWaitIntro") : undefined} accessibilityState={{ disabled: busy || drafting === "running" }} disabled={busy || drafting === "running"} onPress={() => void apply()} style={[styles.block48, drafting === "running" ? styles.blockWait : null]} testID="events-join-apply"><UiText style={styles.primaryText}>{t(editing ? "joinSave" : "applyNow")}</UiText></UiPressable>
-        {drafting !== "running" && profile?.editableUntil ? <UiText style={[styles.lbl, { marginTop: 8, textAlign: "center" }]}>{t("editableUntil", { date: monthDaySlash(profile.editableUntil) })}</UiText> : null}
+        <UiPressable accessibilityRole="button" accessibilityLabel={t(drafting === "running" ? "introDrafting" : editing ? "joinSave" : "applyNow")} accessibilityState={{ disabled: busy || drafting === "running" }} disabled={busy || drafting === "running"} onPress={() => void apply()} style={[styles.block48, drafting === "running" ? styles.blockWait : null]} testID="events-join-apply"><UiText style={styles.primaryText}>{t(drafting === "running" ? "introDrafting" : editing ? "joinSave" : "applyNow")}</UiText></UiPressable>
+        {profile?.editableUntil ? <UiText style={[styles.lbl, { marginTop: 8, textAlign: "center" }]}>{t("editableUntil", { date: monthDaySlash(profile.editableUntil) })}</UiText> : null}
       </JourneyPage>
     );
   }

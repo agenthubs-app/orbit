@@ -1925,7 +1925,6 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["eventsJourney.addTopic", "chip"],
   ["eventsJourney.introShown", "chip"],
   ["eventsJourney.introDrafting", "label"],
-  ["eventsJourney.applyWaitIntro", "label"],
   ["eventsJourney.introDraftFailed", "label"],
   ["eventsJourney.introDrafted", "label"],
   ["eventsJourney.visibilityTitle", "label"],
