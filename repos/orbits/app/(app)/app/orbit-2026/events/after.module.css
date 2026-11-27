@@ -79,3 +79,5 @@
 .pFoot.pFoot { gap: 8px; margin-top: 12px; }
 .pNote.pNote { text-align: center; margin-top: 8px; }
 .pNote :global(svg) { vertical-align: -3px; }
+/* 2026-11-27 硬规则：视口 <768 永远不画「次の一手」电脑版表格（手机走 b12 #368 卡片分支；这里兜住宽度判断还没落定的那一帧）。 */
+@media (max-width: 767px) { .table { display: none; } }

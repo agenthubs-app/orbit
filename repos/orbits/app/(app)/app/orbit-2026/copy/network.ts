@@ -50,6 +50,7 @@ export const networkCopy = {
   macManualSub: { ja: "名前だけで保存", zh: "只填姓名也能保存", en: "A name is enough", kind: "label" },
   otherWays: { ja: "その他：", zh: "其他：", en: "Other:", kind: "label" },
   otherContacts: { ja: "📱 連絡先", zh: "📱 通讯录", en: "📱 Contacts", kind: "chip" },
+  otherLinkedin: { ja: "🔗 LinkedIn CSV", zh: "🔗 LinkedIn CSV", en: "🔗 LinkedIn CSV", kind: "chip" },
   sampleTitle: { ja: "登録するとこう並びます", zh: "登记后会这样排列", en: "Once added, people look like this", kind: "label" },
   sampleDotsBefore: { ja: "右の 3 つの点は", zh: "右边的3个点是", en: "The three dots on the right show", kind: "label" },
   sampleDotsBold: { ja: "情報の濃さ", zh: "信息完整度", en: "how well you know someone", kind: "label" },

@@ -105,3 +105,9 @@ td.lblCell { display: table-cell; white-space: nowrap; }
 
 /* > 1440: the header, line included, keeps the 1440 design width centred. */
 @media (min-width: 1441px) { .deletedHeader { margin-inline: calc((100% - 1440px) / 2); } }
+/* 2026-11-27 硬规则：视口 <768 导出记录不画表格版式，改成列表行（日期 · 范围 · 状态）。 */
+@media (max-width: 767px) {
+  .historyTable, .historyTable tbody { display: block; }
+  .historyTable tr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--space-10); padding: 11px 0; border-top: 1px solid var(--line); }
+  .historyTable td { display: block; min-width: 0; padding: 0; border-top: 0; }
+}

@@ -19,6 +19,7 @@ import { FilterOption, Icon, Orbit2026Scope, Popover, SampleTag, Skeleton, Toast
 import { PageSkeletonBody } from "../shell/PageSkeleton";
 import { ContactAvatar, ContactDrawer, useNetworkT, type NetworkT } from "./ContactDrawer";
 import { networkApi } from "./network-api";
+import { ADD_SCAN_HREF } from "../add/AddContactDoors";
 import {
   DENSITY_OPTIONS, EMPTY_FILTERS, MET_OPTIONS, NETWORK_ANALYSIS_UNLOCK_CONTACTS, PAGE_SIZE, STAGE_OPTIONS, TOP_INDUSTRIES, TOP_REGIONS, filterCount, filtersFromSearch, headerCounts,
   OTHER_KEY, industryOptionLabel, lastTouch, networkQuery, networkRow, regionLabel, toggle, topFacetOptions, type NetworkCityKey, type NetworkFilters, type NetworkRow, type NetworkTab,
@@ -221,7 +222,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
       {narrow && subtitle && !(summary === null && !failed) ? <div className={`${styles.lbl} ${styles.mobileStat}`} data-network-mobile-heading="">{subtitle}</div> : null}
       {summary === null && !failed ? (narrow ? <div data-network-loading=""><PageSkeletonBody kind="network" label={loadingLabel} bare /></div> : <div className={styles.card} data-network-loading=""><Skeleton lines={6} /></div>)
         : failed && summary === null ? <div className={styles.card} role="alert"><p>{t("loadFailed")}</p><button type="button" className={`btn ${styles.btn}`} onClick={refresh}>{t("filterClear")}</button></div>
-          : empty ? <NetworkEmpty t={t} nowMs={nowMs} />
+          : empty ? <NetworkEmpty t={t} nowMs={nowMs} narrow={narrow} />
             : (
               <>
               {narrow ? <div className={styles.mobileTools}>
@@ -396,11 +397,33 @@ function FilterPanel({ t, language, summary, filters, onChange, matched, total, 
   );
 }
 
-function NetworkEmpty({ t, nowMs }: { t: NetworkT; nowMs: number }) {
+function NetworkEmpty({ t, nowMs, narrow }: { t: NetworkT; nowMs: number; narrow: boolean }) {
   const sample: NetworkRow[] = [
     { id: "sample-1", name: t("sampleName1"), organization: t("sampleSub1").split(" · ")[0] ?? "", role: t("sampleSub1").split(" · ")[1] ?? "", goal: { label: t("sampleGoal1"), talked: true }, density: 3, chip: "meishi", addedAt: null, lastInteractionAt: new Date(nowMs - 2 * 86_400_000).toISOString() },
     { id: "sample-2", name: t("sampleName2"), organization: t("sampleSub2").split(" · ")[0] ?? "", role: t("sampleSub2").split(" · ")[1] ?? "", goal: { label: t("sampleGoal2"), talked: false }, density: 1, chip: "linkedin", addedAt: "2024-03-10T03:00:00.000Z", lastInteractionAt: null },
   ];
+  // 2026-11-27 手机（<768）：照 app.html 人脈 empty（390）画——居中引导卡 · 两格入口 · 其他 · 示例是手机列表，不画电脑版示例表格。
+  if (narrow) return (
+    <div className={styles.phoneEmpty} data-network-empty="" data-network-empty-phone="">
+      <div className={`${styles.card} ${styles.phoneGuide}`}>
+        <span className={styles.phoneGuideEmoji} aria-hidden="true">🪐</span>
+        <b className={styles.phoneGuideTitle}>{t("guideTitle")}</b>
+        <span className={styles.phoneGuideBody}>{t("guideBody")}</span>
+        <a className={`btn ${styles.btn} ${styles.primary} ${styles.phoneGuideCta}`} href={ADD_SCAN_HREF}><Icon name="scan" size={16} />{t("scanCard")}</a>
+      </div>
+      <div className={styles.phoneMacs}>
+        {([["🤝", "t_pink", "macInvite", "macInviteSub", "/app/contacts/new?add=invite"], ["✍️", "t_lav", "macManual", "macManualSub", "/app/contacts/new?add=manual"]] as const).map(([emoji, tone, title, sub, href]) => (
+          <a key={title} className={`${styles.phoneMac} ${styles[tone]}`} href={href}><span className={styles.phoneMacEmoji} aria-hidden="true">{emoji}</span><span className={styles.grow}><b>{t(title)}</b><span className={styles.lbl}>{t(sub)}</span></span></a>
+        ))}
+      </div>
+      <div className={styles.phoneOther}>{t("otherWays")}<a className={styles.chip} href="/app/contacts/new/import?method=contacts">{t("otherContacts")}</a><a className={styles.chip} href="/app/contacts/new/import?method=csv">{t("otherLinkedin")}</a></div>
+      <div className={`${styles.card} ${styles.phoneSample}`}>
+        <div className={styles.cardH}><h3>{t("sampleTitle")} <SampleTag /></h3></div>
+        <div className={styles.faded} aria-hidden="true" {...{ inert: "" }}><NetworkMobileList rows={sample} t={t} nowMs={nowMs} onOpen={() => undefined} /></div>
+        <div className={`${styles.lbl} ${styles.phoneSampleNote}`}>{t("sampleDotsBefore")}<b>{t("sampleDotsBold")}</b>{t("sampleDotsAfter")}</div>
+      </div>
+    </div>
+  );
   const doors = [["🤝", "t_pink", 3, "doorInvite", "doorInviteSub", "/app/contacts/new?add=invite"], ["✍️", "t_lav", 1, "doorManual", "doorManualSub", "/app/contacts/new?add=manual"], ["📱", "t_blue", 1, "doorContacts", "doorContactsSub", "/app/contacts/new/import?method=contacts"], ["🔗", "t_teal", 1, null, "doorLinkedinSub", "/app/contacts/new/import?method=csv"]] as const;
   return (
     <div className={styles.wgrid} data-network-empty="">

@@ -183,3 +183,5 @@
 .pTile.pTile { margin: 0; padding: 14px 6px; display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink); text-decoration: none; text-align: center; min-width: 0; }
 .pListMeta.pListMeta { display: inline-flex; align-items: center; gap: 10px; }
 .pReopen { color: var(--ink-2); font-weight: var(--fw-bold); text-decoration: none; }
+/* 同一硬规则也管见面准备的电脑版「想见的人」表格（PrepPage 用这里的 .table；手机走手机分支）。 */
+@media (max-width: 767px) { .table.table { display: none; } }

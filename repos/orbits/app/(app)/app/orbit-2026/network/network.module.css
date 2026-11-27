@@ -218,3 +218,25 @@
 .logError { font-size: var(--fs-meta); color: var(--coral-text); margin: 0 0 10px; }
 .scCard.scCard { padding: 6px 18px 8px; }
 .scCard .cardH { margin: 12px 0 0; }
+
+/* 2026-11-27 手机空状态（app.html 人脈 empty · 390）：居中引导卡 · 两格入口 · 其他 · 示例手机列表。 */
+.phoneEmpty { display: flex; flex-direction: column; min-width: 0; }
+.phoneGuide { align-items: center; text-align: center; padding: var(--space-24) var(--space-20); }
+.phoneGuideEmoji { font-size: var(--fs-display-big); line-height: 1; }
+.phoneGuideTitle { margin-top: var(--space-8); font-size: var(--fs-section); font-weight: var(--fw-heavy); }
+.phoneGuideBody { margin: var(--space-6) 0 var(--space-16); font-size: var(--fs-meta); color: var(--ink-2); white-space: pre-line; }
+.phoneGuideCta.phoneGuideCta { align-self: stretch; height: 50px; }
+.phoneMacs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-8); margin-top: var(--space-12); }
+.phoneMac { display: flex; align-items: center; gap: var(--space-10); min-width: 0; padding: var(--space-11) var(--space-12); border-radius: var(--r-tile); color: var(--ink); text-decoration: none; }
+.phoneMac b { display: block; font-size: var(--fs-control); }
+.phoneMac .lbl { display: block; font-size: var(--fs-tiny); }
+.phoneMacEmoji { font-size: var(--fs-emoji-md); flex: 0 0 auto; }
+.phoneOther { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-8); margin-top: var(--space-10); font-size: var(--fs-meta); font-weight: var(--fw-bold); color: var(--ink-2); }
+.phoneOther .chip { text-decoration: none; }
+.phoneSample { margin-top: var(--space-14); }
+.phoneSample .mobileList { margin-top: 0; }
+.phoneSampleNote { margin-top: var(--space-8); line-height: 1.6; }
+.phoneSampleNote b { color: var(--ink-2); }
+
+/* 硬规则（2026-11-27）：视口 <768 永远不画电脑版人脉表格（手机走 NetworkMobileList；这里兜住宽度判断还没落定的那一帧）。 */
+@media (max-width: 767px) { .table { display: none; } }

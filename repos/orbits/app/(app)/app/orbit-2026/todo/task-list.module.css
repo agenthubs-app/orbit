@@ -117,3 +117,14 @@
 @media (max-width: 767px) { .emptyGrid { grid-template-columns: minmax(0, 1fr); } .emptyGuide { padding: var(--space-20); } .emptyMark { font-size: var(--fs-emoji-xl); } }
 /* 2026-11-21 手机：`.top h1 { flex: 1 }` 的 0 基准让 width:100% 失效，标题被挤成「タスク / 一覧」→ 基准 100%；触屏没有键盘快捷键，提示不显示。 */
 @media (max-width: 767px) { .top h1 { flex: 1 1 100%; } .emptyGuideActions > span { display: none; } }
+/* 2026-11-27 硬规则：视口 <768 不画表格版式——任务表改成列表行（b3 タスク一覧 App：勾选圈 · 标题/对象 · 日期 chip；b8「表格 → 卡片列表」）。 */
+@media (max-width: 767px) {
+  .taskTable, .taskTable tbody { display: block; }
+  .taskTable thead { display: none; }
+  .groupRow, .groupRow th { display: block; }
+  .groupRow th { padding: var(--space-18) 0 var(--space-6); }
+  .taskRow { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; column-gap: var(--space-4); min-height: 64px; border-bottom: 1px solid var(--surface-3); }
+  .taskRow:last-child { border-bottom: 0; }
+  .taskRow td { display: block; height: auto; min-width: 0; padding: 0; border-bottom: 0; }
+  .taskRow td.relatedCell, .taskRow td.actionCell { display: none; }
+}
