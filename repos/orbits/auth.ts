@@ -1,6 +1,7 @@
 // NextAuth v5 配置(参考 seiki-world 的结构:配置放项目根,route 只 re-export)。
 // 会话用 JWT 策略,不引数据库 adapter——用户记录走 features/auth 的
 // live-record-store,和全仓库其余数据同一存储模式。
+import { accountTierOf } from "./features/ai-quota/tiers";
 import { recordLastUiLanguage } from "./features/account-language/last-ui-language";
 import { resolveRequestOrbitLanguage } from "./app/(app)/app/orbit-language-core";
 import { readProfileDisplayName } from "./features/profile/session-display-name";
@@ -115,6 +116,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         const state = await checkSessionForRequest(token.email, token.sub, authenticatedAt);
         if (!state.current) return null;
         token.emailVerification = state.emailVerification;
+        token.tier = state.tier;
         // Keep the original authentication time as Auth.js rotates iat on refresh.
         token.authenticatedAt = authenticatedAt;
       }
@@ -180,6 +182,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (token.sub) {
         session.user.id = token.sub;
         session.user.emailVerification = (token.emailVerification as EmailVerificationFlags | null | undefined) ?? null;
+        session.user.tier = accountTierOf(token.tier);
         if (typeof token.profileName === "string" && token.profileName) session.user.name = token.profileName;
       }
 

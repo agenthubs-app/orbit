@@ -242,3 +242,22 @@ test("max_calls covers the round's exits: main budget 4 + judgment 3 requests ×
   assert.equal(AI_QUOTA_MAX_CALLS.agent_chat, 10);
   assert.ok(AI_QUOTA_MAX_CALLS.agent_chat <= 20, "the table allows at most 20");
 });
+
+test("2026-11-27 tiers: over the free monthly 100, the round answers with the number, the reset date and the Pro limit; the tier reaches the ledger", async () => {
+  const reserves: AiQuotaReserveInput[] = [];
+  const gate: AiQuotaGate = {
+    async beginCall() { throw new Error("unused"); },
+    async endCall() { throw new Error("unused"); },
+    async finish() { throw new Error("unused"); },
+    async reserve(input) { reserves.push(input); return { cap: 100, limit: "monthly", ok: false, reason: "monthly_limit", retryOn: "2026-11-30T15:00:00.000Z", used: 100 }; },
+  };
+  const { deps, model } = graphEntry(gate);
+  const doc = await send({ ...deps, tier: "free" }, "帮我处理一下小林那件事。", "zh");
+  assert.equal(model.calls.length, 0);
+  assert.equal(doc.status, "completed");
+  assert.equal(doc.answer?.text, "这个月的 100 轮对话已用完，12月1日恢复。升级到 Pro 每月可对话 1,000 轮。");
+  assert.equal(reserves[0]?.tier, "free");
+  const pro = await send({ ...graphEntry(gate).deps, tier: "pro" }, "帮我处理一下小林那件事。", "en");
+  assert.equal(reserves.at(-1)?.tier, "pro");
+  assert.equal(pro.answer?.text, "This month's 100 conversations are used up. They come back on December 1. Everything you already have can still be viewed as usual.", "the ledger's cap is what the line says; no upgrade line on pro");
+});

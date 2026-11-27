@@ -135,8 +135,8 @@ test("堵抢注：未验证的密码账号第一次被同邮箱 Google 并入 �
   const google = await users().getOrCreateOAuthUser({ email: account.email, provider: "google", providerAccountId: "g2" });
   assert.ok(google.state === "success" && google.data.user.id === account.userId && !google.data.created);
   assert.equal((await users().verifyCredentials({ email: account.email, password: "password-one" })).state, "failure");
-  assert.deepEqual(await readAuthSessionState({ ...account, authenticatedAt: before }, database()), { current: false, emailVerification: { sent: false, verified: true } });
-  assert.deepEqual(await readAuthSessionState({ ...account, authenticatedAt: at.getTime() + 1 }, database()), { current: true, emailVerification: { sent: false, verified: true } });
+  assert.deepEqual(await readAuthSessionState({ ...account, authenticatedAt: before }, database()), { current: false, emailVerification: { sent: false, verified: true }, tier: "free" });
+  assert.deepEqual(await readAuthSessionState({ ...account, authenticatedAt: at.getTime() + 1 }, database()), { current: true, emailVerification: { sent: false, verified: true }, tier: "free" });
   assert.equal((await payload(account.email)).consents.length, 1, "同意记录不动");
   // 忘记密码：发得出链接，重设后能用新密码登录，再用 Google 登录不再动它。
   const reset = createPasswordResetService(createPasswordResetStore(client as never, W), "s".repeat(32), () => at);

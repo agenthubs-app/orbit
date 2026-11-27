@@ -18,6 +18,7 @@
  * The contacts-analysis entry (origin contacts.analysis) keeps the old pipeline: the new entry refuses it on protocol 3
  * as well. The route then runs it with the old write paths closed (legacyWritesClosed).
  */
+import type { AccountTier } from "../../ai-quota/tiers";
 import { createHash, randomUUID } from "node:crypto";
 import { after, NextResponse } from "next/server";
 
@@ -195,8 +196,8 @@ export interface LegacyClientDeps {
   sleep?: (ms: number) => Promise<void>;
 }
 
-function configuredLegacyDeps(mode: FeatureMode, actorId: string): LegacyClientDeps | null {
-  const entry = configuredAgentEntryDependencies(mode, actorId);
+function configuredLegacyDeps(mode: FeatureMode, actorId: string, tier?: AccountTier): LegacyClientDeps | null {
+  const entry = configuredAgentEntryDependencies(mode, actorId, tier);
   if (!entry) return null;
   const sessions = createOrbitAgentChatSessionProvider(mode, actorId);
   return {
@@ -209,13 +210,13 @@ function configuredLegacyDeps(mode: FeatureMode, actorId: string): LegacyClientD
  * An old client's message on the new flow. Answers the old shape: 200 with the reply (and, for protocol 2, the receipt),
  * 202 with the receipt when it is not done yet, 400 for a body the old path would also refuse.
  */
-export async function handleLegacyClientSend(input: { actorId: string; body: Record<string, unknown>; deps?: LegacyClientDeps | null; mode: FeatureMode }): Promise<LegacyClientSendResult> {
+export async function handleLegacyClientSend(input: { actorId: string; body: Record<string, unknown>; deps?: LegacyClientDeps | null; mode: FeatureMode; tier?: AccountTier }): Promise<LegacyClientSendResult> {
   const legacy = legacySendOf(input.actorId, input.body);
   if (!legacy) {
     return { body: failure(new AppError("VALIDATION_ERROR", input.body.protocolVersion === 2 ? "A valid reliable conversation request is required." : "A message is required.")) as unknown as Record<string, unknown>, status: 400 };
   }
   const send = legacy.send;
-  const deps = input.deps === undefined ? configuredLegacyDeps(input.mode, input.actorId) : input.deps;
+  const deps = input.deps === undefined ? configuredLegacyDeps(input.mode, input.actorId, input.tier) : input.deps;
   if (!deps) return { body: failure(new AppError("SERVICE_UNAVAILABLE", "Agent request storage is not configured.")) as unknown as Record<string, unknown>, status: 503 };
   let accepted: Awaited<ReturnType<typeof acceptMessage>>;
   try {

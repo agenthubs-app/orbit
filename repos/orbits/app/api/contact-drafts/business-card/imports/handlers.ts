@@ -1,3 +1,5 @@
+import { cardScanLimitError, chargeCardScan } from "../../../../../features/ai-quota/card-scan-quota";
+import { DEFAULT_ACCOUNT_TIER } from "../../../../../features/ai-quota/tiers";
 import { getConfiguredV1Preparation } from "../../../../../features/acquisition/business-card-v1-preparation/configured";
 import { publicV1PreparationJob } from "../../../../../features/acquisition/business-card-v1-preparation/public-job";
 import type { createV1PreparationRepository } from "../../../../../features/acquisition/business-card-v1-preparation/repository";
@@ -76,7 +78,16 @@ export function createV1ImportHandlers({ resolveActor = resolveAuthenticatedApiA
           return failure(400, "INVALID_IMPORT_REQUEST");
         }
         const runtime = await configured(); if (!runtime) return failure(503, "IMPORT_UNAVAILABLE");
-        const job = await runtime.jobs.admit({ actorId: actor.id, requestKey: body.requestKey, sourceIds: body.sourceIds as string[] });
+        // 2026-11-27 分档：导入也计扫名片的月上限（按图片张数，同一 requestKey 只计一次）；放不下就整批不受理。
+        const charge = await chargeCardScan({ actorId: actor.id, chargeKey: `import:${body.requestKey}`, chunks: [body.sourceIds.length], tier: actor.tier ?? DEFAULT_ACCOUNT_TIER });
+        if (charge.kind === "limited") {
+          const limited = cardScanLimitError(charge.notice);
+          return Response.json({ error: { code: limited.code, context: limited.context, message: limited.message } }, { status: 429, headers });
+        }
+        const job = await runtime.jobs.admit({ actorId: actor.id, requestKey: body.requestKey, sourceIds: body.sourceIds as string[] }).catch(async (error: unknown) => {
+          await charge.refund();
+          throw error;
+        });
         return Response.json({ data: { job: publicV1PreparationJob(job) } }, { status: 202, headers });
       } catch (cause) { return repositoryFailure(cause); }
     },

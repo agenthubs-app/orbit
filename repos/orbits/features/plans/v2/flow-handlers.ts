@@ -80,7 +80,7 @@ function flowRoute<T>(schema: ZodType<T>, handle: (service: PlanFlowService, req
     if (guardSampleWrite && (request.headers.get("x-orbit-sample")?.trim() === "1" || (actor && isSampleWrite(request, actor.id)))) {
       return NextResponse.json(failure(new AppError("FORBIDDEN", "SAMPLE_READ_ONLY: sample data cannot be saved."), { reason: "SAMPLE_READ_ONLY" }), { headers, status: 403 });
     }
-    const resolution = (dependencies.resolveService ?? ((input) => resolvePlanFlowService(input)))({ actorId: actor?.id ?? DEMO_ACTOR_ID, mode });
+    const resolution = (dependencies.resolveService ?? ((input) => resolvePlanFlowService(input)))({ actorId: actor?.id ?? DEMO_ACTOR_ID, mode, ...(actor?.tier ? { tier: actor.tier } : {}) });
     if (resolution.success === false) {
       return NextResponse.json(failure(new AppError("SERVICE_UNAVAILABLE", resolution.error.message), { capabilityId: resolution.error.capabilityId, reason: resolution.error.code, requestedMode: resolution.error.requestedMode }), { headers, status: getHttpStatusForAppErrorCode("SERVICE_UNAVAILABLE") });
     }

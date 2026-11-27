@@ -4,6 +4,8 @@
  * 单位一律是「次操作」：一次 `reserve` = 1 次操作，一次操作内部可发多次 HTTP（上限 `max_calls`），
  * 额度只算 1 次；成本按每次 HTTP 一条子账（`ai_usage_calls`）。用户改数值只改这里的常量。
  */
+import { sharedTierLimit } from "./tiers";
+
 export type AiQuotaPool = "user" | "background" | "system";
 export type AiQuotaPurpose =
   | "plan"
@@ -33,7 +35,7 @@ export type AiQuotaPurpose =
   | "plan_prep"
   // iOrbit 对话（agent v1，用户 2026-11-27 定）：一轮对话 = 1 次操作，只作防滥用的每日上限，不是会员额度。
   | "agent_chat"
-  // 2026-11-27（用户定「加隐藏月上限」）：个人简介草稿、「我在寻找」建议、跟进邮件草稿——一次生成 = 1 次操作，只有月上限。
+  // 2026-11-27（用户定，月上限公开）：个人简介草稿、「我在寻找」建议、跟进邮件草稿——一次生成 = 1 次操作，只有月上限。
   | "draft_assist";
 export type AiQuotaTrigger = "auto" | "manual" | "plan";
 
@@ -50,13 +52,13 @@ export const AI_QUOTA_TRIGGERS: readonly AiQuotaTrigger[] = ["auto", "manual", "
 /** 用户主动池总熔断：每人每东京日 10 次操作（含手动重新分析；W0057 起不含即时洞察生成，见 `isInstantInsightOperation`）。 */
 export const USER_POOL_DAILY_LIMIT = 10;
 /** 手动重新分析（snapshot／manual）：每人每东京日 3 次操作，同时受用户池总熔断约束。 */
-export const MANUAL_REANALYSIS_DAILY_LIMIT = 3;
+export const MANUAL_REANALYSIS_DAILY_LIMIT = sharedTierLimit("manual_reanalysis", "day");
 /**
  * W0057（D62，W57-1）：即时洞察生成（名片确认／重新分析后当场生成，`pool: user`、`purpose: insight`、`trigger: auto`）
  * 自己的日上限：每人每东京日 20 次操作（每次 ≤20 人）。它**不计入** `USER_POOL_DAILY_LIMIT`（对 D45 总熔断的修订）；
  * 超出时调用方静默退回后台池（只标待更新，由维护任务处理）。
  */
-export const INSTANT_INSIGHT_DAILY_LIMIT = 20;
+export const INSTANT_INSIGHT_DAILY_LIMIT = sharedTierLimit("instant_insight", "day");
 /** 后台自动池：每人每东京日 60 次操作。 */
 export const BACKGROUND_POOL_DAILY_LIMIT = 60;
 /** 每批（洞察、按文字补全）最多 20 人 = 1 次操作。 */
@@ -126,26 +128,27 @@ export const AI_QUOTA_MONTHLY_LIMITS: Readonly<Partial<Record<AiQuotaPurpose, nu
   plan_intake: 60,
   plan_background: 10,
   plan_draft: 30,
-  plan_revise: 30,
+  // 2026-11-27：对外公开、两档相同的上限取自 tiers.ts（唯一来源）。
+  plan_revise: sharedTierLimit("plan_revise", "month"),
   plan_review_mark: 20,
-  plan_review: 3,
+  plan_review: sharedTierLimit("plan_review", "month"),
   // R26（events DESIGN §3.1 / §9 #22）：活动评估免费每东京月 10 次（付费档上线时再加不限）。
-  event_assessment: 10,
+  event_assessment: sharedTierLimit("event_assessment", "month"),
   // LF4（主会话代定，2026-10-21）：报名 persona / 自己紹介每次提交都会重新生成，原来没有上限；每东京月 30 次
   // （LF13：旧的 /persona 接口也计在这里）。
   event_registration_interview: 30,
-  // 2026-11-27 隐藏月上限（防滥用保险丝，界面不展示数字；正常用户碰不到）。
-  memo_extraction: 300,
-  draft_assist: 60,
+  // 2026-11-27 月上限（对外公开，数值取自 tiers.ts）。
+  memo_extraction: sharedTierLimit("memo_extraction", "month"),
+  draft_assist: sharedTierLimit("draft_assist", "month"),
 };
 
 /**
- * 2026-11-27 隐藏月上限（用户定「加隐藏月上限」）：同一用途按池 / 触发方式分开的月上限（`AI_QUOTA_MONTHLY_LIMITS` 只能按用途），
- * 每人每东京自然月、不含 released。只为把恶意账号每月能花的钱压住，不是会员额度，界面上不展示数字。改数值只改这里。
+ * 2026-11-27 月上限（对外公开，写进使用规则）：同一用途按池 / 触发方式分开的月上限（`AI_QUOTA_MONTHLY_LIMITS` 只能按用途），
+ * 每人每东京自然月、不含 released。数值取自 tiers.ts（唯一来源），改数值只改那里。
  */
-export const INSTANT_INSIGHT_MONTHLY_LIMIT = 60;
-export const BACKGROUND_INSIGHT_MONTHLY_LIMIT = 40;
-export const MANUAL_REANALYSIS_MONTHLY_LIMIT = 10;
+export const INSTANT_INSIGHT_MONTHLY_LIMIT = sharedTierLimit("instant_insight", "month");
+export const BACKGROUND_INSIGHT_MONTHLY_LIMIT = sharedTierLimit("background_insight", "month");
+export const MANUAL_REANALYSIS_MONTHLY_LIMIT = sharedTierLimit("manual_reanalysis", "month");
 
 export interface AiQuotaMonthlyFuse {
   pool: AiQuotaPool;
@@ -171,13 +174,13 @@ export function monthlyFuseFor(input: { pool: AiQuotaPool; purpose: AiQuotaPurpo
 /**
  * R26（events DESIGN §3.1）：活动评估在用户主动池里单独计日数，**不占** `USER_POOL_DAILY_LIMIT`（照 `PLAN_FLOW_DAILY_LIMIT` 的写法）。
  */
-export const EVENT_ASSESSMENT_DAILY_LIMIT = 5;
+export const EVENT_ASSESSMENT_DAILY_LIMIT = sharedTierLimit("event_assessment", "day");
 
 /**
  * iOrbit 对话（用户 2026-11-27 定）：每人每东京自然日最多 100 轮。独立计数，**不占** `USER_POOL_DAILY_LIMIT` 的 10 次总熔断
  * （先例：`INSTANT_INSIGHT_DAILY_LIMIT`、`PLAN_FLOW_DAILY_LIMIT`）。改数值只改这里。
  */
-export const AGENT_CHAT_DAILY_LIMIT = 100;
+export const AGENT_CHAT_DAILY_LIMIT = sharedTierLimit("agent_chat", "day");
 
 export function isAgentChatOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose }): boolean {
   return input.pool === "user" && input.purpose === "agent_chat";

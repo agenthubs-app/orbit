@@ -32,7 +32,7 @@ export async function POST(request: Request): Promise<Response> {
     language: typeof body.language === "string" ? body.language : null,
   });
   await ledgered.finish(result.success === true ? "succeeded" : "failed");
-  if (ledgered.refusal() === "quota") return aiMonthlyLimitResponse(ledgered.quotaDetail());
+  if (ledgered.refusal() === "quota") return aiMonthlyLimitResponse({ detail: ledgered.quotaDetail(), tier: actor.tier });
   const status = result.success === true
     ? 200
     : result.error.code === "CANDIDATES_REQUIRED"

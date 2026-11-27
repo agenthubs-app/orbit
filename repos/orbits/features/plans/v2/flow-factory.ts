@@ -3,6 +3,7 @@
  * `ORBIT_PLAN_V2_AI=ai` 且有 `DEEPSEEK_API_KEY`、live 数据库（账本）时用 DeepSeek，否则 mock（DESIGN §5.1：授权前一律 mock；
  * 生产默认 mock）。mock 模块模式下联系人与资料来自演示世界。
  */
+import type { AccountTier } from "../../ai-quota/tiers";
 import { getConfiguredNetworkAnalysisRuntime } from "../../network-analysis/runtime";
 import { DEFAULT_BUSINESS_CARD_TEXT_MODEL } from "../../acquisition/deepseek-business-card-ocr-provider";
 import { bindDeepseekPlanChat } from "../ai-generator";
@@ -37,7 +38,7 @@ export function configuredPlanFlowAi(env: Record<string, string | undefined> = p
   return createDeepseekPlanFlowAi({ chat: bindDeepseekPlanChat({ apiKey, maxTokens: PLAN_V2_MAX_OUTPUT_TOKENS, model }), ledger: runtime.ledger, model });
 }
 
-export function resolvePlanFlowService(input: { actorId: string; mode?: ModuleMode | string; now?: () => Date; ai?: PlanFlowAi }): ServiceResolution<PlanFlowService> {
+export function resolvePlanFlowService(input: { actorId: string; mode?: ModuleMode | string; now?: () => Date; ai?: PlanFlowAi; tier?: AccountTier }): ServiceResolution<PlanFlowService> {
   const parts = resolvePlanV2Parts(input);
   if (parts.success === false) return parts;
   const { pool, repository, scope, service } = parts.service;
@@ -55,6 +56,7 @@ export function resolvePlanFlowService(input: { actorId: string; mode?: ModuleMo
       scope,
       // R34 / R35 合流：起草前的联网搜索。live 下按 `ORBIT_PLAN_SEARCH` / `TAVILY_API_KEY` 选 tavily 或 disabled，mock 模式给固定来源。
       search: live ? configuredPlanSearch() : createMockPlanSearch(),
+      ...(input.tier ? { tier: input.tier } : {}),
     }),
     success: true,
   };

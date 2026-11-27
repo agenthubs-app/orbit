@@ -14,7 +14,7 @@ export async function resolveOrbitAgentConversationRequestContext(
   return resolveAgentRequestContext(mode, {
     authenticate: async () => {
       const actor = await resolveAuthenticatedApiActor();
-      return actor ? { user: { id: actor.id } } : null;
+      return actor ? { user: { id: actor.id, tier: actor.tier ?? null } } : null;
     },
   });
 }

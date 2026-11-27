@@ -78,11 +78,11 @@ export function createProfileIntroDraftHandler(dependencies: {
       if (!flow) {
         // Existing accounts without a first onboarding flow keep the settings draft path.
         const direct = await generate(actor.id, language);
-        return direct.limited ? aiMonthlyLimitResponse(direct.limited) : draftResponse(direct.result);
+        return direct.limited ? aiMonthlyLimitResponse({ detail: direct.limited, tier: actor.tier }) : draftResponse(direct.result);
       }
       if (typeof key !== "string" && flow.finishedAt) {
         const direct = await generate(actor.id, language);
-        return direct.limited ? aiMonthlyLimitResponse(direct.limited) : draftResponse(direct.result);
+        return direct.limited ? aiMonthlyLimitResponse({ detail: direct.limited, tier: actor.tier }) : draftResponse(direct.result);
       }
       if (typeof key !== "string") return error(400, "VALIDATION_ERROR", "An idempotency key is required during onboarding.");
       const quota = quotaForActor(actor.id);
@@ -102,7 +102,7 @@ export function createProfileIntroDraftHandler(dependencies: {
       }
       const persisted = await quota.complete(key, result);
       // 隐藏月上限：这次没有调用模型；记下失败（不占引导的 3 次），回月上限的 429（客户端换新键再试）。
-      return limited ? aiMonthlyLimitResponse(limited) : draftResponse(persisted);
+      return limited ? aiMonthlyLimitResponse({ detail: limited, tier: actor.tier }) : draftResponse(persisted);
     } catch (caught) {
       if (caught instanceof Error && caught.message === "MUTATION_CONFLICT") return error(409, "IDEMPOTENCY_CONFLICT", "This request key was already used for a different draft.");
       return error(503, "SERVICE_UNAVAILABLE", "The draft request could not be saved. Please retry later.");

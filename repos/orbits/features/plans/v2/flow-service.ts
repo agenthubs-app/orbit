@@ -8,6 +8,8 @@
  *   标出上限；C6 / C7 不保存任何东西、不计次。
  * - 确定 = `PlanV2Service.createPlanFromDraft`（同一份草稿重复确定只建一份），再把草稿、intake 标成已确定。
  */
+import { overLimitContext, overLimitNotice, overLimitText } from "../../ai-quota/over-limit";
+import { DEFAULT_ACCOUNT_TIER, tierLimit, type AccountTier } from "../../ai-quota/tiers";
 import { createHash, randomUUID } from "node:crypto";
 
 import { PLAN_ALLOCATION_STEP, validateAllocations, type PlanAllocationError, type PlanAllocationSlot } from "../../../shared/compute/plan-allocation";
@@ -82,8 +84,11 @@ import { rankPlanMemberCandidates } from "../../../shared/compute/plan-member-ca
 import { activeAwards, PLAN_REVIEW_MONTHLY_LIMIT, planReviewQuota, planSinceConfirmed, type PlanReviewBudgetReader, type PlanV2Service } from "./service";
 import type { PlanV2LogEntry, PlanV2Row, PlanV2TypeItem } from "./types";
 
-/** 每人每月新建目标的上限（DESIGN §10 第 4 项，用户已确认）。按新建的生成流程计（「もう一度」不重复计）。 */
-export const PLAN_NEW_GOAL_MONTHLY_LIMIT = 10;
+/**
+ * 每人每月新建目标的上限，按新建的生成流程计（「もう一度」不重复计）。2026-11-27 起按账户档位（free 1 / pro 10，
+ * features/ai-quota/tiers.ts 是唯一来源）；这个常量是 free 档的值（不传档位时用）。
+ */
+export const PLAN_NEW_GOAL_MONTHLY_LIMIT = tierLimit(DEFAULT_ACCOUNT_TIER, "plan_new_goal", "month") ?? 1;
 /** C1 每人每东京日上限。 */
 export const PLAN_GOAL_KIND_DAILY_LIMIT = 20;
 /** C4 每个 intake 上限。 */
@@ -150,7 +155,7 @@ const REASON_CODES: Record<PlanFlowErrorReason, AppErrorCode> = {
 };
 
 /** `details.allocationError`（R36a）：确定带调整被配点校验拒绝时的 `PlanAllocationError` 码（HTTP 400 的 context 里一并返回）。 */
-export type PlanFlowErrorDetails = { limit?: "daily" | "monthly"; retryOn?: string | null; allocationError?: PlanAllocationError };
+export type PlanFlowErrorDetails = { limit?: "daily" | "monthly"; retryOn?: string | null; allocationError?: PlanAllocationError } & Partial<Record<`quota${string}`, string>>;
 
 export class PlanFlowError extends AppError {
   readonly reason: PlanFlowErrorReason;
@@ -236,6 +241,8 @@ export interface PlanFlowServiceOptions {
    * 来源只有业界现状库，`risks` 多一条「本次未能联网核实」。
    */
   search?: PlanSearchLike;
+  /** 2026-11-27 分档：账户档位（新建目标的月上限按它；不给 = free）。 */
+  tier?: AccountTier;
 }
 
 /* ------------------------------------------------------------------ */
@@ -299,6 +306,8 @@ function blankContent(): PlanDraftContent {
 /* ------------------------------------------------------------------ */
 
 export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlowService {
+  const tier = options.tier ?? DEFAULT_ACCOUNT_TIER;
+  const newGoalMonthlyLimit = tierLimit(tier, "plan_new_goal", "month") ?? PLAN_NEW_GOAL_MONTHLY_LIMIT;
   const { ai, context: source, planService, repository, scope } = options;
   const nowDate = options.now ?? (() => new Date());
   const now = () => nowDate().toISOString();
@@ -352,7 +361,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
   }
 
   async function newGoalsLeft(reader: Pick<PlanV2Transaction, "countIntakesSince">): Promise<number> {
-    return Math.max(0, PLAN_NEW_GOAL_MONTHLY_LIMIT - (await reader.countIntakesSince(tokyoMonthStart(nowDate()))));
+    return Math.max(0, newGoalMonthlyLimit - (await reader.countIntakesSince(tokyoMonthStart(nowDate()))));
   }
 
   async function intakeView(reader: Pick<PlanV2Transaction, "countIntakesSince">, intake: PlanIntakeRow, context: PlanFlowRequestContext): Promise<PlanIntakeView> {
@@ -1161,7 +1170,12 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         if (prior) return { fresh: false, intake: await requireIntake(tx, prior.intakeId) };
         const active = await tx.activePlans();
         if (active.length >= PLAN_V2_GOAL_LIMIT) throw new PlanFlowError("PLAN_GOAL_LIMIT", `At most ${PLAN_V2_GOAL_LIMIT} goals can be active at the same time.`);
-        if ((await newGoalsLeft(tx)) <= 0) throw new PlanFlowError("GOAL_MONTHLY_LIMIT", "No more new goals this month.", { limit: "monthly", retryOn: nextTokyoMonthStart(nowDate()) });
+        if ((await newGoalsLeft(tx)) <= 0) {
+          // 2026-11-27：公开的上限——带上超额提示的机器字段（哪项、上限、已用、恢复时间、能否升级），客户端据此写出提示。
+          const retryOn = nextTokyoMonthStart(nowDate());
+          const notice = overLimitNotice({ cap: newGoalMonthlyLimit, feature: "plan_new_goal", period: "month", retryOn, tier, used: await tx.countIntakesSince(tokyoMonthStart(nowDate())) });
+          throw new PlanFlowError("GOAL_MONTHLY_LIMIT", overLimitText("en", notice), { limit: "monthly", retryOn, ...overLimitContext(notice) });
+        }
         const at = now();
         const intake: PlanIntakeRow = {
           aiSteps: emptyIntakeAiSteps(),

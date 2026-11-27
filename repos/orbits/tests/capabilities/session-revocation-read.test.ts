@@ -454,7 +454,7 @@ test("SC-03 (a) SQL shape: regular rows carry only the decision columns (compat 
     // The email-verified flag is decided from the payload's own sign-in method; the row's provider columns are not read.
     assert.doesNotMatch(call.text.replace("payload ->> 'provider'", ""), /\bselect\s+\*|search_text|evidence_ids|source_|provider/u);
     const row = call.rows[0]!;
-    assert.deepEqual(Object.keys(row).sort(), ["c1", "c2", "c3", "c4", "c5", "deletion_requested_at", "email_mailed", "email_verified", "id", "lifecycle_state", "password_changed_at", "readable"]);
+    assert.deepEqual(Object.keys(row).sort(), ["c1", "c2", "c3", "c4", "c5", "deletion_requested_at", "email_mailed", "email_verified", "id", "lifecycle_state", "password_changed_at", "readable", "tier"]);
     assert.deepEqual([row.c1, row.c2, row.c3, row.c4, row.c5], [null, null, null, null, null]);
     assert.deepEqual([row.lifecycle_state, row.id, row.password_changed_at, row.readable], ["active", USER, before, true]);
     for (const text of FORBIDDEN_ROW_TEXT) assert.ok(!JSON.stringify(row).includes(text), `regular row has no ${text}`);

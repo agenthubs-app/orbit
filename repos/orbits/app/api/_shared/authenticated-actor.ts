@@ -1,3 +1,4 @@
+import { accountTierOf, type AccountTier } from "../../../features/ai-quota/tiers";
 import { NextResponse } from "next/server";
 
 import { auth } from "../../../auth";
@@ -29,6 +30,8 @@ export interface AuthenticatedApiActor {
   email?: string | null;
   /** From the session check's own read; absent = not known. */
   emailVerification?: { verified: boolean; sent: boolean };
+  /** 2026-11-27: the account tier (free unless operations set pro); rides on the session check's read, no extra query. */
+  tier?: AccountTier;
   name?: string | null;
   /** 资料里的姓名。`name` 是会话里的账号名（简化注册后是邮箱前缀），给别人看的名字用这个，没有才退回 `name`。 */
   profileName?: string;
@@ -121,7 +124,8 @@ export async function resolveAuthenticatedApiActor(): Promise<AuthenticatedApiAc
     userId: session.user.id,
   });
   const { emailVerification } = session.user;
-  return actor && emailVerification ? { ...actor, emailVerification } : actor;
+  if (!actor) return actor;
+  return { ...actor, ...(emailVerification ? { emailVerification } : {}), tier: accountTierOf(session.user.tier) };
 }
 
 // Layout, page and server components resolve the same actor; within one server render they share

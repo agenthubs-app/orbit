@@ -1,3 +1,5 @@
+import { cardScanLimitError, chargeCardScan } from "../../../../../features/ai-quota/card-scan-quota";
+import { DEFAULT_ACCOUNT_TIER } from "../../../../../features/ai-quota/tiers";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
@@ -219,12 +221,24 @@ export function createBusinessCardBatchCollectionHandlers(
       );
     }
 
-    const batch = await service.createBatch({
-      actorId: actor.id,
-      items,
-      now: new Date().toISOString(),
-      sourceFiles,
-    });
+    // 2026-11-27 分档：旧的 v1 批量也计扫名片的月上限（按图片张数）；放不下就整批不受理。
+    const charge = await chargeCardScan({ actorId: actor.id, chunks: [items.length], tier: actor.tier ?? DEFAULT_ACCOUNT_TIER });
+    if (charge.kind === "limited") {
+      const body = cardScanLimitError(charge.notice);
+      return NextResponse.json(failure(new AppError("CONFLICT", body.message), body.context), { headers: runtimeBoundaryHeaders(mode), status: 429 });
+    }
+    let batch: Awaited<ReturnType<typeof service.createBatch>>;
+    try {
+      batch = await service.createBatch({
+        actorId: actor.id,
+        items,
+        now: new Date().toISOString(),
+        sourceFiles,
+      });
+    } catch (error) {
+      await charge.refund();
+      throw error;
+    }
 
     return NextResponse.json(
       success({ acceptedFiles: sourceFiles, batch, rejectedFiles }),

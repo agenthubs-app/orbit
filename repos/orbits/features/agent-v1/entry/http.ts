@@ -8,6 +8,7 @@
  *   GET  /api/ai/conversations/sessions/[id]/events          → handleAgentV1Events
  *   POST /api/ai/runs/[requestId]/transition {action:cancel} → handleAgentV1Cancel
  */
+import type { AccountTier } from "../../ai-quota/tiers";
 import { after, NextResponse } from "next/server";
 
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
@@ -45,7 +46,7 @@ function usageLedgerFor(mode: FeatureMode): AiQuotaGate | null {
   return runtime ? createPostgresAiUsageLedger({ client: runtime.client, workspaceId: runtime.workspaceId }) : null;
 }
 
-export function configuredAgentEntryDependencies(mode: FeatureMode, actorId: string): AgentEntryDependencies | null {
+export function configuredAgentEntryDependencies(mode: FeatureMode, actorId: string, tier?: AccountTier): AgentEntryDependencies | null {
   const store = storeFor(mode);
   if (!store) return null;
   const provider = createOrbitAgentChatSessionProvider(mode, actorId);
@@ -55,6 +56,7 @@ export function configuredAgentEntryDependencies(mode: FeatureMode, actorId: str
     schedule: afterResponse,
     sessions: provider ? createSessionWriter(provider) : null,
     store,
+    ...(tier ? { tier } : {}),
     usage: usageLedgerFor(mode),
   };
 }
@@ -68,6 +70,8 @@ export async function handleAgentV1Send(input: {
   actorId: string | null;
   mode: FeatureMode;
   dependencies?: AgentEntryDependencies | null;
+  /** 2026-11-27: the account tier from the session (the chat's monthly limit follows it). */
+  tier?: AccountTier;
 }): Promise<Response> {
   const { mode } = input;
   if (!agentV1EntryEnabled()) {
@@ -80,7 +84,7 @@ export async function handleAgentV1Send(input: {
     return errorResponse(mode, new AppError("VALIDATION_ERROR", "The contacts analysis entry still sends with protocol version 2."), 400);
   }
   const actorId = input.actorId ?? "mock:anonymous";
-  const dependencies = input.dependencies ?? configuredAgentEntryDependencies(mode, actorId);
+  const dependencies = input.dependencies ?? configuredAgentEntryDependencies(mode, actorId, input.tier);
   if (!dependencies) return errorResponse(mode, new AppError("SERVICE_UNAVAILABLE", "Agent request storage is not configured."), 503);
   try {
     const { receipt } = await acceptMessage(dependencies, { actorId, body: parsed.data });
@@ -103,12 +107,12 @@ const SELECTION_REFUSALS: Record<string, { status: number; message: string }> = 
 };
 
 /** AG04: a click under a request's directions (same POST, protocol 3, body with `selection`). */
-async function handleAgentV1Select(input: { body: Record<string, unknown>; actorId: string | null; mode: FeatureMode; dependencies?: AgentEntryDependencies | null }): Promise<Response> {
+async function handleAgentV1Select(input: { body: Record<string, unknown>; actorId: string | null; mode: FeatureMode; dependencies?: AgentEntryDependencies | null; tier?: AccountTier }): Promise<Response> {
   const { mode } = input;
   const parsed = agentSelectionInputSchema.safeParse(input.body);
   if (!parsed.success) return errorResponse(mode, new AppError("VALIDATION_ERROR", "A valid protocol 3 selection is required."), 400);
   const actorId = input.actorId ?? "mock:anonymous";
-  const dependencies = input.dependencies ?? configuredAgentEntryDependencies(mode, actorId);
+  const dependencies = input.dependencies ?? configuredAgentEntryDependencies(mode, actorId, input.tier);
   if (!dependencies) return errorResponse(mode, new AppError("SERVICE_UNAVAILABLE", "Agent request storage is not configured."), 503);
   try {
     const { receipt } = await acceptSelection(dependencies, { actorId, body: parsed.data });

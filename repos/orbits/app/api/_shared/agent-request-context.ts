@@ -1,3 +1,4 @@
+import { accountTierOf, type AccountTier } from "../../../features/ai-quota/tiers";
 import { NextResponse } from "next/server";
 
 import { auth } from "../../../auth";
@@ -21,10 +22,12 @@ export interface AgentRequestContext {
   actorId: string | null;
   mode: ModuleMode;
   runtime: AgentRuntimeService;
+  /** 2026-11-27: the account tier from the session (free when unknown); the iOrbit chat's monthly limit follows it. */
+  tier: AccountTier;
 }
 
 export interface AgentRequestContextDependencies {
-  authenticate?: () => Promise<{ user?: { id?: string | null; email?: string | null; name?: string | null } } | null>;
+  authenticate?: () => Promise<{ user?: { id?: string | null; email?: string | null; name?: string | null; tier?: string | null } } | null>;
   resolveActorFromSession?: typeof resolveAuthenticatedApiActorFromSession;
   runtimeForActor?: (
     mode: ModuleMode,
@@ -68,6 +71,7 @@ export async function resolveAgentRequestContext(
     actorId,
     mode,
     runtime: runtimeForActor(mode, actorId),
+    tier: accountTierOf(session?.user?.tier),
   };
 }
 

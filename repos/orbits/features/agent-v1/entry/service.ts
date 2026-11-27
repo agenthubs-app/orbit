@@ -42,7 +42,8 @@ import {
   type AgentEntryStore,
   type AgentPendingResume,
 } from "./store";
-import { agentChatDailyLimitText, openAgentChatRound, type AgentChatRound } from "./usage-gate";
+import { DEFAULT_ACCOUNT_TIER, type AccountTier } from "../../ai-quota/tiers";
+import { agentChatLimitText, openAgentChatRound, type AgentChatRound } from "./usage-gate";
 
 export interface AgentEntryHistoryTurn {
   role: "user" | "assistant";
@@ -130,6 +131,8 @@ export interface AgentEntryDependencies {
    * 不给（测试、mock / hybrid）或账本不可用：照常对话、不记账（entry/usage-gate.ts）。
    */
   usage?: AiQuotaGate | null;
+  /** 2026-11-27 分档：账户档位（对话的月上限按它；不给 = free）。 */
+  tier?: AccountTier;
 }
 
 const DEFAULT_LEASE_MS = 30_000;
@@ -399,10 +402,10 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
       });
     }
     // iOrbit 对话计量（2026-11-27）：账本明确说今天的轮数用完了，这一轮不调用模型，回一句固定的话；账本出问题照常对话。
-    round = await openAgentChatRound(deps.usage, { actorId, now: new Date(startedAt), requestId: record.requestId, selection: resume?.clientSelectionId ?? null });
+    round = await openAgentChatRound(deps.usage, { actorId, now: new Date(startedAt), requestId: record.requestId, selection: resume?.clientSelectionId ?? null, tier: deps.tier ?? DEFAULT_ACCOUNT_TIER });
     if (round.kind === "limited") {
-      emitTrace({ requestId: record.requestId, retryOn: round.retryOn, sessionId: record.sessionId, type: "entry.daily_limit" });
-      outcome = { answer: { sourceRefs: [], text: agentChatDailyLimitText(record.input.locale, round.cap) }, partResults: [{ partId: "p1", status: "answered" }], status: "completed" };
+      emitTrace({ notice: round.notice, requestId: record.requestId, sessionId: record.sessionId, type: "entry.quota_limit" });
+      outcome = { answer: { sourceRefs: [], text: agentChatLimitText(record.input.locale, round.notice) }, partResults: [{ partId: "p1", status: "answered" }], status: "completed" };
     } else {
       const fetchImplementation = createStoppableFetch(controller.signal, () => emitTrace({ requestId: record.requestId, type: "entry.model_call_refused" }));
       // AG07: progress only (an event on the channel); a step reached after the round was stopped is not reported.

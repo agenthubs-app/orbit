@@ -7,6 +7,7 @@ import test from "node:test";
 
 import * as constants from "../../features/ai-quota/constants";
 import { AI_QUOTA_PUBLIC_LIMITS, PUBLIC_LIMIT_UNIT_LABELS, publicLimit } from "../../features/ai-quota/public-limits";
+import { ACCOUNT_TIERS, TIER_LIMITS, tierLimit } from "../../features/ai-quota/tiers";
 
 const valueOf = (id: string) => publicLimit(id)?.limit;
 
@@ -32,8 +33,11 @@ test("every daily and monthly limit the ledger enforces is in the public list wi
   const fuseIds: Record<string, string> = { "background:insight:": "background_insight.month", "user:insight:auto": "instant_insight.month", "user:snapshot:manual": "manual_reanalysis.month" };
   assert.equal(constants.AI_QUOTA_MONTHLY_FUSES.length, Object.keys(fuseIds).length, "a new fuse needs its public entry");
   for (const fuse of constants.AI_QUOTA_MONTHLY_FUSES) assert.equal(valueOf(fuseIds[`${fuse.pool}:${fuse.purpose}:${fuse.trigger ?? ""}`]!), fuse.limit);
+  // The tiered monthly limits: one row per tier, each the tier table's value.
+  const tiered = ["agent_chat", "card_scan", "plan_new_goal"] as const;
+  for (const feature of tiered) for (const tier of ACCOUNT_TIERS) assert.equal(valueOf(`${feature}.month.${tier}`), tierLimit(tier, feature, "month"), `${feature}.month.${tier}`);
   // Nothing in the list that is not one of the above.
-  assert.equal(AI_QUOTA_PUBLIC_LIMITS.length, named.length + Object.keys(constants.AI_QUOTA_MONTHLY_LIMITS).length + Object.keys(constants.AI_QUOTA_DAILY_PURPOSE_LIMITS).length);
+  assert.equal(AI_QUOTA_PUBLIC_LIMITS.length, named.length + tiered.length * ACCOUNT_TIERS.length + Object.keys(constants.AI_QUOTA_MONTHLY_LIMITS).length + Object.keys(constants.AI_QUOTA_DAILY_PURPOSE_LIMITS).length);
   assert.equal(new Set(AI_QUOTA_PUBLIC_LIMITS.map((item) => item.id)).size, AI_QUOTA_PUBLIC_LIMITS.length, "ids are unique");
 });
 
@@ -46,5 +50,24 @@ test("every entry names its feature and unit in three languages, plainly", () =>
         assert.doesNotMatch(text[language], /[!！]/u);
       }
     }
+  }
+});
+
+test("one source: the constants the ledger enforces are the tier table's values (the user's 2026-11-27 table)", () => {
+  assert.deepEqual(TIER_LIMITS.free.agent_chat, { day: 100, month: 100 });
+  assert.deepEqual(TIER_LIMITS.pro.agent_chat, { day: 100, month: 1000 });
+  assert.deepEqual([TIER_LIMITS.free.card_scan.month, TIER_LIMITS.pro.card_scan.month], [30, 300]);
+  assert.deepEqual([TIER_LIMITS.free.plan_new_goal.month, TIER_LIMITS.pro.plan_new_goal.month], [1, 10]);
+  for (const tier of ACCOUNT_TIERS) {
+    const limits = TIER_LIMITS[tier];
+    assert.equal(constants.AGENT_CHAT_DAILY_LIMIT, limits.agent_chat.day);
+    assert.equal(constants.AI_QUOTA_MONTHLY_LIMITS.plan_revise, limits.plan_revise.month);
+    assert.equal(constants.AI_QUOTA_MONTHLY_LIMITS.plan_review, limits.plan_review.month);
+    assert.deepEqual([constants.EVENT_ASSESSMENT_DAILY_LIMIT, constants.AI_QUOTA_MONTHLY_LIMITS.event_assessment], [limits.event_assessment.day, limits.event_assessment.month]);
+    assert.deepEqual([constants.MANUAL_REANALYSIS_DAILY_LIMIT, constants.MANUAL_REANALYSIS_MONTHLY_LIMIT], [limits.manual_reanalysis.day, limits.manual_reanalysis.month]);
+    assert.deepEqual([constants.INSTANT_INSIGHT_DAILY_LIMIT, constants.INSTANT_INSIGHT_MONTHLY_LIMIT], [limits.instant_insight.day, limits.instant_insight.month]);
+    assert.equal(constants.BACKGROUND_INSIGHT_MONTHLY_LIMIT, limits.background_insight.month);
+    assert.equal(constants.AI_QUOTA_MONTHLY_LIMITS.memo_extraction, limits.memo_extraction.month);
+    assert.equal(constants.AI_QUOTA_MONTHLY_LIMITS.draft_assist, limits.draft_assist.month);
   }
 });

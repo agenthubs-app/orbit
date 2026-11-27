@@ -656,7 +656,7 @@ export async function POST(request: Request): Promise<Response> {
   // agent-design AG01: protocol 3 only persists and answers (processing follows);
   // refused while ORBIT_AGENT_V1_MODE is off. Protocol 2 continues below unchanged.
   if (body.protocolVersion === 3) {
-    return handleAgentV1Send({ actorId: agentContext.actorId, body, mode });
+    return handleAgentV1Send({ actorId: agentContext.actorId, body, mode, tier: agentContext.tier });
   }
   // agent-design AG18-1: with the new entry on, an old client (protocol 2, or no protocol) is answered by the new flow
   // and waited for here (rollout/legacy-client.ts); only the contacts-analysis entry stays on the old pipeline, with its
@@ -665,7 +665,7 @@ export async function POST(request: Request): Promise<Response> {
   let legacyWritesClosed = false;
   if (v1Mode === "on" && agentContext.actorId) {
     if (!legacyStaysOnOldPath(body)) {
-      return legacyClientResponse(mode, await handleLegacyClientSend({ actorId: agentContext.actorId, body, mode }));
+      return legacyClientResponse(mode, await handleLegacyClientSend({ actorId: agentContext.actorId, body, mode, tier: agentContext.tier }));
     }
     legacyWritesClosed = true;
   }

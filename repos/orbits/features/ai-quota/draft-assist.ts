@@ -15,10 +15,12 @@ import { createLedgeredRunner, type LedgeredRunner } from "../events/journey/led
 import { runOrbitAgentModelText } from "../orbit-ai/gemini-provider";
 import type { AiQuotaGate } from "./gate";
 import { createPostgresAiUsageLedger } from "./ledger";
+import { overLimitContext, overLimitNotice, overLimitText } from "./over-limit";
+import { DEFAULT_ACCOUNT_TIER, type AccountTier } from "./tiers";
 
 export type DraftAssistKind = "intro" | "seek" | "email";
 
-/** Error code (and `reason`) of a request refused by a monthly fuse; the clients show their own fixed line for it. */
+/** Error code of a draft refused by the monthly limit; the clients write the numbered line from `error.context`. */
 export const AI_MONTHLY_LIMIT_CODE = "AI_MONTHLY_LIMIT";
 
 export function configuredDraftAssistLedger(): AiQuotaGate | null {
@@ -40,11 +42,10 @@ export function createDraftAssistRunner(input: { actorId: string; kind: DraftAss
 }
 
 /**
- * The 429 for a generation the monthly limit kept off (no model call was made). The limits are public: `context.limit`
- * (the value, from the constants via the ledger) and `context.retryOn` let the clients write the numbered notice.
+ * The 429 for a generation the monthly limit kept off (no model call was made). The limits are public: the notice's
+ * machine-readable fields (`error.context.quota*`, features/ai-quota/over-limit.ts) let the clients write the numbered line.
  */
-export function aiMonthlyLimitResponse(detail: { cap: number | null; retryOn: string | null } | null): Response {
-  const cap = detail?.cap ?? null;
-  const message = `This month's ${cap === null ? "" : `${cap} `}AI drafts are used up. They come back on the 1st of next month.`;
-  return NextResponse.json({ success: false, error: { code: AI_MONTHLY_LIMIT_CODE, context: { ...(cap === null ? {} : { limit: String(cap) }), ...(detail?.retryOn ? { retryOn: detail.retryOn } : {}) }, message } }, { status: 429 });
+export function aiMonthlyLimitResponse(input: { detail: { cap: number | null; retryOn: string | null } | null; tier?: AccountTier }): Response {
+  const notice = overLimitNotice({ cap: input.detail?.cap ?? null, feature: "draft_assist", period: "month", retryOn: input.detail?.retryOn ?? null, tier: input.tier ?? DEFAULT_ACCOUNT_TIER });
+  return NextResponse.json({ success: false, error: { code: AI_MONTHLY_LIMIT_CODE, context: overLimitContext(notice), message: overLimitText("en", notice) } }, { status: 429 });
 }

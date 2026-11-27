@@ -1,3 +1,6 @@
+import { AppError } from "../../../../../shared/errors/app-error";
+import { cardScanLimitError, chargeCardScan } from "../../../../../features/ai-quota/card-scan-quota";
+import { DEFAULT_ACCOUNT_TIER } from "../../../../../features/ai-quota/tiers";
 import { NextResponse } from "next/server";
 
 import {
@@ -108,14 +111,29 @@ export function createBusinessCardScanHandler(
       return authenticatedApiActorRequiredResponse(mode);
     }
 
+    // 2026-11-27 分档：一张图片计 1 张扫名片的月上限；用完了不识别，回 429 和超额提示的机器字段。
+    const charge = await chargeCardScan({ actorId: actor.id, chunks: [1], tier: actor.tier ?? DEFAULT_ACCOUNT_TIER });
+    if (charge.kind === "limited") {
+      const body = cardScanLimitError(charge.notice);
+      return NextResponse.json(failure(new AppError("CONFLICT", body.message), body.context), { headers: runtimeBoundaryHeaders(mode), status: 429 });
+    }
+
     const scanService = createBusinessCardScanOcrService(mode);
     const scenario = new URL(request.url).searchParams.get("scenario");
-    const result = await scanService.scanBusinessCard({
-      ...(await readBusinessCardScanInput(request, scenario)),
-      actorId: actor.id,
-    });
+    let result: Awaited<ReturnType<typeof scanService.scanBusinessCard>>;
+    try {
+      result = await scanService.scanBusinessCard({
+        ...(await readBusinessCardScanInput(request, scenario)),
+        actorId: actor.id,
+      });
+    } catch (error) {
+      await charge.refund();
+      throw error;
+    }
 
     if (result.success === false) {
+      // 没识别出来不占这个月的张数。
+      await charge.refund();
       const appError = businessCardScanOcrFailureToAppError(result);
 
       return NextResponse.json(

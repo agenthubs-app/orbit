@@ -43,6 +43,7 @@ import {
   type AiQuotaPurpose,
 } from "./constants";
 import type { AiQuotaGate, AiQuotaReservation, AiQuotaReserveInput } from "./gate";
+import { DEFAULT_ACCOUNT_TIER, tierLimit } from "./tiers";
 
 export class AiQuotaCallRejectedError extends Error {
   constructor(readonly code: "MAX_CALLS" | "OPERATION_NOT_OPEN", message: string) {
@@ -218,9 +219,17 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
     }
     const fuse = monthlyFuseFor(request);
     if (fuse) {
-      // 2026-11-27 隐藏月上限：同一池的锁下数本月（保险丝只挂在单一池上，所以按池的锁已经够用）。
+      // 2026-11-27 月上限：同一池的锁下数本月（保险丝只挂在单一池上，所以按池的锁已经够用）。
       const row = (await executor.query<Row>(MONTHLY_FUSE_SQL, [workspaceId, actorId, fuse.pool, fuse.purpose, fuse.trigger ?? null, tokyoUsageMonth(request.now)])).rows[0];
       if (count(row?.used) >= fuse.limit) return { ok: false, reason: "monthly_limit", retryOn: nextTokyoMonthStart(request.now), limit: "monthly", cap: fuse.limit };
+    }
+    if (isAgentChatOperation(request)) {
+      // 2026-11-27 分档：iOrbit 对话的月上限按账户档位（free 100 / pro 1,000 轮，tiers.ts），日上限两档相同（上面已查）。
+      const cap = tierLimit(request.tier ?? DEFAULT_ACCOUNT_TIER, "agent_chat", "month");
+      if (cap !== null) {
+        const used = await countMonthlyWith(executor, actorId, "agent_chat", request.now);
+        if (used >= cap) return { ok: false, reason: "monthly_limit", retryOn: nextTokyoMonthStart(request.now), limit: "monthly", cap, used };
+      }
     }
     if (replay) {
       await executor.query(

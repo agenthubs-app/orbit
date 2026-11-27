@@ -301,7 +301,8 @@ test("Agent ledger and queue routes resolve server auth instead of request ident
       if (resolver === "resolveOrbitAgentConversationRequestContext") {
         assert.match(routeSource, /resolveOrbitAgentConversationRequestContext\(mode\)/);
         assert.match(boundarySource, /const actor = await resolveAuthenticatedApiActor\(\)/);
-        assert.match(boundarySource, /actor \? \{ user: \{ id: actor\.id \} \} : null/);
+        // 2026-11-27: the tier rides along (the iOrbit chat's monthly limit follows it); identity is still only actor.id.
+        assert.match(boundarySource, /actor \? \{ user: \{ id: actor\.id, tier: actor\.tier \?\? null \} \} : null/);
       } else {
         assert.match(routeSource, /create[A-Za-z]+Handler/);
       }

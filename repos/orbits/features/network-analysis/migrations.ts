@@ -275,6 +275,25 @@ begin
 end;
 `,
   },
+  {
+    // 2026-11-27 分档（用户定稿）：不走 AI 账本的按档用量（扫名片按图片张数）。一次受理 = 一行（以请求的幂等键去重），
+    // 本月已用 = 本东京月各行 units 之和（features/ai-quota/tier-usage.ts）。生产执行等授权；没执行前扫名片照常、不计数。
+    name: "ai-quota-tier-charges",
+    version: 10,
+    sql: `
+create table if not exists ai_quota_charges (
+  workspace_id text not null,
+  actor_id text not null,
+  feature text not null check (feature in ('card_scan')),
+  charge_key text not null check (length(charge_key) between 1 and 300),
+  usage_month text not null check (usage_month ~ '^[0-9]{4}-[0-9]{2}$'),
+  units integer not null check (units >= 0),
+  created_at timestamptz not null default now(),
+  primary key (workspace_id, actor_id, feature, charge_key)
+);
+create index if not exists ai_quota_charges_month_idx on ai_quota_charges (workspace_id, actor_id, feature, usage_month);
+`,
+  },
 ];
 
 /**

@@ -1,3 +1,5 @@
+import { cardChunks, cardScanLimitError, chargeCardScan, type CardScanQuotaDeps } from "../../../../../../features/ai-quota/card-scan-quota";
+import { DEFAULT_ACCOUNT_TIER, type AccountTier } from "../../../../../../features/ai-quota/tiers";
 import { createHash } from "node:crypto";
 
 import { after, NextResponse } from "next/server";
@@ -89,6 +91,8 @@ export interface IngestV2HandlerDeps {
   eventAttribution?: IngestEventAttributionDeps;
   /** W0051：名片确认写入后把该联系人的洞察标为待更新（只写 contact_insights，不调用模型）。 */
   markInsightsDirty?: (input: { actorId: string; contactIds: readonly string[] }) => Promise<void>;
+  /** 2026-11-27 分档：扫名片的月上限计数（缺省按配置的库；null = 不计数）。 */
+  cardScanQuota?: CardScanQuotaDeps;
   /** W0057：在响应之外排任务（缺省 `next/server` 的 `after`）；不可用时抛错 → 只标待更新，交给维护任务。 */
   scheduleAfter?: (task: () => Promise<void>) => void;
   /** W0057（D59）：即时生成执行器（在 `scheduleAfter` 里调用，不在请求内等模型）。 */
@@ -194,6 +198,7 @@ async function withAuthedRuntime(
     actorId: string;
     runtime: IngestV2Runtime;
     mode: FeatureMode;
+    tier: AccountTier;
   }) => Promise<Response>,
 ): Promise<Response> {
   const mode = currentMode();
@@ -208,7 +213,7 @@ async function withAuthedRuntime(
   }
   await runtime.ready;
   try {
-    return await fn({ actorId: actor.id, runtime, mode });
+    return await fn({ actorId: actor.id, runtime, mode, tier: actor.tier ?? DEFAULT_ACCOUNT_TIER });
   } catch (error) {
     return mapIngestError(error, mode);
   }
@@ -360,7 +365,7 @@ export function createIngestV2CollectionHandlers(deps: IngestV2HandlerDeps = {})
       });
     },
     async POST(request: Request): Promise<Response> {
-      return withAuthedRuntime(deps, async ({ actorId, runtime, mode }) => {
+      return withAuthedRuntime(deps, async ({ actorId, runtime, mode, tier }) => {
         const payload = (await request.json().catch(() => null)) as {
           idempotencyKey?: unknown;
         } | null;
@@ -373,13 +378,34 @@ export function createIngestV2CollectionHandlers(deps: IngestV2HandlerDeps = {})
           );
         }
         const manifest = parseManifest(payload);
-        const created = await runtime.repository.createBatch({
-          actorId,
-          idempotencyKey,
-          manifest,
-        });
+        // 2026-11-27 分档：扫名片按图片张数计月上限。按整张名片（正反面一起）放进剩余额度；放不下的不受理，在响应里列出。
+        const cards = cardChunks(manifest);
+        const charge = await chargeCardScan({ actorId, chargeKey: `v2:${idempotencyKey}`, chunks: cards.map((card) => card.length), tier }, deps.cardScanQuota);
+        if (charge.kind === "limited") {
+          const body = cardScanLimitError(charge.notice);
+          return NextResponse.json(failure(new AppError("CONFLICT", body.message), body.context), { headers: runtimeBoundaryHeaders(mode), status: 429 });
+        }
+        const accepted = cards.slice(0, charge.acceptedChunks).flat();
+        const notAcceptedSeqs = cards.slice(charge.acceptedChunks).flat().map((entry) => entry.seq);
+        let created: Awaited<ReturnType<typeof runtime.repository.createBatch>>;
+        try {
+          created = await runtime.repository.createBatch({
+            actorId,
+            idempotencyKey,
+            manifest: accepted,
+          });
+        } catch (error) {
+          await charge.refund();
+          throw error;
+        }
         return NextResponse.json(
-          success({ batch: created.batch, items: created.items, reused: created.reused }),
+          success({
+            batch: created.batch,
+            items: created.items,
+            reused: created.reused,
+            // 超出本月上限、没有受理的图片（按 manifest 的 seq）与超额提示的机器字段。
+            ...(charge.notice ? { quota: { notAcceptedSeqs, ...cardScanLimitError(charge.notice).context } } : {}),
+          }),
           { headers: runtimeBoundaryHeaders(mode), status: created.reused ? 200 : 201 },
         );
       });

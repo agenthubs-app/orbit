@@ -1,3 +1,4 @@
+import { accountTierOf, DEFAULT_ACCOUNT_TIER, type AccountTier } from "../ai-quota/tiers";
 import { createConfiguredPostgresLiveRecordStore, type LiveRecordCustomRead } from "../../shared/storage/configured-live-record-store";
 import type { LiveRecordStoreLike } from "../../shared/storage/live-record-store";
 import { jsDateSafeTimestampSql } from "../../shared/storage/postgres-js-date-sql";
@@ -58,6 +59,7 @@ const SESSION_CHECK_SQL = `/* auth-session-revocation:v2 */
       case when readable then (payload ->> 'provider') is not distinct from 'google'
         or (jsonb_typeof(payload -> 'emailVerifiedAt') = 'string' and payload ->> 'emailVerifiedAt' <> '') end as email_verified,
       case when readable then payload -> 'emailVerification' is not null end as email_mailed,
+      case when readable then payload -> 'tier' end as tier,
       case when not readable then occurred_at end as c1,
       case when not readable then created_at end as c2,
       case when not readable then updated_at end as c3,
@@ -78,6 +80,8 @@ interface SessionCheckRow {
   deletion_requested_at: unknown;
   email_verified: boolean | null;
   email_mailed: boolean | null;
+  /** 2026-11-27: the account tier (rides on this read; absent = free). */
+  tier: unknown;
   c1: Date | string | null;
   c2: Date | string;
   c3: Date | string;
@@ -107,13 +111,13 @@ function isBeforeDeletionRequest(lifecycleState: string, payload: Record<string,
 /** `sent`: a verification mail was sent to this account before (the button then says 再送する). */
 export interface EmailVerificationFlags { verified: boolean; sent: boolean }
 
-type SessionRow = { lifecycleState: string; payload: Record<string, unknown>; email: EmailVerificationFlags };
+type SessionRow = { lifecycleState: string; payload: Record<string, unknown>; email: EmailVerificationFlags; tier: AccountTier };
 
 async function readSessionRow(database: SessionCheckDatabase, recordId: string): Promise<SessionRow | null> {
   const collectionName = "auth_users";
   if (!database.client || !database.customRead) {
     const user = await database.store.getRecord({ workspaceId: database.workspaceId, collectionName, recordId });
-    return user ? { lifecycleState: user.lifecycleState, payload: user.payload, email: emailFlags(user.payload) } : null;
+    return user ? { lifecycleState: user.lifecycleState, payload: user.payload, email: emailFlags(user.payload), tier: accountTierOf(user.payload?.tier) } : null;
   }
   const { client, customRead } = database;
   sessionCheckSeq += 1;
@@ -125,7 +129,7 @@ async function readSessionRow(database: SessionCheckDatabase, recordId: string):
   if (!row) return null;
   if (row.readable === true) {
     const lifecycleState = row.lifecycle_state === "archived" || row.lifecycle_state === "deleted" ? row.lifecycle_state : "active";
-    return { lifecycleState, email: { verified: row.email_verified === true, sent: row.email_mailed === true },
+    return { lifecycleState, email: { verified: row.email_verified === true, sent: row.email_mailed === true }, tier: accountTierOf(row.tier),
       payload: { id: row.id, passwordChangedAt: row.password_changed_at, deletionRequestedAt: row.deletion_requested_at } };
   }
   // Bad data: the real conversion decides (and throws) exactly as the full read would.
@@ -142,7 +146,7 @@ async function readSessionRow(database: SessionCheckDatabase, recordId: string):
     updated_at: row.c3,
     workspace_id: database.workspaceId,
   } satisfies PostgresLiveRecordRow);
-  return { lifecycleState: user.lifecycleState, payload: user.payload, email: emailFlags(user.payload) };
+  return { lifecycleState: user.lifecycleState, payload: user.payload, email: emailFlags(user.payload), tier: accountTierOf(user.payload?.tier) };
 }
 
 export async function isPasswordSessionCurrent(input: SessionCheckInput, database: SessionCheckDatabase | null = createConfiguredPostgresLiveRecordStore()): Promise<boolean> {
@@ -173,6 +177,8 @@ export interface AuthSessionState {
   current: boolean;
   /** Same read as the check itself. null: no database to ask (development without one). */
   emailVerification: EmailVerificationFlags | null;
+  /** 2026-11-27: the account tier from the same read (free when unknown); the AI limits follow it. */
+  tier: AccountTier;
 }
 
 /**
@@ -180,12 +186,13 @@ export interface AuthSessionState {
  * read of the auth_users row, instead of one read each. Still unshared across checks (D31).
  */
 export async function readAuthSessionState(input: SessionCheckInput, database: SessionCheckDatabase | null = createConfiguredPostgresLiveRecordStore()): Promise<AuthSessionState> {
-  if (!database) return { current: process.env.NODE_ENV !== "production", emailVerification: null };
+  if (!database) return { current: process.env.NODE_ENV !== "production", emailVerification: null, tier: DEFAULT_ACCOUNT_TIER };
   const user = await readSessionRow(database, authUserRecordId(input.email));
-  if (!user) return { current: false, emailVerification: null };
+  if (!user) return { current: false, emailVerification: null, tier: DEFAULT_ACCOUNT_TIER };
   return {
     current: isSessionCurrent(user.lifecycleState, user.payload, input) && isBeforeDeletionRequest(user.lifecycleState, user.payload, input),
     emailVerification: user.email,
+    tier: user.tier,
   };
 }
 

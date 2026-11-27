@@ -12,6 +12,8 @@
  *   verify-login --email <邮箱>                                只读：这个邮箱现在能不能登录/找回密码
  *   event-pending --event <活动id>                             只读：该活动待审核人数
  *   deletions-in-progress                                      只读：注销申请按状态计数（pending/purging = 删除中）
+ *   set-tier --email <邮箱> --user-id <账号id> --tier <free|pro> [--apply]
+ *                                                              改账户档位（2026-11-27 分档；pro 只能这样设，没有公网接口）
  *
  * 输出只有 id、类别和数量，邮箱一律打码。构建里用完就 `exit 1`，不产生新版本。
  */
@@ -20,6 +22,7 @@ import { normalizeAuthEmail } from "../features/auth/contract";
 import { authUserRecordId } from "../features/auth/storage/auth-user-live-record-provider";
 import { previewControlledAccountPurge, runControlledAccountPurge } from "../features/account/controlled-ops/account-purge";
 import { previewControlledEmailChange, runControlledEmailChange } from "../features/account/controlled-ops/email-change";
+import { runControlledTierChange } from "../features/account/controlled-ops/account-tier";
 import { maskEmail } from "../features/account/controlled-ops/target";
 import { assertControlledAccountOpsProcess } from "../features/account/data-rights/purge/local-gate";
 import { resolveLiveDatabaseConnectionConfig } from "../shared/storage/live-database-config";
@@ -64,6 +67,9 @@ async function main() {
               .reduce((only, email, _i, all) => (all.length === 1 ? email : only), "")
           : required("from");
         print("change-email", await runControlledEmailChange({ db, workspaceId, userId: required("user-id"), fromEmail, toEmail: required("to"), alsoProfileContactEmail: process.argv.includes("--also-profile-contact"), apply }));
+        break;
+      case "set-tier":
+        print("set-tier", await runControlledTierChange({ db, workspaceId, email: required("email"), userId: required("user-id"), tier: required("tier"), apply }));
         break;
       case "verify-login": {
         const email = normalizeAuthEmail(required("email"));

@@ -43,7 +43,7 @@ test("ledger v9: a round through the entry records one operation and its calls w
     await runNetworkAnalysisMigrations(pool);
     const applied = (await pool.query("select version, name from network_analysis_schema_migrations order by version")).rows;
     assert.equal(applied.length, NETWORK_ANALYSIS_MIGRATIONS.length);
-    assert.deepEqual(applied.at(-1), { name: "ai-usage-agent-chat-draft-assist", version: 9 });
+    assert.deepEqual(applied.find((row) => row.version === 9), { name: "ai-usage-agent-chat-draft-assist", version: 9 });
 
     const client = createTransactionalPostgresClient({ connectionString: databaseUrl, pool: pool as never });
     const ledger = createPostgresAiUsageLedger({ client, workspaceId: WS });
@@ -106,9 +106,11 @@ test("ledger v9: a round through the entry records one operation and its calls w
     usage = await ledger.readUsageToday(ACTOR, now);
     assert.deepEqual([usage.agentChat, usage.user], [AGENT_CHAT_DAILY_LIMIT, USER_POOL_DAILY_LIMIT]);
 
-    // The next Tokyo day starts again.
+    // The next Tokyo day starts the daily 100 again; on free the monthly 100 (2026-11-27 tiers) is also used up, on pro it is not.
     const tomorrow = new Date("2026-11-27T15:00:00.000Z");
-    assert.equal((await ledger.reserve({ actorId: ACTOR, idempotencyKey: "agent-chat:tomorrow", now: tomorrow, pool: "user", purpose: "agent_chat", trigger: "manual" })).ok, true);
+    const freeTomorrow = await ledger.reserve({ actorId: ACTOR, idempotencyKey: "agent-chat:tomorrow", now: tomorrow, pool: "user", purpose: "agent_chat", trigger: "manual" });
+    assert.equal(freeTomorrow.ok === false && freeTomorrow.reason, "monthly_limit");
+    assert.equal((await ledger.reserve({ actorId: ACTOR, idempotencyKey: "agent-chat:tomorrow:pro", now: tomorrow, pool: "user", purpose: "agent_chat", tier: "pro", trigger: "manual" })).ok, true);
     // Only the user pool: chat rounds cannot be reserved from the background pool.
     await assert.rejects(ledger.reserve({ actorId: ACTOR, idempotencyKey: "agent-chat:bg", now, pool: "background", purpose: "agent_chat", trigger: "manual" }), /user pool only/u);
     await client.close().catch(() => undefined);

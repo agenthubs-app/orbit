@@ -1,3 +1,5 @@
+import { overLimitContext, overLimitNotice, overLimitText } from "../../../../features/ai-quota/over-limit";
+import { DEFAULT_ACCOUNT_TIER } from "../../../../features/ai-quota/tiers";
 import { NextResponse } from "next/server";
 
 import { unavailableSnapshotView } from "../../../../features/network-analysis/service";
@@ -110,10 +112,11 @@ export function createNetworkSnapshotRouteHandlers(dependencies: NetworkSnapshot
           case "insufficient":
             return fail(new AppError("CONFLICT", "Add at least 3 contacts before analysing your network."), 409, { reason: "INSUFFICIENT_CONTACTS" });
           case "limited":
-            // 2026-11-27 隐藏月上限（手动重新分析 10 次/月）：reason MONTHLY_LIMIT，客户端显示「这个月用完了」的固定句。
+            // 2026-11-27 月上限（手动重新分析，公开）：reason MONTHLY_LIMIT + 超额提示的机器字段（over-limit.ts），客户端据此写出
+            // 「这个月的 N 次已用完，M 月 1 日恢复」。
             if (outcome.limit === "monthly") {
-              // 上限是公开的：带上数值（取自常量）和恢复时间，客户端据此写出「这个月的 N 次已用完，M 月 1 日恢复」。
-              return fail(new AppError("CONFLICT", `This month's ${outcome.cap === undefined ? "" : `${outcome.cap} `}analyses are used up. They come back on the 1st of next month.`), 429, { reason: "MONTHLY_LIMIT", ...(outcome.cap !== undefined ? { limit: String(outcome.cap) } : {}), ...(outcome.retryOn ? { retryOn: outcome.retryOn } : {}) });
+              const notice = overLimitNotice({ cap: outcome.cap ?? null, feature: "manual_reanalysis", period: "month", retryOn: outcome.retryOn ?? null, tier: actor.tier ?? DEFAULT_ACCOUNT_TIER });
+              return fail(new AppError("CONFLICT", overLimitText("en", notice)), 429, { reason: "MONTHLY_LIMIT", ...overLimitContext(notice) });
             }
             return fail(
               new AppError("CONFLICT", "You have used today's analyses. Try again tomorrow."),

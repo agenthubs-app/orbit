@@ -10,6 +10,7 @@
  */
 import { createConfiguredTransactionalPostgresRuntime } from "../../shared/storage/transactional-postgres";
 import type { AiQuotaPool, AiQuotaPurpose, AiQuotaTrigger } from "./constants";
+import type { AccountTier } from "./tiers";
 import { createPostgresAiUsageLedger } from "./ledger";
 
 export type { AiQuotaPool, AiQuotaPurpose, AiQuotaTrigger } from "./constants";
@@ -27,6 +28,8 @@ export interface AiQuotaReserveInput {
    * 请求路径（计划生成、手动重新分析）不传：同键并发方拿到 `owner: false`，不得 beginCall／finish。
    */
   takeover?: boolean;
+  /** 2026-11-27 分档：账户档位（按档的上限用它；不给 = free）。 */
+  tier?: AccountTier;
 }
 
 /** 拒绝时是哪一道额度：手动重新分析 3 次、用户池总熔断 10 次、后台池 60 次、即时洞察生成 20 次（W0057）；R22：计划生成流程日上限 15、各用途的月上限；agent_chat = iOrbit 对话的每日轮数。 */
@@ -43,8 +46,11 @@ export type AiQuotaReservation =
       owner: boolean;
       status: "reserved" | "succeeded" | "failed";
     }
-  /** `cap`（2026-11-27）：挡住这次的那道上限的数值（取自常量），用于对用户公开的超限提示。 */
-  | { ok: false; reason: "disabled" | "daily_limit" | "monthly_limit"; retryOn?: string; limit?: AiQuotaLimit; cap?: number };
+  /**
+   * `cap`（2026-11-27）：挡住这次的那道上限的数值（取自 tiers.ts / 常量），用于对用户公开的超限提示；`used`：本期已用
+   * （只在按档的上限上给；不给时已用即 `cap`）。
+   */
+  | { ok: false; reason: "disabled" | "daily_limit" | "monthly_limit"; retryOn?: string; limit?: AiQuotaLimit; cap?: number; used?: number };
 
 export interface AiQuotaGate {
   reserve(input: AiQuotaReserveInput): Promise<AiQuotaReservation>;

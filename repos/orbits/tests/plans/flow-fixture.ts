@@ -1,6 +1,7 @@
 /**
  * R23 测试夹具：内存仓储 + mock AI（可计数、可注入失败 / 上限）+ 演示世界的上下文。
  */
+import type { AccountTier } from "../../features/ai-quota/tiers";
 import { createMockPlanFlowAi } from "../../features/plans/v2/ai/mock";
 import type { PlanAiOutcome, PlanFlowAi } from "../../features/plans/v2/ai/types";
 import { createMockPlanFlowContext, type PlanFlowContextSource } from "../../features/plans/v2/flow-context";
@@ -53,13 +54,17 @@ export function countingAi(base: PlanFlowAi = createMockPlanFlowAi()): CountingA
   };
 }
 
-export function flowWorld(options: { context?: PlanFlowContextSource; ai?: CountingAi; now?: () => Date; reviewBudget?: PlanReviewBudgetReader; search?: PlanSearchLike } = {}) {
+/**
+ * 2026-11-27 分档：新建目标的月上限按档位（free 1 / pro 10）。这些用例本来按每月 10 个写（一个月里建多个目标），
+ * 所以缺省用 pro；测上限本身的用例显式传档位。
+ */
+export function flowWorld(options: { context?: PlanFlowContextSource; ai?: CountingAi; now?: () => Date; reviewBudget?: PlanReviewBudgetReader; search?: PlanSearchLike; tier?: AccountTier } = {}) {
   const repository = createMemoryPlanV2Repository();
   const now = options.now ?? steppingClock();
   const planService = serviceFor(repository, SCOPE, now);
   const ai = options.ai ?? countingAi();
   let n = 0;
-  const flow = createPlanFlowService({ ai, context: options.context ?? createMockPlanFlowContext(), newId: () => `f${(n += 1)}`, now, planService, repository, reviewBudget: options.reviewBudget, scope: SCOPE, search: options.search });
+  const flow = createPlanFlowService({ ai, context: options.context ?? createMockPlanFlowContext(), newId: () => `f${(n += 1)}`, now, planService, repository, reviewBudget: options.reviewBudget, scope: SCOPE, search: options.search, tier: options.tier ?? "pro" });
   return { ai, flow, planService, repository };
 }
 

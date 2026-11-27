@@ -1,3 +1,5 @@
+import { overLimitNoticeOf } from "../../features/ai-quota/over-limit";
+import { tierLimit } from "../../features/ai-quota/tiers";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -213,14 +215,23 @@ test("the goal kind guess: short text and repeats never call the AI; the daily c
   assert.equal(world.ai.calls.goalKind, 20, "at most 20 AI guesses per Tokyo day");
 });
 
-test("at most 10 new goals a month; a third active goal is refused before any AI call", async () => {
-  const world = flowWorld();
-  for (let index = 0; index < PLAN_NEW_GOAL_MONTHLY_LIMIT; index += 1) {
-    await world.flow.createIntake({ goalKind: "sales", goalText: `目標 ${index}`, idempotencyKey: key(), source: "task" }, JA);
+test("new goals a month follow the tier (free 1 / pro 10, tiers.ts); the refusal carries the public notice; a third active goal is refused before any AI call", async () => {
+  for (const tier of ["free", "pro"] as const) {
+    const world = flowWorld({ tier });
+    const limit = tierLimit(tier, "plan_new_goal", "month")!;
+    for (let index = 0; index < limit; index += 1) {
+      await world.flow.createIntake({ goalKind: "sales", goalText: `目標 ${index}`, idempotencyKey: key(), source: "task" }, JA);
+    }
+    const list = await world.flow.listIntakes(JA);
+    assert.equal(list.newGoalsLeftThisMonth, 0);
+    await assert.rejects(world.flow.createIntake({ goalKind: "sales", goalText: "次の目標", idempotencyKey: key(), source: "task" }, JA), (error: unknown) => {
+      if (!(error instanceof PlanFlowError) || error.reason !== "GOAL_MONTHLY_LIMIT" || !error.details.retryOn) return false;
+      const notice = overLimitNoticeOf(error.details);
+      assert.deepEqual(notice && [notice.feature, notice.limit, notice.used, notice.tier, notice.upgradable, notice.upgradeLimit], ["plan_new_goal", limit, limit, tier, tier === "free", tier === "free" ? 10 : null]);
+      return true;
+    });
   }
-  const list = await world.flow.listIntakes(JA);
-  assert.equal(list.newGoalsLeftThisMonth, 0);
-  await assert.rejects(world.flow.createIntake({ goalKind: "sales", goalText: "11 個目", idempotencyKey: key(), source: "task" }, JA), (error: unknown) => error instanceof PlanFlowError && error.reason === "GOAL_MONTHLY_LIMIT" && Boolean(error.details.retryOn));
+  assert.equal(PLAN_NEW_GOAL_MONTHLY_LIMIT, tierLimit("free", "plan_new_goal", "month"), "the default is the free tier's value");
 
   const full = flowWorld();
   await full.planService.createPlanFromDraft(draftInput({ creationKey: "a", goalId: "g1" }));
