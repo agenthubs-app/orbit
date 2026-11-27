@@ -293,6 +293,7 @@ test("5 host questions covering nothing: profile tags fill the core items; witho
   const without = await walkAndSubmit(hosts, null, true);
   assert.equal(without.answers.length, 5, "no 6th question");
   assert.deepEqual(without.missingCore, ["targetAttendees", "valueOffered"]);
+  assert.deepEqual(without.fields, [], "nothing to sign (no profile facts in this stub): the page then sends responses: [] and the route / admission take it");
   assert.equal(without.result?.status, "pending_review", "accepted with the blanks");
 });
 

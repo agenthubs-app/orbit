@@ -152,9 +152,9 @@ async function exactApplicationBody(
   if (
     Reflect.ownKeys(body).length !== 1 ||
     !Reflect.has(body, "responses") ||
-    !Array.isArray(body.responses) ||
-    body.responses.length === 0
+    !Array.isArray(body.responses)
   ) {
+    // 2026-11-27：允许 0 条（报名页问的全是主办方题、资料又补不上任何一项时，签不出回答也要能申请）。
     throw validationError();
   }
   return body.responses.map((rawResponse) => {

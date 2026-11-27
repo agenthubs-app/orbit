@@ -38,3 +38,8 @@ test("an answer is required to go on: 次へ stays disabled with nothing picked 
   assert.equal(eventJoinNextInputObject.safeParse({ answers: [blank] }).success, false);
   assert.equal(eventJoinSubmitInputObject.safeParse({ answers: [blank], idempotencyKey: "k" }).success, false);
 });
+
+test("「足りない項目を追加できます」 only shows below 100 % (one review card for phone and desktop)", () => {
+  assert.match(flow, /\{coverage < 100 \? <span className=\{styles\.lbl\} data-join-addable="">\{t\("coverageAddable"\)\}<\/span> : null\}/);
+  assert.equal(flow.match(/coverageAddable/g)?.length, 1);
+});

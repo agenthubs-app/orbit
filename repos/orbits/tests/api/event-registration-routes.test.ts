@@ -288,6 +288,20 @@ test("2026-11-27: a registration with a core field blank is accepted as blank; a
   assert.equal(response.status, 200);
   assert.equal(body.data.participantProfile.answers.targetAttendees, "Climate operators");
   assert.equal(body.data.participantProfile.answers.valueOffered, undefined, "left blank, shown to the host as not filled");
+
+  // The join page sends an explicit empty `responses` when the host's questions took all 5 and the profile fills nothing:
+  // accepted with every profile field blank (only a body with nothing at all is refused, above).
+  const noSigned = await register(
+    new Request(`http://orbit.local/api/events/${eventId}/registration`, {
+      body: JSON.stringify({ answers: {}, responses: [] }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+    context,
+  );
+  assert.equal(noSigned.status, 200);
+  const noSignedBody = await noSigned.json();
+  assert.deepEqual(noSignedBody.data.participantProfile.answers, {}, "every profile field blank");
 });
 
 test("cancelling without a registration returns a stable not-found envelope", async () => {

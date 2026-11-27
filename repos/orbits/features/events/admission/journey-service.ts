@@ -92,7 +92,8 @@ function completeVerifiedProfile(input: {
   displayName?: string;
   interviewResponses: readonly EventProfileResponseSnapshot[];
 } {
-  if (!Array.isArray(input.responses) || input.responses.length === 0) {
+  // 2026-11-27：0 条也收（主办方题占满 5 题、资料补不上任何一项时没有可签的回答），资料字段全部按未填。
+  if (!Array.isArray(input.responses)) {
     throw new EventAdmissionJourneyError(
       "PROFILE_INCOMPLETE",
       "Server-verified adaptive interview responses are required.",
@@ -181,7 +182,7 @@ export function createEventAdmissionJourneyService(input: {
     async apply(application) {
       const actorId = requiredIdentity(application.actorId, "actor");
       const eventId = await canonicalEventId(application.eventReference);
-      const interviewResponses = verifyResponses({
+      const interviewResponses = application.responses.length === 0 ? [] : verifyResponses({
         actorId,
         eventId,
         responses: application.responses,

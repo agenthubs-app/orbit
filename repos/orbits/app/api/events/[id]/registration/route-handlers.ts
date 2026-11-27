@@ -131,7 +131,9 @@ async function readRegistrationPayload(
           "Every interview response must include a question token and answer.",
         );
       }
-      const interviewResponses = verifyInterviewResponseSubmissions({
+      // 2026-11-27：明确带了空的 responses（报名页问的全是主办方题、资料补不上任何一项）也收，资料字段按未填；
+      // 不带 responses、什么都没答的空提交仍在下面拒绝。
+      const interviewResponses = submissions.length === 0 ? [] : verifyInterviewResponseSubmissions({
         actorId: input.actorId,
         eventId: input.eventId,
         responses: submissions,

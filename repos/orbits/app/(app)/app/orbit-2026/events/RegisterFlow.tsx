@@ -433,7 +433,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const reviewCards = (
     <>
       <div className={`${styles.card} ${r.inner}`}>
-        <div className={styles.cardH}><h3>{t("coverageTitle", { n: profile?.coverage ?? 0 })}</h3><span className={styles.lbl}>{t("coverageAddable")}</span></div>
+        <div className={styles.cardH}><h3>{t("coverageTitle", { n: profile?.coverage ?? 0 })}</h3>{coverage < 100 ? <span className={styles.lbl} data-join-addable="">{t("coverageAddable")}</span> : null}</div>
         {(profile?.items ?? []).map((item) => (
           <div key={item.key} className={`${styles.row} ${r.covRow}`}>
             <span className={item.done ? r.ok : r.missing}>{item.done ? "✓" : "△"}</span>

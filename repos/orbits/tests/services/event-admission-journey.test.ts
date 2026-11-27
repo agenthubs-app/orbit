@@ -216,6 +216,20 @@ test("journey accepts missing core fields as blanks without synthesizing an unan
   assert.equal(answers.valueOffered, undefined, "the unanswered one stays blank (the host sees it as not filled)");
 });
 
+test("journey accepts an application with no signed responses (host questions took all 5, the profile fills nothing) without verifying", async () => {
+  let written: { profilePayload?: { answers?: Record<string, string>; interviewResponses?: unknown[] } } | null = null;
+  let verified = 0;
+  const journey = createEventAdmissionJourneyService({
+    admissionService: admissionService({ onSubmit(_actor, value) { written = value as typeof written; } }),
+    eventCoreService: eventCore(),
+    verifyResponses: () => { verified += 1; return []; },
+  });
+  await journey.apply({ actorId, eventReference: eventId, responses: [] });
+  assert.equal(verified, 0);
+  const payload = (written as { profilePayload?: { answers?: Record<string, string>; interviewResponses?: unknown[] } } | null)?.profilePayload;
+  assert.deepEqual([payload?.answers, payload?.interviewResponses], [{}, []]);
+});
+
 test("journey rejects legacy or participant-controlled profile snapshots", async () => {
   const journey = createEventAdmissionJourneyService({
     admissionService: admissionService(),
