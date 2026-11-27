@@ -22,6 +22,9 @@
 .why.why { display: inline-flex; width: 18px; height: 18px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-3); align-items: center; justify-content: center; font-size: var(--fs-tiny); font-weight: var(--fw-heavy); cursor: pointer; flex: 0 0 auto; }
 .whyBody { margin-top: 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); font-size: var(--fs-meta); color: var(--ink-2); line-height: var(--lh-prose); text-align: left; }
 .community { padding: 16px 20px; }
+/* 2026-11-27 iPad 834：两列按内容最小宽度会把长标题的格子撑出卡片（页面变成 870 宽）；两列等分、格子可收缩，标题省略。 */
+.community > div:last-child { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.commRow.commRow { min-width: 0; }
 .commRow.commRow { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 0; border-radius: var(--r-tile); padding: 10px 12px; min-height: 0; height: auto; text-align: left; color: inherit; font: inherit; cursor: pointer; }
 .datebox { width: 44px; flex: 0 0 auto; text-align: center; border-radius: var(--r-emo); background: var(--surface-2); padding: 5px 0; line-height: var(--lh-tight); }
 .datebox b { display: block; font-family: var(--font-num); font-size: var(--fs-emoji-sm); font-weight: var(--fw-heavy); }
