@@ -15,7 +15,7 @@ import mp from "./matching-phone.module.css";
 
 type Moving = { member: HostMatchingMember; from: string | null };
 
-function TableRow({ table, t, tones, open, why, canMove, onToggle, onWhy, onMove }: { table: HostMatchingTable; t: HostT; tones: Map<string, StandingTone>; open: boolean; why: boolean; canMove: boolean; onToggle: () => void; onWhy: () => void; onMove: (member: HostMatchingMember) => void }) {
+function TableRow({ table, t, tones, open, why, canMove, placed, onToggle, onWhy, onMove }: { table: HostMatchingTable; t: HostT; tones: Map<string, StandingTone>; open: boolean; why: boolean; canMove: boolean; placed?: string | null; onToggle: () => void; onWhy: () => void; onMove: (member: HostMatchingMember) => void }) {
   const hostPlaced = table.members.filter((member) => member.placedByHost);
   return (
     <div className={`${s.card} ${mp.tc} ${open ? "" : mp.one}`} id={`host-table-${table.table}`} data-host-table={table.table}>
@@ -29,7 +29,7 @@ function TableRow({ table, t, tones, open, why, canMove, onToggle, onWhy, onMove
       {open ? (
         <>
           {table.members.map((member) => (
-            <div key={member.participantId} className={mp.mr} data-member={member.participantId}>
+            <div key={member.participantId} className={`${mp.mr} ${member.participantId === placed ? mp.moved : ""}`} data-member={member.participantId}>
               <Avatar name={member.name} size="sm" />
               <span className={mp.meta}><b>{member.name}</b><span>{[member.org, member.role].filter(Boolean).join(" · ")}</span></span>
               <StandingChip standing={member.standing} tones={tones} />
@@ -127,6 +127,8 @@ export function HostMatchingPhone(props: HostMatchingPhoneProps) {
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set(data.tables[0] ? [data.tables[0].table] : []));
   const [why, setWhy] = useState<ReadonlySet<string>>(new Set());
   const [moving, setMoving] = useState<Moving | null>(null);
+  // b13 HM-M5：刚移进去的那一行浅紫底高亮，标出「上一次移动」，直到下一次移动（不靠计时）。
+  const [placed, setPlaced] = useState<string | null>(null);
   const remaining = Math.max(0, data.generationsLimit - data.generationsUsed);
   const tables = useMemo(() => data.tables.filter((table) => table.round === data.round || data.tables.every((item) => item.round !== data.round)), [data.tables, data.round]);
   const tones = useMemo(() => standingToneMap(tables), [tables]);
@@ -229,7 +231,7 @@ export function HostMatchingPhone(props: HostMatchingPhoneProps) {
         </div>
       ) : null}
       {tables.map((table) => (
-        <TableRow key={`${table.round}-${table.table}`} table={table} t={t} tones={tones} open={open.has(table.table)} why={why.has(table.table)} canMove={canMove}
+        <TableRow key={`${table.round}-${table.table}`} table={table} t={t} tones={tones} open={open.has(table.table)} why={why.has(table.table)} canMove={canMove} placed={placed}
           onToggle={() => setOpen((prev) => toggle(prev, table.table))} onWhy={() => setWhy((prev) => toggle(prev, table.table))}
           onMove={(member) => setMoving({ from: table.table, member })} />
       ))}
@@ -238,7 +240,7 @@ export function HostMatchingPhone(props: HostMatchingPhoneProps) {
           <button type="button" className={`btn ${s.btn} ${s.primary} ${mp.xl}`} disabled={busy || !data.generationId} onClick={props.onPublish} data-host-publish=""><Icon name="share" size={16} />{t("aPublish")}</button>
         </div>
       )}
-      {moving ? <MoveSheet moving={moving} tables={tables} round={data.round} t={t} onClose={() => setMoving(null)} onPick={(to) => { const target = moving; setMoving(null); props.onMoveTo?.(target.member, target.from, to); }} /> : null}
+      {moving ? <MoveSheet moving={moving} tables={tables} round={data.round} t={t} onClose={() => setMoving(null)} onPick={(to) => { const target = moving; setMoving(null); setPlaced(to ? target.member.participantId : null); props.onMoveTo?.(target.member, target.from, to); }} /> : null}
       {condSheet}
     </div>
   );

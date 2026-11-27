@@ -62,7 +62,10 @@
 /* b13 .tc-h：展开桌卡标题与「テーブル A · 5名」之间 3px，头部高 42。 */
 .tcH .meta > span { margin-top: 3px; }
 .one .meta b { font-size: var(--fs-row); }
-.mr { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.mr { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); position: relative; }
+/* b13 HM-M5 .mr.moving：刚移进来的那一行浅紫底（左右外扩 8、圆角 14，画在行内容下面：子元素 position: relative，不用负 z-index）。 */
+.moved::before { content: ""; position: absolute; inset: 2px -8px; border-radius: var(--r-md); background: var(--accent-soft); }
+.moved > * { position: relative; }
 .tcH + .mr { margin-top: 8px; }
 .mr .meta b { font-size: var(--fs-row); font-weight: var(--fw-bold); }
 .mr .meta > span { font-size: var(--fs-label); color: var(--ink-3); }

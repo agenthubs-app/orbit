@@ -1218,9 +1218,14 @@
     {
      "click": "[data-host-table=C] button[aria-expanded]",
      "wait": 800
+    },
+    {
+     "click": "[data-host-table=C] button[aria-label='なぜ同じテーブル？']",
+     "wait": 500
     }
    ],
-   "note": "HM-M5 マッチング · 移动后 + なぜ同じテーブル？（b13 #16）"
+   "host": null,
+   "note": "HM-M5 マッチング · 移动后 + なぜ同じテーブル？（b13 #16）；host null = 先复位主办方 mock（移动会累积在服务端）"
   },
   {
    "id": "HM-M6",
