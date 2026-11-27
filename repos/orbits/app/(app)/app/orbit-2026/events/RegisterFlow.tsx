@@ -34,7 +34,7 @@ export function joinApiFor(language: OrbitLanguage) {
     current: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/current`, { headers }, eventJoinCurrentSchema as ZodType<EventJoinCurrent>),
     next: (eventId: string, answers: readonly EventJoinAnswer[], more = false, focus?: EventJoinProfileItemKey) => eventsCall(`/api/events/${id(eventId)}/join/next`, { body: JSON.stringify({ answers, more, ...(focus ? { focus } : {}) }), headers, method: "POST" }, eventJoinStepSchema as ZodType<EventJoinStep>),
     profile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean, edit = false) => eventsCall(`/api/events/${id(eventId)}/join/profile`, { body: JSON.stringify({ answers, draft, ...(edit ? { edit } : {}) }), headers, method: "POST" }, eventJoinProfileSchema as ZodType<EventJoinProfile>),
-    submit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string, edit = false, wechatJoined?: EventJoinWechatAnswer | null) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey(), ...(edit ? { edit } : {}), ...(selfIntro ? { selfIntro } : {}), ...(!edit && wechatJoined ? { wechatJoined } : {}) }), headers, method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
+    submit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string, edit = false, wechatJoined?: EventJoinWechatAnswer | null) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey(), ...(edit ? { edit } : {}), ...(selfIntro ? { selfIntro } : {}), ...(wechatJoined ? { wechatJoined } : {}) }), headers, method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
     cancel: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/cancel`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinCancelResultSchema),
     tentative: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/tentative`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinTentativeResultSchema),
     removeCalendar: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/tentative`, { headers, method: "DELETE" }, eventJoinCalendarRemoveResultSchema),
@@ -121,7 +121,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const [answers, setAnswers] = useState<EventJoinAnswer[]>([]);
   const [step, setStep] = useState<EventJoinStep | null>(null);
   const [profile, setProfile] = useState<EventJoinProfile | null>(null);
-  // 2026-11-27 用户新增：主办方开了「已加群自动通过」时确认页的必答题（改资料不问）。
+  // 2026-11-27 用户新增：主办方开了「已加群自动通过」时确认页的必答题（新报名；审核中的人改资料也问）。
   const [wechat, setWechat] = useState<EventJoinWechatAnswer | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [free, setFree] = useState("");
@@ -156,7 +156,8 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const [asked, setAsked] = useState<Record<string, { item: EventJoinProfileItemKey | null; question: EventJoinQuestion }>>({});
   const [queue, setQueue] = useState<readonly EventJoinQuestion[]>([]);
   const editing = mode === "edit";
-  const wechatNeeded = Boolean(profile?.wechatCheck) && !editing && !wechat;
+  // 问不问由服务端定（新报名，或审核中的人改资料时）。
+  const wechatNeeded = Boolean(profile?.wechatCheck) && !wechat;
   // 用户自己点开的那一题可以返回确认页（不答 = 保留原回答）；补问的必答题没有返回。
   const [optional, setOptional] = useState(false);
   // 有没保存的修改：离开整页时浏览器确认（同 HostSetup）。
@@ -489,7 +490,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         <div className={`${styles.lbl} ${r.scopeLbl}`}>{t("visibilityTitle")}</div>
         <div className={`${styles.row} ${r.scopeRow}`}><span className={`${styles.chip} ${styles.c_teal}`}>{t("visAll")}</span><span className={styles.sub}>{t("visAllFields")}</span></div>
       </div>
-      {profile?.wechatCheck && !editing ? (
+      {profile?.wechatCheck ? (
         <>
           <div className={`${styles.card} ${r.inner} ${r.gap}`} data-join-wechat={wechat ?? "unanswered"}>
             <div className={styles.cardH}><h3>{t("wechatQ")}</h3></div>

@@ -16,8 +16,9 @@ import { hostPeopleRowObject, hostSetupDraftInputObject, hostSetupResponseObject
 const answer = { answer: "VC", field: "targetAttendees", prompt: "q", questionToken: "t" };
 const CONTACT = { lineId: null, note: "备注姓名", wechatId: "Nakahara923" };
 
-function world(options: { review?: boolean; enabled?: boolean; admit?: "registered" | "pending_review" | "throw" } = {}) {
+function world(options: { review?: boolean; enabled?: boolean; admit?: "registered" | "pending_review" | "throw"; status?: "none" | "pending_review" | "registered" } = {}) {
   const calls: string[] = [];
+  let syncs = 0;
   const reports: Array<{ answer: string; autoAdmitted: boolean }> = [];
   const titles: string[] = [];
   const ports: JoinPorts = {
@@ -33,8 +34,8 @@ function world(options: { review?: boolean; enabled?: boolean; admit?: "register
     now: () => Date.parse("2026-11-27T10:00:00.000Z"),
     persona: async () => null,
     profileIntro: async () => null,
-    readTentative: async () => null,
-    registrationStatus: async () => "none",
+    readTentative: async () => { syncs += 1; return null; },
+    registrationStatus: async () => options.status ?? "none",
     removeSchedule: async () => undefined,
     renameSchedule: async () => true,
     saveIntro: async () => undefined,
@@ -46,7 +47,7 @@ function world(options: { review?: boolean; enabled?: boolean; admit?: "register
     updateSchedule: async () => true,
     wechatAutoAdmit: async () => options.enabled ?? true,
   };
-  return { calls, reports, service: createJoinService({ ports }), titles };
+  return { calls, reports, service: createJoinService({ ports }), get syncs() { return syncs; }, titles };
 }
 
 test("switch on + 已加群 → confirmed through the approval transition; calendar written with the final title", async () => {
@@ -89,12 +90,20 @@ test("full (no room) → stays in review; an auto-approval failure never fails t
   assert.equal((await broken.service.submit("actor:a", "evt", [answer], "zh", undefined, false, "joined"))?.status, "pending_review");
 });
 
-test("editing an existing registration never asks nor changes the review state", async () => {
-  const w = world();
-  const ports = w.service;
-  const profile = await ports.profile("actor:a", "evt", [answer], false, "zh", true);
-  assert.equal(profile?.wechatCheck, undefined);
-  assert.equal(profile?.hostContact, undefined);
+test("editing: people still in review are asked and can be auto-approved (calendar goes final); confirmed people are not asked", async () => {
+  const pending = world({ status: "pending_review" });
+  const asked = await pending.service.profile("actor:a", "evt", [answer], false, "zh", true);
+  assert.equal(asked?.wechatCheck, true);
+  const edited = await pending.service.submit("actor:a", "evt", [answer], "zh", undefined, true, "joined");
+  assert.equal(edited?.status, "registered");
+  assert.deepEqual(pending.calls, ["autoAdmit:actor:a:evt"]);
+  assert.ok(pending.syncs >= 1, "the calendar entry follows the approval");
+  const notYet = world({ status: "pending_review" });
+  assert.equal((await notYet.service.submit("actor:a", "evt", [answer], "zh", undefined, true, "not_yet"))?.status, "pending_review");
+  const confirmed = world({ status: "registered" });
+  assert.equal((await confirmed.service.profile("actor:a", "evt", [answer], false, "zh", true))?.wechatCheck, undefined);
+  await confirmed.service.submit("actor:a", "evt", [answer], "zh", undefined, true, "joined");
+  assert.deepEqual(confirmed.calls, [], "a forged answer on another state's edit never approves anything");
 });
 
 test("first-come events never ask; the confirm page asks (with the host contact) only when the switch is on", async () => {
@@ -182,13 +191,14 @@ test("host list: the self-report marker row flag is optional and shown on deskto
 
 test("register page: required single choice above the button; the button stays disabled and says why until answered", () => {
   const flow = readFileSync("app/(app)/app/orbit-2026/events/RegisterFlow.tsx", "utf8");
-  assert.match(flow, /const wechatNeeded = Boolean\(profile\?\.wechatCheck\) && !editing && !wechat;/);
+  assert.match(flow, /const wechatNeeded = Boolean\(profile\?\.wechatCheck\) && !wechat;/, "the server decides who is asked (new, or in review when editing)");
   const applyButtons = flow.match(/<button[^>]*onClick=\{\(\) => void apply\(\)\}[^>]*>/g) ?? [];
   assert.equal(applyButtons.length, 2);
   for (const button of applyButtons) assert.match(button, /disabled=\{busy \|\| draft === "running" \|\| wechatNeeded\}/);
   assert.equal(flow.match(/t\("wechatPickFirst"\)/g)?.length, 2, "hint above the button on desktop and phone");
   assert.match(flow, /wechat === "not_yet" \? <div className=\{styles\.sub\} data-join-wechat-note="">\{t\("wechatNotYetLine"\)\}/);
-  assert.match(flow, /\.\.\.\(!edit && wechatJoined \? \{ wechatJoined \} : \{\}\)/, "never sent when editing");
+  assert.match(flow, /\.\.\.\(wechatJoined \? \{ wechatJoined \} : \{\}\)/);
+  assert.match(flow, /profile\?\.wechatCheck \? wechat : null/, "only sent when the server asked");
   assert.equal(eventsJourneyCopy.wechatQ.zh, "是否已联系主办方报名并加入微信群？");
   assert.equal(eventsJourneyCopy.wechatQ.ja, "主催者に連絡して WeChat グループに参加済みですか？");
   assert.equal(eventsJourneyCopy.wechatQ.en, "Have you contacted the host and joined the WeChat group?");
