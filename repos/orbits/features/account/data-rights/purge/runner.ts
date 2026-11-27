@@ -23,7 +23,10 @@ type Dependencies = {
   now?: () => Date;
 };
 
-/** A single local-only claim and its ordered domain steps. Production has no entrypoint. */
+export type AccountPurgeDependencies = Dependencies;
+
+/** A single local-only claim and its ordered domain steps. Production has no entrypoint (the controlled one-account
+ * operation in features/account/controlled-ops runs only from the build-time operator script). */
 export async function runLocalAccountPurgeOnce(input: Dependencies): Promise<
   { kind: "idle" } | { kind: "failed"; step: string; reason: string } | { kind: "deleted"; deleted: number }
 > {
@@ -38,11 +41,21 @@ export async function runLocalAccountPurgeOnce(input: Dependencies): Promise<
     return { kind: "failed", step: "completion-mail", reason: error instanceof Error ? error.message : "UNKNOWN" };
   }
   const records = createAccountDeletionRecordStore({ db, workspaceId, now: input.now });
-  const progress = createAccountPurgeProgressStore({ db, workspaceId, now: input.now });
   const claim = await records.claimNextPurge();
   if (!claim) return { kind: "idle" };
-  const { actorId, userId } = claim.request;
-  const { leaseToken } = claim;
+  return runClaimedAccountPurge(input, { actorId: claim.request.actorId, userId: claim.request.userId, leaseToken: claim.leaseToken });
+}
+
+/**
+ * The ordered domain steps and the final identity step for one claimed deletion request (status purging, lease held).
+ * Shared by the local runner above and the controlled one-account operation; each step keeps its own gate and rules.
+ */
+export async function runClaimedAccountPurge(input: Dependencies, claim: { actorId: string; userId: string; leaseToken: string }): Promise<
+  { kind: "failed"; step: string; reason: string } | { kind: "deleted"; deleted: number }
+> {
+  const { db, workspaceId } = input;
+  const { actorId, userId, leaseToken } = claim;
+  const progress = createAccountPurgeProgressStore({ db, workspaceId, now: input.now });
   const steps = [
     { id: "connections", run: () => purgeAccountConnections({ db, workspaceId, actorId, userId, revokeToken: input.revokeToken }) },
     { id: "exports", run: () => purgeAccountExports({ db, workspaceId, actorId, storage: input.storage }) },

@@ -20,6 +20,9 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/account/data-rights/purge/inbox.ts": { policy: "locked", statements: 2, how: "purgeAccountInbox takes acquireSyncCommitOrderLock before shared message and conversation writes" },
   "features/account/data-rights/purge/notes.ts": { policy: "locked", statements: 2, how: "purgeAccountNotes takes acquireSyncCommitOrderLock before shared notification writes" },
   "features/account/data-rights/purge/progress.ts": { policy: "non-sync", statements: 2, collections: "account_purge_steps" },
+  // Build-time operator script only (scripts/account-ops.ts); shared-domain writes go through the purge steps above.
+  "features/account/controlled-ops/account-purge.ts": { policy: "non-sync", statements: 4, collections: "account_deletion_locks, account_deletion_requests, auth_users (deletionRequestedAt)" },
+  "features/account/controlled-ops/email-change.ts": { policy: "non-sync", statements: 1, collections: "auth_users (re-keyed sign-in row; also takes the commit-order lock)" },
   "features/account/data-rights/reauth.ts": { policy: "non-sync", statements: 2, collections: "account_reauth_receipts and account_reauth_limits" },
   "features/account/data-rights/records.ts": { policy: "non-sync", statements: 5, collections: "account_exports and account_export_locks" },
   "shared/storage/postgres-live-record-store.ts": { policy: "locked", statements: 5, how: "upsert/insertIfAbsent/updateIfCurrent/delete/reassignRecordOwner wrap sync collections in SYNC_COMMIT_ORDER_LOCK_CTE" },
