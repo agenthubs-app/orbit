@@ -198,7 +198,8 @@ export const eventsCopy = {
   relFromSpeakers: { ja: "登壇者より", zh: "来自演讲者", en: "From the speakers", kind: "label" },
   relFromExhibitors: { ja: "出展企業より", zh: "来自展商", en: "From exhibitors", kind: "label" },
   relKnownMain: { ja: "知り合い {n}名が参加予定", zh: "认识的人有{n}位参加", en: "{n} people you know are going", kind: "label" },
-  relTopicMain: { ja: "プランの{labels}に近いテーマ", zh: "与计划里的{labels}主题相近", en: "Close to {labels} in your plan", kind: "label" },
+  // 标签可能来自计划，也可能来自资料里的目标（没有计划时按资料目标排序，discover-core）：两种都是「你的目标」。
+  relTopicMain: { ja: "目標の{labels}に近いテーマ", zh: "与你目标里的{labels}主题相近", en: "Close to {labels} in your goals", kind: "label" },
   relQuote: { ja: "「{v}」", zh: "「{v}」", en: "“{v}”", kind: "label" },
   relTopicBasis: { ja: "イベント説明より", zh: "来自活动说明", en: "From the event description", kind: "label" },
   relBudgetMain: { ja: "予算 ¥{limit} を超えています", zh: "超出预算 ¥{limit}", en: "Over your ¥{limit} budget", kind: "label" },

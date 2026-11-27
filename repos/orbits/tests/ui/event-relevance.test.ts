@@ -69,14 +69,14 @@ test("registration chip: only from 10 registrations", () => {
   assert.equal(m.registrationChipText(46, "en"), "46 registered");
 });
 
-test("card: 0 registrants, topic only → one row 「プランの「A」「B」に近いテーマ」 from the description", () => {
+test("card: 0 registrants, topic only → one row 「目標の「A」「B」に近いテーマ」 from the description (plan or profile goal)", () => {
   const html = m.card({ ...empty, group: "topic", topic: { labels: ["VC パートナー", "起業家"] } }, "ja");
   assert.match(html, /data-relevance-card/);
   assert.match(html, /あなたに関係すること/);
   assert.equal((html.match(/data-relevance-row=/g) ?? []).length, 1);
-  assert.match(html, /プランの「VC パートナー」「起業家」に近いテーマ<small>イベント説明より<\/small>/);
-  assert.match(m.card({ ...empty, group: "topic", topic: { labels: ["VC", "Founder"] } }, "en"), /Close to “VC”, “Founder” in your plan<small>From the event description<\/small>/);
-  assert.match(m.card({ ...empty, group: "topic", topic: { labels: ["VC"] } }, "zh"), /与计划里的「VC」主题相近<small>来自活动说明<\/small>/);
+  assert.match(html, /目標の「VC パートナー」「起業家」に近いテーマ<small>イベント説明より<\/small>/);
+  assert.match(m.card({ ...empty, group: "topic", topic: { labels: ["VC", "Founder"] } }, "en"), /Close to “VC”, “Founder” in your goals<small>From the event description<\/small>/);
+  assert.match(m.card({ ...empty, group: "topic", topic: { labels: ["VC"] } }, "zh"), /与你目标里的「VC」主题相近<small>来自活动说明<\/small>/);
 });
 
 test("card: people + known + budget → three rows with their basis lines; budget in coral", () => {
