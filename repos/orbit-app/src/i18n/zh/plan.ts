@@ -34,6 +34,7 @@ export const plan = {
   "plan.limit.goalMonthlyUpgradeOne": "这个月的 {count} 份新计划已用完，{date}恢复。升级到 Pro 每月可新建 {upgrade} 份计划。",
   "plan.limit.goalMonthlyPro": "这个月的 {count} 份新计划已用完，{date}恢复。已有的内容照常可以查看。",
   "plan.limit.goalMonthlyProOne": "这个月的 {count} 份新计划已用完，{date}恢复。已有的内容照常可以查看。",
+  "plan.limit.aiMonthlyCount": "这个月的 {count} 次已用完，{date}恢复。已有的内容照常可以查看。",
   "plan.limit.goalMonthly": "本月不能再新建目标了。",
   "plan.limit.goalActive": "同时进行的目标最多2个。",
   "plan.error.stale": "已在其他设备上修改",

@@ -76,7 +76,7 @@ export function createEventAssessmentLiveHandlers(deps: EventAssessmentLiveDeps 
 
   return {
     list: run(false, async ({ actorId, language, service }) => ({ data: await service.list(actorId, language) }), () => ({ data: [] })),
-    availability: run(false, async ({ actorId, service }) => ({ data: await service.availability(actorId) }), () => ({ data: { aiReadAvailable: false, dailyLeft: null, monthlyLeft: null, monthlyLimit: null } })),
+    availability: run(false, async ({ actorId, service }) => ({ data: await service.availability(actorId) }), () => ({ data: { aiReadAvailable: false, dailyLeft: null, dailyLimit: null, monthlyLeft: null, monthlyLimit: null } })),
     create: run(true, async ({ actorId, language, request, service }) => {
       const body = await readBody(request, eventAssessmentCreateInputSchema);
       if (body.ok === false) return body.reply;

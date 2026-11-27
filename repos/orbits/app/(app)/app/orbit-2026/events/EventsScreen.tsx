@@ -3,6 +3,7 @@
 // R26 イベント (events DESIGN §2.1): the 評価 / 参加予定 / 探す page in the shell. 評価: the input card, 次の参加予定,
 // 調べたイベント (newest first; 2026-11-15 no scores) and the selected one in the rail (1440) / a drawer (1024) / its own screen (390).
 // 参加イベント（2026-11-21 由「参加予定」改名）：events/mine upcoming + past，これから / 過去 二选一。 探す: R27 `DiscoverTab`（コミュニティ / プランに効く / すべて，右栏「選択中のイベント」）。
+import { eventAssessmentLimitText } from "../copy/ai-monthly-limit";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
@@ -141,6 +142,15 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
     replace(value);
     if (value.status === "failed" && (value.failureReason === "login_required" || value.failureReason === "not_event_page")) { setFlow(null); setSelected(value.id); return; }
     if (value.status === "needs_input") { setFlow({ item: value, kind: "fill" }); return; }
+    if (value.status === "failed" && value.failureReason === "quota_exceeded") {
+      // 2026-11-27：活动评估的次数用完了——重新读一次可用次数，写出数字与恢复时间（公开的上限），不说「出错」。
+      setFlow(null);
+      void eventsApi.availability().then((fresh) => {
+        if (fresh.ok) setAvailability(fresh.data);
+        toast.error((fresh.ok ? eventAssessmentLimitText(language, fresh.data) : null) ?? t("genericError"));
+      });
+      return;
+    }
     if (value.status === "failed") { setFlow(null); toast.error(t("genericError")); return; }
     setFlow(null);
     setSelected(value.id);
@@ -274,7 +284,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
           {!flow && current?.failureReason === "login_required" ? <LoginRequired item={current} language={language} onManual={() => setFlow({ kind: "manual" })} onOther={() => { setSelected(null); setUrl(""); }} onPaste={() => setFlow({ kind: "paste" })} onShot={() => fileRef.current?.click()} /> : null}
           {!flow && current?.failureReason === "not_event_page" ? <NotEventPage item={current} language={language} onManual={() => setFlow({ kind: "manual" })} onAssess={(link, title) => (link ? void start({ idempotencyKey: newIdempotencyKey(), sourceKind: "url", url: link }) : setFlow({ kind: "manual" }))} /> : null}
           <AssessCard
-            t={t} tier={tier} big={empty} url={url} setUrl={setUrl} onAssessUrl={submitUrl} busy={busy} availability={availability ?? null} fileRef={fileRef} dragging={dragging} setDragging={setDragging}
+            t={t} language={language} tier={tier} big={empty} url={url} setUrl={setUrl} onAssessUrl={submitUrl} busy={busy} availability={availability ?? null} fileRef={fileRef} dragging={dragging} setDragging={setDragging}
             onFiles={(files) => void submitPosters(files)} onManual={() => setFlow({ kind: "manual" })} goalLabel={null}
           />
           {empty ? <EmptyCards t={t} language={language} onCode={() => setCodeOpen(true)} /> : null}
@@ -309,13 +319,14 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   );
 }
 
-function AssessCard({ t, tier, big, url, setUrl, onAssessUrl, busy, availability, fileRef, dragging, setDragging, onFiles, onManual, goalLabel }: {
-  t: Translate; tier: Tier; big: boolean; url: string; setUrl: (value: string) => void; onAssessUrl: () => void; busy: boolean; availability: EventAssessmentAvailability | null;
+function AssessCard({ t, language, tier, big, url, setUrl, onAssessUrl, busy, availability, fileRef, dragging, setDragging, onFiles, onManual, goalLabel }: {
+  t: Translate; language: OrbitLanguage; tier: Tier; big: boolean; url: string; setUrl: (value: string) => void; onAssessUrl: () => void; busy: boolean; availability: EventAssessmentAvailability | null;
   fileRef: React.RefObject<HTMLInputElement | null>; dragging: boolean; setDragging: (value: boolean) => void; onFiles: (files: FileList) => void; onManual: () => void; goalLabel: string | null;
 }) {
   // G18: until the paid AI is on and verified, the URL / poster entries are hidden; only 3 items by hand remain.
   const aiOn = availability?.aiReadAvailable !== false;
-  const quotaOut = availability && availability.monthlyLeft === 0 && availability.monthlyLimit;
+  // 2026-11-27：今天 / 这个月的次数用完时写出数字与恢复时间（同其他上限的说法）。
+  const quotaLine = eventAssessmentLimitText(language, availability);
   const fileInput = <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(event) => { if (event.target.files?.length) onFiles(event.target.files); event.target.value = ""; }} />;
   if (tier === "narrow") {
     // b8 #1 / #3: the compact box — 「URL を貼る」+ 判定, then ポスターを撮る / 写真から.
@@ -333,6 +344,7 @@ function AssessCard({ t, tier, big, url, setUrl, onAssessUrl, busy, availability
               <button type="button" className={`btn ${styles.btn} ${styles.sm}`} style={{ flex: 1 }} onClick={() => fileRef.current?.click()}><Icon name="image" size={16} />{t("fromPhotos")}</button>
             </div>
             {fileInput}
+            {quotaLine ? <div className={`${styles.lbl} ${styles.quota}`} style={{ marginTop: 8 }}>{quotaLine}</div> : null}
           </>
         ) : <button type="button" className={`btn ${styles.btn} ${styles.primary}`} style={{ marginTop: 10 }} onClick={onManual}>{t("manualEntry")}</button>}
       </div>
@@ -357,7 +369,7 @@ function AssessCard({ t, tier, big, url, setUrl, onAssessUrl, busy, availability
             <Icon name="image" size={16} />{t("drop")}
             {fileInput}
           </label>
-          {quotaOut ? <div className={`${styles.lbl} ${styles.quota}`}>{t("quotaReached", { limit: availability.monthlyLimit!, used: availability.monthlyLimit! })}</div> : null}
+          {quotaLine ? <div className={`${styles.lbl} ${styles.quota}`}>{quotaLine}</div> : null}
         </>
       ) : (
         <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={onManual}>{t("manualEntry")}</button>

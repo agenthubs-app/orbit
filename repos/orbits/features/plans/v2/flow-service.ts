@@ -287,8 +287,14 @@ function outcomeStep(previous: PlanFlowStepRecord, outcome: PlanAiOutcome<unknow
   return { ...previous, at, limit: denial.reason === "limit" ? denial.limit ?? "daily" : null, operationId: null, retryOn: denial.retryOn ?? null, state };
 }
 
+/** 2026-11-27：复盘的月上限是公开的（两档同为 3 次，tiers.ts）——带上数字与恢复时间（超额提示的机器字段）。 */
+function reviewLimitError(retryOn: string): PlanFlowError {
+  const notice = overLimitNotice({ cap: PLAN_REVIEW_MONTHLY_LIMIT, feature: "plan_review", period: "month", retryOn, tier: DEFAULT_ACCOUNT_TIER });
+  return new PlanFlowError("REVIEW_LIMIT", "All reviews for this month have been used.", { limit: "monthly", retryOn, ...overLimitContext(notice) });
+}
+
 function aiError(outcome: Extract<PlanAiOutcome<unknown>, { ok: false }>): PlanFlowError {
-  if (outcome.reason === "limit") return new PlanFlowError("AI_LIMIT", "The AI limit has been reached.", { limit: outcome.limit ?? "daily", retryOn: outcome.retryOn ?? null });
+  if (outcome.reason === "limit") return new PlanFlowError("AI_LIMIT", "The AI limit has been reached.", { limit: outcome.limit ?? "daily", retryOn: outcome.retryOn ?? null, ...(outcome.quota ?? {}) });
   if (outcome.reason === "busy") return new PlanFlowError("AI_BUSY", "This step is already running.");
   return new PlanFlowError("AI_FAILED", "The AI step failed. Nothing was saved and no attempt was used.");
 }
@@ -1986,7 +1992,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       if (plan.revision !== draft.baseRevision) throw new PlanFlowError("STALE", "This plan was changed after the review started.");
       // 复核 M1：用户次数与 AI 成本上限取小；任一用完都不调 AI。
       const quota = await repository.read(scope, (reader) => reviewQuotaNow(reader));
-      if (quota.left <= 0) throw new PlanFlowError("REVIEW_LIMIT", "All reviews for this month have been used.", { limit: "monthly", retryOn: nextTokyoMonthStart(nowDate()) });
+      if (quota.left <= 0) throw reviewLimitError(nextTokyoMonthStart(nowDate()));
       const premise = draft.premise.map((row) => {
         const edit = request.premise.find((item) => item.key === row.key);
         return edit ? { ...row, guessed: false, value: edit.value } : row;
@@ -2031,7 +2037,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
           return { failure };
         }
         const usedNow = await reviewUsedThisMonth(tx);
-        if (usedNow >= PLAN_REVIEW_MONTHLY_LIMIT) throw new PlanFlowError("REVIEW_LIMIT", "All reviews for this month have been used.", { limit: "monthly", retryOn: nextTokyoMonthStart(nowDate()) });
+        if (usedNow >= PLAN_REVIEW_MONTHLY_LIMIT) throw reviewLimitError(nextTokyoMonthStart(nowDate()));
         const keys = current.content.steps.map((step) => step.key);
         const revised = carryV3(current.content, toDraftContent(outcome.value.revised, plan.goalKind, contacts.aliases, context.language, premise, keys));
         // 保留原方案里人物类型的 key（确定时按 key 对应已有条目）。

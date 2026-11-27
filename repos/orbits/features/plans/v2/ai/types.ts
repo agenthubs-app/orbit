@@ -34,7 +34,8 @@ export interface PlanAiContext {
 /** 失败的种类：failed = 调用失败或输出两次都不合格；limit = 日 / 月上限；busy = 同键操作正在进行；disabled = 没有 AI。 */
 export type PlanAiOutcome<T> =
   | { ok: true; value: T; operationId: string | null }
-  | { ok: false; reason: "failed" | "limit" | "busy" | "disabled"; limit?: PlanAiLimitKind; retryOn?: string | null };
+  /** `quota`（2026-11-27）：公开上限（计划修改 / 复盘的月上限）的超额提示机器字段（features/ai-quota/over-limit.ts）。 */
+  | { ok: false; reason: "failed" | "limit" | "busy" | "disabled"; limit?: PlanAiLimitKind; retryOn?: string | null; quota?: Record<string, string> };
 
 export interface PlanAiContact {
   alias: string;

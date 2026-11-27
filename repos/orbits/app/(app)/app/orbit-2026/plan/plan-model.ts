@@ -184,14 +184,15 @@ export function pickActiveV2Plan(summary: PlanV2SummaryResponse | null): ActiveP
 export type PlanApiError = { status: number; code: string; reason: string | null; limit: "daily" | "monthly" | null; retryOn: string | null; network: boolean; context?: Record<string, string> };
 
 export type PlanErrorView =
-  | { tone: "limit"; limit: "daily" | "monthly" }
+  /** `quota`（2026-11-27）：计划修改 / 复盘的公开月上限的超额提示字段（有时界面写出数字与恢复日期）。 */
+  | { tone: "limit"; limit: "daily" | "monthly"; quota?: Record<string, string> }
   | { tone: "failure"; op: "draft" | "fix" | "other" }
   | { tone: "notice"; notice: "goalsMonth" | "activeGoals" | "stale" | "used" | "busy"; quota?: Record<string, string> };
 
 /** UI-SPEC 「常见错误原因 → 界面」: a limit is never shown as a failure card. */
 export function planErrorView(error: PlanApiError, op: "draft" | "fix" | "other"): PlanErrorView {
   switch (error.reason) {
-    case "AI_LIMIT": return { limit: error.limit === "monthly" ? "monthly" : "daily", tone: "limit" };
+    case "AI_LIMIT": return { limit: error.limit === "monthly" ? "monthly" : "daily", tone: "limit", ...(error.context?.quotaFeature ? { quota: error.context } : {}) };
     // 2026-11-27 分档：带上超额提示的机器字段，界面写出份数、恢复日期与 Pro 的份数。
     case "GOAL_MONTHLY_LIMIT": return { notice: "goalsMonth", tone: "notice", ...(error.context ? { quota: error.context } : {}) };
     case "PLAN_GOAL_LIMIT": return { notice: "activeGoals", tone: "notice" };

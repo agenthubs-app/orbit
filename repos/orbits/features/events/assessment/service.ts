@@ -444,6 +444,7 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
         dailyLeft: usage ? Math.max(0, deps.ai.dailyLimit - usage.dailyUsed) : null,
         monthlyLeft: usage ? Math.max(0, deps.ai.monthlyLimit - usage.monthlyUsed) : null,
         monthlyLimit: deps.ai.monthlyLimit,
+        dailyLimit: deps.ai.dailyLimit,
       };
     },
     async uploadPoster(actorId, input) {

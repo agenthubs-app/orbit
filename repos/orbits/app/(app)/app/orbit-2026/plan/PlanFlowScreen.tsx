@@ -1,5 +1,6 @@
 "use client";
 
+import { quotaNoticeText } from "../copy/ai-monthly-limit";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -439,7 +440,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
           {premiseOpen ? null : <DraftTurns draft={draft} t={t} only={usedUp ? draft.turns[draft.turns.length - 1]?.n : undefined} />}
           {failureAt("fix", t(planFlowCopy.fixFailed), t(planFlowCopy.fixFailedBody))}
           {failureAt("redraft", t(planFlowCopy.fixFailed), t(planFlowCopy.fixFailedBody))}
-          {limitView && (failed?.where === "fix" || failed?.where === "redraft") ? <LimitCard title={t(limitView.limit === "monthly" ? planFlowCopy.limitMonthly : planFlowCopy.limitDaily)} sub={t(planFlowCopy.limitFixSub)} data={{ "data-plan-limit": limitView.limit }} /> : null}
+          {limitView && (failed?.where === "fix" || failed?.where === "redraft") ? <LimitCard title={quotaNoticeText(language, limitView.quota) ?? t(limitView.limit === "monthly" ? planFlowCopy.limitMonthly : planFlowCopy.limitDaily)} sub={t(planFlowCopy.limitFixSub)} data={{ "data-plan-limit": limitView.limit }} /> : null}
           {usedUp && draft.turns.length ? (
             <div className={`${k.card} ${k.flat} ${k.usedUp}`} data-plan-fix-end="">
               <div className={k.row} style={{ gap: 8 }}><b className={k.usedUpTitle}>{t(planFlowCopy.usedUpTitle, { limit: draft.aiFixLimit })}</b><span className={k.chip}>{t(planFlowCopy.fixLeftChip, { n: 0 })}</span></div>

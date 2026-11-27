@@ -70,6 +70,7 @@ export const networkAnalysis = {
   "networkAnalysis.aiEvidence": "依据：{names}",
   "networkAnalysis.recompute": "重新分析",
   "networkAnalysis.recomputeMonthlyLimited": "这个月的 {count} 次已用完，{date}恢复。已有的内容照常可以查看。",
+  "networkAnalysis.recomputeDailyLimited": "今天的 {count} 次已用完，明天恢复。已有的内容照常可以查看。",
   "networkAnalysis.recomputeLimited": "今天的重新分析次数已用完",
   "networkAnalysis.recomputeFailed": "没能重新分析",
   "networkAnalysis.recomputeNeedsContacts": "已确认的人满3位后才能重新分析",

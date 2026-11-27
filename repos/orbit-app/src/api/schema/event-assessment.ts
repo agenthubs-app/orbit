@@ -95,5 +95,5 @@ export const eventAssessmentDismissResultSchema = eventAssessmentDismissResultOb
 export const eventAssessmentDeleteResultObject = z.object({ assessmentId: z.string().min(1), deleted: z.literal(true) });
 export const eventAssessmentDeleteResultSchema = eventAssessmentDeleteResultObject as z.ZodType<EventAssessmentDeleteResult>;
 const countOrNull = z.number().int().min(0).nullable().optional().catch(null);
-export const eventAssessmentAvailabilityObject = z.object({ monthlyLeft: countOrNull, monthlyLimit: countOrNull, dailyLeft: countOrNull, aiReadAvailable: z.boolean() });
+export const eventAssessmentAvailabilityObject = z.object({ monthlyLeft: countOrNull, monthlyLimit: countOrNull, dailyLeft: countOrNull, dailyLimit: countOrNull, aiReadAvailable: z.boolean() });
 export const eventAssessmentAvailabilitySchema = eventAssessmentAvailabilityObject as z.ZodType<EventAssessmentAvailability>;

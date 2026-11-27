@@ -10,7 +10,8 @@ export type PlanFailure =
   | { kind: "notImplemented" }
   | { kind: "aiFailed" }
   | { kind: "aiBusy" }
-  | { kind: "aiLimit"; limit: PlanAiLimitKind; retryOn: string | null }
+  /** `detail`（2026-11-27）：计划修改 / 复盘的公开月上限（数字、恢复时间）；其他上限没有。 */
+  | { kind: "aiLimit"; limit: PlanAiLimitKind; retryOn: string | null; detail?: AiLimitDetail }
   /** `detail`（2026-11-27 分档）：服务端给的份数、恢复时间与 Pro 的份数（quota* 字段）。 */
   | { kind: "goalMonthlyLimit"; detail?: AiLimitDetail }
   | { kind: "goalLimit" }
@@ -32,7 +33,7 @@ export function planFailureOf(result: Extract<ApiResult<unknown>, { success: fal
   switch (reason) {
     case "AI_FAILED": return { kind: "aiFailed" };
     case "AI_BUSY": return { kind: "aiBusy" };
-    case "AI_LIMIT": return { kind: "aiLimit", limit: result.error.context?.limit === "monthly" ? "monthly" : "daily", retryOn: result.error.context?.retryOn ?? null };
+    case "AI_LIMIT": return { kind: "aiLimit", limit: result.error.context?.limit === "monthly" ? "monthly" : "daily", retryOn: result.error.context?.retryOn ?? null, ...(result.error.context?.quotaFeature ? { detail: aiLimitDetailOf(result.error.context) } : {}) };
     case "GOAL_MONTHLY_LIMIT": return { detail: aiLimitDetailOf(result.error.context), kind: "goalMonthlyLimit" };
     case "PLAN_GOAL_LIMIT": return { kind: "goalLimit" };
     case "STALE": return { kind: "stale" };

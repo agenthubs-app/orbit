@@ -34,6 +34,7 @@ export const plan = {
   "plan.limit.goalMonthlyUpgradeOne": "This month's {count} new plan is used up. It comes back on {date}. Pro allows {upgrade} new plans a month.",
   "plan.limit.goalMonthlyPro": "This month's {count} new plans are used up. They come back on {date}. Everything you already have can still be viewed as usual.",
   "plan.limit.goalMonthlyProOne": "This month's {count} new plan is used up. It comes back on {date}. Everything you already have can still be viewed as usual.",
+  "plan.limit.aiMonthlyCount": "This month's {count} uses are used up. They come back on {date}. Everything you already have can still be viewed as usual.",
   "plan.limit.goalMonthly": "No more new goals can be created this month.",
   "plan.limit.goalActive": "Up to 2 goals can be in progress at once.",
   "plan.error.stale": "Changed on another device",

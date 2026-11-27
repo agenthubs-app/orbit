@@ -70,6 +70,7 @@ export const networkAnalysis = {
   "networkAnalysis.aiEvidence": "Based on: {names}",
   "networkAnalysis.recompute": "Refresh",
   "networkAnalysis.recomputeMonthlyLimited": "This month's {count} uses are used up. They come back on {date}. Everything you already have can still be viewed as usual.",
+  "networkAnalysis.recomputeDailyLimited": "Today's {count} uses are used up. They come back tomorrow. Everything you already have can still be viewed as usual.",
   "networkAnalysis.recomputeLimited": "No refreshes left today",
   "networkAnalysis.recomputeFailed": "Could not refresh",
   "networkAnalysis.recomputeNeedsContacts": "Needs 3 confirmed people",

@@ -115,8 +115,10 @@ test("manual re-analysis over the monthly limit: 429 with reason MONTHLY_LIMIT (
   const monthly = await handlerFor({ cap: 10, limit: "monthly", retryOn: "2026-11-30T15:00:00.000Z", status: "limited" })(request());
   assert.equal(monthly.status, 429);
   assert.deepEqual(((await monthly.json()) as { error: { context: unknown } }).error.context, { quotaFeature: "manual_reanalysis", quotaLimit: "10", quotaPeriod: "month", quotaRetryOn: "2026-11-30T15:00:00.000Z", quotaTier: "free", quotaUpgradable: "false", quotaUsed: "10", reason: "MONTHLY_LIMIT", retryOn: "2026-11-30T15:00:00.000Z" });
-  const daily = await handlerFor({ limit: "manual", retryOn: "2026-11-27T15:00:00.000Z", status: "limited" })(request());
-  assert.equal(((await daily.json()) as { error: { context: { reason: string } } }).error.context.reason, "MANUAL_REFRESH_LIMIT");
+  const daily = await handlerFor({ cap: 3, limit: "manual", retryOn: "2026-11-27T15:00:00.000Z", status: "limited" })(request());
+  const dailyContext = ((await daily.json()) as { error: { context: Record<string, string> } }).error.context;
+  assert.equal(dailyContext.reason, "MANUAL_REFRESH_LIMIT");
+  assert.deepEqual([dailyContext.quotaFeature, dailyContext.quotaPeriod, dailyContext.quotaLimit], ["manual_reanalysis", "day", "3"], "the daily 3 is public too");
 });
 
 test("memo extraction over the monthly limit: deferred to the 1st of next month, 0 model calls (silent)", async () => {

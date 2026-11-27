@@ -56,6 +56,8 @@ export function NetworkAnalysisScreen() {
     setRecomputing(false);
     if (outcome.kind === "ok") setRecomputed(outcome.snapshot);
     else if (outcome.kind === "monthlyLimited") toast.error(t("networkAnalysis.recomputeMonthlyLimited", aiLimitParams(outcome.detail, language)));
+    // 每日 3 次也是公开的上限：有数字就写出数字与「明天恢复」。
+    else if (outcome.kind === "limited" && outcome.detail?.limit) toast.error(t("networkAnalysis.recomputeDailyLimited", aiLimitParams(outcome.detail, language)));
     else toast.error(t(outcome.kind === "limited" ? "networkAnalysis.recomputeLimited" : outcome.kind === "needsContacts" ? "networkAnalysis.recomputeNeedsContacts" : "networkAnalysis.recomputeFailed"));
   }, [client, language, t, toast]);
 

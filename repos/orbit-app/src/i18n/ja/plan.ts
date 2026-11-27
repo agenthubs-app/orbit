@@ -34,6 +34,7 @@ export const plan = {
   "plan.limit.goalMonthlyUpgradeOne": "今月の新しい計画{count}件を使い切りました。{date}に戻ります。Pro にすると毎月{upgrade}件まで新しい計画をつくれます。",
   "plan.limit.goalMonthlyPro": "今月の新しい計画{count}件を使い切りました。{date}に戻ります。これまでの内容はいつもどおりご覧いただけます。",
   "plan.limit.goalMonthlyProOne": "今月の新しい計画{count}件を使い切りました。{date}に戻ります。これまでの内容はいつもどおりご覧いただけます。",
+  "plan.limit.aiMonthlyCount": "今月の{count}回を使い切りました。{date}に戻ります。これまでの内容はいつもどおりご覧いただけます。",
   "plan.limit.goalMonthly": "今月はこれ以上新しい目標を作れません。",
   "plan.limit.goalActive": "同時に進められる目標は 2 つまでです。",
   "plan.error.stale": "別の端末で変更されました",

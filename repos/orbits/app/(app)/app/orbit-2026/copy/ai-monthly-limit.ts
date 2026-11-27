@@ -3,7 +3,8 @@
  * 数字、恢复日期、能否升级都来自服务端 429 的 `error.context`（`quota*` 字段，数值取自 features/ai-quota/tiers.ts），
  * 文案与服务端同一个模块（features/ai-quota/over-limit.ts），这里不写死数字。App 端同文：i18n 的 `quota.*` 键。
  */
-import { notAcceptedText, overLimitNoticeOf, overLimitText } from "../../../../../features/ai-quota/over-limit";
+import { notAcceptedText, overLimitNotice, overLimitNoticeOf, overLimitText } from "../../../../../features/ai-quota/over-limit";
+import { DEFAULT_ACCOUNT_TIER } from "../../../../../features/ai-quota/tiers";
 
 export const AI_MONTHLY_LIMIT_CODE = "AI_MONTHLY_LIMIT";
 export const CARD_SCAN_LIMIT_CODE = "CARD_SCAN_MONTHLY_LIMIT";
@@ -27,4 +28,25 @@ export function aiMonthlyLimitText(language: Language, context?: unknown): strin
 /** Part of a card-scan batch was not accepted: how many, then the numbered line. */
 export function cardScanPartialText(language: Language, notAccepted: number, context: unknown): string {
   return `${notAcceptedText(language, notAccepted)}${language === "en" ? " " : ""}${aiMonthlyLimitText(language, context)}`;
+}
+
+const TOKYO = 9 * 3_600_000;
+const DAY = 86_400_000;
+
+/**
+ * 活动评估（两档同为每天 5 次、每月 10 次，tiers.ts）用完时的一句：今天用完写「明天恢复」，这个月用完写下月 1 日。
+ * 数字取自服务端的 availability（dailyLimit / monthlyLimit），不写死。不是用完时 null。
+ */
+export function eventAssessmentLimitText(language: Language, availability: { dailyLeft?: number | null; dailyLimit?: number | null; monthlyLeft?: number | null; monthlyLimit?: number | null } | null | undefined, now: Date = new Date()): string | null {
+  if (!availability) return null;
+  const tokyoNow = new Date(now.getTime() + TOKYO);
+  if (availability.monthlyLeft === 0 && availability.monthlyLimit) {
+    const retryOn = new Date(Date.UTC(tokyoNow.getUTCFullYear(), tokyoNow.getUTCMonth() + 1, 1) - TOKYO).toISOString();
+    return overLimitText(language, overLimitNotice({ cap: availability.monthlyLimit, feature: "event_assessment", period: "month", retryOn, tier: DEFAULT_ACCOUNT_TIER }));
+  }
+  if (availability.dailyLeft === 0 && availability.dailyLimit) {
+    const retryOn = new Date((Math.floor(tokyoNow.getTime() / DAY) + 1) * DAY - TOKYO).toISOString();
+    return overLimitText(language, overLimitNotice({ cap: availability.dailyLimit, feature: "event_assessment", period: "day", retryOn, tier: DEFAULT_ACCOUNT_TIER }));
+  }
+  return null;
 }

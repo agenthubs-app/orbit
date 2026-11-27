@@ -252,7 +252,7 @@ test("处理器：同键重试不重复入队；租约内不被再次认领；>2
 
 test("availability：AI 开关与本月 / 今天剩余", async () => {
   const { service } = setup();
-  assert.deepEqual(await service.availability(ALICE), { aiReadAvailable: true, dailyLeft: 4, monthlyLeft: 7, monthlyLimit: 10 });
+  assert.deepEqual(await service.availability(ALICE), { aiReadAvailable: true, dailyLeft: 4, dailyLimit: 5, monthlyLeft: 7, monthlyLimit: 10 });
 });
 
 test("复核 S2：处理途中被回收（租约变了）→ 这次结果不再写库，timeout 不会被改回 ready", async () => {

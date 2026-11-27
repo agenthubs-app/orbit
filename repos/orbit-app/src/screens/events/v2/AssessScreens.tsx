@@ -2,6 +2,7 @@
 // (b2 #0 login, #1 not an event page, #2 poster fill-in, #3 after filling). 2026-11-15: no score — the result shows the
 // facts read, 「あなたに関係すること」 and what could not be read;
 // a URL / poster read polls every 2 seconds for up to 90 seconds (DESIGN §5). The poster picker loads lazily.
+import { aiLimitParams } from "../../../api/ai-limit";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -323,9 +324,23 @@ function failureCopy(reason: EventAssessmentContract["failureReason"]) {
 
 function ReadFailedScreen({ item, headerActions }: { item: EventAssessmentContract; headerActions?: ReactNode }) {
   const { styles, colors } = useStyles();
-  const { t } = useOrbitLocale();
+  const { t, language } = useOrbitLocale();
   const router = useRouter();
+  const api = useEventsApi();
   const [chip, line] = failureCopy(item.failureReason);
+  // 2026-11-27：活动评估的次数用完（每天 5 次、每月 10 次，公开的上限）——读一次可用次数，写出数字与恢复时间，不说「稍后再试」。
+  const [quotaLine, setQuotaLine] = useState<string | null>(null);
+  useEffect(() => {
+    if (item.failureReason !== "quota_exceeded") return;
+    let live = true;
+    void api.availability().then((result) => {
+      if (!live || !result.ok) return;
+      const { dailyLeft, dailyLimit, monthlyLeft, monthlyLimit } = result.data;
+      if (monthlyLeft === 0 && monthlyLimit) setQuotaLine(t("eventsV2.quotaMonth", aiLimitParams({ limit: monthlyLimit, retryOn: null, upgradeLimit: null }, language)));
+      else if (dailyLeft === 0 && dailyLimit) setQuotaLine(t("eventsV2.quotaDay", aiLimitParams({ limit: dailyLimit, retryOn: null, upgradeLimit: null }, language)));
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, [api, item.failureReason, language, t]);
   const way = (emoji: string, tone: string, title: string, sub: string, onPress: () => void, testID: string) => (
     <UiPressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={styles.optRow} testID={testID}>
       <View style={[styles.emoSm, { backgroundColor: tone }]}><UiText style={styles.emoTextSm}>{emoji}</UiText></View>
@@ -339,8 +354,8 @@ function ReadFailedScreen({ item, headerActions }: { item: EventAssessmentContra
         <View style={styles.card}>
           <PastedUrl item={item} error />
           <View style={[styles.row, { flexWrap: "wrap", gap: 6, marginTop: 10 }]}>
-            <View style={[styles.chip, { backgroundColor: colors.coralSoft }]}><UiText style={[styles.chipText, { color: colors.coral }]}>{t(chip)}</UiText></View>
-            <UiText style={styles.lbl}>{t(line)}</UiText>
+            <View style={[styles.chip, { backgroundColor: colors.coralSoft }]}><UiText style={[styles.chipText, { color: colors.coral }]}>{t(quotaLine ? "eventsV2.quotaChip" : chip)}</UiText></View>
+            <UiText style={styles.lbl}>{quotaLine ?? t(line)}</UiText>
           </View>
         </View>
         <View style={styles.card}>

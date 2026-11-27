@@ -225,6 +225,8 @@ export interface EventAssessmentAvailability {
   monthlyLimit?: number | null;
   /** Today's reads left (the separate daily cap). */
   dailyLeft?: number | null;
+  /** 2026-11-27: the daily cap itself (public; features/ai-quota/tiers.ts), for the numbered used-up line. */
+  dailyLimit?: number | null;
   /** URL / poster entries are available (paid AI on and verified); otherwise only manual and Orbit events. */
   aiReadAvailable: boolean;
 }

@@ -70,6 +70,7 @@ export const networkAnalysis = {
   "networkAnalysis.aiEvidence": "根拠：{names}",
   "networkAnalysis.recompute": "見直す",
   "networkAnalysis.recomputeMonthlyLimited": "今月の{count}回を使い切りました。{date}に戻ります。これまでの内容はいつもどおりご覧いただけます。",
+  "networkAnalysis.recomputeDailyLimited": "本日の{count}回を使い切りました。明日また使えます。これまでの内容はいつもどおりご覧いただけます。",
   "networkAnalysis.recomputeLimited": "今日の見直しは使い切りました",
   "networkAnalysis.recomputeFailed": "見直せませんでした",
   "networkAnalysis.recomputeNeedsContacts": "確認済み3人から見直せます",

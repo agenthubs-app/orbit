@@ -9,6 +9,7 @@
  *
  * 分数口径全部在 `shared/compute/plan-score.ts`（两端共用）；这里只负责把记录读出来、写进去。
  */
+import { sharedTierLimit } from "../../ai-quota/tiers";
 import { createHash, randomUUID } from "node:crypto";
 
 import { validateAllocations, type PlanAllocationSlot } from "../../../shared/compute/plan-allocation";
@@ -71,7 +72,7 @@ import {
 } from "./types";
 
 /** 見直し的月上限（Q6：所有人按 Free）。月用量由 R25 记在 `review_used`；R22 只读出来给概要显示。 */
-export const PLAN_REVIEW_MONTHLY_LIMIT = 3;
+export const PLAN_REVIEW_MONTHLY_LIMIT = sharedTierLimit("plan_review", "month");
 
 /** 見直し（C9）在 AI 账本里的月成本上限（`plan_review`，非 released 的操作；失败有 HTTP 响应也算）。不在这里改数字。 */
 export const PLAN_REVIEW_AI_MONTHLY_LIMIT = AI_QUOTA_MONTHLY_LIMITS.plan_review ?? PLAN_REVIEW_MONTHLY_LIMIT;

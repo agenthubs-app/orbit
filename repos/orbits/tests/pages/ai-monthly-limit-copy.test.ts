@@ -20,3 +20,12 @@ test("the Web notice writes the public number, the reset date and (free) the Pro
   assert.equal(quotaNoticeText("zh", { reason: "MANUAL_REFRESH_LIMIT" }), null);
   for (const language of ["zh", "ja", "en"] as const) assert.doesNotMatch(aiMonthlyLimitText(language, scans), /[!！]/u);
 });
+
+test("event assessment: today's 5 or this month's 10 (from the availability read) as the same plain line", async () => {
+  const { eventAssessmentLimitText } = await import("../../app/(app)/app/orbit-2026/copy/ai-monthly-limit");
+  const now = new Date("2026-11-27T03:00:00.000Z");
+  assert.equal(eventAssessmentLimitText("zh", { dailyLeft: 0, dailyLimit: 5, monthlyLeft: 6, monthlyLimit: 10 }, now), "今天的 5 次已用完，明天恢复。已有的内容照常可以查看。");
+  assert.equal(eventAssessmentLimitText("ja", { dailyLeft: 0, dailyLimit: 5, monthlyLeft: 0, monthlyLimit: 10 }, now), "今月の10回を使い切りました。12月1日に戻ります。これまでの内容はいつもどおりご覧いただけます。");
+  assert.equal(eventAssessmentLimitText("en", { dailyLeft: 2, dailyLimit: 5, monthlyLeft: 3, monthlyLimit: 10 }, now), null);
+  assert.equal(eventAssessmentLimitText("zh", null, now), null);
+});

@@ -201,7 +201,7 @@ export async function readNetworkAnalysisPage(client: OrbitApiClient, dimension:
   return parsed.success ? parsed.data as NetworkAnalysisPeopleDTO : null;
 }
 
-export type RecomputeOutcome = { kind: "ok"; snapshot: NetworkSnapshotView } | { kind: "limited" } | { kind: "monthlyLimited"; detail: AiLimitDetail } | { kind: "needsContacts" } | { kind: "failed" };
+export type RecomputeOutcome = { kind: "ok"; snapshot: NetworkSnapshotView } | { kind: "limited"; detail?: AiLimitDetail } | { kind: "monthlyLimited"; detail: AiLimitDetail } | { kind: "needsContacts" } | { kind: "failed" };
 
 export async function recomputeNetworkSnapshot(client: OrbitApiClient, language: OrbitLanguage): Promise<RecomputeOutcome> {
   const result = await client.post<unknown>(`${ORBIT_API_ENDPOINTS.networkSnapshotRecompute}?lang=${language}`, { body: { idempotencyKey: `app-${Crypto.randomUUID()}` } }).catch(() => null);
@@ -210,7 +210,7 @@ export async function recomputeNetworkSnapshot(client: OrbitApiClient, language:
     return parsed.success ? { kind: "ok", snapshot: parsed.data } : { kind: "failed" };
   }
   // 2026-11-27 隐藏月上限（手动重新分析）：reason MONTHLY_LIMIT → 「这个月用完了」的固定句。
-  if (result?.status === 429) return !result.success && result.error.context?.reason === "MONTHLY_LIMIT" ? { detail: aiLimitDetailOf(result.error.context), kind: "monthlyLimited" } : { kind: "limited" };
+  if (result?.status === 429) return !result.success && result.error.context?.reason === "MONTHLY_LIMIT" ? { detail: aiLimitDetailOf(result.error.context), kind: "monthlyLimited" } : result && !result.success && result.error.context?.quotaFeature ? { detail: aiLimitDetailOf(result.error.context), kind: "limited" } : { kind: "limited" };
   if (result && !result.success && result.error.context?.reason === "INSUFFICIENT_CONTACTS") return { kind: "needsContacts" };
   return { kind: "failed" };
 }

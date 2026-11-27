@@ -616,3 +616,4 @@ export type { OwnCardScanContract, ProfileAutofillInferenceContract, ProfileAuto
 export type { EmailVerificationConfirmInput, EmailVerificationConfirmResult, EmailVerificationSendFailureReason, EmailVerificationSendInput, EmailVerificationSendResult, EmailVerificationStatusContract } from "./email-verification";
 export type { AccountRegisterConsent, AccountRegisterEmailVerification, AccountRegisterRequest } from "./account-register";
 export type { SignupFunnelClient, SignupFunnelEventName, SignupFunnelOpenedInput, SignupFunnelSource } from "./signup-funnel";
+export type { AccountTierContract, AccountUsageContract, AccountUsageFeatureContract, AccountUsageItemContract, AccountUsageTierLimitContract, AccountUsageUnitContract } from "./account-usage";

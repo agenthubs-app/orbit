@@ -118,10 +118,12 @@ export function createNetworkSnapshotRouteHandlers(dependencies: NetworkSnapshot
               const notice = overLimitNotice({ cap: outcome.cap ?? null, feature: "manual_reanalysis", period: "month", retryOn: outcome.retryOn ?? null, tier: actor.tier ?? DEFAULT_ACCOUNT_TIER });
               return fail(new AppError("CONFLICT", overLimitText("en", notice)), 429, { reason: "MONTHLY_LIMIT", ...overLimitContext(notice) });
             }
+            // 2026-11-27：手动重新分析的每日 3 次也是公开的——带上超额提示字段（数字 + 明天恢复）。
+            const daily = outcome.limit === "manual" ? overLimitContext(overLimitNotice({ cap: outcome.cap ?? null, feature: "manual_reanalysis", period: "day", retryOn: outcome.retryOn ?? null, tier: actor.tier ?? DEFAULT_ACCOUNT_TIER })) : {};
             return fail(
               new AppError("CONFLICT", "You have used today's analyses. Try again tomorrow."),
               429,
-              { reason: outcome.limit === "manual" ? "MANUAL_REFRESH_LIMIT" : "USER_DAILY_LIMIT", ...(outcome.retryOn ? { retryOn: outcome.retryOn } : {}) },
+              { reason: outcome.limit === "manual" ? "MANUAL_REFRESH_LIMIT" : "USER_DAILY_LIMIT", ...(outcome.retryOn ? { retryOn: outcome.retryOn } : {}), ...daily },
             );
           case "in_progress":
             return fail(new AppError("CONFLICT", "This analysis is still being generated. Try again in a moment."), 409, { reason: "IN_PROGRESS" });

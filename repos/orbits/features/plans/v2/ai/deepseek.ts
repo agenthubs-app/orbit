@@ -4,6 +4,8 @@
  * 输出先过 zod 再过业务校验；不合格时在同一操作内修复重试 1 次（受 `max_calls` 约束），仍不合格 → failed。
  * 失败的操作在账本里是 failed / released，不计用户看得到的次数（由服务层决定是否计入修正次数）。
  */
+import { overLimitContext, overLimitNotice } from "../../../ai-quota/over-limit";
+import { DEFAULT_ACCOUNT_TIER } from "../../../ai-quota/tiers";
 import { DeepseekJsonChatError } from "../../../ai/deepseek-json-chat";
 import { AI_QUOTA_MAX_CALLS, AI_QUOTA_PURPOSE_POOLS, type AiQuotaPurpose } from "../../../ai-quota/constants";
 import type { AiQuotaGate } from "../../../ai-quota/gate";
@@ -35,7 +37,10 @@ export function createDeepseekPlanFlowAi(deps: DeepseekPlanFlowAiDeps): PlanFlow
     if (reservation.ok !== true) {
       const denial = reservation as Extract<typeof reservation, { ok: false }>;
       if (denial.reason === "disabled") return { ok: false, reason: "disabled" };
-      return { limit: denial.reason === "monthly_limit" ? "monthly" : "daily", ok: false, reason: "limit", retryOn: denial.retryOn ?? null };
+      // 2026-11-27：计划修改 / 复盘的月上限是公开的（两档相同，tiers.ts）——带上数字与恢复时间，界面写出同构的一句。
+      const feature = denial.reason === "monthly_limit" && (purpose === "plan_revise" || purpose === "plan_review") ? purpose : null;
+      const quota = feature ? overLimitContext(overLimitNotice({ cap: denial.cap ?? null, feature, period: "month", retryOn: denial.retryOn ?? null, tier: DEFAULT_ACCOUNT_TIER })) : null;
+      return { limit: denial.reason === "monthly_limit" ? "monthly" : "daily", ok: false, reason: "limit", retryOn: denial.retryOn ?? null, ...(quota ? { quota } : {}) };
     }
     if (!reservation.owner) return { ok: false, reason: reservation.status === "failed" ? "failed" : "busy" };
     const operationId = reservation.operationId;

@@ -51,7 +51,7 @@ export function FlowProgress({ stage, t }: { stage: PlanFlowStage; t: Translate 
 export function PlanErrorNotice({ view, t, onRetry, onReload }: { view: PlanErrorView; t: Translate; onRetry?: () => void; onReload?: () => void }) {
   const copy = useStandardCopy();
   if (view.tone === "limit") {
-    return <p role="status" className={styles.notice} data-plan-limit={view.limit}><Icon name="clock" size={16} />{t(view.limit === "monthly" ? planFlowCopy.limitMonthly : planFlowCopy.limitDaily)}</p>;
+    return <p role="status" className={styles.notice} data-plan-limit={view.limit}><Icon name="clock" size={16} />{t(quotaCopy(view.quota) ?? (view.limit === "monthly" ? planFlowCopy.limitMonthly : planFlowCopy.limitDaily))}</p>;
   }
   if (view.tone === "notice") {
     const quota = view.notice === "goalsMonth" ? quotaCopy(view.quota) : null;
