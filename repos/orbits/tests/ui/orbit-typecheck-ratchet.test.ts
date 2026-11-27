@@ -21,7 +21,8 @@ function typecheckErrors(): string[] {
     // cannot race each other over that cache.
     execFileSync(
       process.execPath,
-      [join(projectRoot, "node_modules/typescript/bin/tsc"), "--noEmit", "--incremental", "false", "-p", "tsconfig.json"],
+      // 整项目（含测试和 .next 生成的类型）在默认堆上会 OOM（2026-11-27）；给 tsc 8 GB。
+      ["--max-old-space-size=8192", join(projectRoot, "node_modules/typescript/bin/tsc"), "--noEmit", "--incremental", "false", "-p", "tsconfig.json"],
       { cwd: projectRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
   } catch (error) {
