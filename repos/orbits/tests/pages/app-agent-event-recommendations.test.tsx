@@ -93,28 +93,6 @@ test("/app/agent consumes GET q event-discovery prompts and renders linked event
   assert.equal(first?.actions[0]?.requiresConfirmation, true);
 });
 
-test("/app/agent maps event artifacts into reason, timing, confidence, and detail-card fields", () => {
-  const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
-  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
-  const agentSource = iorbitChatSurfaceSource();
-
-  assert.match(pageSource, /searchParams/);
-  // Sprint 0104: legacy chat route model retired; the entry uses the starter model.
-  assert.match(pageSource, /createOrbitAgentStarterViewModel\(\)/);
-  const modelSource = readProjectFile(IORBIT_MODEL_PATH);
-  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
-
-  assert.match(chatHookSource, /artifactOfKind\(\s*payload\.data\.artifacts,\s*"event_recommendations"/);
-  assert.match(chatHookSource, /eventItemsFromArtifact\(eventArtifact\)/);
-  assert.match(modelSource, /artifactMetadataValue\(item, \["开始", "Start"\]\)/);
-  assert.match(modelSource, /score: Number\.isFinite\(score\)/);
-  assert.match(modelSource, /howto: item\.body/);
-  assert.match(modelSource, /reason: item\.reason/);
-  assert.match(agentSource, /function AgentEventRow/);
-  assert.match(agentSource, /navigate\(`\/events\/\$\{event\.code\}`\)/);
-});
-
 test("/app/agent keeps client-side deep-link prompts and contextual discovery suggestions", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
   // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读

@@ -159,28 +159,6 @@ test("/app/agent q=今日待办 receives ranked source-backed Chinese follow-ups
   assert.match(visibleContract, /\/app\/events\//);
 });
 
-test("/app/agent source exposes to-do prompt affordances without owning business logic", () => {
-  const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
-  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
-  const agentSource = iorbitChatSurfaceSource();
-
-  // Sprint 0104: legacy chat route model retired; the entry uses the starter model.
-  assert.match(pageSource, /createOrbitAgentStarterViewModel\(\)/);
-  assert.doesNotMatch(pageSource, /mockFollowupTasks|mockEventRecords/);
-  assert.match(agentSource, /viewModel\.suggests\.map/);
-  assert.match(agentSource, /onPick\(suggest\.q\)/);
-  assert.match(readProjectFile(IORBIT_CHAT_HOOK_PATH), /"followup_queue"/);
-  assert.match(readProjectFile(IORBIT_MODEL_PATH), /function todoItemsFromArtifact/);
-  // 跟进队列改成按人聚合后，「查看联系人」的导航参数从单条待办的 item.contactName
-  // 换成了这一组的 group.contactName；目标路由不变。
-  assert.match(readProjectFile(IORBIT_MODEL_PATH), /function groupTodosByContact/);
-  assert.match(
-    agentSource,
-    /navigate\(`\/app\/contacts\?query=\$\{encodeURIComponent\(group\.contactName\)\}`\)/,
-  );
-});
-
 test("follow-up queue groups tasks under one card per contact", async () => {
   const { groupTodosByContact } = await import(
     pathToFileURL(

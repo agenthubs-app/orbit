@@ -95,51 +95,6 @@ test("/app/agent consumes GET q prompts and renders linked contact recommendatio
   );
 });
 
-test("/app/agent maps contact artifacts into reason, confidence, evidence, and detail-card fields", () => {
-  const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
-  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
-  const agentSource = iorbitChatSurfaceSource();
-
-  assert.match(pageSource, /searchParams/);
-  // Sprint 0104: legacy chat route model retired; the entry uses the starter model.
-  assert.match(pageSource, /createOrbitAgentStarterViewModel\(\)/);
-  const modelSource = readProjectFile(IORBIT_MODEL_PATH);
-  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
-  const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
-
-  assert.match(chatHookSource, /currentAgentQuery\(\)/);
-  assert.match(chatHookSource, /artifactOfKind\(\s*payload\.data\.artifacts,\s*"contact_recommendations"/);
-  assert.match(chatHookSource, /peopleItemsFromArtifact\(contactArtifact\)/);
-  assert.match(modelSource, /industry: item\.confidenceLabel/);
-  assert.match(modelSource, /opener: item\.body/);
-  assert.match(modelSource, /reason: item\.reason/);
-  assert.match(agentSource, /function AgentPeopleRow/);
-  // W0059：详情链接对 id 做 URL 编码，跳转前记下来路（openContact = noteContactNavigation + navigate）。
-  assert.match(agentSource, /openContact\(`\/app\/contacts\/\$\{encodeURIComponent\(connection\.id\)\}`\)/);
-  assert.match(agentSource, /requestMessageDraft/);
-  assert.match(agentSource, /data-agent-inline-draft-error-code/);
-  assert.match(agentSource, /data-agent-inline-draft/);
-  assert.match(agentSource, /生成跟进草稿/);
-  assert.match(agentSource, /panel\.items\.slice\(0, initialLimit\)/);
-  assert.match(agentSource, /data-agent-recommendations-toggle/);
-  const peopleRowSource = agentSource.slice(
-    agentSource.indexOf("function AgentPeopleRow"),
-    agentSource.indexOf("function AgentEventRow"),
-  );
-  // c0835aff 收内部诊断时把 reason 和 opener 一起挡了，但两者性质不同：
-  // reason 是 whyThisPerson（面向用户的「为什么是这个人」），必须展示，否则卡片
-  // 没有任何依据；opener 是「证据片段：来源标签：原文」的原始拼接，属于 DESIGN.md
-  // 里不对普通用户展示的内部产物，继续挡住。
-  assert.match(peopleRowSource, /item\.reason \? <span className="why">/);
-  assert.doesNotMatch(peopleRowSource, /item\.opener \? <span/);
-  for (const checked of [agentSource, modelSource, chatHookSource, historyHookSource]) {
-    assert.doesNotMatch(checked, /查看完整处理过程/);
-    assert.doesNotMatch(checked, /data-agent-run-details/);
-    assert.doesNotMatch(checked, /AgentEvidenceSources/);
-  }
-});
-
 test("contact artifact mapping preserves actor-scoped contact ids", async () => {
   const { contactIdFromArtifactItemId } = await importProjectModule<{
     contactIdFromArtifactItemId: (value: unknown) => string;

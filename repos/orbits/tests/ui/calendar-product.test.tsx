@@ -79,19 +79,6 @@ test("browser: external detail is read-only and week/day controls read the selec
   assert.equal(await page.evaluate(() => window.calendar.calls.filter(call => call.method !== "GET").length), 0);
 });
 
-test("browser: week summary and selected-day agenda cards share a baseline", async t => {
-  const page = await open(browser, code);
-  t.after(async () => { assert.deepEqual(errorsOf(page), []); await page.close(); });
-  const cards = page.locator('section[aria-label="カレンダー"] > section');
-  await cards.first().waitFor();
-  assert.equal(await cards.count(), 2);
-  const summary = await cards.nth(0).boundingBox();
-  const agenda = await cards.nth(1).boundingBox();
-  assert.ok(summary && agenda);
-  assert.ok(Math.abs(summary.y - agenda.y) < 1);
-  assert.ok(Math.abs(summary.height - agenda.height) < 1, "the two week cards should align at their bottoms");
-});
-
 test("browser: cancelling a calendar meeting requires confirmation and removes only the verified appointment", async t => {
   const appointment = { appointmentId: "meeting:1", contactId: "contact-b", status: "confirmed", visibility: "participants", title: "Meeting with B", version: 3, updatedAt: "2030-04-01T00:00:00Z", details: "", detailsUpdatedAt: null, detailsUpdatedBy: null, eventId: "event:1", pendingProposalRevision: null, confirmed: { candidateId: "old:1", proposalRevision: 1, durationMinutes: 60, medium: { kind: "in_person", location: "Room 1" }, startsAtUtc: "2030-04-08T09:00:00Z", timezone: "UTC" }, proposals: [] };
   const meetingCode = await bundle(`

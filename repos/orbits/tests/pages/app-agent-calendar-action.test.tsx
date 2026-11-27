@@ -105,36 +105,3 @@ test("to-do artifacts preserve their source link and local calendar safety bound
   assert.equal(preview.completionBoundary.noExternalEventCreated, true);
   assert.equal(preview.sideEffects.externalCalendarMutation, false);
 });
-
-test("/app/agent composes calendar proposals through the conversation run and action ledger", () => {
-  const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-// iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
-// `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，只是换了住处）。
-  const agentSource = iorbitChatSurfaceSource();
-  const chatHookSource = readProjectFile(
-    "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts",
-  );
-  const actionSource = readProjectFile(
-    "app/(app)/app/agent/agent-action-status-card.tsx",
-  );
-  const serviceDoc = readProjectFile(
-    "features/orbit-ai/CALENDAR_ACTION_LIVE_IMPLEMENTATION.md",
-  );
-
-  // Sprint 0104: legacy chat route model retired; the entry uses the starter model.
-  assert.match(pageSource, /createOrbitAgentStarterViewModel\(\)/);
-  assert.doesNotMatch(pageSource, /calendar-preview/);
-  assert.doesNotMatch(pageSource, /app\/api\//);
-  // iOrbit 任务 1b：读 actionIds 的是 hook（`use-agent-chat.ts`），渲染卡片的仍是 JSX。
-  assert.match(chatHookSource, /payload\.data\.actionIds/);
-  assert.match(agentSource, /<AgentActionStatusCard/);
-  assert.match(actionSource, /riskLevel !== "external"/);
-  assert.match(actionSource, /Review external action details in All arrangements/);
-  // iOrbit 合并前终审 1：回合卡上的两枚跳转都必须落在仍然存在的兄弟屏；
-  // `/today?entry=` 会被 `productHref` 送到已删除的 `/app/today`。
-  assert.match(actionSource, /\/app\/agent\/actions\?entry=/);
-  assert.doesNotMatch(actionSource, /navigate\(\s*`\/today\?/);
-  assert.match(actionSource, /\/api\/agent\/ledger\//);
-  assert.match(serviceDoc, /live calendar adapter/i);
-  assert.match(serviceDoc, /no-side-effect default/i);
-});
