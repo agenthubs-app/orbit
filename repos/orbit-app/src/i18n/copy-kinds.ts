@@ -1961,6 +1961,8 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["eventsJourney.viewCalendar", "button"],
   ["eventsJourney.removeIt", "button"],
   ["eventsJourney.calendarLineFinal", "label"],
+  ["eventsJourney.spFull", "button"],
+  ["eventsJourney.spWaitlist", "button"],
   ["eventsJourney.introLbl", "label"],
   ["eventsJourney.introWhy", "label"],
   ["eventsJourney.saveIntro", "button"],

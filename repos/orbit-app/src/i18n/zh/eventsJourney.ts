@@ -330,6 +330,8 @@ export const eventsJourney = {
   "eventsJourney.viewCalendar": "查看日历",
   "eventsJourney.removeIt": "移除",
   "eventsJourney.calendarLineFinal": "{range}「{title}」",
+  "eventsJourney.spFull": "名额已满",
+  "eventsJourney.spWaitlist": "排队候补",
   "eventsJourney.introLbl": "自我介绍",
   "eventsJourney.introWhy": "写作依据",
   "eventsJourney.saveIntro": "保存",

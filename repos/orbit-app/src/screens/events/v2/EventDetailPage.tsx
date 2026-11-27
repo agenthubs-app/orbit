@@ -232,6 +232,12 @@ export function EventDetailPage() {
   ];
   // An event that is over no longer shows seats left or 报名 / 会面准备; a registered person goes to the 回顾 instead.
   const ended = Date.parse(data.endsAt ?? data.startsAt) < Date.now();
+  // 2026-11-27（同 Web detail-timing）：受付期間内だけ申込できる；残り 0 で キャンセル待ちなし = 満席（押せない），ありなら「キャンセル待ちに並ぶ」。
+  const closesAt = Date.parse(data.registrationClosesAt ?? "");
+  const canRegister = !ended && (!Number.isFinite(closesAt) || Date.now() < closesAt);
+  const soldOut = typeof data.capacity === "number" && data.capacity > 0 && data.remaining === 0;
+  const full = soldOut && !data.waitlistEnabled;
+  const waitlist = soldOut && Boolean(data.waitlistEnabled);
   const saved = Boolean(savedId ?? assessment?.assessmentId);
   // Someone who is already in sees where they stand, not 即将截止 · 剩N个名额.
   const holdingChip = { attended: "stCheckedIn", pending_review: "stPending", registered: "stRegistered", waitlisted: "stWaitlisted" } as const;
@@ -393,7 +399,7 @@ export function EventDetailPage() {
             <UiPressable accessibilityRole="button" accessibilityLabel={t("hostManage")} onPress={() => router.push(`${base}/operations` as Href)} style={styles.ctaMain} testID="events-detail-host-manage"><UiText style={styles.ctaMainText}>{t("hostManage")}</UiText></UiPressable>
           </GlassSurface>
         </View>
-      ) : ((status === "none" || status === "cancelled") && !ended) || holding ? (
+      ) : ((status === "none" || status === "cancelled") && canRegister) || holding ? (
         <View style={[styles.ctabar, scheme === "dark" ? shadows.floatDark : shadows.float]} testID="events-detail-cta">
           <GlassSurface radius={28} style={styles.ctaGlass}>
             {holding ? (
@@ -407,7 +413,9 @@ export function EventDetailPage() {
             ) : (
               <>
                 <UiPressable accessibilityRole="button" accessibilityLabel={t(saved ? "savedEvent" : "saveEvent")} accessibilityState={{ selected: saved }} onPress={() => void save()} style={styles.lbtn} testID="events-detail-save">{saved ? <FilledStar color={colors.macApricotInk} /> : <Icon name="star" size={20} color={colors.ink2} />}</UiPressable>
-                <UiPressable accessibilityRole="button" accessibilityLabel={t("ctaRegisterAi")} onPress={() => router.push(`${base}/register` as Href)} style={styles.ctaMain} testID="events-detail-register"><UiText style={styles.ctaMainText}>{t("ctaRegisterAi")}</UiText></UiPressable>
+                {/* 取り消し済みも受付中ならもう一度申し込める；満席は押せない。 */}
+                {full ? <UiPressable accessibilityRole="button" accessibilityLabel={t("spFull")} accessibilityState={{ disabled: true }} disabled style={[styles.ctaMain, styles.ctaFull]} testID="events-detail-full"><UiText style={[styles.ctaMainText, { color: colors.ink3Text }]}>{t("spFull")}</UiText></UiPressable>
+                  : <UiPressable accessibilityRole="button" accessibilityLabel={t(waitlist ? "spWaitlist" : "ctaRegisterAi")} onPress={() => router.push(`${base}/register` as Href)} style={styles.ctaMain} testID="events-detail-register"><UiText style={styles.ctaMainText}>{t(waitlist ? "spWaitlist" : "ctaRegisterAi")}</UiText></UiPressable>}
               </>
             )}
           </GlassSurface>
@@ -496,6 +504,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   ctaStatus: { color: colors.ink2, flex: 1, fontSize: 14, fontWeight: "600", paddingLeft: 12 },
   ctaMain: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, flex: 1, height: 46, justifyContent: "center", paddingHorizontal: 16 },
   ctaMainText: { color: colors.bg, fontSize: 15, fontWeight: "700", lineHeight: 22 },
+  // 満席：同 Web 的 disabled .btn（浅底、ink-3 字），不可点。
+  ctaFull: { backgroundColor: colors.surface2 },
   ctaSecondary: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, height: 46, justifyContent: "center", paddingHorizontal: 18 },
   ctaSecondaryText: { color: colors.ink, fontSize: 15, fontWeight: "600", lineHeight: 22 },
 }));

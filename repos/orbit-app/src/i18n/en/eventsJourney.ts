@@ -330,6 +330,8 @@ export const eventsJourney = {
   "eventsJourney.viewCalendar": "View calendar",
   "eventsJourney.removeIt": "Remove",
   "eventsJourney.calendarLineFinal": "{range} \"{title}\"",
+  "eventsJourney.spFull": "Full",
+  "eventsJourney.spWaitlist": "Join the waitlist",
   "eventsJourney.introLbl": "Intro",
   "eventsJourney.introWhy": "How this was written",
   "eventsJourney.saveIntro": "Save",

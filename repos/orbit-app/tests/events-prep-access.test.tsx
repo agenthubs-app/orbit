@@ -62,6 +62,24 @@ test("only a confirmed registration offers 去做见面准备; in review or wait
   }
 });
 
+test("seats (2026-11-27, as Web): no seat and no waitlist = 名额已满 (not tappable); with a waitlist = 排队候补; cancelled may register again; closed shows no entry", async (t) => {
+  const cases = [
+    [withStatus("none", { capacity: 20, remaining: 0, waitlistEnabled: false }), "events-detail-full", "名额已满"],
+    [withStatus("none", { capacity: 20, remaining: 0, waitlistEnabled: true }), "events-detail-register", "排队候补"],
+    [withStatus("cancelled", { capacity: 20, remaining: 3 }), "events-detail-register", null],
+  ] as const;
+  for (const [data, id, label] of cases) {
+    const page = await harness.open(t, { screen: "detail", params: { id: eventId }, responses: { [`${path}/overview`]: data } });
+    const button = page.getByTestId(id);
+    await button.waitFor();
+    if (label) assert.equal(await button.innerText(), label);
+    if (id === "events-detail-full") assert.equal(await button.isDisabled(), true);
+  }
+  const closed = await harness.open(t, { screen: "detail", params: { id: eventId }, responses: { [`${path}/overview`]: withStatus("none", { registrationClosesAt: "2020-01-01T00:00:00+09:00" }) } });
+  await closed.getByTestId("events-detail-save").or(closed.getByText(overview.title).first()).first().waitFor();
+  assert.equal(await closed.getByTestId("events-detail-register").count(), 0);
+});
+
 test("the roster gate tells people in review to wait for approval, and others to register", async (t) => {
   for (const [status, text, cta] of [["pending_review", "审核通过后可以看到名字和一句话介绍", 0], ["waitlisted", "审核通过后可以看到名字和一句话介绍", 0], ["none", "报名后可以看到参加者的名字和一句话介绍", 1]] as const) {
     const event = withStatus(status, { attendees: [], rosterLocked: true });

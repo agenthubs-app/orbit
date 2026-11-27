@@ -330,6 +330,8 @@ export const eventsJourney = {
   "eventsJourney.viewCalendar": "カレンダーを見る",
   "eventsJourney.removeIt": "外す",
   "eventsJourney.calendarLineFinal": "{range}「{title}」",
+  "eventsJourney.spFull": "満席",
+  "eventsJourney.spWaitlist": "キャンセル待ちに並ぶ",
   "eventsJourney.introLbl": "自己紹介",
   "eventsJourney.introWhy": "作成の根拠",
   "eventsJourney.saveIntro": "保存",
