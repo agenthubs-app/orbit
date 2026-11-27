@@ -234,12 +234,14 @@
 .phCenterList { display: grid; gap: 12px; margin-top: 14px; min-width: 0; }
 
 /* < 768 页头「⋯」底部菜单（b13 HM-T3）与报告视角切换（HM-R1） */
-.phMenuHead { display: flex; flex-direction: column; margin-bottom: 8px; }
-.phMenuHead b { font-size: var(--fs-title-xs); font-weight: var(--fw-heavy); }
+/* b13 HM-T3 .sh .t：标题 17 / 800 / 1.5，副标题在 21 行框里（与画板同为行内），菜单离头部 12。 */
+.phMenuHead { display: block; margin-bottom: 12px; }
+.phMenuHead b { display: block; font-size: var(--fs-title-xxs); line-height: 1.5; font-weight: var(--fw-heavy); }
+.phMenuHead .lbl { display: inline; }
 .phMenu { display: flex; flex-direction: column; }
-.phMi.phMi { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 4px; width: 100%; font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--ink); cursor: pointer; text-decoration: none; }
+.phMi.phMi { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 4px; width: 100%; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--ink); cursor: pointer; text-decoration: none; }
 .phMi + .phMi { border-top: 1px solid var(--line); }
-.phMiTail { margin-left: auto; color: var(--ink-3); font-size: var(--fs-meta); font-weight: var(--fw-medium); }
+.phMiTail { margin-left: auto; color: var(--ink-3); font-size: var(--fs-meta); font-weight: var(--fw-semibold); }
 .phMiDanger.phMiDanger { color: var(--coral-text); }
 .phMenuClose.phMenuClose { width: 100%; height: 46px; margin-top: 8px; }
 .phReportSeg.phReportSeg { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; width: 100%; }

@@ -1,5 +1,6 @@
 /* < 768 申込設定（b13 HM-S1–S13）。数值照画板 .stat-strip / .srow / .qr / .qacts / .fld / .opt / .topbar / .foot；色・角丸・文字は token。 */
-.col { grid-column: 1 / -1; min-width: 0; padding-bottom: 96px; }
+/* b13 .tabs-m[data-on="申込設定"] 下内边距 4（其他页签 2）：正文整体低 2；状态条到第一张卡 12。 */
+.col { grid-column: 1 / -1; min-width: 0; padding-top: 2px; padding-bottom: 96px; }
 .grow { flex: 1 1 0%; min-width: 0; }
 .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .warn.warn { color: var(--coral-text); }
@@ -16,6 +17,7 @@
 .bBtn.bBtn { background: var(--surface); flex: none; }
 
 .card.card { display: block; margin-top: 14px; padding: 18px; }
+.strip + div > .card.card:first-child { margin-top: 12px; }
 .cardH { margin: 0 0 12px; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); display: block; }
 .cardHRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
 .cardHRow .cardH { margin-bottom: 0; }

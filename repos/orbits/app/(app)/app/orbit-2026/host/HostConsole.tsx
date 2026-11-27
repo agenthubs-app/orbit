@@ -295,7 +295,7 @@ function HostPhoneMenu({ open, event, t, subtitle, cohostsHref, onOpenCohosts, o
         <a className={s.phMi} href={cohostsHref} onClick={(click) => { onClose(); onOpenCohosts?.(click); }} data-host-menu-item="cohosts"><Icon name="users" size={16} /><span>{t("cohostsBtn")}</span><span className={s.phMiTail}>{t("nPeople", { n: event.cohosts.length })}</span></a>
         {items.edit ? <a className={s.phMi} href={`/app/events/${id(event.eventId)}/edit`} data-host-menu-item="edit"><Icon name="pen" size={16} /><span>{t("hmEdit")}</span></a> : null}
         {items.reissue ? <button type="button" className={`btn ${s.phMi}`} onClick={() => pick("reissue")} data-host-menu-item="reissue"><Icon name="refresh" size={16} /><span>{t("hmReissue")}</span></button> : null}
-        {items.openPage ? <a className={s.phMi} href={`/e/${id(event.publicSlug!)}`} target="_blank" rel="noopener" onClick={onClose} data-host-menu-item="open"><Icon name="link" size={16} /><span>{t("hmOpenPage")}</span></a> : null}
+        {items.openPage ? <a className={s.phMi} href={`/e/${id(event.publicSlug!)}`} target="_blank" rel="noopener" onClick={onClose} data-host-menu-item="open"><Icon name="out" size={16} /><span>{t("hmOpenPage")}</span></a> : null}
         {items.archive ? <button type="button" className={`btn ${s.phMi}`} onClick={() => pick("archive")} data-host-menu-item="archive"><Icon name="archive" size={16} /><span>{t("hmArchive")}</span></button> : null}
         {items.cancel ? <button type="button" className={`btn ${s.phMi} ${s.phMiDanger}`} onClick={() => pick("cancel")} data-host-menu-item="cancel"><Icon name="x" size={16} /><span>{t("hmCancel")}</span></button> : null}
       </div>
