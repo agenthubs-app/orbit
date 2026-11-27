@@ -63,7 +63,7 @@
 .foot { position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); z-index: var(--z-sticky); padding: 0 18px; }
 .scan.scan { width: 100%; height: 52px; font-size: var(--fs-emph); }
 
-.mi.mi { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 4px; font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--ink); cursor: pointer; width: 100%; }
+.mi.mi { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 4px; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--ink); cursor: pointer; width: 100%; }
 .mi + .mi { border-top: 1px solid var(--line); }
 .sheetClose.sheetClose { width: 100%; height: 46px; margin-top: 8px; }
 

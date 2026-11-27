@@ -122,7 +122,7 @@
 .pick { position: relative; }
 .pick > svg { flex: none; color: var(--ink); pointer-events: none; }
 .pick input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; margin: 0; padding: 0; opacity: 0; cursor: pointer; }
-.mi.mi { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 4px; width: 100%; font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--ink); cursor: pointer; border-top: 1px solid var(--line); }
+.mi.mi { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 4px; width: 100%; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--ink); cursor: pointer; border-top: 1px solid var(--line); }
 .pvSheet.pvSheet { top: 58px; display: flex; flex-direction: column; max-height: none; overflow: hidden; padding-bottom: 14px; }
 /* b13 HM-S10 .k-pvsheet：头部（17 / 800 标题 + スマホ/PC）固定在上、离正文 12；正文 .sb 左右 18 下 8 可滚；底部 .sf 上 12 + 分隔线、閉じる 46。 */
 .pvHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; margin-bottom: 12px; }

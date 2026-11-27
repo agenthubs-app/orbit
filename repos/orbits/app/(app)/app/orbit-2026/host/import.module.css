@@ -28,7 +28,8 @@
 .sumHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .sumT { min-width: 0; font-size: var(--fs-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .imp3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
-.imp3 > div { background: var(--surface-2); border-radius: var(--r-tile); padding: 10px 12px; min-width: 0; }
+/* b13 HM-P10：三格按 1fr 分但不压到内容以下（标签长的格子撑宽，同画板 92 / 118 / 100）。 */
+.imp3 > div { background: var(--surface-2); border-radius: var(--r-tile); padding: 10px 12px; }
 .imp3 b { display: block; margin-top: 4px; font-family: var(--font-num); font-size: var(--fs-number); font-weight: var(--fw-heavy); white-space: nowrap; }
 .imp3 b small { font-size: var(--fs-caption); color: var(--ink-3); font-weight: var(--fw-bold); margin-left: 2px; }
 .tChip.tChip { padding: 2px 7px; font-size: var(--fs-tab); white-space: nowrap; max-width: none; overflow: visible; }

@@ -178,7 +178,7 @@ export function HostPeoplePhone(props: HostPeoplePhoneProps) {
               <Icon name={query.incomplete ? "check" : "filter"} size={16} />{t("pIncomplete")}
             </button>
             <span className={p.grow} />
-            {decidable ? <button type="button" className={`btn ${s.btn} ${s.sm} ${s.ghost}`} disabled={rows.length === 0} onClick={() => props.onSelecting(true)} data-host-select="">{t("pSelect")}</button> : null}
+            {decidable ? <button type="button" className={`btn ${s.btn} ${s.sm} ${s.ghost}`} onClick={() => props.onSelecting(true)} data-host-select="">{t("pSelect")}</button> : null}
           </div>
         </>
       )}

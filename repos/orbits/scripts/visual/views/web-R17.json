@@ -1090,7 +1090,8 @@
    "click": [
     "[data-host-select]",
     "[data-host-row]:nth-child(2) [role=checkbox]",
-    "[data-host-row]:nth-child(4) [role=checkbox]"
+    "[data-host-row]:nth-child(4) [role=checkbox]",
+    "[data-host-row]:nth-child(5) [role=checkbox]"
    ],
    "steps": [
     {
@@ -1159,6 +1160,10 @@
    "wait-for": "[data-host-people-phone] [data-host-row]",
    "steps": [
     {
+     "click": "[data-host-people-phone] button[aria-pressed]",
+     "wait": 600
+    },
+    {
      "fill": [
       "[data-host-people-phone] input[type=search]",
       "ずんだ"
@@ -1169,7 +1174,7 @@
      "waitFor": "[data-host-people-nomatch]"
     }
    ],
-   "note": "HM-P9 参加者 · 搜索无结果（b13 #9）"
+   "note": "HM-P9 参加者 · 搜索 + プロフィール未完了 筛选无结果（b13 #9）"
   },
   {
    "id": "HM-M3b",
