@@ -43,7 +43,8 @@ export type AiQuotaReservation =
       owner: boolean;
       status: "reserved" | "succeeded" | "failed";
     }
-  | { ok: false; reason: "disabled" | "daily_limit" | "monthly_limit"; retryOn?: string; limit?: AiQuotaLimit };
+  /** `cap`（2026-11-27）：挡住这次的那道上限的数值（取自常量），用于对用户公开的超限提示。 */
+  | { ok: false; reason: "disabled" | "daily_limit" | "monthly_limit"; retryOn?: string; limit?: AiQuotaLimit; cap?: number };
 
 export interface AiQuotaGate {
   reserve(input: AiQuotaReserveInput): Promise<AiQuotaReservation>;

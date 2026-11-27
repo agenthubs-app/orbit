@@ -87,7 +87,7 @@ export type ManualRecomputeOutcome =
   | { status: "succeeded"; snapshot: NetworkAnalysisSnapshot }
   | { status: "failed" }
   | { status: "insufficient" }
-  | { status: "limited"; limit: AiQuotaLimit; retryOn?: string }
+  | { status: "limited"; limit: AiQuotaLimit; retryOn?: string; cap?: number }
   /** W0048b review P1：同一幂等键的另一次请求还在生成（本请求不执行、不结算，稍后用同一键重试）。 */
   | { status: "in_progress" }
   | { status: "unavailable" };
@@ -401,7 +401,7 @@ export function createNetworkSnapshotService(deps: NetworkSnapshotServiceDeps): 
       if (reservation.ok !== true) {
         const denial = reservation as Extract<typeof reservation, { ok: false }>;
         if (denial.reason === "disabled") return { status: "unavailable" };
-        return { limit: denial.limit ?? "user", retryOn: denial.retryOn, status: "limited" };
+        return { limit: denial.limit ?? "user", retryOn: denial.retryOn, status: "limited", ...(denial.cap !== undefined ? { cap: denial.cap } : {}) };
       }
       // W0048b review P1：同键重放不转让所有权——进行中的返回 in_progress，已结束的返回原结果，都不再执行或结算。
       if (!reservation.owner) {

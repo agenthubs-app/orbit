@@ -4,6 +4,7 @@
  * receipt and a readback, a visible version conflict, the intro draft and the own
  * business-card scan.
  */
+import { AI_MONTHLY_LIMIT_CODE, aiLimitDetailOf, type AiLimitDetail } from "./ai-limit";
 import type { OrbitApiClient } from "./client";
 import type { ManualProfileContract } from "./contract/profile";
 import type { OwnCardScanContract, ProfileAutofillInferenceContract, ProfileAutofillInferenceRequestContract } from "./contract/profile-autofill";
@@ -77,11 +78,11 @@ export async function generateOnboardingIntro(
   client: OrbitApiClient,
   language: "zh" | "en" | "ja",
   idempotencyKey: string,
-): Promise<{ ok: true; bio: string; headline: string } | OnboardingFailure | { ok: false; kind: "limit" | "monthlyLimit" }> {
+): Promise<{ ok: true; bio: string; headline: string } | OnboardingFailure | { ok: false; kind: "limit" } | { ok: false; kind: "monthlyLimit"; detail: AiLimitDetail }> {
   const result = await client.post<unknown>(PROFILE_INTRO_DRAFT_PATH, { body: { language, idempotencyKey } });
   if (!result.success && result.error.code === "INTRO_LIMIT_REACHED") return { ok: false, kind: "limit" };
   // 2026-11-27 隐藏月上限（草稿类合计）：这次没有调用模型。
-  if (!result.success && result.error.code === "AI_MONTHLY_LIMIT") return { ok: false, kind: "monthlyLimit" };
+  if (!result.success && result.error.code === AI_MONTHLY_LIMIT_CODE) return { detail: aiLimitDetailOf(result.error.context), kind: "monthlyLimit", ok: false };
   if (!succeeded(result) || !result.success) return failure(result);
   const data = result.data as { bio?: unknown; headline?: unknown } | null;
   if (typeof data?.bio !== "string" || typeof data.headline !== "string") return { ok: false, kind: "failed" };

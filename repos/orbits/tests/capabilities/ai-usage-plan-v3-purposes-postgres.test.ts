@@ -82,7 +82,7 @@ test("ledger v8 accepts plan_search / plan_prep in the user pool, counts only re
     usage = await ledger.readUsageToday("actor:a", now);
     assert.deepEqual([usage.user, usage.planFlow], [0, 1]);
     for (let n = 1; n < PLAN_FLOW_DAILY_LIMIT; n += 1) assert.equal((await reserve(`draft:${n}`, "plan_draft", "manual")).ok, true);
-    assert.deepEqual(await reserve("prep:regen-over", "plan_prep", PLAN_PREP_REGENERATE_TRIGGER), { limit: "plan_flow", ok: false, reason: "daily_limit", retryOn: "2026-11-01T15:00:00.000Z" });
+    assert.deepEqual(await reserve("prep:regen-over", "plan_prep", PLAN_PREP_REGENERATE_TRIGGER), { cap: PLAN_FLOW_DAILY_LIMIT, limit: "plan_flow", ok: false, reason: "daily_limit", retryOn: "2026-11-01T15:00:00.000Z" });
     // 流程满了搜索与初次准备卡照常记账；用户池 10 次也不受影响。
     assert.equal((await reserve("search:more", "plan_search")).ok, true);
     assert.equal((await reserve("prep:more", "plan_prep", "plan")).ok, true);

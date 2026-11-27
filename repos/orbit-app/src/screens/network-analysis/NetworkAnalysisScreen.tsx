@@ -2,6 +2,7 @@
 // ‹ · 人脈分析 / subtitle; [構造 | 機会 | インサイト] (?tab= deep links, 構造 by default — B-3); a bucket or 名簿を見る pushes
 // the drill-down list. Below 10 people only the lock shows and neither the snapshot nor the list is read (B-1).
 // The view is kept on the device and shown offline with the offline bar; a failed count without a copy is a retry, never a lock.
+import { aiLimitParams } from "../../api/ai-limit";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -54,7 +55,8 @@ export function NetworkAnalysisScreen() {
     const outcome = await recomputeNetworkSnapshot(client, language);
     setRecomputing(false);
     if (outcome.kind === "ok") setRecomputed(outcome.snapshot);
-    else toast.error(t(outcome.kind === "limited" ? "networkAnalysis.recomputeLimited" : outcome.kind === "monthlyLimited" ? "networkAnalysis.recomputeMonthlyLimited" : outcome.kind === "needsContacts" ? "networkAnalysis.recomputeNeedsContacts" : "networkAnalysis.recomputeFailed"));
+    else if (outcome.kind === "monthlyLimited") toast.error(t("networkAnalysis.recomputeMonthlyLimited", aiLimitParams(outcome.detail, language)));
+    else toast.error(t(outcome.kind === "limited" ? "networkAnalysis.recomputeLimited" : outcome.kind === "needsContacts" ? "networkAnalysis.recomputeNeedsContacts" : "networkAnalysis.recomputeFailed"));
   }, [client, language, t, toast]);
 
   const subtitle = !data ? undefined

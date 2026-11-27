@@ -63,31 +63,31 @@ test("monthly fuses: each class stops at its limit within a Tokyo month, the nex
       }
       return 1 + Math.floor((total - 1) / perDay);
     };
-    const monthly = { limit: "monthly", ok: false, reason: "monthly_limit", retryOn: NEXT_MONTH };
+    const monthly = (cap: number) => ({ cap, limit: "monthly", ok: false, reason: "monthly_limit", retryOn: NEXT_MONTH });
 
     // 1 当场洞察：日 20，月 60 → 第 4 天被月上限挡住；手动重新生成的洞察（manual）照常。
     let day = await fill("a:instant", INSTANT_INSIGHT_MONTHLY_LIMIT, 20, "user", "insight", "auto");
-    assert.deepEqual(await reserve("a:instant", day + 1, "user", "insight", "auto"), monthly);
+    assert.deepEqual(await reserve("a:instant", day + 1, "user", "insight", "auto"), monthly(INSTANT_INSIGHT_MONTHLY_LIMIT));
     assert.equal((await reserve("a:instant", day + 1, "user", "insight", "manual")).ok, true);
     assert.equal((await reserve("a:instant", 1, "user", "insight", "auto", NEXT_MONTH)).ok, true, "December starts again");
 
     // 2 后台洞察：月 40（日 60 之内）；后台的笔记提取照常。
     day = await fill("a:bg", BACKGROUND_INSIGHT_MONTHLY_LIMIT, 40, "background", "insight", "auto");
-    assert.deepEqual(await reserve("a:bg", day, "background", "insight", "auto"), monthly);
+    assert.deepEqual(await reserve("a:bg", day, "background", "insight", "auto"), monthly(BACKGROUND_INSIGHT_MONTHLY_LIMIT));
     assert.equal((await reserve("a:bg", day, "background", "memo_extraction", "auto")).ok, true);
 
     // 3 手动重新分析：日 3，月 10 → 第 4 天第 2 次被挡；自动快照（后台）照常。
     day = await fill("a:manual", MANUAL_REANALYSIS_MONTHLY_LIMIT, 3, "user", "snapshot", "manual");
-    assert.deepEqual(await reserve("a:manual", day, "user", "snapshot", "manual"), monthly);
+    assert.deepEqual(await reserve("a:manual", day, "user", "snapshot", "manual"), monthly(MANUAL_REANALYSIS_MONTHLY_LIMIT));
     assert.equal((await reserve("a:manual", day, "background", "snapshot", "auto")).ok, true);
 
     // 4 笔记提取：月 300（后台日 60 之内）。
     day = await fill("a:memo", 300, 60, "background", "memo_extraction", "auto");
-    assert.deepEqual(await reserve("a:memo", day + 1, "background", "memo_extraction", "auto"), monthly);
+    assert.deepEqual(await reserve("a:memo", day + 1, "background", "memo_extraction", "auto"), monthly(AI_QUOTA_MONTHLY_LIMITS.memo_extraction!));
 
     // 5 草稿类：月 60、没有日上限、不占用户池 10 次。
     await fill("a:draft", 60, 60, "user", "draft_assist", "manual");
-    assert.deepEqual(await reserve("a:draft", 1, "user", "draft_assist", "manual"), monthly);
+    assert.deepEqual(await reserve("a:draft", 1, "user", "draft_assist", "manual"), monthly(AI_QUOTA_MONTHLY_LIMITS.draft_assist!));
     assert.equal((await ledger.readUsageToday("a:draft", new Date("2026-11-01T03:00:00.000Z"))).user, 0);
     assert.equal((await reserve("a:draft", 1, "user", "insight", "manual")).ok, true, "the user pool is untouched");
     await assert.rejects(reserve("a:draft", 1, "background", "draft_assist", "manual"), /user pool only/u);

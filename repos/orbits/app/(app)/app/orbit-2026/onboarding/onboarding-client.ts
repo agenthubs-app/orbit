@@ -14,13 +14,13 @@ import { profileEditorReadbackMatches } from "../../profile/profile-editor-adapt
 interface ApiEnvelope<TData> {
   success?: boolean;
   data?: TData;
-  error?: { code?: string; message?: string };
+  error?: { code?: string; message?: string; context?: unknown };
 }
 
 export type ProfileFields = Omit<ManualProfileUpdateInput, "expectedUpdatedAt" | "mutationId">;
 
 export class OnboardingRequestError extends Error {
-  constructor(message: string, readonly code?: string) {
+  constructor(message: string, readonly code?: string, readonly context?: unknown) {
     super(message);
   }
 }
@@ -197,7 +197,7 @@ export async function generateIntroDraft(language: "zh" | "en" | "ja", idempoten
   });
   const envelope = await readJson<{ bio: string; headline: string }>(response);
   if (!response.ok || envelope.success !== true || !envelope.data) {
-    throw new OnboardingRequestError(envelope.error?.message ?? "Introduction generation failed", envelope.error?.code);
+    throw new OnboardingRequestError(envelope.error?.message ?? "Introduction generation failed", envelope.error?.code, envelope.error?.context);
   }
   return { bio: envelope.data.bio, headline: envelope.data.headline };
 }

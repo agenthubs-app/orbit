@@ -28,7 +28,7 @@ import {
   type OnboardingMissing,
 } from "./onboarding-model";
 import styles from "./OnboardingFlow.module.css";
-import { AI_MONTHLY_LIMIT_TEXT } from "../copy/ai-monthly-limit";
+import { aiMonthlyLimitText } from "../copy/ai-monthly-limit";
 import { invalidProfileContactMethods } from "../../../../../shared/compute/profile-contact-methods";
 
 export type T = (copy: Copy) => string;
@@ -568,12 +568,14 @@ export function StrengthGroups({ goals, offer, offerFromAi, seek, seekAi, setOff
 }
 
 export function IntroStep({
-  bio, bioCount, editing, errorCode, goals, missing, offer, onEdit, onRegenerate, onTone, regenerationsLeft, setBio, status, t, tone, topics,
+  bio, bioCount, editing, errorCode, limitText, goals, missing, offer, onEdit, onRegenerate, onTone, regenerationsLeft, setBio, status, t, tone, topics,
 }: {
   bio: string;
   bioCount: { count: number; limit: number; over: boolean };
   editing: boolean;
   errorCode: "INTRO_LIMIT_REACHED" | "SAMPLE_READ_ONLY" | "AI_MONTHLY_LIMIT" | null;
+  /** The numbered monthly-limit line (from the 429's limit and reset time); null for the other errors. */
+  limitText?: string | null;
   goals: number;
   missing: readonly OnboardingMissing[];
   offer: number;
@@ -613,7 +615,7 @@ export function IntroStep({
         {errorCode === "INTRO_LIMIT_REACHED"
           ? t({ zh: "介绍草稿的 3 次生成额度已用完。请直接在下面写几句。", en: "All three introduction drafts have been used. Write a few lines below instead.", ja: "自己紹介の生成は3回までです。下に直接入力してください。" })
           : errorCode === "AI_MONTHLY_LIMIT"
-            ? `${t(AI_MONTHLY_LIMIT_TEXT)}${t({ zh: "可以直接在下面写几句。", en: " You can write a few lines below.", ja: "下に直接入力することもできます。" })}`
+            ? `${limitText ?? t({ zh: aiMonthlyLimitText("zh"), ja: aiMonthlyLimitText("ja"), en: aiMonthlyLimitText("en") })}${t({ zh: "可以直接在下面写几句。", en: " You can write a few lines below.", ja: "下に直接入力することもできます。" })}`
           : errorCode === "SAMPLE_READ_ONLY"
             ? t({ zh: "示例中不能生成介绍，可以直接在下面写几句。", en: "Drafts can't be generated in the sample. Write a few lines below instead.", ja: "サンプルでは自己紹介を生成できません。下に直接入力してください。" })
             : t({ zh: "这次没有生成成功。可以点「重试」再生成一次，或直接在下面写几句。", en: "That didn't work. Tap Retry, or write a few lines below.", ja: "生成できませんでした。「再試行」を押すか、下に直接入力してください。" })}

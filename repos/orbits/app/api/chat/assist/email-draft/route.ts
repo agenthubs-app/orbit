@@ -50,7 +50,7 @@ export async function POST(request: Request): Promise<Response> {
     recipientName: readString(body.recipientName),
   });
   await ledgered.finish(result.success === true ? "succeeded" : "failed");
-  if (ledgered.refusal() === "quota") return aiMonthlyLimitResponse();
+  if (ledgered.refusal() === "quota") return aiMonthlyLimitResponse(ledgered.quotaDetail());
   const status =
     result.success === true
       ? 200

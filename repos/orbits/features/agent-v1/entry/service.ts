@@ -402,7 +402,7 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
     round = await openAgentChatRound(deps.usage, { actorId, now: new Date(startedAt), requestId: record.requestId, selection: resume?.clientSelectionId ?? null });
     if (round.kind === "limited") {
       emitTrace({ requestId: record.requestId, retryOn: round.retryOn, sessionId: record.sessionId, type: "entry.daily_limit" });
-      outcome = { answer: { sourceRefs: [], text: agentChatDailyLimitText(record.input.locale) }, partResults: [{ partId: "p1", status: "answered" }], status: "completed" };
+      outcome = { answer: { sourceRefs: [], text: agentChatDailyLimitText(record.input.locale, round.cap) }, partResults: [{ partId: "p1", status: "answered" }], status: "completed" };
     } else {
       const fetchImplementation = createStoppableFetch(controller.signal, () => emitTrace({ requestId: record.requestId, type: "entry.model_call_refused" }));
       // AG07: progress only (an event on the channel); a step reached after the round was stopped is not reported.

@@ -39,7 +39,7 @@ export const me = {
   "me.semantic": "语义搜索",
   "me.semanticNote": "也搜索含义相近的人和活动 · 仅保存在这台设备",
   "me.aiReview": "请核对内容后再保存。",
-  "me.aiMonthlyLimit": "这个月的次数已经用完，下个月 1 日恢复。已有的内容照常可以查看。",
+  "me.aiMonthlyLimit": "这个月的 {count} 次已用完，{date}恢复。已有的内容照常可以查看。",
   "me.failed": "读取失败，请重试。",
   "me.integrations": "关联服务",
   "me.iorbit": "iOrbit 使用的信息",

@@ -13,7 +13,7 @@ import { AGENT_CHAT_DAILY_LIMIT, AI_QUOTA_MAX_CALLS, AI_QUOTA_PURPOSE_POOLS, AI_
 import { createPostgresAiUsageLedger } from "../../features/ai-quota/ledger";
 import { acceptMessage, getRequestResult, settleSession, type AgentEntryExecutor } from "../../features/agent-v1/entry/service";
 import { createMemoryAgentEntryStore } from "../../features/agent-v1/entry/store";
-import { AGENT_CHAT_DAILY_LIMIT_TEXT } from "../../features/agent-v1/entry/usage-gate";
+import { agentChatDailyLimitText } from "../../features/agent-v1/entry/usage-gate";
 import { callMainModel } from "../../features/agent-v1/models/main";
 import { NETWORK_ANALYSIS_MIGRATIONS, runNetworkAnalysisMigrations } from "../../features/network-analysis/migrations";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
@@ -97,8 +97,8 @@ test("ledger v9: a round through the entry records one operation and its calls w
     const refused = await send(101);
     assert.equal(sent, before, "no model request");
     assert.equal(refused.status, "completed");
-    assert.equal(refused.answer?.text, AGENT_CHAT_DAILY_LIMIT_TEXT.ja);
-    assert.deepEqual(await ledger.reserve({ actorId: ACTOR, idempotencyKey: "agent-chat:over", now, pool: "user", purpose: "agent_chat", trigger: "manual" }), { limit: "agent_chat", ok: false, reason: "daily_limit", retryOn: "2026-11-27T15:00:00.000Z" });
+    assert.equal(refused.answer?.text, agentChatDailyLimitText("ja"));
+    assert.deepEqual(await ledger.reserve({ actorId: ACTOR, idempotencyKey: "agent-chat:over", now, pool: "user", purpose: "agent_chat", trigger: "manual" }), { cap: AGENT_CHAT_DAILY_LIMIT, limit: "agent_chat", ok: false, reason: "daily_limit", retryOn: "2026-11-27T15:00:00.000Z" });
 
     // The user pool's own 10 are all still there.
     for (let n = 0; n < USER_POOL_DAILY_LIMIT; n += 1) assert.equal((await ledger.reserve({ actorId: ACTOR, idempotencyKey: `insight:${n}`, now, pool: "user", purpose: "insight", trigger: "manual" })).ok, true);

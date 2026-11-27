@@ -78,7 +78,7 @@ import {
 } from "./onboarding-steps";
 import { LEGACY_REPAIR_COPY, ONBOARDING_COPY } from "../copy/onboarding";
 import { PROFILE_CONTACT_METHODS, invalidProfileContactMethods, profileContactMethods, profileContactMethodsValid } from "../../../../../shared/compute/profile-contact-methods";
-import { AI_MONTHLY_LIMIT_TEXT } from "../copy/ai-monthly-limit";
+import { aiLimitDetailOf, aiMonthlyLimitText } from "../copy/ai-monthly-limit";
 import styles from "./OnboardingFlow.module.css";
 
 export interface OnboardingFlowProps {
@@ -150,6 +150,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const [headline, setHeadline] = useState("");
   const [introStatus, setIntroStatus] = useState<IntroStatus>("idle");
   const [introErrorCode, setIntroErrorCode] = useState<"INTRO_LIMIT_REACHED" | "SAMPLE_READ_ONLY" | "AI_MONTHLY_LIMIT" | null>(null);
+  const [introLimitText, setIntroLimitText] = useState<string | null>(null);
   const [introRegenerations, setIntroRegenerations] = useState(0);
   const [introTone, setIntroTone] = useState<IntroTone>("native");
   const [editingIntro, setEditingIntro] = useState(false);
@@ -571,11 +572,12 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         // 新草稿失败：保留上一版，不扣次数。
         setIntroStatus(previous.status === "error" ? "ready" : previous.status);
         setIntroTone(previous.tone);
-        setError(code === "AI_MONTHLY_LIMIT" ? t(AI_MONTHLY_LIMIT_TEXT) : t(ONBOARDING_COPY.flow021));
+        setError(code === "AI_MONTHLY_LIMIT" ? aiMonthlyLimitText(language, aiLimitDetailOf((caught as { context?: unknown }).context)) : t(ONBOARDING_COPY.flow021));
         return;
       }
       setIntroStatus("error");
       setIntroErrorCode(code === "INTRO_LIMIT_REACHED" || code === "SAMPLE_READ_ONLY" || code === "AI_MONTHLY_LIMIT" ? code : null);
+      setIntroLimitText(code === "AI_MONTHLY_LIMIT" ? aiMonthlyLimitText(language, aiLimitDetailOf((caught as { context?: unknown }).context)) : null);
     }
   }
 
@@ -665,7 +667,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
               <GoalsStep error={shown.includes("goal")} goals={goalChoices} setGoals={setGoalChoices} setGoalText={setGoalText} t={t} text={goalText} />
               <div className={styles.inline}><StrengthGroups {...groups} /></div>
             </> : null}
-            {view === "intro" ? <IntroStep bio={bio} bioCount={bioCount} editing={editingIntro} errorCode={introErrorCode} goals={goalChoices.length || (goalText.trim() ? 1 : 0)} missing={shown}
+            {view === "intro" ? <IntroStep bio={bio} bioCount={bioCount} editing={editingIntro} errorCode={introErrorCode} limitText={introLimitText} goals={goalChoices.length || (goalText.trim() ? 1 : 0)} missing={shown}
               offer={offer.length} topics={topics.length} onEdit={() => setEditingIntro(value => !value)}
               onRegenerate={() => void generateIntro(introStatus === "error" ? "retry" : "regenerate")} onTone={switchTone}
               regenerationsLeft={INTRO_REGENERATE_LIMIT - introRegenerations} setBio={setBio} status={introStatus} t={t} tone={introTone} /> : null}

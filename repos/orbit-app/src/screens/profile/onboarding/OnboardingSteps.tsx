@@ -1,4 +1,5 @@
 /** The three onboarding pages as drawn (A1–A7); state, saving and AI calls live in ProfileOnboardingScreen. */
+import { aiLimitParams } from "../../../api/ai-limit";
 import { useEffect, useState, type ReactNode, type RefObject } from "react";
 import { Platform, TextInput, View, type LayoutChangeEvent } from "react-native";
 
@@ -331,13 +332,15 @@ export interface IntroStepProps {
   onTone: (tone: IntroTone) => void;
   regenerationsLeft: number;
   status: IntroStatus;
+  /** 2026-11-27: the public monthly limit's count and reset date when status is "monthlyLimit". */
+  limitParams?: { count: string; date: string } | null;
   tone: IntroTone;
   topics: number;
 }
 
-export function IntroStep({ bio, bioCount, disabled, editing, error, goals, input, message, offer, onBio, onCardLayout, onEdit, onRegenerate, onTone, regenerationsLeft, status, tone, topics }: IntroStepProps) {
+export function IntroStep({ bio, bioCount, disabled, editing, error, goals, input, limitParams, message, offer, onBio, onCardLayout, onEdit, onRegenerate, onTone, regenerationsLeft, status, tone, topics }: IntroStepProps) {
   const { styles } = useOnboardingStyles();
-  const { t } = useOrbitLocale();
+  const { t, language } = useOrbitLocale();
   const [why, setWhy] = useState(false);
   const generating = status === "generating";
   const failed = status === "error" || status === "limit" || status === "monthlyLimit";
@@ -355,7 +358,7 @@ export function IntroStep({ bio, bioCount, disabled, editing, error, goals, inpu
           </UiPressable>;
         })}
       </View>
-      {failed ? <UiText accessibilityRole="alert" style={[styles.errLine, { marginTop: 0, marginBottom: 12 }]}>{t(status === "limit" ? "onboarding.v3.introLimit" : status === "monthlyLimit" ? "onboarding.v3.introMonthlyLimit" : "onboarding.v3.introFailed")}</UiText> : null}
+      {failed ? <UiText accessibilityRole="alert" style={[styles.errLine, { marginTop: 0, marginBottom: 12 }]}>{t(status === "limit" ? "onboarding.v3.introLimit" : status === "monthlyLimit" ? "onboarding.v3.introMonthlyLimit" : "onboarding.v3.introFailed", status === "monthlyLimit" ? limitParams ?? aiLimitParams(null, language) : undefined)}</UiText> : null}
       {message ? <UiText accessibilityLiveRegion="polite" style={[styles.errLine, { marginTop: 0, marginBottom: 12 }]}>{message}</UiText> : null}
       <View onLayout={onCardLayout} style={[styles.card, error ? styles.boxError : null, error ? { borderWidth: 1, padding: 17 } : null]} testID="onboarding-intro-card">
         {generating ? <View accessibilityLabel={t("onboarding.v3.introGenerating")} accessible><View style={[styles.bone, { width: "92%" }]} /><View style={[styles.bone, { width: "86%" }]} /><View style={[styles.bone, { width: "64%" }]} /></View>

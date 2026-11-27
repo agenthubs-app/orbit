@@ -17,7 +17,7 @@ import { createLiveRecordMemoExtractionStore } from "../../features/contacts/mem
 import type { runOrbitAgentModelText } from "../../features/orbit-ai/gemini-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
-const MONTHLY: AiQuotaReservation = { limit: "monthly", ok: false, reason: "monthly_limit", retryOn: "2026-11-30T15:00:00.000Z" };
+const MONTHLY: AiQuotaReservation = { cap: 60, limit: "monthly", ok: false, reason: "monthly_limit", retryOn: "2026-11-30T15:00:00.000Z" };
 
 function fakeGate(reply: AiQuotaReservation | Error, options: { beginError?: Error } = {}) {
   const log: string[] = [];
@@ -100,7 +100,9 @@ test("intro draft over the monthly limit: 429 AI_MONTHLY_LIMIT, no model call (t
   });
   const response = await silent(() => direct(post({ language: "zh" })));
   assert.equal(response.status, 429);
-  assert.equal(((await response.json()) as { error: { code: string } }).error.code, AI_MONTHLY_LIMIT_CODE);
+  const body = (await response.json()) as { error: { code: string; context: { limit: string; retryOn: string } } };
+  assert.equal(body.error.code, AI_MONTHLY_LIMIT_CODE);
+  assert.deepEqual(body.error.context, { limit: "60", retryOn: "2026-11-30T15:00:00.000Z" }, "the public number and the reset time for the notice");
   assert.equal(modelCalls, 0);
 });
 
@@ -110,9 +112,9 @@ test("manual re-analysis over the monthly limit: 429 with reason MONTHLY_LIMIT (
     runtime: () => ({ service: { recomputeManually: async () => outcome } }) as never,
   }).recompute;
   const request = () => new Request("http://localhost/api/network/snapshot/recompute?lang=zh", { body: "{}", method: "POST" });
-  const monthly = await handlerFor({ limit: "monthly", retryOn: "2026-11-30T15:00:00.000Z", status: "limited" })(request());
+  const monthly = await handlerFor({ cap: 10, limit: "monthly", retryOn: "2026-11-30T15:00:00.000Z", status: "limited" })(request());
   assert.equal(monthly.status, 429);
-  assert.equal(((await monthly.json()) as { error: { context: { reason: string } } }).error.context.reason, "MONTHLY_LIMIT");
+  assert.deepEqual(((await monthly.json()) as { error: { context: unknown } }).error.context, { limit: "10", reason: "MONTHLY_LIMIT", retryOn: "2026-11-30T15:00:00.000Z" });
   const daily = await handlerFor({ limit: "manual", retryOn: "2026-11-27T15:00:00.000Z", status: "limited" })(request());
   assert.equal(((await daily.json()) as { error: { context: { reason: string } } }).error.context.reason, "MANUAL_REFRESH_LIMIT");
 });

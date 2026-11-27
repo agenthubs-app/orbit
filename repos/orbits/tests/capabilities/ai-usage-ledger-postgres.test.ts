@@ -11,7 +11,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  AI_QUOTA_DAILY_PURPOSE_LIMITS,
   BACKGROUND_POOL_DAILY_LIMIT,
+  EVENT_ASSESSMENT_DAILY_LIMIT,
   MANUAL_REANALYSIS_DAILY_LIMIT,
   nextTokyoMidnight,
   tokyoUsageDay,
@@ -114,7 +116,7 @@ test("SC-04 Tokyo day boundary: 23:59:59 JST counts for that day, 00:00 JST star
     assert.equal(tokyoUsageDay(lateNight), "2026-10-02");
     await fill(ledger, { count: BACKGROUND_POOL_DAILY_LIMIT, now: lateNight, pool: "background", prefix: "late", purpose: "memo_extraction", trigger: "auto" });
     const denied = await ledger.reserve({ actorId: ALICE, idempotencyKey: "late:x", now: lateNight, pool: "background", purpose: "memo_extraction", trigger: "auto" });
-    assert.deepEqual(denied, { limit: "background", ok: false, reason: "daily_limit", retryOn: "2026-10-02T15:00:00.000Z" });
+    assert.deepEqual(denied, { cap: BACKGROUND_POOL_DAILY_LIMIT, limit: "background", ok: false, reason: "daily_limit", retryOn: "2026-10-02T15:00:00.000Z" });
     const midnight = new Date("2026-10-02T15:00:00.000Z");
     assert.equal(tokyoUsageDay(midnight), "2026-10-03");
     const allowed = await ledger.reserve({ actorId: ALICE, idempotencyKey: "midnight", now: midnight, pool: "background", purpose: "memo_extraction", trigger: "auto" });
@@ -130,11 +132,11 @@ test("SC-04 user pool: manual 3/day, then the 10-operation fuse; pools never bor
     // 后台池满时手动重新分析仍可用。
     await fill(ledger, { count: MANUAL_REANALYSIS_DAILY_LIMIT, pool: "user", prefix: "manual", purpose: "snapshot", trigger: "manual" });
     const fourth = await ledger.reserve({ actorId: ALICE, idempotencyKey: "manual:4", now: NOW, pool: "user", purpose: "snapshot", trigger: "manual" });
-    assert.deepEqual(fourth, { limit: "manual", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(NOW) });
+    assert.deepEqual(fourth, { cap: MANUAL_REANALYSIS_DAILY_LIMIT, limit: "manual", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(NOW) });
     // 其余用户主动操作（计划、单人洞察）继续用到总熔断 10。
     await fill(ledger, { count: USER_POOL_DAILY_LIMIT - MANUAL_REANALYSIS_DAILY_LIMIT, pool: "user", prefix: "plan", purpose: "plan", trigger: "plan" });
     const eleventh = await ledger.reserve({ actorId: ALICE, idempotencyKey: "plan:x", now: NOW, pool: "user", purpose: "insight", trigger: "manual" });
-    assert.deepEqual(eleventh, { limit: "user", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(NOW) });
+    assert.deepEqual(eleventh, { cap: USER_POOL_DAILY_LIMIT, limit: "user", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(NOW) });
     // R22：读数多了 planFlow（计划生成流程的独立计数），其余口径不变；2026-11-27 又多了 agentChat（iOrbit 对话的独立计数）。
     assert.deepEqual(await ledger.readUsageToday(ALICE, NOW), { agentChat: 0, background: 60, eventAssessment: 0, instant: 0, manual: 3, planFlow: 0, user: 10 });
     // system 池不受任何用户额度约束。
@@ -343,7 +345,7 @@ test("event_assessment：日 5 次独立计数、不占用户池；月 10 次按
     await fill(ledger, { count: USER_POOL_DAILY_LIMIT, pool: "user", prefix: "plan", purpose: "plan", trigger: "plan" });
     for (let n = 0; n < 5; n += 1) assert.equal((await reserve(`ea:d1:${n}`, NOW)).ok, true);
     const sixth = await reserve("ea:d1:6", NOW);
-    assert.deepEqual(sixth, { limit: "event_assessment", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(NOW) });
+    assert.deepEqual(sixth, { cap: EVENT_ASSESSMENT_DAILY_LIMIT, limit: "event_assessment", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(NOW) });
     assert.equal((await ledger.readUsageToday(ALICE, NOW)).eventAssessment, 5);
     assert.equal((await ledger.readUsageToday(ALICE, NOW)).user, USER_POOL_DAILY_LIMIT);
     // 同月另一天再 5 次 → 月 10 次用满；10/31 23:59 JST 仍是 10 月 → monthly_limit；11/1 00:00 JST 重置。
@@ -362,7 +364,7 @@ test("LF13 event_registration_question: 40 a Tokyo day in the system pool, relea
     const ledger = ledgerOf(harness);
     const reserve = (key: string, now: Date) => ledger.reserve({ actorId: ALICE, idempotencyKey: key, now, pool: "system", purpose: "event_registration_question", trigger: "auto" });
     for (let n = 0; n < 40; n += 1) assert.equal((await reserve(`q:d1:${n}`, NOW)).ok, true);
-    assert.deepEqual(await reserve("q:d1:41", NOW), { limit: "purpose", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(NOW) });
+    assert.deepEqual(await reserve("q:d1:41", NOW), { cap: AI_QUOTA_DAILY_PURPOSE_LIMITS.event_registration_question, limit: "purpose", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(NOW) });
     assert.equal((await ledger.reserve({ actorId: BOB, idempotencyKey: "q:bob", now: NOW, pool: "system", purpose: "event_registration_question", trigger: "auto" })).ok, true, "per person");
     assert.equal((await reserve("q:d2:0", new Date(NOW.getTime() + 86_400_000))).ok, true);
   });

@@ -20,7 +20,6 @@ export type DraftAssistKind = "intro" | "seek" | "email";
 
 /** Error code (and `reason`) of a request refused by a monthly fuse; the clients show their own fixed line for it. */
 export const AI_MONTHLY_LIMIT_CODE = "AI_MONTHLY_LIMIT";
-const AI_MONTHLY_LIMIT_MESSAGE = "This month's AI uses for this are used up. They come back on the 1st of next month.";
 
 export function configuredDraftAssistLedger(): AiQuotaGate | null {
   const runtime = createConfiguredTransactionalPostgresRuntime();
@@ -40,7 +39,12 @@ export function createDraftAssistRunner(input: { actorId: string; kind: DraftAss
   });
 }
 
-/** The 429 for a generation the monthly fuse kept off (no model call was made). */
-export function aiMonthlyLimitResponse(): Response {
-  return NextResponse.json({ success: false, error: { code: AI_MONTHLY_LIMIT_CODE, message: AI_MONTHLY_LIMIT_MESSAGE } }, { status: 429 });
+/**
+ * The 429 for a generation the monthly limit kept off (no model call was made). The limits are public: `context.limit`
+ * (the value, from the constants via the ledger) and `context.retryOn` let the clients write the numbered notice.
+ */
+export function aiMonthlyLimitResponse(detail: { cap: number | null; retryOn: string | null } | null): Response {
+  const cap = detail?.cap ?? null;
+  const message = `This month's ${cap === null ? "" : `${cap} `}AI drafts are used up. They come back on the 1st of next month.`;
+  return NextResponse.json({ success: false, error: { code: AI_MONTHLY_LIMIT_CODE, context: { ...(cap === null ? {} : { limit: String(cap) }), ...(detail?.retryOn ? { retryOn: detail.retryOn } : {}) }, message } }, { status: 429 });
 }

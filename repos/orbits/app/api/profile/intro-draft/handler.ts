@@ -43,12 +43,12 @@ export function createProfileIntroDraftHandler(dependencies: {
   const createDraftService = dependencies.createDraftService ?? createProfileIntroDraftService;
   const draftLedger = dependencies.draftLedger ?? configuredDraftAssistLedger;
   /** One generation = one draft_assist operation; `limited` = the monthly fuse kept the model call off. */
-  async function generate(actorId: string, language: Language, options: ProfileIntroDraftServiceOptions = {}): Promise<{ result: ProfileIntroDraftResult; limited: boolean }> {
+  async function generate(actorId: string, language: Language, options: ProfileIntroDraftServiceOptions = {}): Promise<{ result: ProfileIntroDraftResult; limited: { cap: number | null; retryOn: string | null } | null }> {
     const ledgered = createDraftAssistRunner({ actorId, gate: draftLedger(), kind: "intro" });
     try {
       const result = await createDraftService({ ...options, runModel: ledgered.run }).createDraft({ actorId, language });
       await ledgered.finish(result.success === true ? "succeeded" : "failed");
-      return { limited: ledgered.refusal() === "quota", result };
+      return { limited: ledgered.refusal() === "quota" ? ledgered.quotaDetail() ?? { cap: null, retryOn: null } : null, result };
     } catch (caught) {
       await ledgered.finish("failed");
       throw caught;
@@ -78,11 +78,11 @@ export function createProfileIntroDraftHandler(dependencies: {
       if (!flow) {
         // Existing accounts without a first onboarding flow keep the settings draft path.
         const direct = await generate(actor.id, language);
-        return direct.limited ? aiMonthlyLimitResponse() : draftResponse(direct.result);
+        return direct.limited ? aiMonthlyLimitResponse(direct.limited) : draftResponse(direct.result);
       }
       if (typeof key !== "string" && flow.finishedAt) {
         const direct = await generate(actor.id, language);
-        return direct.limited ? aiMonthlyLimitResponse() : draftResponse(direct.result);
+        return direct.limited ? aiMonthlyLimitResponse(direct.limited) : draftResponse(direct.result);
       }
       if (typeof key !== "string") return error(400, "VALIDATION_ERROR", "An idempotency key is required during onboarding.");
       const quota = quotaForActor(actor.id);
@@ -94,7 +94,7 @@ export function createProfileIntroDraftHandler(dependencies: {
         return draftResponse(reservation.result);
       }
       let result: ProfileIntroDraftResult;
-      let limited = false;
+      let limited: { cap: number | null; retryOn: string | null } | null = null;
       try {
         ({ limited, result } = await generate(actor.id, language, { beforeModelCall: () => quota.noteModelCall(key) }));
       } catch {
@@ -102,7 +102,7 @@ export function createProfileIntroDraftHandler(dependencies: {
       }
       const persisted = await quota.complete(key, result);
       // 隐藏月上限：这次没有调用模型；记下失败（不占引导的 3 次），回月上限的 429（客户端换新键再试）。
-      return limited ? aiMonthlyLimitResponse() : draftResponse(persisted);
+      return limited ? aiMonthlyLimitResponse(limited) : draftResponse(persisted);
     } catch (caught) {
       if (caught instanceof Error && caught.message === "MUTATION_CONFLICT") return error(409, "IDEMPOTENCY_CONFLICT", "This request key was already used for a different draft.");
       return error(503, "SERVICE_UNAVAILABLE", "The draft request could not be saved. Please retry later.");

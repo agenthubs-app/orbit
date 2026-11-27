@@ -4,6 +4,7 @@
  * above the button and scrolled to. Each 「次へ」 saves through PUT /api/profile, verifies the receipt and reads the
  * profile back; everything typed in between stays in a draft on the device, so leaving or killing the App loses nothing.
  */
+import { aiLimitParams } from "../../../api/ai-limit";
 import * as Crypto from "expo-crypto";
 import * as ImagePicker from "expo-image-picker";
 import { type Href, useRouter } from "expo-router";
@@ -144,6 +145,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   const [scan, setScan] = useState<ScanState>({ kind: "idle" });
   const cardHandles = useRef<OwnCard["handles"]>({});
   const [introStatus, setIntroStatus] = useState<IntroStatus>("idle");
+  const [introLimitParams, setIntroLimitParams] = useState<{ count: string; date: string } | null>(null);
   const [tone, setTone] = useState<IntroTone>("native");
   const [editing, setEditing] = useState(false);
   const [regenerations, setRegenerations] = useState(0);
@@ -595,8 +597,11 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
       if (kind === "regenerate" && previous.hadDraft) {
         // The earlier draft and its tone stay, and the attempt is not counted.
         setIntroStatus(previous.status === "error" ? "ready" : previous.status); setTone(previous.tone);
-        setMessage(t(result.kind === "monthlyLimit" ? "onboarding.v3.introMonthlyLimit" : "onboarding.v3.regenerateFailed"));
-      } else setIntroStatus(result.kind === "limit" ? "limit" : result.kind === "monthlyLimit" ? "monthlyLimit" : "error");
+        setMessage(result.kind === "monthlyLimit" ? t("onboarding.v3.introMonthlyLimit", aiLimitParams(result.detail, locale.language)) : t("onboarding.v3.regenerateFailed"));
+      } else {
+        setIntroLimitParams(result.kind === "monthlyLimit" ? aiLimitParams(result.detail, locale.language) : null);
+        setIntroStatus(result.kind === "limit" ? "limit" : result.kind === "monthlyLimit" ? "monthlyLimit" : "error");
+      }
     } finally {
       generating.current = false;
     }
@@ -679,7 +684,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
             onGoalsLayout={event => onFieldLayout("goals", event)} onGroup={(group, values) => { (group === "offer" ? setOffer : group === "seek" ? setSeek : setTopics)(values); if (group !== "seek") unmark(group); }} revision={fillRevision} seek={seek} seekSuggestions={goals.length ? seekSuggestions : []} topics={topics} />
         ) : (
           <IntroStep bio={bio} bioCount={bioCount} disabled={saving} editing={editing} error={errors.has("intro") ? fieldError("intro") : null} goals={goals.length} input={bioInput} message={message} offer={offer.length} onBio={setBio} onCardLayout={event => onFieldLayout("intro", event)}
-            onEdit={() => setEditing(open => !open)} onRegenerate={() => void generateIntro(introStatus === "error" ? "retry" : "regenerate")} onTone={onTone} regenerationsLeft={INTRO_REGENERATE_LIMIT - regenerations} status={introStatus} tone={tone} topics={topics.length} />
+            onEdit={() => setEditing(open => !open)} onRegenerate={() => void generateIntro(introStatus === "error" ? "retry" : "regenerate")} onTone={onTone} regenerationsLeft={INTRO_REGENERATE_LIMIT - regenerations} limitParams={introLimitParams} status={introStatus} tone={tone} topics={topics.length} />
         )}
       </OnboardingFrame>
       {repair && picker !== "seniority" ? (

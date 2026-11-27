@@ -14,7 +14,7 @@ import { useSavedPlanGoalAnswer } from "../plan/saved-goal";
 import { MemorySettings, readMemoryList } from "./MemorySettings";
 import { settingsCopy } from "./settings-copy";
 import styles from "./SettingsSecondary.module.css";
-import { AI_MONTHLY_LIMIT_CODE, AI_MONTHLY_LIMIT_TEXT } from "../copy/ai-monthly-limit";
+import { AI_MONTHLY_LIMIT_CODE, aiLimitDetailOf, aiMonthlyLimitText } from "../copy/ai-monthly-limit";
 
 type Goal = { text: string; kind: string };
 // The four reads of this page in one answer (orbit-last-answer.ts), so they arrive — and come back — together.
@@ -97,9 +97,9 @@ export function IorbitSettings() {
     setBusy(true);
     try {
       const response = await fetch("/api/profile/intro-draft", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ language }) });
-      const body = await response.json() as { success?: boolean; data?: { bio?: string }; error?: { code?: string } };
+      const body = await response.json() as { success?: boolean; data?: { bio?: string }; error?: { code?: string; context?: unknown } };
       // 2026-11-27 隐藏月上限：这个月用完时显示固定的一句（不显示数字）。
-      if (body.error?.code === AI_MONTHLY_LIMIT_CODE) { toast.error(AI_MONTHLY_LIMIT_TEXT[language]); return; }
+      if (body.error?.code === AI_MONTHLY_LIMIT_CODE) { toast.error(aiMonthlyLimitText(language, aiLimitDetailOf(body.error.context))); return; }
       if (!response.ok || body.success !== true || typeof body.data?.bio !== "string") throw new Error("Draft failed");
       setDraft(body.data.bio);
     } catch { toast.error(t("failed")); }

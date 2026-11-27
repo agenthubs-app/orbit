@@ -143,7 +143,7 @@ export const onboarding = {
   "onboarding.v3.regenerateLeft": "{count} left",
   "onboarding.v3.introFailed": "Couldn't draft it this time. Retry, or write a couple of lines below.",
   "onboarding.v3.regenerateFailed": "Could not draft another. The earlier one is kept.",
-  "onboarding.v3.introMonthlyLimit": "This month's uses are used up. They come back on the 1st of next month. Everything you already have can still be viewed as usual.",
+  "onboarding.v3.introMonthlyLimit": "This month's {count} uses are used up. They come back on {date}. Everything you already have can still be viewed as usual.",
   "onboarding.v3.introLimit": "All three drafts have been used. Write a few lines below.",
   "onboarding.v3.introPrivate": "It stays in your profile until you use it",
   "onboarding.v3.saveFailed": "Couldn't save. What you entered is still here.",

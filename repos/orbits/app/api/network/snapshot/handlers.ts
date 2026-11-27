@@ -112,7 +112,8 @@ export function createNetworkSnapshotRouteHandlers(dependencies: NetworkSnapshot
           case "limited":
             // 2026-11-27 隐藏月上限（手动重新分析 10 次/月）：reason MONTHLY_LIMIT，客户端显示「这个月用完了」的固定句。
             if (outcome.limit === "monthly") {
-              return fail(new AppError("CONFLICT", "This month's analyses are used up. They come back on the 1st of next month."), 429, { reason: "MONTHLY_LIMIT", ...(outcome.retryOn ? { retryOn: outcome.retryOn } : {}) });
+              // 上限是公开的：带上数值（取自常量）和恢复时间，客户端据此写出「这个月的 N 次已用完，M 月 1 日恢复」。
+              return fail(new AppError("CONFLICT", `This month's ${outcome.cap === undefined ? "" : `${outcome.cap} `}analyses are used up. They come back on the 1st of next month.`), 429, { reason: "MONTHLY_LIMIT", ...(outcome.cap !== undefined ? { limit: String(outcome.cap) } : {}), ...(outcome.retryOn ? { retryOn: outcome.retryOn } : {}) });
             }
             return fail(
               new AppError("CONFLICT", "You have used today's analyses. Try again tomorrow."),

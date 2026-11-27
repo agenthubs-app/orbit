@@ -23,6 +23,8 @@ export interface LedgeredRunner {
   calls(): number;
   /** LF13: why `run` sent nothing — the quota is used up, or the ledger could not be used; null when it ran. */
   refusal(): "quota" | "unavailable" | null;
+  /** 2026-11-27: when the quota refused — the limit's value and when it comes back (for a public, numbered notice). */
+  quotaDetail(): { cap: number | null; retryOn: string | null } | null;
 }
 
 export function createLedgeredRunner(input: {
@@ -42,6 +44,7 @@ export function createLedgeredRunner(input: {
 }): LedgeredRunner {
   let operation: string | null | undefined;
   let refused: "quota" | "unavailable" | null = null;
+  let quotaDetail: { cap: number | null; retryOn: string | null } | null = null;
   let count = 0;
   const now = input.now ?? (() => new Date());
   async function ensure(): Promise<string | null> {
@@ -53,6 +56,7 @@ export function createLedgeredRunner(input: {
       if (!operation) {
         const quota = "reason" in reservation && (reservation.reason === "daily_limit" || reservation.reason === "monthly_limit");
         refused = quota ? "quota" : input.refuseWithoutLedger ? "unavailable" : null;
+        if (quota && !reservation.ok) quotaDetail = { cap: reservation.cap ?? null, retryOn: reservation.retryOn ?? null };
         console.warn(JSON.stringify({ event: "event_ai_ledger_unavailable", purpose: input.purpose, reason: "reason" in reservation ? reservation.reason : "not_owner" }));
       }
     } catch (error) {
@@ -65,6 +69,7 @@ export function createLedgeredRunner(input: {
   return {
     calls: () => count,
     refusal: () => refused,
+    quotaDetail: () => quotaDetail,
     async finish(outcome) {
       if (!operation || !input.gate) return;
       await input.gate.finish(operation, outcome).catch((error: unknown) => console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_ai_ledger_finish_failed" })));

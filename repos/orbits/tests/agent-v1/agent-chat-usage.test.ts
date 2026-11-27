@@ -10,7 +10,9 @@ import { AGENT_CHAT_DAILY_LIMIT, AI_QUOTA_MAX_CALLS } from "../../features/ai-qu
 import type { AiQuotaGate, AiQuotaReservation, AiQuotaReserveInput } from "../../features/ai-quota/gate";
 import { acceptMessage, getRequestResult, settleSession, type AgentEntryDependencies, type AgentEntryExecutor } from "../../features/agent-v1/entry/service";
 import { createMemoryAgentEntryStore } from "../../features/agent-v1/entry/store";
-import { AGENT_CHAT_DAILY_LIMIT_TEXT, agentChatDailyLimitText } from "../../features/agent-v1/entry/usage-gate";
+import { agentChatDailyLimitText } from "../../features/agent-v1/entry/usage-gate";
+
+const LIMIT_TEXT = { en: agentChatDailyLimitText("en"), ja: agentChatDailyLimitText("ja"), zh: agentChatDailyLimitText("zh") };
 import { createGraphExecutor } from "../../features/agent-v1/graph/executor";
 import { requestDecisions, requestDecisionsOnce } from "../../features/agent-v1/judgment/gemini-decision";
 import { callMainModel } from "../../features/agent-v1/models/main";
@@ -161,7 +163,7 @@ test("over the daily limit (round 101): no model request, the fixed reply in the
     const doc = await send(deps, "帮我处理一下小林那件事。", locale);
     assert.equal(model.calls.length, 0, `${locale}: no model request`);
     assert.equal(doc.status, "completed");
-    assert.equal(doc.answer?.text, AGENT_CHAT_DAILY_LIMIT_TEXT[locale]);
+    assert.equal(doc.answer?.text, LIMIT_TEXT[locale]);
     assert.deepEqual(doc.partResults.map((item) => item.status), ["answered"]);
     assert.equal(ledger.operations.size, 0, "nothing is reserved for a refused round");
   }
@@ -171,19 +173,20 @@ test("round 100 still runs, round 101 is refused (the count comes from the ledge
   const ledger = memoryLedger({ usedToday: AGENT_CHAT_DAILY_LIMIT - 1 });
   const { deps, model } = graphEntry(ledger.gate);
   const hundredth = await send(deps, "帮我处理一下小林那件事。");
-  assert.notEqual(hundredth.answer?.text, AGENT_CHAT_DAILY_LIMIT_TEXT.zh);
+  assert.notEqual(hundredth.answer?.text, LIMIT_TEXT.zh);
   assert.equal(model.calls.length, 1);
   const next = await send(deps, "帮我处理一下小林那件事。");
-  assert.equal(next.answer?.text, AGENT_CHAT_DAILY_LIMIT_TEXT.zh);
+  assert.equal(next.answer?.text, LIMIT_TEXT.zh);
   assert.equal(model.calls.length, 1, "the 101st round sends nothing");
 });
 
-test("the fixed reply: three languages, plain (no exclamation mark), Japanese for an unknown locale", () => {
-  assert.equal(agentChatDailyLimitText("zh"), "今天的对话次数已经用完，明天可以继续。已有的内容照常可以查看。");
-  assert.match(agentChatDailyLimitText("ja"), /本日の会話回数の上限に達しました/u);
-  assert.match(agentChatDailyLimitText("en"), /today's conversations/u);
-  assert.equal(agentChatDailyLimitText("fr"), AGENT_CHAT_DAILY_LIMIT_TEXT.ja);
-  for (const text of Object.values(AGENT_CHAT_DAILY_LIMIT_TEXT)) assert.doesNotMatch(text, /[!！]/u);
+test("the fixed reply: three languages with the public number (from the constant), plain (no exclamation mark), Japanese for an unknown locale", () => {
+  assert.equal(agentChatDailyLimitText("zh"), `今天的 ${AGENT_CHAT_DAILY_LIMIT} 轮对话已用完，明天恢复。已有的内容照常可以查看。`);
+  assert.equal(agentChatDailyLimitText("ja"), `本日の会話${AGENT_CHAT_DAILY_LIMIT}回を使い切りました。明日また使えます。これまでの内容はいつもどおりご覧いただけます。`);
+  assert.match(agentChatDailyLimitText("en"), new RegExp(`^Today's ${AGENT_CHAT_DAILY_LIMIT} conversations are used up`, "u"));
+  assert.equal(agentChatDailyLimitText("fr"), LIMIT_TEXT.ja);
+  assert.match(agentChatDailyLimitText("zh", 7), /今天的 7 轮对话/u, "the number follows the ledger's cap");
+  for (const text of Object.values(LIMIT_TEXT)) assert.doesNotMatch(text, /[!！]/u);
 });
 
 test("a ledger that fails never stops the conversation (fail-open) and leaves a warning", async () => {
@@ -199,7 +202,7 @@ test("a ledger that fails never stops the conversation (fail-open) and leaves a 
     }
     assert.equal(model.calls.length, 1, `${fail}: the model is still called`);
     assert.notEqual(doc.status, "failed", fail);
-    assert.notEqual(doc.answer?.text, AGENT_CHAT_DAILY_LIMIT_TEXT.zh, fail);
+    assert.notEqual(doc.answer?.text, LIMIT_TEXT.zh, fail);
     assert.ok(quiet.warnings.some((line) => /agent_chat_ledger_/u.test(line)), `${fail}: a warning is logged`);
   }
 });

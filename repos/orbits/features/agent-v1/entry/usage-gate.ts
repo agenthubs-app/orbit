@@ -7,11 +7,12 @@
  * - 只有账本明确说「今天用完了」才拦：这一轮不调用模型，回一句固定的话（界面语言）。
  *   账本不可用（无库、表未迁移、约束还没有新用途、出错、不是所有者）一律照常对话、不记账，留一条告警日志（fail-open）。
  */
+import { AGENT_CHAT_DAILY_LIMIT } from "../../ai-quota/constants";
 import type { AiQuotaGate } from "../../ai-quota/gate";
 import type { ModelCallUsage, ModelUsageMeter } from "../models/usage-meter";
 
 export type AgentChatRound =
-  | { kind: "limited"; retryOn: string | null }
+  | { kind: "limited"; retryOn: string | null; cap: number }
   | { kind: "open"; meter: ModelUsageMeter | null; finish(outcome: "succeeded" | "failed"): Promise<void> };
 
 const UNMETERED: AgentChatRound = { finish: async () => undefined, kind: "open", meter: null };
@@ -35,7 +36,7 @@ export async function openAgentChatRound(gate: AiQuotaGate | null | undefined, i
   try {
     const reservation = await gate.reserve({ actorId: input.actorId, idempotencyKey, now: input.now, pool: "user", purpose: "agent_chat", takeover: true, trigger: "manual" });
     if (reservation.ok === false) {
-      if (reservation.reason === "daily_limit" && !input.selection) return { kind: "limited", retryOn: reservation.retryOn ?? null };
+      if (reservation.reason === "daily_limit" && !input.selection) return { cap: reservation.cap ?? AGENT_CHAT_DAILY_LIMIT, kind: "limited", retryOn: reservation.retryOn ?? null };
       warn("agent_chat_ledger_unavailable", { reason: reservation.reason, ...(reservation.limit ? { limit: reservation.limit } : {}) });
       return UNMETERED;
     }
@@ -71,13 +72,17 @@ export async function openAgentChatRound(gate: AiQuotaGate | null | undefined, i
   };
 }
 
-/** 超过每日上限时这一轮的回答（界面语言；朴素，不带感叹号）。 */
-export const AGENT_CHAT_DAILY_LIMIT_TEXT: Readonly<Record<"zh" | "ja" | "en", string>> = {
-  en: "You have used up today's conversations. You can continue tomorrow. Everything you already have can still be viewed as usual.",
-  ja: "本日の会話回数の上限に達しました。明日また続けられます。これまでの内容はいつもどおりご覧いただけます。",
-  zh: "今天的对话次数已经用完，明天可以继续。已有的内容照常可以查看。",
+/**
+ * 超过每日上限时这一轮的回答（界面语言；朴素，不带感叹号）。上限是公开的：写出轮数（取自账本给的 `cap`，即常量
+ * `AGENT_CHAT_DAILY_LIMIT`）和恢复时间。
+ */
+const AGENT_CHAT_DAILY_LIMIT_TEMPLATES: Readonly<Record<"zh" | "ja" | "en", (cap: number) => string>> = {
+  en: (cap) => `Today's ${cap} conversations are used up. They come back tomorrow. Everything you already have can still be viewed as usual.`,
+  ja: (cap) => `本日の会話${cap}回を使い切りました。明日また使えます。これまでの内容はいつもどおりご覧いただけます。`,
+  zh: (cap) => `今天的 ${cap} 轮对话已用完，明天恢复。已有的内容照常可以查看。`,
 };
 
-export function agentChatDailyLimitText(locale: string | null | undefined): string {
-  return locale === "ja" || locale === "en" || locale === "zh" ? AGENT_CHAT_DAILY_LIMIT_TEXT[locale] : AGENT_CHAT_DAILY_LIMIT_TEXT.ja;
+export function agentChatDailyLimitText(locale: string | null | undefined, cap: number = AGENT_CHAT_DAILY_LIMIT): string {
+  const language = locale === "ja" || locale === "en" || locale === "zh" ? locale : "ja";
+  return AGENT_CHAT_DAILY_LIMIT_TEMPLATES[language](cap);
 }

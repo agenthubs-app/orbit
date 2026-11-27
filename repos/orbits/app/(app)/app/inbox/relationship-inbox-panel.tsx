@@ -36,7 +36,7 @@ import { ORBIT_Z } from "../orbit-z";
 import { invalidateInboxActorConfirmation, readContactMessageActor } from "./inbox-request";
 import { BoundedContactMessagesTab } from "./bounded-contact-messages-tab";
 import workspace from "./inbox-workspace.module.css";
-import { AI_MONTHLY_LIMIT_CODE, AI_MONTHLY_LIMIT_TEXT } from "../orbit-2026/copy/ai-monthly-limit";
+import { AI_MONTHLY_LIMIT_CODE, aiLimitDetailOf, aiMonthlyLimitText } from "../orbit-2026/copy/ai-monthly-limit";
 
 type InboxTab = "threads" | "alerts";
 
@@ -228,7 +228,7 @@ export function hasRenderedComposeTriggerArea(
 // 这里只生成可编辑草稿；接口不会调用邮件发送方，也不会创建外部副作用。
 export type MessageDraftRequestResult =
   | { success: true; data: { subject: string; body: string } }
-  | { success: false; error: { code: string; message: string } };
+  | { success: false; error: { code: string; message: string; context?: unknown } };
 
 export async function requestMessageDraft(input: {
   contactId?: string;
@@ -255,7 +255,7 @@ export async function requestMessageDraft(input: {
     const envelope = (await response.json()) as {
       success?: boolean;
       data?: { subject?: string; body?: string };
-      error?: { code?: string; message?: string };
+      error?: { code?: string; message?: string; context?: unknown };
     };
     if (!response.ok || envelope.success !== true) {
       return {
@@ -263,6 +263,7 @@ export async function requestMessageDraft(input: {
         error: {
           code: envelope.error?.code ?? "DRAFT_REQUEST_FAILED",
           message: envelope.error?.message ?? "The draft request failed.",
+          ...(envelope.error?.context ? { context: envelope.error.context } : {}),
         },
       };
     }
@@ -657,6 +658,7 @@ function NewThreadForm({
   // "ai_unconfigured" = 服务端返回 MODEL_API_KEY_MISSING（当前环境没配模型 key），
   // 这不是可重试的故障，提示用户手动填写；其余失败仍显示通用重试文案。
   const [error, setError] = useState<NewThreadFormError>(null);
+  const [limitText, setLimitText] = useState<string | null>(null);
 
   if (!requestIdRef.current) {
     requestIdRef.current =
@@ -675,6 +677,7 @@ function NewThreadForm({
     });
     if (result.success === false) {
       setError(newThreadFormErrorForDraftFailure(result.error.code));
+      setLimitText(result.error.code === AI_MONTHLY_LIMIT_CODE ? aiMonthlyLimitText(language, aiLimitDetailOf(result.error.context)) : null);
     } else {
       setSubject(result.data.subject);
       setBody(result.data.body);
@@ -747,7 +750,7 @@ function NewThreadForm({
           })}
         </div>
       ) : error === "monthly_limit" ? (
-        <div className="ri-new-error">{t(AI_MONTHLY_LIMIT_TEXT)}</div>
+        <div className="ri-new-error">{limitText ?? t({ zh: aiMonthlyLimitText("zh"), ja: aiMonthlyLimitText("ja"), en: aiMonthlyLimitText("en") })}</div>
       ) : error === "generic" ? (
         <div className="ri-new-error">{t({ ja: "うまくいきませんでした。もう一度お試しください。", en: "Something went wrong. Please try again.", zh: "出了点问题，请重试。" })}</div>
       ) : null}

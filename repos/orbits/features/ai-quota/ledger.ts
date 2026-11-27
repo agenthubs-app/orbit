@@ -183,44 +183,44 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
       const usage = (await executor.query<Row>(USAGE_SQL, [workspaceId, actorId, day])).rows[0];
       const retryOn = nextTokyoMidnight(request.now);
       if (request.pool === "background" && count(usage?.background_used) >= BACKGROUND_POOL_DAILY_LIMIT) {
-        return { ok: false, reason: "daily_limit", retryOn, limit: "background" };
+        return { ok: false, reason: "daily_limit", retryOn, limit: "background", cap: BACKGROUND_POOL_DAILY_LIMIT };
       }
       if (isPlanFlowOperation(request)) {
         // R22（DESIGN §5.3）：计划生成流程只受自己的日上限 15 约束，不占用户池 10 次总熔断。
-        if (count(usage?.plan_flow_used) >= PLAN_FLOW_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "plan_flow" };
+        if (count(usage?.plan_flow_used) >= PLAN_FLOW_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "plan_flow", cap: PLAN_FLOW_DAILY_LIMIT };
       } else if (isEventAssessmentOperation(request)) {
         // R26（events DESIGN §3.1）：活动评估只受自己的日上限 5 约束，不占用户池 10 次总熔断（月上限 10 在下面统一查）。
-        if (count(usage?.event_assessment_used) >= EVENT_ASSESSMENT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "event_assessment" };
+        if (count(usage?.event_assessment_used) >= EVENT_ASSESSMENT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "event_assessment", cap: EVENT_ASSESSMENT_DAILY_LIMIT };
       } else if (isAgentChatOperation(request)) {
         // iOrbit 对话（2026-11-27）：只受自己的每日轮数上限约束，不占用户池 10 次总熔断。
-        if (count(usage?.agent_chat_used) >= AGENT_CHAT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "agent_chat" };
+        if (count(usage?.agent_chat_used) >= AGENT_CHAT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "agent_chat", cap: AGENT_CHAT_DAILY_LIMIT };
       } else if (isInstantInsightOperation(request)) {
         // W0057（D62）：即时洞察生成只受自己的 20 次上限约束，不占用户池 10 次总熔断。
-        if (count(usage?.instant_used) >= INSTANT_INSIGHT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "instant" };
+        if (count(usage?.instant_used) >= INSTANT_INSIGHT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "instant", cap: INSTANT_INSIGHT_DAILY_LIMIT };
       } else if (request.pool === "user") {
         if (request.purpose === "snapshot" && request.trigger === "manual" && count(usage?.manual_used) >= MANUAL_REANALYSIS_DAILY_LIMIT) {
-          return { ok: false, reason: "daily_limit", retryOn, limit: "manual" };
+          return { ok: false, reason: "daily_limit", retryOn, limit: "manual", cap: MANUAL_REANALYSIS_DAILY_LIMIT };
         }
-        if (count(usage?.user_used) >= USER_POOL_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "user" };
+        if (count(usage?.user_used) >= USER_POOL_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "user", cap: USER_POOL_DAILY_LIMIT };
       }
     }
     const dailyPurposeLimit = AI_QUOTA_DAILY_PURPOSE_LIMITS[request.purpose];
     if (dailyPurposeLimit !== undefined) {
       // LF13：按用途的日上限（任何池），在同一把锁里数今天未释放的操作。
       const used = count((await executor.query<Row>(DAILY_PURPOSE_SQL, [workspaceId, actorId, request.purpose, day])).rows[0]?.used);
-      if (used >= dailyPurposeLimit) return { ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(request.now), limit: "purpose" };
+      if (used >= dailyPurposeLimit) return { ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(request.now), limit: "purpose", cap: dailyPurposeLimit };
     }
     const monthlyLimit = AI_QUOTA_MONTHLY_LIMITS[request.purpose];
     if (monthlyLimit !== undefined) {
       // R22：有月上限的用途（只有计划 v2 的新用途），在同一把锁里数本月未释放的操作。
       const used = await countMonthlyWith(executor, actorId, request.purpose, request.now);
-      if (used >= monthlyLimit) return { ok: false, reason: "monthly_limit", retryOn: nextTokyoMonthStart(request.now), limit: "monthly" };
+      if (used >= monthlyLimit) return { ok: false, reason: "monthly_limit", retryOn: nextTokyoMonthStart(request.now), limit: "monthly", cap: monthlyLimit };
     }
     const fuse = monthlyFuseFor(request);
     if (fuse) {
       // 2026-11-27 隐藏月上限：同一池的锁下数本月（保险丝只挂在单一池上，所以按池的锁已经够用）。
       const row = (await executor.query<Row>(MONTHLY_FUSE_SQL, [workspaceId, actorId, fuse.pool, fuse.purpose, fuse.trigger ?? null, tokyoUsageMonth(request.now)])).rows[0];
-      if (count(row?.used) >= fuse.limit) return { ok: false, reason: "monthly_limit", retryOn: nextTokyoMonthStart(request.now), limit: "monthly" };
+      if (count(row?.used) >= fuse.limit) return { ok: false, reason: "monthly_limit", retryOn: nextTokyoMonthStart(request.now), limit: "monthly", cap: fuse.limit };
     }
     if (replay) {
       await executor.query(

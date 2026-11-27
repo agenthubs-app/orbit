@@ -143,7 +143,7 @@ export const onboarding = {
   "onboarding.v3.regenerateLeft": "残り {count}回",
   "onboarding.v3.introFailed": "今回は作成できませんでした。もう一度試すか、下に直接書いてください。",
   "onboarding.v3.regenerateFailed": "新しい案を作れませんでした。前の案を残しています。",
-  "onboarding.v3.introMonthlyLimit": "今月の利用回数の上限に達しました。来月1日に戻ります。これまでの内容はいつもどおりご覧いただけます。",
+  "onboarding.v3.introMonthlyLimit": "今月の{count}回を使い切りました。{date}に戻ります。これまでの内容はいつもどおりご覧いただけます。",
   "onboarding.v3.introLimit": "自己紹介の生成は3回までです。下に直接入力してください。",
   "onboarding.v3.introPrivate": "自動で公開・送信されることはありません",
   "onboarding.v3.saveFailed": "保存できませんでした。入力内容はそのまま残っています。",

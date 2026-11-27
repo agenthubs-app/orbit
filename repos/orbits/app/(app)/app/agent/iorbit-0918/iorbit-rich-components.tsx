@@ -13,7 +13,7 @@
  */
 "use client";
 
-import { AI_MONTHLY_LIMIT_CODE, AI_MONTHLY_LIMIT_TEXT } from "../../orbit-2026/copy/ai-monthly-limit";
+import { AI_MONTHLY_LIMIT_CODE, aiLimitDetailOf, aiMonthlyLimitText } from "../../orbit-2026/copy/ai-monthly-limit";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
@@ -238,6 +238,7 @@ function useAgentInlineDraft(input: {
   // 主按钮会永远停在「起草跟进 N 件」，看起来像什么都没发生过。
   const [state, setState] = useState<"idle" | "generating" | "ready" | "handed" | "error">("idle");
   const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [limitDetail, setLimitDetail] = useState<{ limit: number | null; retryOn: string | null } | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [handedAt, setHandedAt] = useState<string | null>(null);
@@ -252,6 +253,7 @@ function useAgentInlineDraft(input: {
     const result = await requestMessageDraft({ ...input, purpose });
     if (result.success === false) {
       setErrorCode(result.error.code);
+      setLimitDetail(aiLimitDetailOf(result.error.context));
       setState("error");
       return;
     }
@@ -269,7 +271,7 @@ function useAgentInlineDraft(input: {
   // 回执上的「查看草稿」：本地副本还在 state 里，翻回可编辑面板即可。
   const reopen = () => setState("ready");
 
-  return { body, errorCode, generate, generatedPurpose, handedAt, markHanded, reopen, setBody, setSubject, state, subject };
+  return { body, errorCode, limitDetail, generate, generatedPurpose, handedAt, markHanded, reopen, setBody, setSubject, state, subject };
 }
 
 function AgentInlineDraftResult({
@@ -297,7 +299,7 @@ function AgentInlineDraftResult({
     if (draft.errorCode === AI_MONTHLY_LIMIT_CODE) {
       return (
         <div className="draft-error" data-agent-inline-draft-error data-agent-inline-draft-error-code={draft.errorCode} role="alert">
-          <span className="w"><span>{t(AI_MONTHLY_LIMIT_TEXT)}</span></span>
+          <span className="w"><span>{t({ zh: aiMonthlyLimitText("zh", draft.limitDetail ?? undefined), ja: aiMonthlyLimitText("ja", draft.limitDetail ?? undefined), en: aiMonthlyLimitText("en", draft.limitDetail ?? undefined) })}</span></span>
         </div>
       );
     }

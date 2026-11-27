@@ -9,7 +9,7 @@ import test from "node:test";
 
 import { Pool } from "pg";
 
-import { AI_QUOTA_MAX_CALLS, nextTokyoMonthStart, PLAN_FLOW_DAILY_LIMIT, USER_POOL_DAILY_LIMIT } from "../../features/ai-quota/constants";
+import { AI_QUOTA_MAX_CALLS, AI_QUOTA_MONTHLY_LIMITS, nextTokyoMonthStart, PLAN_FLOW_DAILY_LIMIT, USER_POOL_DAILY_LIMIT } from "../../features/ai-quota/constants";
 import { createPostgresAiUsageLedger } from "../../features/ai-quota/ledger";
 import { NETWORK_ANALYSIS_MIGRATIONS, runNetworkAnalysisMigrations } from "../../features/network-analysis/migrations";
 import { PLAN_MIGRATIONS, PLAN_SCHEMA_MIGRATIONS, runPlanMigrations } from "../../features/plans/migrations";
@@ -146,7 +146,7 @@ test("the AI ledger accepts the plan v2 purposes with their own max_calls, month
 
     // 見直し：月 3 次；第 4 次被月上限挡住（下月 1 日恢复）；released 不计。
     for (const n of [1, 2, 3]) assert.equal((await reserve(`review:${n}`, "plan_review")).ok, true);
-    assert.deepEqual(await reserve("review:4", "plan_review"), { limit: "monthly", ok: false, reason: "monthly_limit", retryOn: nextTokyoMonthStart(now) });
+    assert.deepEqual(await reserve("review:4", "plan_review"), { cap: AI_QUOTA_MONTHLY_LIMITS.plan_review, limit: "monthly", ok: false, reason: "monthly_limit", retryOn: nextTokyoMonthStart(now) });
     assert.equal(await ledger.countMonthly("actor:a", "plan_review", now), 3);
     await pool.query("update ai_usage_ledger set status = 'released', finished_at = now() where idempotency_key = 'review:3'");
     assert.equal(await ledger.countMonthly("actor:a", "plan_review", now), 2);
@@ -157,7 +157,7 @@ test("the AI ledger accepts the plan v2 purposes with their own max_calls, month
     // 计划生成流程的日上限 15，不占用户池 10 次总熔断。
     let flow = 4; // draft:1 + review:1/2/5 already today
     for (let n = 0; flow < PLAN_FLOW_DAILY_LIMIT; n += 1, flow += 1) assert.equal((await reserve(`revise:${n}`, "plan_revise")).ok, true);
-    assert.deepEqual(await reserve("revise:over", "plan_revise"), { limit: "plan_flow", ok: false, reason: "daily_limit", retryOn: "2026-10-10T15:00:00.000Z" });
+    assert.deepEqual(await reserve("revise:over", "plan_revise"), { cap: PLAN_FLOW_DAILY_LIMIT, limit: "plan_flow", ok: false, reason: "daily_limit", retryOn: "2026-10-10T15:00:00.000Z" });
     const usage = await ledger.readUsageToday("actor:a", now);
     assert.equal(usage.planFlow, PLAN_FLOW_DAILY_LIMIT);
     assert.equal(usage.user, 0);
