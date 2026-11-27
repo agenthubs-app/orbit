@@ -396,8 +396,46 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowI
     )
   ) : null;
 
-  if (tier === "narrow" && (past || (!data.popularityFallback && !flat)) && !data.signedOut) {
-    return <>{overlay}<PhoneDiscover showSearch={showSearch} onPick={pick} data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return key === "period" ? { ...next, period: "upcoming" } : next; })} onOpen={open} /></>;
+  // 没有计划时的引导卡 + 一场都没有时的示例卡（宽屏与手机共用）。
+  const guide = (
+    <>
+      <div className={`${styles.card} ${styles.span12} ${styles.guide}`} data-discover-empty="">
+        <div className={`${styles.row} ${d.guideRow}`}>
+          <div style={{ flex: 1 }}>
+            <div className={styles.lbl}>{t("noPlanLbl")}</div>
+            {goal === undefined ? (
+              <div aria-busy aria-label={std.loading.loading} data-discover-goal-pending="">
+                <div className={d.guideTitle}><i className={styles.pendBone} style={{ width: "48%", height: 18 }} aria-hidden /></div>
+                <div className={styles.sub}><i className={styles.pendBone} style={{ width: "72%" }} aria-hidden /></div>
+              </div>
+            ) : (
+              <>
+                <div className={d.guideTitle}>{t(goal ? "noPlanTitleGoal" : "noPlanTitle")}</div>
+                <div className={styles.sub}>{t(goal ? "noPlanSubGoal" : "noPlanSub")}</div>
+              </>
+            )}
+          </div>
+          {goal === undefined
+            ? <span className={styles.pendSeg} aria-hidden><span className={`btn ${styles.btn} ${styles.primary} ${styles.tall}`}><Icon name="target" size={16} />{t("planFromGoal")}</span></span>
+            : <a className={`btn ${styles.btn} ${styles.primary} ${styles.tall}`} href="/app/tasks?tab=plan"><Icon name="target" size={16} />{t(goal ? "planFromGoal" : "setGoal")}</a>}
+        </div>
+        <div className={styles.grid3}>
+          {([["🔗", "tileUrl", "tileUrlSub", "/app/events?tab=assess"], ["🎟️", "tileCode", "tileCodeSub", "/app/events?tab=assess&code=1"], ["👥", "tileCommunity", "tileCommunitySub", "/app/events?tab=discover"]] as const).map(([emoji, title, sub, href]) => (
+            <a key={title} href={href} className={`${styles.mac} ${styles.macApricot} ${styles.row}`} style={{ gap: 10 }}><span className={styles.guideEmoji}>{emoji}</span><div><b className={styles.guideName}>{t(title)}</b><div className={styles.lbl}>{t(sub)}</div></div></a>
+          ))}
+        </div>
+      </div>
+      {/* 2026-10-27：没有目标也直接列真实活动（人気順，在引导卡正下方）；只有一场都没有时才画「有了计划后」示例。 */}
+      {data.all.length ? null : <div className={`${styles.span12} ${styles.cardH} ${d.sectionHead}`}><h3>{t("samplePreview")} <SampleTag /></h3></div>}
+      {data.all.length ? null : ([1, 2, 3] as const).map((n, index) => (
+        <EventCard key={n} faded index={index} language={language} t={t} onOpen={() => undefined} metaOverride={t(`sample${n}Meta`)} row={{ emoji: ["🎤", "🤝", "📚"][index]!, eventId: `sample-${n}`, href: "#", relevance: SAMPLE_RELEVANCE[index]!, startsAt: "", title: t(`sample${n}Title`) }} />
+      ))}
+    </>
+  );
+
+  // 2026-11-27 用户反馈：手机上永远不出现表格。没有计划（popularityFallback）也走手机卡片列表；表格在 CSS 里另按视口宽度隐藏。
+  if (tier === "narrow" && (past || data.popularityFallback || !flat) && !data.signedOut) {
+    return <>{overlay}<PhoneDiscover lead={!past && data.popularityFallback ? guide : null} showSearch={showSearch} onPick={pick} data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return key === "period" ? { ...next, period: "upcoming" } : next; })} onOpen={open} /></>;
   }
 
   const card = (row: EventDiscoverRow, index: number, band = false) => <EventCard key={row.eventId} row={row} index={index} band={band} language={language} t={t} selected={selected === row.eventId} onSelect={() => pick(row)} onOpen={() => open(row.href)} />;
@@ -411,37 +449,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowI
           : <div className={`${styles.card} ${styles.span12} ${styles.flat}`} data-discover-past-empty=""><b>{t("pastEmpty")}</b><div className={styles.lbl}>{t("pastEmptySub")}</div></div>
       ) : data.popularityFallback && !data.signedOut ? (
         <>
-          <div className={`${styles.card} ${styles.span12} ${styles.guide}`} data-discover-empty="">
-            <div className={`${styles.row} ${d.guideRow}`}>
-              <div style={{ flex: 1 }}>
-                <div className={styles.lbl}>{t("noPlanLbl")}</div>
-                {goal === undefined ? (
-                  <div aria-busy aria-label={std.loading.loading} data-discover-goal-pending="">
-                    <div className={d.guideTitle}><i className={styles.pendBone} style={{ width: "48%", height: 18 }} aria-hidden /></div>
-                    <div className={styles.sub}><i className={styles.pendBone} style={{ width: "72%" }} aria-hidden /></div>
-                  </div>
-                ) : (
-                  <>
-                    <div className={d.guideTitle}>{t(goal ? "noPlanTitleGoal" : "noPlanTitle")}</div>
-                    <div className={styles.sub}>{t(goal ? "noPlanSubGoal" : "noPlanSub")}</div>
-                  </>
-                )}
-              </div>
-              {goal === undefined
-                ? <span className={styles.pendSeg} aria-hidden><span className={`btn ${styles.btn} ${styles.primary} ${styles.tall}`}><Icon name="target" size={16} />{t("planFromGoal")}</span></span>
-                : <a className={`btn ${styles.btn} ${styles.primary} ${styles.tall}`} href="/app/tasks?tab=plan"><Icon name="target" size={16} />{t(goal ? "planFromGoal" : "setGoal")}</a>}
-            </div>
-            <div className={styles.grid3}>
-              {([["🔗", "tileUrl", "tileUrlSub", "/app/events?tab=assess"], ["🎟️", "tileCode", "tileCodeSub", "/app/events?tab=assess&code=1"], ["👥", "tileCommunity", "tileCommunitySub", "/app/events?tab=discover"]] as const).map(([emoji, title, sub, href]) => (
-                <a key={title} href={href} className={`${styles.mac} ${styles.macApricot} ${styles.row}`} style={{ gap: 10 }}><span className={styles.guideEmoji}>{emoji}</span><div><b className={styles.guideName}>{t(title)}</b><div className={styles.lbl}>{t(sub)}</div></div></a>
-              ))}
-            </div>
-          </div>
-          {/* 2026-10-27：没有目标也直接列真实活动（人気順，在引导卡正下方）；只有一场都没有时才画「有了计划后」示例。 */}
-          {data.all.length ? null : <div className={`${styles.span12} ${styles.cardH} ${d.sectionHead}`}><h3>{t("samplePreview")} <SampleTag /></h3></div>}
-          {data.all.length ? null : ([1, 2, 3] as const).map((n, index) => (
-            <EventCard key={n} faded index={index} language={language} t={t} onOpen={() => undefined} metaOverride={t(`sample${n}Meta`)} row={{ emoji: ["🎤", "🤝", "📚"][index]!, eventId: `sample-${n}`, href: "#", relevance: SAMPLE_RELEVANCE[index]!, startsAt: "", title: t(`sample${n}Title`) }} />
-          ))}
+          {guide}
           {data.all.length ? <AllTable rows={data.all} total={data.total} language={language} t={t} onOpen={open} onSave={save} onDismiss={dismiss} /> : null}
         </>
       ) : flat ? (
@@ -514,7 +522,9 @@ function AllTable({ rows, total, language, t, onOpen, onSave, onDismiss }: { row
   return (
     <div className={`${styles.card} ${styles.span12}`} data-discover-all="">
       <div className={styles.cardH}><h3>{t("allTitle", { n: total })}</h3><span className={styles.lbl}>{t("byDate")}</span></div>
-      <table className={d.table}>
+      {/* 2026-11-27：手机（视口 <768）一律卡片列表，表格由 CSS 按视口宽度隐藏——即使脚本把手机判成宽屏也不会出现表格。 */}
+      <div className={`${d.pRows} ${d.allPhone}`} data-discover-all-cards="">{rows.map((row, index) => <EventCard key={row.eventId} listRow row={row} index={index} language={language} t={t} onOpen={() => onOpen(row.href)} />)}</div>
+      <table className={`${d.table} ${d.allTable}`}>
         <thead><tr><th>{t("colDate")}</th><th>{t("colEvent")}</th><th>{t("colPlace")}</th><th>{t("colFee")}</th><th>{relevanceTitle(language)}</th><th /></tr></thead>
         <tbody>
           {rows.map((row) => {
@@ -582,7 +592,7 @@ export function DiscoverRail({ row, language }: { row: EventDiscoverRow; languag
 
 /** 探す 没有选中活动时的右栏（b2 #11）：iOrbit 的探す专用开场与两条提问。 */
 // ---------- 390（b12 #348）：App 式探す——搜索 + 筛选按钮（件数）、已选 chip、コミュニティ列表、プランに効く横滑卡、すべて列表 ----------
-function PhoneDiscover({ showSearch, data, query, language, t, search, onSearch, onQuery, onClear, onOpen, onPick }: { showSearch: boolean; data: EventDiscoverResponse; query: EventDiscoverQuery; language: OrbitLanguage; t: JourneyT; search: string; onSearch: (value: string) => void; onQuery: (patch: Partial<EventDiscoverQuery>) => void; onClear: (key: keyof EventDiscoverQuery) => void; onOpen: (href: string) => void; /** 2026-11-23：卡片点开底部简介面板。 */ onPick: (row: EventDiscoverRow) => void }) {
+function PhoneDiscover({ lead, showSearch, data, query, language, t, search, onSearch, onQuery, onClear, onOpen, onPick }: { /** 没有计划时列表上方的引导卡（2026-11-27）。 */ lead?: ReactNode; showSearch: boolean; data: EventDiscoverResponse; query: EventDiscoverQuery; language: OrbitLanguage; t: JourneyT; search: string; onSearch: (value: string) => void; onQuery: (patch: Partial<EventDiscoverQuery>) => void; onClear: (key: keyof EventDiscoverQuery) => void; onOpen: (href: string) => void; /** 2026-11-23：卡片点开底部简介面板。 */ onPick: (row: EventDiscoverRow) => void }) {
   const [sheet, setSheet] = useState(false);
   const [page, setPage] = useState(0);
   const count = (query.period && query.period !== "upcoming" ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
@@ -592,7 +602,7 @@ function PhoneDiscover({ showSearch, data, query, language, t, search, onSearch,
   // 2026-11-21 方案 B：すべて / 開催済み 都是左图右文列表行（EventCard 在 <768 的样子），整行可点。
   const listRows = (list: readonly EventDiscoverRow[], ended: boolean) => <div className={d.pRows}>{list.map((row, index) => <EventCard key={row.eventId} listRow ended={ended} row={row} index={index} language={language} t={t} onSelect={() => onPick(row)} onOpen={() => onOpen(row.href)} />)}</div>;
   return (
-    <div data-events-discover-tab="" data-discover-phone="">
+    <div className={d.pRoot} data-events-discover-tab="" data-discover-phone="">
       {/* 2026-11-23：搜索框只在点了顶栏的搜索图标后出现；筛选按钮是正文第一行的开头（随内容滚走）。 */}
       {showSearch ? <div className={`${styles.row} ${d.pSearchRow}`}>
         <label className={d.pSearch}><Icon name="search" size={16} /><input autoFocus value={search} onChange={(event) => onSearch(event.target.value)} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} /></label>
@@ -606,6 +616,7 @@ function PhoneDiscover({ showSearch, data, query, language, t, search, onSearch,
         {query.themes?.length ? null : <button type="button" className={`btn ${styles.chip} ${d.activeChip}`} onClick={() => setSheet(true)}>{t("filterTheme")} <Icon name="down" size={16} /></button>}
         {query.freeOnly ? null : <button type="button" className={`btn ${styles.chip} ${d.activeChip}`} onClick={() => setSheet(true)}>{t("feeLbl")} <Icon name="down" size={16} /></button>}
       </div>
+      {lead ? <div className={d.pLead}>{lead}</div> : null}
       {data.community.length ? (
         <div className={`${styles.card} ${d.pComm}`} data-discover-community="">
           <div className={`${styles.cardH} ${d.pCardH}`}><h3>{t("communityTitle")}</h3><span className={d.pMore}>{t("countN", { n: data.community.length })}</span></div>

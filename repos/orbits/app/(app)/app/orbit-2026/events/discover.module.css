@@ -160,3 +160,14 @@
 /* 公开活动页（PublicEvents）：≥768 没有底部一行（只有标题 + 日期 · 地点），<768 底部放「ログインで判定」。 */
 .ecFootPhone.ecFootPhone { display: none; }
 @media (max-width: 767px) { .ecFootPhone.ecFootPhone { display: flex; } }
+
+/* ---------- 2026-11-27 用户反馈：手机上永远不出现表格、页面不比屏幕宽 ----------
+   硬规则落在 CSS：按视口宽度（不是容器、不是脚本量的宽度），<768 只显示卡片列表，≥768 才显示表格。 */
+.allPhone.allPhone { display: none; }
+@media (max-width: 767px) {
+  .allTable.allTable { display: none; }
+  .allPhone.allPhone { display: grid; margin-top: 4px; }
+}
+/* 手机根容器：子项再宽也不撑开页面（横向滚动只发生在筛选条、横滑卡这些自己的容器里）。 */
+.pRoot { min-width: 0; max-width: 100%; }
+.pLead { display: grid; gap: 12px; margin-top: 12px; min-width: 0; }
