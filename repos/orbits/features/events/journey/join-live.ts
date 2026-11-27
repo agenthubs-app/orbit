@@ -234,6 +234,10 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     async profileIntro(actorId) {
       return (await input.journey.selfIntro(actorId, "").catch(() => null))?.text ?? null;
     },
+    async profileFacts(actorId, language) {
+      const profile = await selfProfile(actorId, language);
+      return profile ? { industry: profile.industry.primaryIndustryId ? (profile.industry.primaryLabel ?? profile.industry.primaryIndustryId) : null, organization: profile.organization, role: profile.role } : null;
+    },
     async profileTags(actorId, language = "ja") {
       // 标签按存的原文给；当前语言的写法由 prefillQuestion 换（localizeProfileTag）。目标从 relationshipGoal 读出已知的几项（自由文本不算）。
       const profile = await selfProfile(actorId, language);

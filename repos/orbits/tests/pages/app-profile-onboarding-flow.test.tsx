@@ -309,6 +309,9 @@ test("intro failure offers a manual draft without exposing provider configuratio
   const output = JSON.stringify(root.toJSON());
   assert.match(output, /可以点「重试」再生成一次，或直接在下面写几句/);
   assert.doesNotMatch(output, /GEMINI_API_KEY|No model provider API key/);
+  // 2026-11-27：没写出来时标题不说「写好了」，请用户自己写。
+  assert.match(output, /写一段自我介绍/);
+  assert.doesNotMatch(output, /已为你写好自我介绍/);
   act(() => root.unmount());
 });
 
@@ -319,6 +322,8 @@ test("intro quota exhaustion offers manual writing without another retry", async
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
   const output = JSON.stringify(root.toJSON());
   assert.match(output, /介绍草稿的 3 次生成额度已用完/);
+  assert.match(output, /写一段自我介绍/);
+  assert.doesNotMatch(output, /已为你写好自我介绍/);
   assert.doesNotMatch(output, /Quota error from server/);
   assert.equal(root.root.findAll(node => node.type === "button" && textOf(node) === "重试").length, 0);
   act(() => root.unmount());

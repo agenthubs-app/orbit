@@ -99,7 +99,7 @@ test("host form: the 連絡先 card sits after the description and before the qu
   assert.match(bad, /role="alert"/);
 });
 
-test("attendee card: IDs with copy buttons and the note; 「まだありません」 without an ID", () => {
+test("attendee card: IDs with copy buttons and the note; no card at all without an ID or a note", () => {
   const html = wrap(<HostContactCard contact={CONTACT} t={jt} status="registered" />);
   assert.match(html, /data-host-contact="set"/);
   assert.match(html, /主催者の連絡先/);
@@ -108,14 +108,14 @@ test("attendee card: IDs with copy buttons and the note; 「まだありませ�
   assert.equal((html.match(/aria-label="(WeChat|LINE) をコピー"/g) ?? []).length, 2);
   assert.match(html, /data-host-contact-note/);
   assert.doesNotMatch(html, /data-host-contact-review/, "confirmed: no review line");
-  const none = wrap(<HostContactCard contact={null} t={zt} status="registered" />);
-  assert.match(none, /data-host-contact="none"/);
-  assert.match(none, /暂无/);
-  assert.doesNotMatch(none, /aria-label="复制/);
+  // 2026-11-27：主办方什么都没填 → 整张卡不显示（不再「暂无」）；只有说明 → 卡里只有说明。
+  assert.equal(wrap(<HostContactCard contact={null} t={zt} status="registered" />), wrap(null));
+  assert.equal(wrap(<HostContactCard contact={undefined} t={jt} status="pending_review" priceYen={5000} />), wrap(null));
+  assert.equal(wrap(<HostContactCard contact={{ lineId: null, note: null, wechatId: null }} t={journeyTranslator("en")} />), wrap(null));
   const noteOnly = wrap(<HostContactCard contact={{ lineId: null, note: "当日受付でお支払いください", wechatId: null }} t={jt} />);
-  assert.match(noteOnly, /まだありません/);
+  assert.match(noteOnly, /data-host-contact="none"/);
+  assert.doesNotMatch(noteOnly, /まだありません/);
   assert.match(noteOnly, /当日受付でお支払いください/);
-  assert.match(wrap(<HostContactCard contact={null} t={journeyTranslator("en")} />), /Not provided/);
 });
 
 test("attendee card in review: one line about contacting the organizer, only with a contact", () => {

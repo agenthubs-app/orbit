@@ -295,7 +295,12 @@ export const eventsJourneyCopy = {
   // 参加登録
   regTitle: { ja: "参加登録", zh: "报名", en: "Register", kind: "pageTitle" },
   regProgress: { ja: "質問 {i} / {n} · 残り約{m}分", zh: "问题{i} / {n} · 约剩{m}分钟", en: "Question {i} / {n} · about {m} min left", kind: "label" },
-  regPrefilledLine: { ja: "✓ 会社・役職・業界はプロフィールから入力済み。あとはいくつかの質問に答えるだけです", zh: "✓ 公司、职位、行业已从资料填好，只需回答几个问题", en: "✓ Company, title and industry come from your profile. Just a few questions left", kind: "label" },
+  // 2026-11-27：只列资料里确实有的项（{items}），一项都没有就整行不显示（两端同一套文案；旧 regPrefilledLine 不再使用）。
+  regPrefilledFrom: { ja: "✓ {items}はプロフィールから入力済み。あとはいくつかの質問に答えるだけです", zh: "✓ {items}已从资料填好，只需回答几个问题", en: "✓ From your profile: {items}. Just a few questions left", kind: "label" },
+  prefillCompany: { ja: "会社", zh: "公司", en: "company", kind: "label" },
+  prefillTitle: { ja: "役職", zh: "职位", en: "title", kind: "label" },
+  prefillIndustry: { ja: "業界", zh: "行业", en: "industry", kind: "label" },
+  prefillSep: { ja: "・", zh: "、", en: ", ", kind: "label" },
   freeAnswer: { ja: "自由に答える・補足する", zh: "自由回答或补充", en: "Answer in your own words", kind: "placeholder" },
   voiceAnswer: { ja: "声で答える", zh: "语音回答", en: "Answer by voice", kind: "label" },
   next: { ja: "次へ", zh: "下一步", en: "Next", kind: "button" },

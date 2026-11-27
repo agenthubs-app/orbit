@@ -6,6 +6,8 @@
 import type { HostEventContact } from "./host-events";
 
 export type EventJoinProfileItemKey = "company" | "purpose" | "topics" | "target" | "offer";
+/** 资料里有、报名时自动带上的基本项。 */
+export type EventJoinPrefilledField = "company" | "title" | "industry";
 
 export interface EventJoinQuestion {
   field: string;
@@ -46,6 +48,11 @@ export interface EventJoinProfile {
   /** `fromProfile`: nobody asked, the answer will be filled from the person's own profile (offering / seeking) — shown as such and changeable (`next` with `focus`). */
   items: readonly { key: EventJoinProfileItemKey; done: boolean; fromProfile?: boolean }[];
   topics: readonly string[];
+  /**
+   * 2026-11-27：问题页「…はプロフィールから入力済み」只列资料里确实有的项（公司 / 职位 / 行业）。只在新报名的第一次读取和改资料时给；
+   * 空数组 = 一项都没有（整行不显示）；缺省 = 没读（旧服务端或资料读不到，同样不显示）。
+   */
+  prefilledFrom?: readonly EventJoinPrefilledField[];
   selfIntro?: { text: string; source: "ai_draft" | "profile" } | null;
   /** What the draft was written from (「回答（目的・テーマ・会いたい人）とプロフィール（…）から作成。」). */
   selfIntroBasis?: string | null;

@@ -8,6 +8,7 @@ import test from "node:test";
 
 import { INTRO_DRAFT_WAIT_MS, introDraftOutcome, waitForIntroDraft } from "../../app/(app)/app/orbit-2026/events/intro-draft-wait";
 import { eventsJourneyCopy } from "../../app/(app)/app/orbit-2026/copy/eventsJourney";
+import { introDraftNote } from "../../app/(app)/app/orbit-2026/events/RegisterFlow";
 
 const flow = readFileSync("app/(app)/app/orbit-2026/events/RegisterFlow.tsx", "utf8");
 
@@ -45,8 +46,20 @@ test("while drafting: apply waits and says why, the intro cannot be edited, the 
 });
 
 test("a finished draft is announced (same words as the App); a blocked page shows no empty card, only what was submitted, read-only", () => {
-  assert.match(flow, /draft === "ready" \? <span className=\{r\.srOnly\}>\{t\("introDrafted"\)\}<\/span>/);
+  assert.match(flow, /draftNote === "ready" \? <span className=\{r\.srOnly\}>\{t\("introDrafted"\)\}<\/span>/);
   assert.match(flow, /\{blocked && !profile \? null : <ProfileCard/);
   assert.match(flow, /blocked \? "readonly"/);
   assert.deepEqual([eventsJourneyCopy.introDrafted.ja, eventsJourneyCopy.introDrafted.zh, eventsJourneyCopy.introDrafted.en], ["自己紹介ができました", "自我介绍已生成", "Your introduction is ready"]);
+});
+
+test("2026-11-27: 「没能生成自我介绍」 only while the intro is still empty (profile text or the person's own text never reads as a failure)", () => {
+  assert.equal(introDraftNote("failed", ""), "failed");
+  assert.equal(introDraftNote("failed", "  "), "failed");
+  assert.equal(introDraftNote("failed", "資料の紹介"), null);
+  assert.equal(introDraftNote("failed", "自分で書いた紹介"), null);
+  assert.equal(introDraftNote("running", ""), "running");
+  assert.equal(introDraftNote("ready", "AI の紹介"), "ready");
+  assert.equal(introDraftNote("idle", ""), null);
+  assert.match(flow, /const draftNote = introDraftNote\(draft, shownIntro\);/);
+  assert.match(flow, /draftNote === "failed" \? t\("introDraftFailed"\)/);
 });

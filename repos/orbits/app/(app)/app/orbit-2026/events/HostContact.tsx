@@ -2,7 +2,7 @@
 
 // 主催者の連絡先（2026-11-14 用户）：申込後に主催者の WeChat / LINE を追加 → 主催者がグループに招待・参加費を受け取る →
 // 「参加者」で承認。申込済みの人だけにサーバーが返す（EventOverviewResponse.hostContact / EventJoinResult.hostContact）。
-// 各 ID の横にコピー（navigator.clipboard；失敗したら ID を選択状態にして手動コピーを促す）。ID が無ければ「まだありません」。
+// 各 ID の横にコピー（navigator.clipboard；失敗したら ID を選択状態にして手動コピーを促す）。ID も説明も無ければカードごと出さない（2026-11-27）。
 import { useRef } from "react";
 
 import { hostContactHasId } from "../../../../../shared/compute/host-contact";
@@ -66,7 +66,7 @@ function ContactBody({ contact, t, reviewLine, toast }: { contact: HostEventCont
   return (
     <>
       {reviewLine ? <div className={`${styles.sub} ${c.review}`} data-host-contact-review="">{reviewLine}</div> : null}
-      {rows.length ? <div className={c.rows}>{rows.map((row) => <IdRow key={row.key} row={row} t={t} toast={toast} />)}</div> : <div className={`${styles.lbl} ${c.none}`} data-host-contact-none="">{t("contactNone")}</div>}
+      {rows.length ? <div className={c.rows}>{rows.map((row) => <IdRow key={row.key} row={row} t={t} toast={toast} />)}</div> : null}
       {contact?.note ? <div className={`${styles.sub} ${c.note}`} data-host-contact-note="">{contact.note}</div> : null}
     </>
   );
@@ -74,6 +74,8 @@ function ContactBody({ contact, t, reviewLine, toast }: { contact: HostEventCont
 
 /** 申込済みのイベント詳細・申込完了ページの小さなカード。`status` が審査中なら連絡→承認の一文を足す。 */
 export function HostContactCard({ contact, t, status, priceYen, className, toast }: { contact: HostEventContact | null | undefined; t: JourneyT; status?: EventOverviewRegistrationStatus | "registered" | "pending_review"; priceYen?: number | null; className?: string; toast?: Toast }) {
+  // 2026-11-27：主办方既没有 ID 也没有说明 → 整张卡不显示（不再显示「まだありません」；两端一致）。
+  if (!(contact?.wechatId || contact?.lineId || contact?.note?.trim())) return null;
   const reviewLine = status === "pending_review" ? contactReviewLine(contact, priceYen, t) : null;
   return (
     <div className={`${styles.card} ${c.card} ${className ?? ""}`} data-host-contact={hostContactHasId(contact) ? "set" : "none"}>

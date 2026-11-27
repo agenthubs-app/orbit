@@ -6,7 +6,7 @@
 import { introDraftOutcome, waitForIntroDraft } from "./intro-draft-wait";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { EventJoinAnswer, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinWechatAnswer } from "../../../../../shared/contract/event-join";
+import type { EventJoinAnswer, EventJoinCurrent, EventJoinPrefilledField, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinWechatAnswer } from "../../../../../shared/contract/event-join";
 import type { EventOverviewResponse } from "../../../../../shared/contract/event-overview";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { ShellPage } from "../shell/slots";
@@ -67,6 +67,21 @@ const refusalKey = (code: string | undefined) => (code ? REFUSAL_KEY[code] : und
 
 const ITEM_OF_FIELD: Readonly<Record<string, EventJoinProfileItemKey>> = { desiredOutcome: "purpose", experienceHighlight: "topics", targetAttendees: "target", valueOffered: "offer" };
 
+const PREFILL_LABEL: Readonly<Record<EventJoinPrefilledField, "prefillCompany" | "prefillTitle" | "prefillIndustry">> = { company: "prefillCompany", industry: "prefillIndustry", title: "prefillTitle" };
+
+/** 问题页「…はプロフィールから入力済み」：只列资料里有的项；一项都没有（或没读到）= null，整行不显示。 */
+export function prefilledLine(fields: readonly EventJoinPrefilledField[] | null | undefined, t: JourneyT): string | null {
+  if (!fields?.length) return null;
+  return t("regPrefilledFrom", { items: fields.map((field) => t(PREFILL_LABEL[field])).join(t("prefillSep")) });
+}
+
+/** 确认页「没能生成自我介绍…」：只在草稿失败、介绍还空着时显示（介绍里已有资料里的或自己写的文字就不说失败）。 */
+export function introDraftNote(draft: "idle" | "running" | "ready" | "failed", intro: string): "running" | "failed" | "ready" | null {
+  if (draft === "running") return "running";
+  if (draft === "failed") return intro.trim() ? null : "failed";
+  return draft === "ready" ? "ready" : null;
+}
+
 type ProfileMode = "live" | "review" | "applied" | "readonly";
 
 export function ProfileCard({ profile, t, mode, introPending = false }: { profile: EventJoinProfile | null; t: JourneyT; mode: ProfileMode; introPending?: boolean }) {
@@ -121,6 +136,9 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const [answers, setAnswers] = useState<EventJoinAnswer[]>([]);
   const [step, setStep] = useState<EventJoinStep | null>(null);
   const [profile, setProfile] = useState<EventJoinProfile | null>(null);
+  // 第一次读取（或改资料时）带回的「资料里有的项」；之后的读取不带，留着第一次的。
+  const [prefilled, setPrefilled] = useState<readonly EventJoinPrefilledField[] | null>(null);
+  const takeProfile = (data: EventJoinProfile) => { setProfile(data); if (data.prefilledFrom) setPrefilled(data.prefilledFrom); };
   // 2026-11-27 用户新增：主办方开了「已加群自动通过」时确认页的必答题（新报名；审核中的人改资料也问）。
   const [wechat, setWechat] = useState<EventJoinWechatAnswer | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
@@ -190,7 +208,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       const edit = ["registered", "pending_review", "waitlisted"].includes(current.data.status);
       setMode(edit ? "edit" : "new");
       if (!edit) {
-        void joinApi.profile(eventId, [], false).then((res) => { if (live && res.ok) setProfile(res.data); });
+        void joinApi.profile(eventId, [], false).then((res) => { if (live && res.ok) takeProfile(res.data); });
         const first = await joinApi.next(eventId, []);
         if (!live) return;
         if (first.ok) showStep(first.data); else setLoadFailed(true);
@@ -202,7 +220,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       setIntro(current.data.selfIntro ?? "");
       showEditQuestions(current.data.ask, given);
       const read = await joinApi.profile(eventId, given, false, true);
-      if (live && read.ok) setProfile(read.data);
+      if (live && read.ok) takeProfile(read.data);
     });
     return () => { live = false; };
   }, [eventId, attempt, joinApi]);
@@ -321,6 +339,8 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const screened = result ? result.status === "pending_review" : profile?.review ?? true;
   const headRight = blocked || editing || !mode ? null : result ? t("doneTitle") : reviewing ? t("reviewStep", { i: Math.min(total, answers.length + 1), n: total }) : step ? t("regProgress", { i: step.index, m: step.remainingMinutes, n: total }) : null;
   const shownIntro = intro ?? profile?.selfIntro?.text ?? "";
+  const prefillText = prefilledLine(prefilled, t);
+  const draftNote = introDraftNote(draft, shownIntro);
   const detailHref = `/app/events/${id(eventId)}`;
   useEffect(() => {
     if (!dirty) return;
@@ -354,7 +374,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
           <div key={title} className={`${x.tline} ${index === (result ? 1 : 0) ? r.now : ""}`}><time>{index + 1}</time><span className={x.dot} /><div><b>{t(title)}</b><span className={styles.lbl}>{title === "flowReview" ? t(sub, { date: reviewUntil ? monthDaySlash(reviewUntil) : "—" }) : t(sub)}</span></div></div>
         ))}
       </div>
-      <div className={`${styles.mac} ${r.lav} ${r.note}`}>{t("regPrefilledLine")}</div>
+      {prefillText ? <div className={`${styles.mac} ${r.lav} ${r.note}`} data-join-prefilled="">{prefillText}</div> : null}
     </div>
   );
 
@@ -406,7 +426,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
           <div className={`${x.bar} ${r.pBar}`}><i style={{ width: `${Math.round((Math.max(0, step.index) / total) * 100)}%` }} /></div>
         </div>
       ) : null}
-      {editing ? null : <div className={`${styles.mac} ${r.pPrefill}`}>{t("regPrefilledLine")}</div>}
+      {editing || !prefillText ? null : <div className={`${styles.mac} ${r.pPrefill}`} data-join-prefilled="">{prefillText}</div>}
       <div className={r.chatcol}>
         {(editing ? [] : answers).map((item, index) => (
           <div key={`${item.field}-${index}`} className={r.pair}><div className={`${r.bubble} ${r.ai}`}>{item.prompt}</div><div className={`${r.bubble} ${r.me}`}>{item.answer}</div></div>
@@ -484,7 +504,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
           </div>
         ) : <div className={r.introText}>{shownIntro}</div>}
         {why && profile?.selfIntroBasis ? <div className={r.whyBody}>{profile.selfIntroBasis}</div> : null}
-        <div className={`${styles.lbl} ${r.draftNote}`} role="status" aria-live="polite" data-join-intro-draft={draft}>{draft === "running" ? t("introDrafting") : draft === "failed" ? t("introDraftFailed") : draft === "ready" ? <span className={r.srOnly}>{t("introDrafted")}</span> : ""}</div>
+        <div className={`${styles.lbl} ${r.draftNote}`} role="status" aria-live="polite" data-join-intro-draft={draft}>{draftNote === "running" ? t("introDrafting") : draftNote === "failed" ? t("introDraftFailed") : draftNote === "ready" ? <span className={r.srOnly}>{t("introDrafted")}</span> : ""}</div>
       </div>
       <div className={`${styles.card} ${r.inner} ${r.gap} ${r.scope}`}>
         <div className={`${styles.lbl} ${r.scopeLbl}`}>{t("visibilityTitle")}</div>

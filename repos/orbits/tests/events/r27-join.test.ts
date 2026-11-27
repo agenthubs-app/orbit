@@ -3,6 +3,8 @@
  * 审核制活动 409 → 审核申请、仮予定确认后才写 + 结果出来后改名 / 删除、示例模式不写库；公開範囲按字段（服务端策略）。
  */
 import { eventsJourneyCopy } from "../../app/(app)/app/orbit-2026/copy/eventsJourney";
+import { journeyTranslator } from "../../app/(app)/app/orbit-2026/events/DiscoverTab";
+import { prefilledLine } from "../../app/(app)/app/orbit-2026/events/RegisterFlow";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -11,7 +13,7 @@ import { JOURNEY_EVENT_ID } from "../../shared/mock/demo-world/events-journey";
 import { registrationFieldVisibility, signAdaptiveInterviewQuestion, verifyInterviewResponseSubmissions } from "../../features/events/registration/interview-question-token.server";
 import { eventOperationsParticipantFromRegistration } from "../../features/events/event-operations/participant";
 import { createEventJourneyRoutes } from "../../features/events/journey/handlers";
-import { createJoinService, profileFactQuestions, profileFromAnswers, questionShape, tentativeTitle, type JoinPorts } from "../../features/events/journey/join";
+import { createJoinService, prefilledFields, profileFactQuestions, profileFromAnswers, questionShape, tentativeTitle, type JoinPorts } from "../../features/events/journey/join";
 
 const answer = (field: string, value: string, n: number) => ({ answer: value, field, prompt: `q${n}`, questionToken: `t${n}` });
 const post = (body: unknown) => new Request("http://localhost/x", { body: JSON.stringify(body), headers: { "content-type": "application/json" }, method: "POST" });
@@ -315,8 +317,27 @@ test("changing a registration: closed, cancelled, rejected and decided ones are 
 });
 
 test("the line above the questions names no number of questions (it can be more than five)", () => {
-  for (const language of ["ja", "zh", "en"] as const) assert.doesNotMatch(eventsJourneyCopy.regPrefilledLine[language], /\d|五|five/i);
-  assert.match(eventsJourneyCopy.regPrefilledLine.zh, /只需回答几个问题$/);
+  for (const language of ["ja", "zh", "en"] as const) assert.doesNotMatch(eventsJourneyCopy.regPrefilledFrom[language], /\d|五|five/i);
+  assert.match(eventsJourneyCopy.regPrefilledFrom.zh, /只需回答几个问题$/);
+});
+
+test("2026-11-27: the 「from your profile」 line lists only what the profile has, and is gone when it has nothing", async () => {
+  assert.deepEqual(prefilledFields({ industry: "IT", organization: "Acme", role: "CFO" }), ["company", "title", "industry"]);
+  assert.deepEqual(prefilledFields({ industry: null, organization: "Acme", role: " CFO " }), ["company", "title"]);
+  assert.deepEqual(prefilledFields({ industry: "  ", organization: "", role: null }), []);
+  assert.deepEqual(prefilledFields(null), []);
+  const ja = journeyTranslator("ja"), zh = journeyTranslator("zh"), en = journeyTranslator("en");
+  assert.equal(prefilledLine(["company", "title"], ja), "✓ 会社・役職はプロフィールから入力済み。あとはいくつかの質問に答えるだけです");
+  assert.equal(prefilledLine(["company", "title", "industry"], zh), "✓ 公司、职位、行业已从资料填好，只需回答几个问题");
+  assert.equal(prefilledLine(["industry"], en), "✓ From your profile: industry. Just a few questions left");
+  assert.equal(prefilledLine([], ja), null);
+  assert.equal(prefilledLine(undefined, ja), null);
+  // 服务端：第一次读取（还没答）带上，之后的读取不带；资料读不到 = 空。
+  const service = createJoinService({ ports: fakePorts({ profileFacts: async () => ({ industry: null, organization: "Acme", role: "CFO" }) }) });
+  assert.deepEqual((await service.profile("actor:a", "evt", [], false, "ja"))?.prefilledFrom, ["company", "title"]);
+  assert.equal((await service.profile("actor:a", "evt", [answer("targetAttendees", "VC", 1)], false, "ja"))?.prefilledFrom, undefined);
+  const failing = createJoinService({ ports: fakePorts({ profileFacts: async () => { throw new Error("down"); } }) });
+  assert.deepEqual((await failing.profile("actor:a", "evt", [], false, "ja"))?.prefilledFrom, []);
 });
 
 // ── 改资料：带回上次的内容（2026-11-26） ─────────────────────────────────────
@@ -420,7 +441,7 @@ test("stored answers are signed again as the same question: submitting them unch
 });
 
 test("no copy on the registration path promises five questions", () => {
-  for (const key of ["ctaSub", "ctaRegisterAi", "inviteNote", "regPrefilledLine"] as const) for (const language of ["ja", "zh", "en"] as const) assert.doesNotMatch(eventsJourneyCopy[key][language], /5|五|five/i);
+  for (const key of ["ctaSub", "ctaRegisterAi", "inviteNote", "regPrefilledFrom"] as const) for (const language of ["ja", "zh", "en"] as const) assert.doesNotMatch(eventsJourneyCopy[key][language], /5|五|five/i);
 });
 
 test("changing a registration: the worst case (5 organizer questions + every interview field) is accepted by every join body, and the missing item can still be asked past nine answers", async () => {

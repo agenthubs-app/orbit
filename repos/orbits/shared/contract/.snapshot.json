@@ -9807,6 +9807,14 @@
         "'topics'"
       ]
     },
+    "event-join.ts::EventJoinPrefilledField": {
+      "kind": "enum",
+      "values": [
+        "'company'",
+        "'industry'",
+        "'title'"
+      ]
+    },
     "event-join.ts::EventJoinQuestion": {
       "kind": "object",
       "members": {
@@ -9949,6 +9957,11 @@
           "optional": false,
           "kind": "text",
           "type": "readonly string[]"
+        },
+        "prefilledFrom": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventJoinPrefilledField[]"
         },
         "selfIntro": {
           "optional": true,

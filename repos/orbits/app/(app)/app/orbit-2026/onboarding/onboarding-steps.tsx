@@ -603,7 +603,10 @@ export function IntroStep({
     <div data-screen-label={ONBOARDING_SCREEN_LABELS.intro}>
       <div className={styles.headRow}>
         <div>
-          <h2 className={styles.title}>{generating ? t({ ja: "自己紹介文をつくっています…", zh: "正在写自我介绍…", en: "Drafting your introduction…" }) : t({ ja: "自己紹介文をつくりました", zh: "已为你写好自我介绍", en: "We drafted your introduction" })}</h2>
+          <h2 className={styles.title}>{generating ? t({ ja: "自己紹介文をつくっています…", zh: "正在写自我介绍…", en: "Drafting your introduction…" })
+            // 没写出来（失败 / 次数上限 / 月度上限 / 示例）：不说「写好了」，请用户自己写（两端同一句，App onboarding.v3.introTitleWrite）。
+            : status === "error" ? t({ ja: "自己紹介を書いてください", zh: "写一段自我介绍", en: "Write a short introduction" })
+              : t({ ja: "自己紹介文をつくりました", zh: "已为你写好自我介绍", en: "We drafted your introduction" })}</h2>
           <p className={styles.sub}>{t({ ja: "イベントのプロフィールや、メール下書きの冒頭に使います。", zh: "用于活动资料和邮件草稿的开头。", en: "Used on your event profile and at the top of email drafts." })}</p>
         </div>
         <div className={styles.seg} role="radiogroup" aria-label={t({ ja: "文体", zh: "语气", en: "Style" })}>

@@ -9,7 +9,7 @@
  */
 import type { HostEventContact } from "../../../shared/contract/host-events";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
-import type { EventJoinAnswer, EventJoinWechatAnswer, EventJoinCalendarRemoveResult, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
+import type { EventJoinAnswer, EventJoinWechatAnswer, EventJoinCalendarRemoveResult, EventJoinCancelResult, EventJoinCurrent, EventJoinPrefilledField, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
 import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../../../shared/compute/profile-tag-options";
 import { JOIN_COVERAGE_ITEMS, JOIN_ITEM_OF_FIELD, joinCoverage } from "../../../shared/domain/join-coverage";
 import { PROFILE_ONBOARDING_GOALS } from "../../../shared/compute/profile-onboarding-goal";
@@ -223,6 +223,12 @@ export function prefillQuestion(question: EventJoinQuestion, tags: JoinProfileTa
 
 export interface JoinProfileFacts { organization: string | null; role: string | null; industry: string | null }
 
+/** 问题页「…はプロフィールから入力済み」列出的项：资料里确实有的公司 / 职位 / 行业（顺序固定）。 */
+export function prefilledFields(facts: JoinProfileFacts | null): EventJoinPrefilledField[] {
+  if (!facts) return [];
+  return ([["company", facts.organization], ["title", facts.role], ["industry", facts.industry]] as const).flatMap(([key, value]) => (value?.trim() ? [key] : []));
+}
+
 const FACT_QUESTIONS = {
   industry: { en: "What industry are you in?", zh: "你所在的行业是什么？" },
   positioning: { en: "What are your role and company?", zh: "你的职位和公司是什么？" },
@@ -264,6 +270,8 @@ export interface JoinPorts {
   persona(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage): Promise<{ selfIntroDraft?: string | null; tags?: readonly string[]; topics?: readonly string[] } | null>;
   profileIntro(actorId: string): Promise<string | null>;
   profileTags?(actorId: string, language?: JourneyLanguage): Promise<JoinProfileTags | null>;
+  /** 资料里的公司・职位・行业（问题页「入力済み」一行只列有的项）。缺省或读不到 = 不显示那一行。 */
+  profileFacts?(actorId: string, language: JourneyLanguage): Promise<JoinProfileFacts | null>;
   /**
    * `from`：谁、用什么语言报名——问答没问到的公司・职位、行业由资料补上。
    * `from.derived`：访谈没问到的核心项（主办方题或资料标签提供），提交端签成固定题一起交。
@@ -585,7 +593,9 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       // 2026-11-27 用户定：审核中的人改资料时也问（选「已加群」可自动通过）；其他已报名状态改资料不问。
       const asksWechat = event.review && Boolean(ports.wechatAutoAdmit) && (!edit || (await ports.registrationStatus(actorId, eventId).catch(() => null)) === "pending_review");
       const wechatCheck = asksWechat ? await ports.wechatAutoAdmit!(eventId).catch(() => false) : false;
-      return { ...profileFromAnswers(answers, { editableUntil, profileItems, personaTopics: persona?.topics ?? [], review: event.review, reviewUntil: event.review ? event.registrationClosesAt : null, selfIntro: intro, selfIntroBasis: basis }), ...(wechatCheck ? { hostContact: event.hostContact ?? null, wechatCheck: true } : {}) };
+      // 问题页「…はプロフィールから入力済み」：新报名第一次读取（还没答）和改资料时读一次资料；之后的读取不再带（页面记住第一次的）。
+      const prefilledFrom = !draft && (edit || answers.length === 0) && ports.profileFacts ? prefilledFields(await ports.profileFacts(actorId, language).catch(() => null)) : null;
+      return { ...(prefilledFrom ? { prefilledFrom } : {}), ...profileFromAnswers(answers, { editableUntil, profileItems, personaTopics: persona?.topics ?? [], review: event.review, reviewUntil: event.review ? event.registrationClosesAt : null, selfIntro: intro, selfIntroBasis: basis }), ...(wechatCheck ? { hostContact: event.hostContact ?? null, wechatCheck: true } : {}) };
     },
     async submit(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, selfIntro?: string, edit = false, wechatJoined?: EventJoinWechatAnswer): Promise<EventJoinResult | null> {
       const event = await ports.event(eventId);

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { readableItems, tolerantEnum } from "./tolerant";
+import { knownValues, readableItems, tolerantEnum } from "./tolerant";
 import { hostEventContactObject } from "./host-events";
 import type { EventJoinAnswer, EventJoinCalendarRemoveResult, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../contract/event-join";
 
@@ -30,6 +30,7 @@ export const eventJoinProfileObject = z.object({
   coverage: z.number().int().min(0).max(100),
   items: readableItems(z.object({ key: z.enum(ITEM_KEYS), done: z.boolean(), fromProfile: z.boolean().optional().catch(undefined) })),
   topics: z.array(z.string()).max(12),
+  prefilledFrom: knownValues(["company", "title", "industry"] as const).optional().catch(undefined),
   selfIntro: z.object({ text: z.string(), source: tolerantEnum(["ai_draft", "profile"], "profile") }).nullable().optional().catch(null),
   selfIntroBasis: z.string().nullable().optional(),
   editableUntil: z.string().nullable().optional(),
