@@ -419,7 +419,7 @@ function NetworkEmpty({ t, nowMs, narrow }: { t: NetworkT; nowMs: number; narrow
       <div className={styles.phoneOther}>{t("otherWays")}<a className={styles.chip} href="/app/contacts/new/import?method=contacts">{t("otherContacts")}</a><a className={styles.chip} href="/app/contacts/new/import?method=csv">{t("otherLinkedin")}</a></div>
       <div className={`${styles.card} ${styles.phoneSample}`}>
         <div className={styles.cardH}><h3>{t("sampleTitle")} <SampleTag /></h3></div>
-        <div className={styles.faded} aria-hidden="true" {...{ inert: "" }}><NetworkMobileList rows={sample} t={t} nowMs={nowMs} onOpen={() => undefined} /></div>
+        <div className={styles.faded} aria-hidden="true" {...({ inert: "" } as Record<string, string>)}><NetworkMobileList rows={sample} t={t} nowMs={nowMs} onOpen={() => undefined} /></div>
         <div className={`${styles.lbl} ${styles.phoneSampleNote}`}>{t("sampleDotsBefore")}<b>{t("sampleDotsBold")}</b>{t("sampleDotsAfter")}</div>
       </div>
     </div>
