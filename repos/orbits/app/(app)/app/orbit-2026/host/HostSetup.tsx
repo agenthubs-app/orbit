@@ -720,7 +720,7 @@ export function HostSetupTab({ eventId, language, onChanged, onHeader }: { event
         onPublish={() => { if (data.formPublished && data.event.appliedCount > 0) setConfirm(true); else void publish(); }}
         onReload={() => void load()}
         onNotesOpen={setNotesOpen} onNoticeKind={setNoticeKind} onNoteDraft={setNoteDraft} onNoteSave={() => void saveNote()} />
-      <ConfirmDialog open={confirm} title={t("suPubChangesTitle")} message={t("suPubChangesBody")} confirmLabel={t("suPublishChanges")} cancelLabel={t("cancel")} onCancel={() => setConfirm(false)} onConfirm={() => void publish()} />
+      <ConfirmDialog open={confirm} icon={phone ? "share" : undefined} title={t("suPubChangesTitle")} message={t("suPubChangesBody")} confirmLabel={t("suPublishChanges")} cancelLabel={t("cancel")} onCancel={() => setConfirm(false)} onConfirm={() => void publish()} />
     </>
   );
 }

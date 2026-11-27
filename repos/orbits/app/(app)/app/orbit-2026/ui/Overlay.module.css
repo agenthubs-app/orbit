@@ -64,6 +64,8 @@
 .hint { margin-right: auto; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3-text); }
 /* 「Esc 先不」只对有键盘的设备有意义：触屏（无悬停 + 粗指针）不显示（2026-11-26 iPad 检查）。 */
 @media (hover: none) and (pointer: coarse) { .keyHint { display: none; } }
+/* b13 手机确认框（.dialog）不画 Esc 提示：窄于 768 也不显示。 */
+@media (max-width: 767px) { .keyHint { display: none; } }
 /* Existing Modal ✕ stays 36 / transparent; new board heads use kit .lbtn, 34 / surface-2. */
 .close {
   width: 36px;
