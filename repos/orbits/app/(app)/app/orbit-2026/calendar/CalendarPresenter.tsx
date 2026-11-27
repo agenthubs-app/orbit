@@ -10,11 +10,13 @@ import type { CalendarPart } from "./useCalendarPage";
 import styles from "./calendar.module.css";
 
 type State = CalendarPart<unknown>["state"];
-export function CalendarPresenter({ date, today, timeZone, mode, days, internalState, externalState, connection, partial, onNavigate, onToday, onModeChange, onDaySelect, onEntrySelect, onAddPersonal, onRetry }: {
+export function CalendarPresenter({ date, today, timeZone, mode, days, internalState, externalState, connection, partial, onNavigate, onToday, onModeChange, onDaySelect, onEntrySelect, onAddPersonal, onRetry, phone = false }: {
   date: string; today: string; timeZone: string; mode: CalendarMode; days: readonly CalendarDayView[];
   internalState: State; externalState: State; connection: CalendarExternalRead["connection"]; partial: boolean;
   onNavigate: (direction: -1 | 1) => void; onToday: () => void; onModeChange: (mode: CalendarMode) => void;
   onDaySelect: (date: string) => void; onEntrySelect: (entry: CalendarEntry) => void; onAddPersonal: () => void; onRetry: () => void;
+  /** 手机宽度：只给「日 / 月」（b3 §7 カレンダー：手机日历只有日、月两种视图；7 列周视图放不下）。 */
+  phone?: boolean;
 }) {
   const language = useScopeLanguage();
   const t = (entry: typeof taskCopy[keyof typeof taskCopy]) => pickCopy(entry, language);
@@ -50,7 +52,7 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
   const readStatus = !settled ? null : internalState === "failed" ? <RetryCard title={t(taskCopy.calendarReadFailed)} onRetry={onRetry} /> : null;
   // One bone where a day's entries go (week columns, month cells) while the sources are on their way.
   const pendingEntry = settled ? null : <Bone width="80%" height={14} />;
-  const controls = <Segmented label={t(taskCopy.calendarTitle)} value={mode} onChange={onModeChange} segments={[{ key: "day", label: t(taskCopy.calendarDay) }, { key: "week", label: t(taskCopy.calendarWeek) }, { key: "month", label: t(taskCopy.calendarMonth) }]} />;
+  const controls = <Segmented label={t(taskCopy.calendarTitle)} value={mode} onChange={onModeChange} segments={[{ key: "day", label: t(taskCopy.calendarDay) }, ...(phone ? [] : [{ key: "week" as const, label: t(taskCopy.calendarWeek) }]), { key: "month", label: t(taskCopy.calendarMonth) }]} />;
   // 2026-10-28 (user: the 日 / 週 / 月 switch must not move between views): one toolbar above every view, the
   // same in all three, in Google Calendar's order — 今日 ‹ › at the left, then the range, 日 / 週 / 月 at the far right.
   const toolbar = (title: string) => <header className={styles.toolbar} data-calendar-toolbar=""><div className={styles.row}><Button label={t(taskCopy.calendarToday)} size="sm" disabled={!showToday} onClick={onToday} /><IconButton label={t(taskCopy.calendarPrevious)} icon="left" size={34} onClick={() => onNavigate(-1)} /><IconButton label={t(taskCopy.calendarNext)} icon="right" size={34} onClick={() => onNavigate(1)} /><h2 className={styles.title}>{title}</h2></div>{controls}</header>;

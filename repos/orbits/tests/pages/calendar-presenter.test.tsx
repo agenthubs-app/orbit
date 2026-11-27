@@ -159,3 +159,13 @@ test("calendar rail shows only readable selected-day entries and does not call a
   assert.ok(unconnected.includes("Google カレンダーは未連携です"));
   assert.ok(!unconnected.includes("この期間に予定はありません"));
 });
+
+test("phone width offers only day / month (b3 §7: no 7-column week on a phone)", async t => {
+  let root: ReactTestRenderer;
+  const modes = () => root!.root.findAllByType("button").map(node => text(node).trim()).filter(label => /^(日|週|月)$/u.test(label));
+  await act(async () => { root = create(<Orbit2026Scope language="ja"><CalendarPresenter {...base} mode="day" days={days("day")} phone /></Orbit2026Scope>); });
+  t.after(() => act(() => root.unmount()));
+  assert.deepEqual(modes(), ["日", "月"]);
+  await act(async () => root!.update(<Orbit2026Scope language="ja"><CalendarPresenter {...base} mode="day" days={days("day")} /></Orbit2026Scope>));
+  assert.deepEqual(modes(), ["日", "週", "月"]);
+});

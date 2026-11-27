@@ -22,6 +22,19 @@ import { ShellPage, useInShell } from "../shell/slots";
 import styles from "./calendar.module.css";
 
 interface Props { actorId: string; language: OrbitLanguage; timeZone: string; today: string; initialDate?: string; initialAdd?: boolean; initialContactId?: string }
+const PHONE_QUERY = "(max-width: 767px)";
+function usePhoneWidth() {
+  const [phone, setPhone] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia(PHONE_QUERY);
+    const sync = () => setPhone(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+  return phone;
+}
+
 export function CalendarWorkspace(props: Props) {
   const { account } = useSharedReadAccount();
   return <Orbit2026Scope language={props.language}><ToastProvider><Workspace key={JSON.stringify([props.actorId, account])} {...props} /></ToastProvider></Orbit2026Scope>;
@@ -31,6 +44,9 @@ function Workspace({ actorId, language, timeZone, today, initialDate, initialAdd
   const { ready } = useSharedReadAccount();
   const [date, setDate] = useState(() => initialDate && calendarDate(initialDate) ? initialDate : today);
   const [mode, setMode] = useState<CalendarMode>("week");
+  const phone = usePhoneWidth();
+  // 手机上没有周视图（b3 §7）：进来或缩到手机宽度时落到「日」。
+  useEffect(() => { if (phone) setMode(current => current === "week" ? "day" : current); }, [phone]);
   const [localDenied, setLocalDenied] = useState(false);
   const resource = useCalendarPage(timeZone, date, mode, language);
   const toast = useToast();
@@ -99,7 +115,7 @@ function Workspace({ actorId, language, timeZone, today, initialDate, initialAdd
     {/* web.html #13 / b3 #37–40: the cards sit in the middle column with its 34 side padding (as the other tabs). */}
     <div className={styles.page}>
       <div className={styles.status} style={inShell ? { display: "none" } : undefined}><Button hidden={inShell} data-task-add="" label={t(taskCopy.calendarAdd)} icon="plus" variant="accent" disabled={!ready || denied} onClick={() => { closeDetail(); setEditor(null); }} /></div>
-      {denied ? <RetryCard title={t(taskCopy.calendarReadFailed)} onRetry={refresh} /> : <CalendarPresenter date={date} today={today} timeZone={timeZone} mode={mode} days={days} internalState={resource.internal.state} externalState={resource.external.state} connection={resource.external.data?.connection ?? "unavailable"} partial={partial} onNavigate={direction => setDate(current => shiftCalendarDate(current, mode, direction))} onToday={() => setDate(today)} onModeChange={setMode} onDaySelect={setDate} onEntrySelect={entry => { void open(entry); }} onAddPersonal={() => { if (!ready || denied) return; closeDetail(); setEditor(null); }} onRetry={refresh} />}
+      {denied ? <RetryCard title={t(taskCopy.calendarReadFailed)} onRetry={refresh} /> : <CalendarPresenter phone={phone} date={date} today={today} timeZone={timeZone} mode={mode} days={days} internalState={resource.internal.state} externalState={resource.external.state} connection={resource.external.data?.connection ?? "unavailable"} partial={partial} onNavigate={direction => setDate(current => shiftCalendarDate(current, mode, direction))} onToday={() => setDate(today)} onModeChange={setMode} onDaySelect={setDate} onEntrySelect={entry => { void open(entry); }} onAddPersonal={() => { if (!ready || denied) return; closeDetail(); setEditor(null); }} onRetry={refresh} />}
     </div>
     {ready && !denied && selected && editor === undefined ? <Modal open title={t(taskCopy.calendarDetail)} onClose={closeDetail} size={480}>
       {selected.state === "loading" ? <Skeleton lines={3} /> : selected.state === "failed" ? <RetryCard title={t(taskCopy.calendarReadFailed)} onRetry={() => { void open(selected.entry); }} /> : <div className={styles.formGrid}><h3 className={styles.title}>{selected.meeting?.title ?? selected.item?.title ?? selected.entry.title}</h3><p className={styles.note}>{detailStart ? format(detailStart) : null}{detailEnd ? ` – ${format(detailEnd)}` : ""}</p>{selected.item?.location ?? selected.entry.location ? <p className={styles.note}>{selected.item?.location ?? selected.entry.location}</p> : null}
