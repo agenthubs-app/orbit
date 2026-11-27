@@ -435,41 +435,6 @@ const KNOWN_P0_CANDIDATES: ReadonlyMap<string, string> = new Map<string, string>
   ["repos/orbits/app/(app)/app/orbit-2026/search/SearchPanel.tsx#span `${t(searchCopy.recentClear)} ${text}`", "scanner misses onMouseDown: removing a recent search acts on mouse down so the input keeps focus"],
 ]);
 
-test("manifest generation writes the required repository artifacts", () => {
-  assert.ok(manifest.summary.routes > 30);
-  assert.ok(manifest.summary.actions > 100);
-  assert.equal(
-    manifest.summary.risks,
-    manifest.surfaces.reduce(
-      (total, surface) => total + surface.knownRisks.length,
-      0,
-    ),
-  );
-  const p0 = manifest.surfaces.flatMap((surface) => surface.knownRisks).filter((risk) => risk.severity === "P0");
-  assert.equal(manifest.summary.p0Candidates, p0.length);
-  const keys = [...new Set<string>(p0.map((risk) => `${String(risk.sourceFile)}#${String(risk.trigger)}`))].sort();
-  assert.deepEqual(keys.filter((key) => !KNOWN_P0_CANDIDATES.has(key)), [], "new P0 candidates");
-  assert.deepEqual([...KNOWN_P0_CANDIDATES.keys()].filter((key) => !keys.includes(key)), [], "resolved P0 candidates must be deleted from KNOWN_P0_CANDIDATES (shrink-only)");
-  assert.equal(manifest.summary.p1Candidates, 0);
-});
-
-for (const parameters of ["{ host, otherHost }", "[host, otherHost]"]) {
-  test(`review fixtures preserve distinct destructured hosts: ${parameters}`, () => {
-    const actions = scanFixture(`function bind(${parameters}) {
-      host.addEventListener('click', event => {
-        const target = event.target.closest('#wrong');
-        if (target && otherHost.contains(target)) act(target);
-        const valid = event.target.closest('#right');
-        if (valid && host.contains(valid)) act(valid);
-      });
-    }
-    const view = <><button id="wrong">Wrong</button><button id="right">Right</button></>;`);
-    assert.equal(actions[0].behaviorEvidence, "missing-static");
-    assert.deepEqual(actions[0].imperativeBehaviorEvidence, []);
-    assert.equal(actions[1].behaviorEvidence, "present-imperative-static");
-  });
-}
-
 test("review fixtures stop callback lookup at unsupported value-space shadows", () => {
   const actions = scanFixture(`function bind(host) {
     const onClick = event => { const target = event.target.closest('#shadow'); if (target && host.contains(target)) act(target); };

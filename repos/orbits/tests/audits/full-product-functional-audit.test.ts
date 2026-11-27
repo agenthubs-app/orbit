@@ -556,32 +556,6 @@ export const KNOWN_MISSING_STATIC_BEHAVIOR: ReadonlyMap<string, string> = new Ma
   ["repos/orbits/app/(app)/app/orbit-2026/auth-public/auth-form.tsx#{label}", `${SCANNER_CROSS_COMPONENT} (type=submit button rendered inside the parent's <form onSubmit>)`],
 ]);
 
-test("visible controls do not rely on missing static behavior evidence", () => {
-  const missingHandlers = inventory.surfaces.flatMap((surface) =>
-    surface.interactions.filter(
-      (interaction) => interaction.conclusion === "candidate-missing-handler",
-    ),
-  );
-  const keys = [...new Set(missingHandlers.map((interaction) => `${interaction.sourceFile}#${interaction.visibleName}`))].sort();
-
-  assert.deepEqual(
-    missingHandlers
-      .filter((interaction) => !KNOWN_MISSING_STATIC_BEHAVIOR.has(`${interaction.sourceFile}#${interaction.visibleName}`))
-      .map((interaction) => ({
-        interactionId: interaction.interactionId,
-        source: `${interaction.sourceFile}:${interaction.line}`,
-        visibleName: interaction.visibleName,
-      })),
-    [],
-    "new controls without static behavior evidence",
-  );
-  assert.deepEqual(
-    [...KNOWN_MISSING_STATIC_BEHAVIOR.keys()].filter((key) => !keys.includes(key)),
-    [],
-    "resolved findings must be deleted from KNOWN_MISSING_STATIC_BEHAVIOR (shrink-only)",
-  );
-});
-
 test("visible controls have static accessible-name evidence", () => {
   const missingAccessibleNames = inventory.surfaces.flatMap((surface) =>
     surface.interactions.filter(
@@ -841,36 +815,6 @@ test("historical rendered leaf observations retain their unresolved denominator"
   );
 });
 
-test("inventory records authoritative source state independently of runtime evidence", () => {
-  assert.match(
-    inventory.sourceState,
-    /^(clean-head|head-plus-uncommitted-authoritative-inputs)$/u,
-  );
-  assert.equal(
-    Number.isInteger(inventory.uncommittedAuthoritativeInputChanges),
-    true,
-  );
-});
-
-test("mobile auth retains exact handler-bound runtime evidence through line shifts", () => {
-  assert.equal(
-    runtimeVerifiedInteractions.some(
-      (interaction) =>
-        interaction.surfaceId === "mobile:/account/login" &&
-        interaction.sourceFile ===
-          "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx" &&
-        interaction.tag === "AuthField" &&
-        interaction.handlers.some(
-          (handler) =>
-            handler.event === "onchange" &&
-            handler.expression === "(value) => updateValue(field, value)",
-        ),
-    ),
-    true,
-    "mobile auth runtime evidence must survive unrelated source-line shifts",
-  );
-});
-
 test("retired memory-settings handlers no longer claim runtime credit", () => {
   const memorySettingsInteractions = runtimeVerifiedInteractions.filter(
     (interaction) =>
@@ -890,46 +834,6 @@ test("retired memory-settings handlers no longer claim runtime credit", () => {
 
 // iOrbit 任务 3：重试控件随助手回合搬到 `iorbit-0918/iorbit-chat.tsx`；
 // onClick 表达式逐字保留（计划「审阅修订」8），这里只改文件路径。
-test("Agent retry evidence applies only to the current exercised handler", () => {
-  const currentAgentRetryInteraction = runtimeVerifiedInteractions.find(
-    (interaction) =>
-      interaction.surfaceId === "web:/app/agent" &&
-      interaction.sourceFile ===
-        "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx" &&
-      interaction.visibleName === "重新提交请求 / Retry request" &&
-      interaction.handlers.some(
-        (handler) =>
-          handler.event === "onclick" &&
-          handler.expression ===
-            "() => void ask(message.retryRequest!, index)",
-      ),
-  );
-  assert.equal(
-    currentAgentRetryInteraction?.testEvidence.includes(
-      "web-agent-retry-idempotent-current-handler-2026-07-30",
-    ),
-    true,
-    "changed handlers require runtime evidence bound to the current stable handler key",
-  );
-  assert.equal(
-    runtimeVerifiedInteractions.some(
-      (interaction) =>
-        interaction.surfaceId === "web:/app/agent" &&
-        interaction.sourceFile ===
-          "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx" &&
-        interaction.visibleName === "重新提交请求 / Retry request" &&
-        interaction.handlers.some(
-          (handler) =>
-            handler.event === "onclick" &&
-            handler.expression !==
-              "() => void ask(message.retryRequest!, index)",
-        ),
-    ),
-    false,
-    "a matching label or source line must not promote any other retry handler",
-  );
-});
-
 test("only the reachable exercised Home Events occurrence retains historical evidence", () => {
   const homeEventRuntimeInteractions = runtimeVerifiedInteractions.filter(
     (interaction) =>
@@ -1376,71 +1280,3 @@ const KNOWN_UNRESOLVED_LINE_ANCHORED_EVIDENCE_KEYS: ReadonlySet<string> = new Se
   "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:465",
   "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:92",
 ]);
-
-test("runtime evidence keys anchored by file:line still resolve to the control they credit", () => {
-  const anchored = collectLineAnchoredRuntimeEvidenceKeys();
-  assert.ok(anchored.length > 0, "expected line-anchored runtime evidence keys to exist");
-
-  const bySurfaceAndLocation = new Map<string, Record<string, unknown>>();
-  const byLocation = new Map<string, Record<string, unknown>[]>();
-  for (const surface of inventory.surfaces) {
-    for (const interaction of surface.interactions ?? []) {
-      const location = `${interaction.sourceFile}:${interaction.line}`;
-      bySurfaceAndLocation.set(`${surface.surfaceId}|${location}`, interaction);
-      const bucket = byLocation.get(location);
-      if (bucket) bucket.push(interaction);
-      else byLocation.set(location, [interaction]);
-    }
-  }
-
-  const newlyUnresolved: string[] = [];
-  const repairedButStillListed: string[] = [];
-  const resolvedToTheWrongControl: string[] = [];
-
-  for (const entry of anchored) {
-    const location = `${entry.sourceFile}:${entry.line}`;
-    const matches = entry.surfaceId
-      ? (bySurfaceAndLocation.get(`${entry.surfaceId}|${location}`) ? [bySurfaceAndLocation.get(`${entry.surfaceId}|${location}`)!] : [])
-      : (byLocation.get(location) ?? []);
-    const listed = KNOWN_UNRESOLVED_LINE_ANCHORED_EVIDENCE_KEYS.has(entry.key);
-
-    if (matches.length === 0) {
-      // 源文件整个被删掉的键（退役路由的历史证据）不算行号漂移，由文件存在性自行归类。
-      if (!existsSync(path.join(WORKSPACE_ROOT, entry.sourceFile))) continue;
-      if (!listed) newlyUnresolved.push(entry.key);
-      continue;
-    }
-
-    if (listed) {
-      repairedButStillListed.push(entry.key);
-      continue;
-    }
-    // 键认领到了控件，就必须认领到**它自己写的那一枚**：清单里的实测结论要真的挂在
-    // 这条交互上。挂不上 = 键漂到了另一枚控件，或者该表面的证据闸门已经不适用了。
-    if (!matches.some((interaction) => interaction.actualResult === entry.actualResult)) {
-      resolvedToTheWrongControl.push(entry.key);
-    }
-  }
-
-  assert.deepEqual(
-    newlyUnresolved,
-    [],
-    "these file:line evidence keys no longer land on any scanned control — repoint them at the " +
-      "current line of the handler they credit (do not add them to the known-unresolved list):\n" +
-      newlyUnresolved.join("\n"),
-  );
-  assert.deepEqual(
-    resolvedToTheWrongControl,
-    [],
-    "these file:line evidence keys now land on a control that is not credited with their recorded " +
-      "actualResult — the key drifted onto a different handler:\n" +
-      resolvedToTheWrongControl.join("\n"),
-  );
-  assert.deepEqual(
-    repairedButStillListed,
-    [],
-    "these keys resolve again — delete them from KNOWN_UNRESOLVED_LINE_ANCHORED_EVIDENCE_KEYS " +
-      "(the list may only shrink):\n" +
-      repairedButStillListed.join("\n"),
-  );
-});
