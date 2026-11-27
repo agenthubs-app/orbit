@@ -15,7 +15,7 @@ import {
 import { ReorderList } from "./ReorderList";
 import { SubPage } from "./SubPage";
 import { QuestionLibraryDrawer } from "./QuestionLibrary";
-import { addLibraryQuestions } from "../../../../../shared/domain/host-question-library";
+import { HOST_QUESTION_LIBRARY_ENTRIES, addLibraryQuestions } from "../../../../../shared/domain/host-question-library";
 import { eventTone, hostDateDay, hostDateLong, hostTime, type HostT } from "./host-model";
 import { DESC_MAX, NOTE_MAX, QUESTION_MAX, agoText, applyLinkText, blankQuestion, charCount, clampText, hasLink, inertWhen, moveItem, switchKind } from "./setup-model";
 import s from "./host.module.css";
@@ -137,6 +137,7 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
   const contactSummary = [contact?.wechatId ? "WeChat" : null, contact?.lineId ? "LINE" : null].filter(Boolean).join(" · ") || (contact?.note ? t("evContactMessage") : t("suNotSet"));
   const agendaCount = event.agenda?.length ?? 0;
   const empty = questions.length === 0;
+  const suggestion = data.suggestion && (props.suggestionOpen ?? true) ? data.suggestion : null;
   const pubDisabled = busy || saveState === "invalid" || saveState === "conflict" || (data.formPublished && data.unpublishedChanges === 0 && saveState === "saved");
   const [closeDate, setCloseDate] = useState("");
   const [closeTime, setCloseTime] = useState("");
@@ -195,27 +196,8 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
     );
   }
 
-  return (
-    <div className={sp.col} data-host-setup={ended ? "ended" : empty ? "empty" : data.formPublished ? "published" : "draft"} data-host-setup-phone="">
-      {ended ? (
-        <div className={sp.banner} role="status" data-host-setup-ended="">
-          <span className={sp.bEmo} aria-hidden>🔒</span>
-          <div className={sp.grow}><b>{t("suEndedTitle")}</b><span className={sp.bBody}>{t("suEndedSub")}</span></div>
-        </div>
-      ) : saveState === "conflict" ? (
-        <div className={`${sp.banner} ${sp.bCoral}`} role="alert" data-host-setup-conflict="">
-          <Icon name="flag" size={16} />
-          <div className={sp.grow}><b>{t("conflictFirst")}</b><span className={sp.bBody}>{t("suReloadHint")}</span></div>
-          <button type="button" className={`btn ${s.btn} ${s.sm} ${sp.bBtn}`} onClick={props.onReload}>{t("suReload")}</button>
-        </div>
-      ) : (
-        <div className={sp.strip} data-host-setup-save={saveState}>
-          <span className={`${s.chip} ${data.formPublished ? s.c_teal : s.c_apricot}`}>{t(data.formPublished ? "suLiveChip" : "suDraftChip")}</span>
-          <span className={`${s.lbl} ${sp.ell} ${saveState === "invalid" ? sp.warn : ""}`}>{data.formPublished && data.unpublishedChanges > 0 ? t("suUnpub", { n: data.unpublishedChanges }) : ""}{status}</span>
-        </div>
-      )}
-
-      <div>
+  // b13 HM-S9：空表单时 模板 → 質問案 → 質問 在上，受付の設定 移到 質問 之后。
+  const settingsCard = (
         <div className={`${s.card} ${sp.card} ${ended ? sp.ro : ""}`} data-host-setup-settings="">
           <h3 className={sp.cardH}>{t("suSettings")}</h3>
           <div className={`${sp.srow} ${sp.first}`}>
@@ -246,22 +228,59 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
             {link ? <button type="button" className={`btn ${sp.copy}`} aria-label={t("copyLink")} onClick={() => { void navigator.clipboard?.writeText(`${window.location.protocol}//${link}`); }}><Icon name="link" size={16} /></button> : null}
           </div>
         </div>
+  );
+  return (
+    <div className={sp.col} data-host-setup={ended ? "ended" : empty ? "empty" : data.formPublished ? "published" : "draft"} data-host-setup-phone="">
+      {ended ? (
+        <div className={sp.banner} role="status" data-host-setup-ended="">
+          <span className={sp.bEmo} aria-hidden>🔒</span>
+          <div className={sp.grow}><b>{t("suEndedTitle")}</b><span className={sp.bBody}>{t("suEndedSub")}</span></div>
+        </div>
+      ) : saveState === "conflict" ? (
+        <div className={`${sp.banner} ${sp.bCoral}`} role="alert" data-host-setup-conflict="">
+          <Icon name="flag" size={16} />
+          <div className={sp.grow}><b>{t("conflictFirst")}</b><span className={sp.bBody}>{t("suReloadHint")}</span></div>
+          <button type="button" className={`btn ${s.btn} ${s.sm} ${sp.bBtn}`} onClick={props.onReload}>{t("suReload")}</button>
+        </div>
+      ) : (
+        <div className={sp.strip} data-host-setup-save={saveState}>
+          <span className={`${s.chip} ${data.formPublished ? s.c_teal : s.c_apricot}`}>{t(data.formPublished ? "suLiveChip" : "suDraftChip")}</span>
+          <span className={`${s.lbl} ${sp.ell} ${saveState === "invalid" ? sp.warn : ""}`}>{data.formPublished && data.unpublishedChanges > 0 ? t("suUnpub", { n: data.unpublishedChanges }) : ""}{status}</span>
+        </div>
+      )}
+
+      <div>
+        {empty && !ended ? null : settingsCard}
 
         {empty && !ended ? (
           <div className={`${s.card} ${sp.card}`} data-host-setup-templates="">
             <h3 className={sp.cardH}>{t("suTpl")}</h3>
             <div className={sp.tpl2}>
               {TEMPLATES.map((item) => (
-                <button key={item.key} type="button" className={`btn ${sp.tpl}`} onClick={() => props.onTemplate?.(item.key)} data-host-template={item.key}>
-                  <span className={`${s.emo} ${s.emoSm}`} aria-hidden>{item.emoji}</span><b>{t(item.label)}</b><span className={s.lbl}>{t(item.sub)}</span>
+                <button key={item.key} type="button" className={`btn ${sp.tpl} ${sp[item.tone]}`} onClick={() => props.onTemplate?.(item.key)} data-host-template={item.key}>
+                  <span className={sp.tplEmoji} aria-hidden>{item.emoji}</span><span className={sp.grow}><b>{t(item.label)}</b><span className={s.lbl}>{t(item.sub)}</span></span>
                 </button>
               ))}
             </div>
           </div>
         ) : null}
 
+        {empty && !ended && suggestion && suggestion.questions.length ? (
+          <div className={`${s.card} ${sp.card} ${sp.sugg}`} data-host-suggestion={suggestion.count}>
+            <div className={sp.suggRow}>
+              <span className={`${s.emo} ${s.emoSm} ${s.e_lav}`} aria-hidden>📝</span>
+              <div className={sp.grow}><b>{t("suSuggestTitle", { n: suggestion.count })}</b><span className={`${s.lbl} ${sp.suggSub}`}>{suggestion.basisTitle ? t("suSuggestBasis", { n: suggestion.basisCount, title: suggestion.basisTitle }) : t("suSuggestNoBasis")}</span></div>
+            </div>
+            <div className={sp.suggActs}>
+              <button type="button" className={`btn ${s.btn} ${s.sm}`} onClick={() => props.onSuggestion?.(false)}>{t("suDismiss")}</button>
+              <button type="button" className={`btn ${s.btn} ${s.sm} ${s.primary}`} onClick={() => props.onSuggestion?.(true)}>{t("suAdd")}</button>
+            </div>
+          </div>
+        ) : null}
+
         <div className={`${s.card} ${sp.card}`} data-host-questions={questions.length}>
-          <div className={sp.cardHRow}><h3 className={sp.cardH}>{t("suQuestions")} <span className={s.lbl}>{t("suQCountOf", { n: questions.length })}</span></h3><span className={s.lbl}>{t("suQUse")}</span></div>
+          <div className={sp.cardHRow}><h3 className={sp.cardH}>{t("suQuestions")} <span className={s.lbl}>{t("suQCountOf", { n: questions.length })}</span></h3>{empty ? null : <span className={s.lbl}>{t("suQUse")}</span>}</div>
+          {empty && !ended ? <div className={`${s.lbl} ${sp.qEmptyHint}`}>{t("qlOpenSub", { n: HOST_QUESTION_LIBRARY_ENTRIES.length })}</div> : null}
           {questions.map((question, index) => (
             <button key={question.id} type="button" className={`btn ${sp.qr} ${!question.prompt.trim() ? sp.qrErr : ""}`} onClick={() => setSub({ index, kind: "q" })} aria-label={question.prompt.trim() ? `${t(ended ? "suViewQ" : "suEditQ", { n: index + 1 })} · ${question.prompt}` : t(ended ? "suViewQ" : "suEditQ", { n: index + 1 })} data-host-question={question.id}>
               <QuestionLine question={question} index={index} t={t} />
@@ -275,6 +294,7 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
           </div>}
           {full ? <div className={`${s.lbl} ${sp.maxNote}`}>{t("suAddMax")}</div> : null}
         </div>
+        {empty && !ended ? settingsCard : null}
 
         <button type="button" className={`btn ${s.card} ${sp.card} ${sp.descCard}`} onClick={() => setSub({ kind: "desc" })} data-host-setup-desc="">
           <span className={sp.cardHRow}><b className={sp.cardH}>{t("suDesc")}</b><span className={s.lbl}>{t("suCounter", { n: charCount(draft.description) })}</span></span>

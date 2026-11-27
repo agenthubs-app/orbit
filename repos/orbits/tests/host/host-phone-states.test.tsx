@@ -31,6 +31,25 @@ test("申込設定 phone: conflict shows the reload banner; an ended event is re
   assert.match(html, /inert/);
 });
 
+test("申込設定 phone empty form (b13 HM-S9): templates, then the 質問案 card, then 質問 with the library hint, and 受付の設定 after them", () => {
+  const data = hostSetup(HOST_EVENT_IDS.asakai3)!;
+  assert.equal(data.questions.length, 0);
+  const html = renderToStaticMarkup(<HostSetupView phone data={data} draft={draftOf(data)} t={t} language="ja" now={NOW} />);
+  const at = (needle: string) => html.indexOf(needle);
+  assert.ok(at("data-host-setup-templates") > -1 && at("data-host-suggestion") > at("data-host-setup-templates"));
+  assert.ok(at("data-host-questions") > at("data-host-suggestion") && at("data-host-setup-settings") > at("data-host-questions"));
+  assert.match(html, /質問案を 3つ追加しますか？/);
+  assert.match(html, /「製造業 DX 朝会」の過去 2回の回答傾向から作成しました/);
+  assert.match(html, /立場・業界・会いたい人など \d+問/);
+  assert.doesNotMatch(html, /回答はテーブル編成に使われます/);
+  const dismissed = renderToStaticMarkup(<HostSetupView phone data={data} draft={draftOf(data)} t={t} language="ja" now={NOW} suggestionOpen={false} />);
+  assert.doesNotMatch(dismissed, /data-host-suggestion/);
+  const filled = hostSetup(HOST_EVENT_IDS.cfo18)!;
+  const normal = renderToStaticMarkup(<HostSetupView phone data={filled} draft={draftOf(filled)} t={t} language="ja" now={NOW} />);
+  assert.ok(normal.indexOf("data-host-setup-settings") < normal.indexOf("data-host-questions"));
+  assert.doesNotMatch(normal, /data-host-setup-templates|data-host-suggestion/);
+});
+
 test("マッチング phone: no generations left disables 生成 and 再生成; published has no 移動 / 公開", () => {
   const data = hostMatching(HOST_EVENT_IDS.cfo18)!;
   const used = { ...data, generationsUsed: data.generationsLimit };

@@ -149,3 +149,18 @@
 .nprevT { font-size: var(--fs-body-sm); }
 .nprevText.nprevText { margin-top: 8px; line-height: 1.6; }
 .nn { margin-top: 10px; padding: 10px 12px; border-radius: var(--r-row); background: var(--surface); font-size: var(--fs-control); color: var(--ink-2); line-height: 1.6; }
+/* b13 HM-S9 空表单：模板格彩色底、表情 20 在左、标题 13 / 说明 1.45；質問案 虚线卡（14/16、圆角 20、按钮靠右）；質問卡下一行题库提示。 */
+.tpl.tpl { flex-direction: row; align-items: flex-start; gap: 8px; }
+.tplEmoji { font-size: var(--fs-title-sm); line-height: 1.5; flex: none; }
+.tpl .grow { display: block; }
+.tpl .grow b { display: block; line-height: 1.5; }
+.tpl .grow > span { display: block; line-height: 1.45; }
+.m_lav.m_lav { background: var(--mac-lav); }
+.m_blue.m_blue { background: var(--mac-blue); }
+.m_pink.m_pink { background: var(--mac-pink); }
+.m_apricot.m_apricot { background: var(--mac-apricot); }
+.sugg.sugg { padding: 14px 16px; border: 1px dashed var(--plum-300); border-radius: var(--r-lg); background: transparent; }
+.suggRow { display: flex; gap: 10px; align-items: flex-start; }
+.suggRow b { font-size: var(--fs-row); }
+.suggSub { display: block; line-height: 1.5; }
+.suggActs { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
