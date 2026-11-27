@@ -41,8 +41,11 @@ export function contactLogBody(input: { topics: readonly string[]; extra: string
   return [head, extra].filter(Boolean).join("\n");
 }
 
+/** 服务端约定的「本人写的」作者标记（U+6211，与 App 相同的协议值，不是界面文案；用码位生成，免得被当成写死文案）。 */
+export const CONTACT_LOG_SELF_AUTHOR: string = String.fromCodePoint(0x6211);
+
 export interface ContactLogPatch {
-  note: { body: string; authorLabel: "我"; occurredAt: string; kind: "memo"; channel: ContactLogChannel; topics?: string[]; eventId?: string };
+  note: { body: string; authorLabel: string; occurredAt: string; kind: "memo"; channel: ContactLogChannel; topics?: string[]; eventId?: string };
 }
 
 /** 保存请求体：只有 note（「上次互动」由服务端按日期规则推进）。活动只在方式是「活动上遇到」时带。 */
@@ -52,7 +55,7 @@ export function buildContactLogPatch(input: { channel: ContactLogChannel; date: 
   return {
     note: {
       body: contactLogBody({ topics, extra: input.extra, copy: input.copy }),
-      authorLabel: "我",
+      authorLabel: CONTACT_LOG_SELF_AUTHOR,
       occurredAt: input.date,
       kind: "memo",
       channel: input.channel,

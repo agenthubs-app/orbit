@@ -106,14 +106,12 @@ test("public contacts query parameters cannot select internal scenarios or actio
 test("/app/contacts page renders the live-capable product contacts UI", async () => {
   const pageSource = source("app/(app)/app/contacts/page.tsx");
 
-  // R11a：/app/contacts 渲染新人脈页 NetworkScreen（数据由客户端经有界的 /api/contacts/page|summary 读）；
-  // 引导期示例仍是旧 NetworkAll（R28）。
+  // R11a：/app/contacts 渲染新人脈页 NetworkScreen（数据由客户端经有界的 /api/contacts/page|summary 读）。
   assert.match(pageSource, /<NetworkScreen /);
-  assert.match(pageSource, /NetworkAll/);
   assert.match(pageSource, /await auth\(\)/);
   assert.match(pageSource, /redirect\("\/app\/account\/login/);
   assert.match(pageSource, /resolveAuthenticatedApiActorFromSession/);
-  assert.match(pageSource, /actor\.id/);
+  assert.match(pageSource, /if \(!actor\) throw/);
   assert.doesNotMatch(
     pageSource,
     /loadAppContactsRouteViewModel\([\s\S]*?session\.user\.id/,

@@ -24,8 +24,10 @@ const DETAIL = { state: "success", contact: { id: "c-ito", displayName: "伊藤 
   primaryEmail: "ito@example.test", primaryPhone: "", nextAction: "決算資料のお礼を送る", tags: [], publicProfile: { offering: ["資本政策の助言"], seeking: ["製造業 SaaS"] },
   notes: [{ noteId: "n1", body: "DD の資料リストを受領", createdAt: "2026-10-06T01:00:00.000Z" }], lastInteraction: null, updatedAt: "2026-10-06T00:00:00.000Z",
   fieldHistory: [{ field: "offering", previous: "資本政策", next: "資本政策の助言", source: "invite_sync", at: "2026-10-12T00:00:00.000Z" }] } };
+// 「最近」= 30 天内（ContactDrawer），按运行当天往前 5 天。
+const RECENT_SYNC_AT = new Date(Date.now() - 5 * 86_400_000).toISOString();
 const SELF_DETAIL = { state: "success", contact: { ...DETAIL.contact, id: "c-matsui", displayName: "松井 遥", organization: "株式会社ソラノテ", role: "取締役 COO",
-  fieldHistory: [{ field: "role", previous: "取締役 COO", next: "代表取締役", source: "invite_sync", at: "2026-10-12T00:00:00.000Z" }] } };
+  fieldHistory: [{ field: "role", previous: "取締役 COO", next: "代表取締役", source: "invite_sync", at: RECENT_SYNC_AT }] } };
 
 const HANDLERS: { method: string; url: string; reply: Reply }[] = [
   { method: "GET", url: "^/api/contacts/summary$", reply: ok(SUMMARY) },

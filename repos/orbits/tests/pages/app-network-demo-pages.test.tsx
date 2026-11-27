@@ -239,11 +239,12 @@ test("R11a: the meeting-memo / appointment deep links still use the old detail (
   assert.equal(calls.filter((call) => call.operation === "threshold").length, 1, "the old detail reads the threshold once");
 });
 
-test("flag on but out of the guide: a real contact id takes the real path (one guide read is allowed)", async (t) => {
+test("flag on but out of the guide: a real contact id takes the real path (no guide state is read any more)", async (t) => {
   const { calls, page } = loadPage(t, "detail", { flag: "on", guide: "out" });
   const tree = await page({ params: Promise.resolve({ id: "contact-1" }), searchParams: Promise.resolve({}) });
   assert.deepEqual(operations(calls, REAL_READS), []);
-  assert.deepEqual(operations(calls, GUIDE_READS), ["profile", "guide"]);
+  // 2026-11：人脈页不再读引导状态（不出引导示例），直接是真实页面。
+  assert.deepEqual(operations(calls, GUIDE_READS), []);
   assert.equal(find(tree, "NetworkDemoFrame"), null);
   assert.ok(find(tree, "NetworkScreen"));
 });
@@ -277,7 +278,7 @@ test("flag on but the profile goal cannot be read: fail closed to the real page"
   const { calls, page } = loadPage(t, "contacts", { flag: "on", profileFails: true });
   const tree = await page({ searchParams: Promise.resolve({}) });
   assert.equal(find(tree, "NetworkDemoFrame"), null);
-  assert.deepEqual(operations(calls, GUIDE_READS), ["profile"]);
+  assert.deepEqual(operations(calls, GUIDE_READS), []);
   assert.deepEqual(operations(calls, REAL_READS), []);
   assert.ok(find(tree, "NetworkScreen"));
 });

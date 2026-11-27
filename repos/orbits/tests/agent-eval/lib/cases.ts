@@ -97,7 +97,7 @@ export function sprintNumber(sprint: string): number {
  * pack, a case's `gate`, a rubric item's `gate`) compares positions here, never sprint numbers.
  * tests/agent-eval/sprint-order.test.ts checks it against the registry's dependencies.
  */
-export const SPRINT_EXECUTION_ORDER = ["AG00", "AG01", "AG02", "AG03", "AG04", "AG05", "AG06", "AG07", "AG08", "AG09", "AG10", "AG12", "AG13", "AG11", "AG19", "AG14", "AG15", "AG16", "AG17", "AG18"] as const;
+export const SPRINT_EXECUTION_ORDER = ["AG00", "AG01", "AG02", "AG03", "AG04", "AG05", "AG06", "AG07", "AG08", "AG09", "AG10", "AG12", "AG13", "AG11", "AG19", "AG14", "AG15", "AG16", "AG17", "AG18", "AG20", "AG21"] as const;
 
 export function sprintOrder(sprint: string): number {
   const at = (SPRINT_EXECUTION_ORDER as readonly string[]).indexOf(sprint);

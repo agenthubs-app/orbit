@@ -142,7 +142,8 @@ test("review entry, used up (A4 ②): what still works, the reset date, 「わ�
   await page.locator("[data-plan-action='review'] >> visible=true").first().click();
   const dialog = page.getByRole("dialog", { name: "今月の見直しは使い切りました" });
   await dialog.locator("[data-plan-review-used-up]").waitFor();
-  await dialog.getByText("3 / 3 回 · 11月1日に戻ります", { exact: false }).waitFor();
+  // 重置日是「下个月 1 日」，随运行当天变化。
+  await dialog.getByText(/3 \/ 3 回 · \d{1,2}月1日に戻ります/).waitFor();
   await dialog.getByText("面談の記録・加点・スキップ、iOrbit への質問は、これまでどおり使えます。").waitFor();
   assert.equal(await dialog.getByRole("button", { name: "iOrbit で見直す" }).count(), 0);
   assert.doesNotMatch(await dialog.innerText(), PAID);
@@ -699,7 +700,7 @@ test("ai_budget: the used-up state says the month's AI limit (entry and page), s
   const page = await screen(t, { handlers: [detailRead(), goalsRead(), quotaRead({ reviewLeftThisMonth: 0, reviewLimitReason: "ai_budget" })], view: "overview" });
   await page.locator("[data-plan-action='review'] >> visible=true").first().click();
   const dialog = page.getByRole("dialog", { name: "今月の AI 利用上限に達しました" });
-  await dialog.locator("[data-plan-review-used-up='ai_budget']").getByText("11月1日に戻ります", { exact: false }).waitFor();
+  await dialog.locator("[data-plan-review-used-up='ai_budget']").getByText(/\d{1,2}月1日に戻ります/).waitFor();
   assert.doesNotMatch(await dialog.innerText(), PAID);
   const view = { ...withLeft(base.review0, 0), reviewLimitReason: "ai_budget" as const };
   const review = await screen(t, { draftId: view.draft.draftId, handlers: [reviewRead(view), detailRead()], view: "review" });

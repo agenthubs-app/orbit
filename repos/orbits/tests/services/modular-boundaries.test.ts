@@ -63,6 +63,8 @@ const featureFactories = [
 const allowedMockImportPatterns = [
   /^app\/dev\//,
   /^app\/api\/mock\//,
+  // 只在非生产当作路由的开发接口（next.config pageExtensions；生产构建不含）。
+  /^app\/api\/dev\/.+\/route\.dev\.tsx?$/,
   /^features\/[^/]+\/service-factory\.ts$/,
   /^features\/[^/]+\/[^/]+\/debug-view\.tsx$/,
   /^shared\/ai\/service-factory\.ts$/,

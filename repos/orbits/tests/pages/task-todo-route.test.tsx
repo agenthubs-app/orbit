@@ -87,7 +87,7 @@ test("Task calendar mounts the selected-window calendar with canonical actor and
   const runtime = loadPage();
   const element = await runtime.page({ searchParams: Promise.resolve({ tab: "calendar", date: "2030-04-01", new: "1" }) });
   assert.equal(element.props.calendar.type, runtime.calendar);
-  assert.deepEqual(element.props.calendar.props, { actorId: "actor", initialDate: "2030-04-01", initialAdd: true });
+  assert.deepEqual(element.props.calendar.props, { actorId: "actor", initialDate: "2030-04-01", initialAdd: true, initialContactId: undefined });
   const invalid = await runtime.page({ searchParams: Promise.resolve({ tab: "calendar", date: "2030-02-30" }) });
   assert.equal(invalid.props.calendar.props.initialDate, undefined);
   assert.equal(runtime.planReads(), 0);
