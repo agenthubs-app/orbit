@@ -205,7 +205,7 @@ export function PublishConfirm({ data, t, busy, onCancel, onPublish, phone = fal
             {rounds.map((index) => (
               <div key={index} className={m.pubSheetRow}><span className={`${s.chip} ${s.c_teal}`}><Icon name="check" size={16} /></span><b>{t("mRoundShort", { n: index })}</b><span className={s.lbl}>{t("pubRoundStat", { p: placed, t: data.tableCount })}</span></div>
             ))}
-            {data.unplaced.length ? <div className={m.pubSheetRow}><span className={`${s.chip} ${s.c_coral}`}>!</span><b>{t("pubUnplaced")}</b><span className={s.lbl}>{t("pubUnplacedStat", { n: data.unplaced.length })}</span></div> : null}
+            {data.unplaced.length ? <div className={m.pubSheetRow}><span className={`${s.chip} ${s.c_coral} ${m.pubBang}`}>!</span><b>{t("pubUnplaced")}</b><span className={s.lbl}>{t("pubUnplacedStat", { n: data.unplaced.length })}</span></div> : null}
           </div>
           <div className={`${m.mac} ${m.macApricot} ${m.pubSheetNote}`}>{t("pubNote")}</div>
           {data.event.cohostCount > 0 ? (

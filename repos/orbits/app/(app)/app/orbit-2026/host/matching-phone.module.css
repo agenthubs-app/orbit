@@ -22,8 +22,11 @@
 /* 条件行标签字重同画板 .crow > span:first-child（13 / 600；2026-11-27 实测，之前记成 700 是误读）。 */
 .toggles [class*=setLabel] { font-weight: var(--fw-semibold); }
 .hint { margin-top: 6px; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
-.grid2 > :global(.btn) { height: 48px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; padding-top: 12px; }
+.grid2 > :global(.btn) { height: 46px; }
+/* b13 .sheet .sh（下距 12）与 .seg button（左右 11）：条件抽屉标题后第一行、分段按钮。 */
+.shT + .crowCol { margin-top: 12px; }
+.crowCol.crowCol.crowCol button { padding-left: 11px; padding-right: 11px; }
 .shim { height: 64px; border-radius: var(--r-card-web); background: var(--surface); opacity: .6; }
 
 .mstat.mstat { display: block; padding: 14px 16px; }

@@ -229,7 +229,10 @@
 .pubSheetRow:first-child { border-top: 0; }
 .pubSheetRow b { flex: 1 1 0%; font-size: var(--fs-body-sm); }
 .pubSheetNote.pubSheetNote { margin-top: 8px; font-size: var(--fs-meta); line-height: var(--lh-prose); }
-.pubSheetActs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.pubSheetActs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+/* b13 HM-M8：提醒卡与「共同運営者にも…」之间 12；「未配置」行的「!」是带行高的胶囊（高 25.5，勾号那两枚 22）。 */
+.pubSheetNote + .pubCheck { margin-top: 12px; }
+.pubBang.pubBang { height: 25.5px; }
 .pubSheetActs > :global(.btn) { height: 46px; }
 
 /* 换桌「移動」（2026-11-26）：触屏或窄于 1280 时显示在成员行尾；鼠标 + 宽屏仍以拖拽 / ⋮⋮ 为主（b6 画板不变）。 */
