@@ -45,7 +45,7 @@ export async function planApi<T>(path: string, options: { language: OrbitLanguag
   if (response.ok && body?.success) return { data: body.data as T, ok: true, status: response.status };
   const context = body?.error?.context ?? {};
   const limit = context.limit === "daily" || context.limit === "monthly" ? context.limit : null;
-  return { error: { code: body?.error?.code ?? "UNKNOWN", limit, network: false, reason: context.reason ?? null, retryOn: context.retryOn ?? null, status: response.status }, ok: false };
+  return { error: { code: body?.error?.code ?? "UNKNOWN", context, limit, network: false, reason: context.reason ?? null, retryOn: context.retryOn ?? null, status: response.status }, ok: false };
 }
 
 export type PersonCandidate = { contactId: string; name: string; organization: string; role: string; context: string };

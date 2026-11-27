@@ -6,6 +6,7 @@
  */
 "use client";
 
+import { quotaNoticeText } from "../../orbit-2026/copy/ai-monthly-limit";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 
 import {
@@ -97,10 +98,13 @@ export function CardBatchUploader({ onStarted, t }: { onStarted: (batchId: strin
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });
-      const body = (await response.json().catch(() => null)) as { data?: { batch?: { id: string } }; error?: { message?: string } } | null;
+      const body = (await response.json().catch(() => null)) as { data?: { batch?: { id: string } }; error?: { message?: string; context?: unknown } } | null;
       const batchId = body?.data?.batch?.id;
       if (!response.ok || !batchId) {
-        setError(body?.error?.message ?? t({ ja: "アップロードを開始できませんでした。もう一度お試しください。", zh: "没能开始上传，请重试。", en: "Couldn't start the upload — please try again." }));
+        // 2026-11-27 分档：这个月的扫名片张数用完了——写出张数、恢复日期与 Pro 的张数（界面语言）。
+        const context = body?.error?.context;
+        const limit = response.status === 429 && quotaNoticeText("zh", context) ? t({ en: quotaNoticeText("en", context)!, ja: quotaNoticeText("ja", context)!, zh: quotaNoticeText("zh", context)! }) : null;
+        setError(limit ?? body?.error?.message ?? t({ ja: "アップロードを開始できませんでした。もう一度お試しください。", zh: "没能开始上传，请重试。", en: "Couldn't start the upload — please try again." }));
         return;
       }
       stashPendingFiles(batchId, byDigest);

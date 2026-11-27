@@ -1,5 +1,7 @@
 "use client";
 
+import { overLimitNotice, overLimitText } from "../../../../../features/ai-quota/over-limit";
+import type { AccountUsageContract } from "../../../../../shared/contract/account-usage";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -135,6 +137,18 @@ function GoalInput({ t }: { t: Translate }) {
   }, [text, language]);
 
   const monthBlocked = Boolean(list && list.newGoalsLeftThisMonth <= 0);
+  // 2026-11-27 分档：本月份数用完时读一次用量（档位、上限、恢复时间），写出带数字与 Pro 份数的那句。
+  const [goalQuota, setGoalQuota] = useState<string | null>(null);
+  useEffect(() => {
+    if (!monthBlocked) return;
+    let live = true;
+    void fetch("/api/account/usage").then((response) => response.json()).then((body: { data?: AccountUsageContract }) => {
+      const item = body?.data?.items?.find((entry) => entry.feature === "plan_new_goal");
+      if (!live || !item || !body.data) return;
+      setGoalQuota(overLimitText(language, overLimitNotice({ cap: item.limit, feature: "plan_new_goal", period: "month", retryOn: item.retryOn, tier: body.data.tier, used: item.used })));
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, [monthBlocked, language]);
   const blocked = monthBlocked || atGoalLimit;
   const inProgress = list?.intakes[0] ?? null;
 
@@ -207,7 +221,7 @@ function GoalInput({ t }: { t: Translate }) {
         </div>
         {monthBlocked ? (
           <div className={k.goalNote}>
-            <LimitCard title={t(planFlowCopy.limitGoalsMonth)} sub={t(planFlowCopy.limitGoalsMonthSub, { date: formatDay(nextMonth, language), days: daysLeft })} data={{ "data-plan-notice": "goalsMonth" }} />
+            <LimitCard title={goalQuota ?? t(planFlowCopy.limitGoalsMonth)} sub={goalQuota ? undefined : t(planFlowCopy.limitGoalsMonthSub, { date: formatDay(nextMonth, language), days: daysLeft })} data={{ "data-plan-notice": "goalsMonth" }} />
           </div>
         ) : atGoalLimit ? (
           <div className={k.goalNote}>

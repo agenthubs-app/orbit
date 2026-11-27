@@ -78,7 +78,7 @@ import {
 } from "./onboarding-steps";
 import { LEGACY_REPAIR_COPY, ONBOARDING_COPY } from "../copy/onboarding";
 import { PROFILE_CONTACT_METHODS, invalidProfileContactMethods, profileContactMethods, profileContactMethodsValid } from "../../../../../shared/compute/profile-contact-methods";
-import { aiLimitDetailOf, aiMonthlyLimitText } from "../copy/ai-monthly-limit";
+import { aiMonthlyLimitText, CARD_SCAN_LIMIT_CODE, quotaNoticeText } from "../copy/ai-monthly-limit";
 import styles from "./OnboardingFlow.module.css";
 
 export interface OnboardingFlowProps {
@@ -521,8 +521,10 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       setOrigins(nextOrigins);
       setScan({ ai: (card.industry ? 2 : 0) + (card.seniorityLevel ? 1 : 0), card: printed.length });
       void infer(filled);
-    } catch {
-      setError(t(ONBOARDING_COPY.flow023));
+    } catch (caught) {
+      // 2026-11-27 分档：这个月的扫名片张数用完了——写出张数、恢复日期和 Pro 的张数，不说「重试」。
+      const limit = (caught as { code?: string; context?: unknown }).code === CARD_SCAN_LIMIT_CODE ? quotaNoticeText(language, (caught as { context?: unknown }).context) : null;
+      setError(limit ?? t(ONBOARDING_COPY.flow023));
     } finally {
       setScanning(false);
     }
@@ -572,12 +574,12 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         // 新草稿失败：保留上一版，不扣次数。
         setIntroStatus(previous.status === "error" ? "ready" : previous.status);
         setIntroTone(previous.tone);
-        setError(code === "AI_MONTHLY_LIMIT" ? aiMonthlyLimitText(language, aiLimitDetailOf((caught as { context?: unknown }).context)) : t(ONBOARDING_COPY.flow021));
+        setError(code === "AI_MONTHLY_LIMIT" ? aiMonthlyLimitText(language, (caught as { context?: unknown }).context) : t(ONBOARDING_COPY.flow021));
         return;
       }
       setIntroStatus("error");
       setIntroErrorCode(code === "INTRO_LIMIT_REACHED" || code === "SAMPLE_READ_ONLY" || code === "AI_MONTHLY_LIMIT" ? code : null);
-      setIntroLimitText(code === "AI_MONTHLY_LIMIT" ? aiMonthlyLimitText(language, aiLimitDetailOf((caught as { context?: unknown }).context)) : null);
+      setIntroLimitText(code === "AI_MONTHLY_LIMIT" ? aiMonthlyLimitText(language, (caught as { context?: unknown }).context) : null);
     }
   }
 

@@ -4,7 +4,7 @@
 // ShellPage: ‹ 人脈 · 人脈分析 / subtitle · [構造 | 機会 | インサイト]; the right rail is the drill-down list (1440), which the
 // shell turns into its drawer below 1280; below 768 a legend row opens the full-page list instead. ?tab= keeps deep links.
 // The view and the snapshot are read on the server (page.tsx); below 10 people neither the rows nor the snapshot are read.
-import { aiLimitDetailOf, aiMonthlyLimitText } from "../copy/ai-monthly-limit";
+import { aiMonthlyLimitText } from "../copy/ai-monthly-limit";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -104,7 +104,7 @@ function AnalysisInner({ language, view, snapshot: initialSnapshot, evidenceName
       const body = await response.json().catch(() => null) as { success?: boolean; data?: unknown; error?: { context?: { reason?: string; limit?: string; retryOn?: string } } } | null;
       if (response.ok && body?.success) setSnapshot(networkSnapshotViewSchema.parse(body.data) as NetworkSnapshotView);
       // 月上限是公开的：写出次数和恢复日期（来自 429 的 context）。
-      else if (response.status === 429) toast.error(body?.error?.context?.reason === "MONTHLY_LIMIT" ? aiMonthlyLimitText(language, aiLimitDetailOf(body.error.context)) : t("recomputeLimited"));
+      else if (response.status === 429) toast.error(body?.error?.context?.reason === "MONTHLY_LIMIT" ? aiMonthlyLimitText(language, body.error.context) : t("recomputeLimited"));
       else if (body?.error?.context?.reason === "INSUFFICIENT_CONTACTS") toast.error(t("recomputeNeedsContacts"));
       else toast.error(t("recomputeFailed"));
     } catch {

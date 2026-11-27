@@ -19,7 +19,7 @@ import { buildScanBatchView } from "./scan-batch-view";
 import type { WebGuideReturnTo } from "../../../../../../features/guide/return-to";
 
 export function ScanBatchClient({ batchId, returnTo }: { batchId: string; returnTo?: WebGuideReturnTo | null }) {
-  const { t } = useOrbitLanguage();
+  const { language, t } = useOrbitLanguage();
   const batch = useCardBatch(batchId, t);
   const view = buildScanBatchView(batch);
   const { autoRunning, markNotified, notified, reviewing } = batch;
@@ -60,5 +60,5 @@ export function ScanBatchClient({ batchId, returnTo }: { batchId: string; return
     reattach: (files) => void latest.current.reattach(files),
   }), [batchId]);
 
-  return <ScanBatchScreen view={view} actions={actions} onStart={startScanBatch} returnTo={returnTo} />;
+  return <ScanBatchScreen view={view} actions={actions} onStart={(cards) => startScanBatch(cards, undefined, language)} returnTo={returnTo} />;
 }

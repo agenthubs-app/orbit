@@ -13,7 +13,7 @@
  */
 "use client";
 
-import { AI_MONTHLY_LIMIT_CODE, aiLimitDetailOf, aiMonthlyLimitText } from "../../orbit-2026/copy/ai-monthly-limit";
+import { AI_MONTHLY_LIMIT_CODE, aiMonthlyLimitText } from "../../orbit-2026/copy/ai-monthly-limit";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
@@ -238,7 +238,7 @@ function useAgentInlineDraft(input: {
   // 主按钮会永远停在「起草跟进 N 件」，看起来像什么都没发生过。
   const [state, setState] = useState<"idle" | "generating" | "ready" | "handed" | "error">("idle");
   const [errorCode, setErrorCode] = useState<string | null>(null);
-  const [limitDetail, setLimitDetail] = useState<{ limit: number | null; retryOn: string | null } | null>(null);
+  const [limitDetail, setLimitDetail] = useState<unknown>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [handedAt, setHandedAt] = useState<string | null>(null);
@@ -253,7 +253,7 @@ function useAgentInlineDraft(input: {
     const result = await requestMessageDraft({ ...input, purpose });
     if (result.success === false) {
       setErrorCode(result.error.code);
-      setLimitDetail(aiLimitDetailOf(result.error.context));
+      setLimitDetail(result.error.context);
       setState("error");
       return;
     }

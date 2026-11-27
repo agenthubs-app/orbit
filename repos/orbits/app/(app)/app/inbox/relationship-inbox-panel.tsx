@@ -36,7 +36,7 @@ import { ORBIT_Z } from "../orbit-z";
 import { invalidateInboxActorConfirmation, readContactMessageActor } from "./inbox-request";
 import { BoundedContactMessagesTab } from "./bounded-contact-messages-tab";
 import workspace from "./inbox-workspace.module.css";
-import { AI_MONTHLY_LIMIT_CODE, aiLimitDetailOf, aiMonthlyLimitText } from "../orbit-2026/copy/ai-monthly-limit";
+import { AI_MONTHLY_LIMIT_CODE, aiMonthlyLimitText } from "../orbit-2026/copy/ai-monthly-limit";
 
 type InboxTab = "threads" | "alerts";
 
@@ -677,7 +677,7 @@ function NewThreadForm({
     });
     if (result.success === false) {
       setError(newThreadFormErrorForDraftFailure(result.error.code));
-      setLimitText(result.error.code === AI_MONTHLY_LIMIT_CODE ? aiMonthlyLimitText(language, aiLimitDetailOf(result.error.context)) : null);
+      setLimitText(result.error.code === AI_MONTHLY_LIMIT_CODE ? aiMonthlyLimitText(language, result.error.context) : null);
     } else {
       setSubject(result.data.subject);
       setBody(result.data.body);

@@ -1,5 +1,6 @@
 "use client";
 
+import { quotaNoticeText } from "../copy/ai-monthly-limit";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { planFlowCopy } from "../copy/plan";
 import { pickCopy, type OrbitCopyEntry } from "../copy/types";
@@ -53,7 +54,8 @@ export function PlanErrorNotice({ view, t, onRetry, onReload }: { view: PlanErro
     return <p role="status" className={styles.notice} data-plan-limit={view.limit}><Icon name="clock" size={16} />{t(view.limit === "monthly" ? planFlowCopy.limitMonthly : planFlowCopy.limitDaily)}</p>;
   }
   if (view.tone === "notice") {
-    const text = view.notice === "goalsMonth" ? planFlowCopy.limitGoalsMonth : view.notice === "activeGoals" ? planFlowCopy.limitActiveGoals : view.notice === "stale" ? planFlowCopy.stale : view.notice === "busy" ? planFlowCopy.busy : planFlowCopy.manualUsed;
+    const quota = view.notice === "goalsMonth" ? quotaCopy(view.quota) : null;
+    const text = quota ?? (view.notice === "goalsMonth" ? planFlowCopy.limitGoalsMonth : view.notice === "activeGoals" ? planFlowCopy.limitActiveGoals : view.notice === "stale" ? planFlowCopy.stale : view.notice === "busy" ? planFlowCopy.busy : planFlowCopy.manualUsed);
     return (
       <div role="status" className={`${styles.notice} ${styles.noticeWarn}`} data-plan-notice={view.notice}>
         <Icon name="info" size={16} /><span>{t(text)}</span>
@@ -68,4 +70,10 @@ export function PlanErrorNotice({ view, t, onRetry, onReload }: { view: PlanErro
       <ConfirmCard state="failure" title={t(title)} detail={message} actions={onRetry ? [{ label: t(planFlowCopy.retryOnce), onSelect: onRetry, primary: true }] : []} />
     </div>
   );
+}
+
+/** 2026-11-27 分档：超额提示的三语文本（服务端 error.context 的 quota* 字段）；不是超额提示时 null。 */
+function quotaCopy(context: unknown): { ja: string; zh: string; en: string } | null {
+  const zh = quotaNoticeText("zh", context);
+  return zh ? { en: quotaNoticeText("en", context)!, ja: quotaNoticeText("ja", context)!, zh } : null;
 }

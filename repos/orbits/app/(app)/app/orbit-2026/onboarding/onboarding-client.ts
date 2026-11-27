@@ -152,7 +152,7 @@ export async function scanOwnBusinessCard(file: File): Promise<CardAutofill> {
   const envelope = await readJson<Partial<OwnCardScanContract>>(response);
   const draft = envelope.data?.draft;
   if (!response.ok || envelope.success !== true || !draft) {
-    throw new OnboardingRequestError(envelope.error?.message ?? "Business card recognition failed", envelope.error?.code);
+    throw new OnboardingRequestError(envelope.error?.message ?? "Business card recognition failed", envelope.error?.code, envelope.error?.context);
   }
   const read = envelope.data?.ocr?.structuredExtraction;
   const { primaryIndustryId, secondaryIndustryId } = sanitizeIndustryPair(read?.primaryIndustryId, read?.secondaryIndustryId);

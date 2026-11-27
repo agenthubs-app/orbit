@@ -9,14 +9,16 @@ import { listActiveBatches } from "../../card-batch-0918/card-batch-store";
 import { INGEST_V2_MAX_ITEMS, INGEST_V2_MAX_RAW_BYTES } from "../../../../../../features/acquisition/business-card-ingest-v2/contract";
 import type { WebGuideReturnTo } from "../../../../../../features/guide/return-to";
 import { startScanBatch } from "./start-scan-batch";
+import { useOrbitLanguage } from "../../../orbit-language-context";
 
 export function ScanUploadClient({ available, returnTo }: { available: boolean; returnTo?: WebGuideReturnTo | null }) {
   // 全站 CardBatchHost 在这一页让位：本机还有进行中的批次时，给一个回到那一批的入口（续传在批次页继续）。
   const { account, ready } = useSharedReadAccount();
+  const { language } = useOrbitLanguage();
   const [active, setActive] = useState<string | null>(null);
   useEffect(() => {
     if (!ready) return;
     setActive(listActiveBatches().at(-1) ?? null);
   }, [account, ready]);
-  return <ScanUploadScreen available={available} maxPhotos={INGEST_V2_MAX_ITEMS} maxBytes={INGEST_V2_MAX_RAW_BYTES} onStart={(cards) => startScanBatch(cards)} activeBatchId={active} returnTo={returnTo} />;
+  return <ScanUploadScreen available={available} maxPhotos={INGEST_V2_MAX_ITEMS} maxBytes={INGEST_V2_MAX_RAW_BYTES} onStart={(cards) => startScanBatch(cards, undefined, language)} activeBatchId={active} returnTo={returnTo} />;
 }

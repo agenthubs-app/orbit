@@ -112,3 +112,11 @@ export function overLimitText(language: OverLimitLanguage, notice: OverLimitNoti
   // 中文、日文句与句之间不加空格；英文加一个空格。
   return language === "en" ? `${head} ${tail}` : `${head}${tail}`;
 }
+
+/** 批量扫名片部分受理时，放在提示前面的一句（N = 没有受理的张数）。 */
+export function notAcceptedText(language: OverLimitLanguage, count: number): string {
+  const v = number(count, language);
+  if (language === "zh") return `其中 ${v} 张没有受理。`;
+  if (language === "ja") return `うち${v}枚は受け付けませんでした。`;
+  return `${v} of them ${count === 1 ? "was" : "were"} not accepted.`;
+}

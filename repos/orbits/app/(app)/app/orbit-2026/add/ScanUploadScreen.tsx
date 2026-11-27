@@ -7,7 +7,7 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { appendWebGuideReturnTo, type WebGuideReturnTo } from "../../../../../features/guide/return-to";
 import { addScanCopy as s } from "../copy/add";
 import { ShellPage } from "../shell/slots";
-import { Button, Card, Icon, IconButton, MacTile, Orbit2026Scope, Segmented, ToastProvider } from "../ui";
+import { Button, Card, Icon, IconButton, MacTile, Orbit2026Scope, Segmented, ToastProvider, useToast } from "../ui";
 import { translator, type Translate } from "./add-parts";
 import {
   SCAN_ACCEPT,
@@ -24,7 +24,8 @@ import {
 } from "./upload-model";
 import styles from "./add.module.css";
 
-export type ScanStartResult = { ok: true; batchId: string } | { ok: false; message?: string };
+/** `notice`（2026-11-27 分档）：批次开始了，但超出本月张数的名片没有受理——给用户的一句说明。 */
+export type ScanStartResult = { ok: true; batchId: string; notice?: string } | { ok: false; message?: string };
 
 function newId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `photo-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -102,6 +103,8 @@ export type StageState = ReturnType<typeof useStagedCards>;
 
 /** The chosen photos (front + optional back per card), the hidden file input and the start call. */
 export function useStagedCards(t: Translate, maxPhotos: number, maxBytes: number) {
+  // The shell's toast stack: a notice shown at start stays up on the batch page it navigates to.
+  const toast = useToast();
   const [cards, setCards] = useState<StagedCard[]>([]);
   const [dragging, setDragging] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -138,7 +141,10 @@ export function useStagedCards(t: Translate, maxPhotos: number, maxBytes: number
     setError("");
     const result = await onStart(cardsRef.current).catch((): ScanStartResult => ({ ok: false }));
     setStarting(false);
-    if (result.ok === true) return result.batchId;
+    if (result.ok === true) {
+      if (result.notice) toast.error(result.notice);
+      return result.batchId;
+    }
     setError(result.message || t(s.startFailed));
     return null;
   };
