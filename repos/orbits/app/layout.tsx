@@ -6,6 +6,10 @@
 import { orbitHtmlLang, resolveRequestOrbitLanguage, type OrbitLanguage } from "./(app)/app/orbit-language-core";
 import "./(app)/app/orbit-2026/tokens.css";
 import { ORBIT_THEME_INIT_SCRIPT } from "./(app)/app/orbit-theme-init";
+import { ORBIT_IOS_INPUT_ZOOM_SCRIPT } from "./(app)/app/orbit-ios-input-zoom";
+
+/** 显式写出（与 Next 默认相同）；iOS 上由 ORBIT_IOS_INPUT_ZOOM_SCRIPT 追加 maximum-scale=1。 */
+export const viewport = { width: "device-width", initialScale: 1 };
 
 export const metadata = {
   title: "Orbit",
@@ -299,6 +303,7 @@ export default async function RootLayout({ children }) {
     <html lang={htmlLang} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: ORBIT_THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: ORBIT_IOS_INPUT_ZOOM_SCRIPT }} />
         {/* R01 / RD-09: the one place web fonts load. Japanese and Chinese UI
             fall back to Noto Sans JP / SC where Hiragino / PingFang are missing;
             English uses system fonts (orbit-2026/tokens.css --font-*). */}
