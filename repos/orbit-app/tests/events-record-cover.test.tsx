@@ -106,6 +106,51 @@ test("discover D2: one card with an image → every card in that row gets the 2:
   await page.getByTestId("events-discover-card-b").getByText("🎤").waitFor();
 });
 
+const discoverRow = (eventId: string, startsAt: string) => ({ emoji: "🎤", eventId, href: `/events/${eventId}`, priceYen: 3000, registrationCount: 24, relevance: null, startsAt, title: `Event ${eventId}`, venue: "渋谷" });
+const setDiscover = (page: Awaited<ReturnType<typeof harness.open>>, value: unknown) => page.evaluate((body) => { (window as any).fixture.responses["/api/events/discover"] = body; }, value);
+
+test("discover period rules (2026-10-29, as Web): opens on これから with no period chip; 查看全部 under past switches to 開催済み with ended cards", async (t) => {
+  const discover = { all: [discoverRow("u1", "2099-12-01T10:00:00+09:00")], community: [], planFit: [], planFitTotal: 0, popularityFallback: false, total: 12,
+    past: [discoverRow("p1", "2026-10-01T10:00:00+09:00")], pastTotal: 60 };
+  const page = await harness.open(t, { screen: "discover", responses: { "/api/events/discover": discover } });
+  await page.getByTestId("events-discover-past").waitFor();
+  const first = await page.evaluate(() => (window as any).fixture.requests.find((item: string) => item.includes("/api/events/discover")) as string);
+  assert.match(first, /period=upcoming/u);
+  assert.equal(await page.getByText("即将举办 ✕", { exact: true }).count(), 0, "no chip for the default");
+  await setDiscover(page, { all: [discoverRow("p2", "2026-09-01T10:00:00+09:00")], community: [], planFit: [], planFitTotal: 0, popularityFallback: false, total: 1 });
+  await page.getByTestId("events-discover-past-all-link").click();
+  await page.getByTestId("events-discover-past-all").waitFor();
+  assert.ok(await page.evaluate(() => (window as any).fixture.requests.some((item: string) => item.includes("/api/events/discover") && item.includes("period=past"))));
+  assert.match(await page.getByTestId("events-discover-past-all").innerText(), /已结束 · 1场[\s\S]*最近的在前/u);
+  await page.getByTestId("events-discover-ended-p2").waitFor();
+  await page.getByText("已结束 ✕", { exact: true }).waitFor();
+  // 时期清掉 = 回到 これから。
+  await setDiscover(page, { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: false, total: 0 });
+  await page.getByText("已结束 ✕", { exact: true }).click();
+  await page.waitForFunction(() => ((window as any).fixture.requests as string[]).filter((item) => item.includes("/api/events/discover")).at(-1)!.includes("period=upcoming"));
+});
+
+test("discover 開催済み with nothing: says to drop place or theme filters", async (t) => {
+  const page = await harness.open(t, { screen: "discover", responses: { "/api/events/discover": { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: false, total: 3, past: [discoverRow("p1", "2026-10-01T10:00:00+09:00")], pastTotal: 60 } } });
+  await page.getByTestId("events-discover-past").waitFor();
+  await setDiscover(page, { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: false, total: 0 });
+  await page.getByTestId("events-discover-past-all-link").click();
+  await page.getByTestId("events-discover-past-empty").getByText("近一年没有已结束的活动", { exact: true }).waitFor();
+});
+
+test("discover with no plan (Web de28c836a): the guide follows the profile goal and can be closed for this account", async (t) => {
+  const fallback = { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: true, total: 0 };
+  const ranked = await harness.open(t, { screen: "discover", responses: { "/api/events/discover": fallback, "/api/profile": { profile: { relationshipGoal: "寻找投资" } } } });
+  const card = ranked.getByTestId("events-discover-empty");
+  await card.getByText("已按你的目标排序", { exact: true }).waitFor();
+  assert.equal(await ranked.getByTestId("events-discover-plan-button").innerText(), "用目标生成计划");
+  await ranked.getByTestId("events-discover-guide-close").click();
+  await ranked.getByTestId("events-discover-reopen-plan").getByText("做计划", { exact: true }).waitFor();
+  assert.equal(await ranked.getByTestId("events-discover-empty").count(), 0);
+  const plain = await harness.open(t, { screen: "discover", responses: { "/api/events/discover": fallback, "/api/profile": { profile: { relationshipGoal: "学习行业趋势" } } } });
+  await plain.getByTestId("events-discover-empty").getByText("现在按日期排序。", { exact: true }).waitFor();
+});
+
 test("cover uri: a site path is completed against the API address; absolute stays; empty is no image", async () => {
   const { coverUri } = await import("../src/screens/events/v2/event-cover");
   assert.equal(coverUri("/orbit-covers/events/a.jpg", "http://localhost:3017"), "http://localhost:3017/orbit-covers/events/a.jpg");

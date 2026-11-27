@@ -42,10 +42,11 @@ export function rowTone(index: number): JourneyTone {
 export type JourneyT = (key: string, values?: Record<string, string | number>) => string;
 type T = JourneyT;
 export const feeText = (yen: number | null | undefined, t: T) => (yen === 0 ? t("free") : typeof yen === "number" ? `¥${yen.toLocaleString("en-US")}` : null);
-export const periodLabel = (p: EventDiscoverPeriod, t: T) => t(`${p === "this_week" ? "pThisWeek" : p === "this_month" ? "pThisMonth" : p === "next_month" ? "pNextMonth" : "pCustom"}`);
+export const periodLabel = (p: EventDiscoverPeriod, t: T) => t(`${p === "upcoming" ? "pUpcoming" : p === "past" ? "pPast" : p === "this_week" ? "pThisWeek" : p === "this_month" ? "pThisMonth" : p === "next_month" ? "pNextMonth" : "pCustom"}`);
 export const areaLabel = (a: EventDiscoverArea, t: T) => t(`${a === "online" ? "aOnline" : a === "tokyo" ? "aTokyo" : a === "osaka" ? "aOsaka" : "aNagoya"}`);
 export const themeLabel = (x: EventDiscoverTheme, t: T) => t(`${({ funding: "tFunding", global: "tGlobal", hiring: "tHiring", ipo: "tIpo", management: "tManagement", manufacturing_dx: "tMfgDx", networking: "tNetworking", saas: "tSaas" } as const)[x]}`);
-export const PERIODS: readonly EventDiscoverPeriod[] = ["this_week", "this_month", "next_month"];
+// 2026-10-29 探す 时期规则（同 Web DiscoverTab）：默认 これから（含进行中）；開催済み = 过去 1 年结束的。
+export const PERIODS: readonly EventDiscoverPeriod[] = ["upcoming", "this_week", "this_month", "next_month", "past"];
 export const AREAS: readonly EventDiscoverArea[] = ["online", "tokyo", "osaka", "nagoya"];
 export const THEMES: readonly EventDiscoverTheme[] = ["funding", "saas", "manufacturing_dx", "hiring", "management", "networking", "ipo", "global"];
 

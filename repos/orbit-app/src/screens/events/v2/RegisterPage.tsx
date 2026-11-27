@@ -182,7 +182,16 @@ function RegisterFlow() {
         const mine = await api.joinCurrent(eventId);
         if (!live) return;
         if (!mine.ok) { if (!mode) setLoadFailed(true); return; }
-        if (mine.data.blocked) { setBlocked(REFUSAL[mine.data.blocked] ?? "joinClosed"); return; }
+        if (mine.data.blocked) {
+          setBlocked(REFUSAL[mine.data.blocked] ?? "joinClosed");
+          // 报过名的人（已决定 / 已截止）：只读显示已提交的资料（同 Web b8a6c97f1）；没报过名就不画空卡。
+          const submitted = mine.data.answers.map(({ answer, field, prompt, questionToken }) => ({ answer, field, prompt, questionToken }));
+          if (!submitted.length) return;
+          setIntro(mine.data.selfIntro ?? "");
+          const read = await api.joinProfile(eventId, submitted, false, true);
+          if (live && read.ok) setProfile(read.data);
+          return;
+        }
         const held = mine.data.status === "registered" || mine.data.status === "pending_review" || mine.data.status === "waitlisted";
         // Settled once: what it is now is told on sending.
         if (mode && !held) return;
@@ -383,6 +392,29 @@ function RegisterFlow() {
           <UiText style={styles.h3}>{t(blocked)}</UiText>
           <UiPressable accessibilityRole="button" accessibilityLabel={t("toDetail")} onPress={() => router.dismissTo(detail as Href)} style={[styles.btnSm, { alignSelf: "flex-start", marginTop: 12 }]}><UiText style={styles.btnSmText}>{t("toDetail")}</UiText></UiPressable>
         </View>
+        {profile ? (
+          <View style={[styles.card, styles.gap]} testID="events-join-submitted">
+            <View style={styles.cardH}>
+              <UiText style={styles.h3}>{t("profileTitle")}</UiText>
+              <View style={[styles.chip, { backgroundColor: colors.surface2 }]}><UiText style={styles.chipText}>{t("profileSubmitted")}</UiText></View>
+            </View>
+            <View style={styles.items}>
+              {profile.items.map((item) => (
+                <View key={item.key} style={[styles.row, { gap: 6 }]}>
+                  <UiText style={[styles.mark, { color: item.done ? colors.ok : colors.ink3 }]}>{item.done ? "✓" : "△"}</UiText>
+                  <UiText style={[styles.itemText, item.done ? null : { color: colors.ink3 }]}>{t(ITEM_LABEL[item.key])}</UiText>
+                </View>
+              ))}
+            </View>
+            {profile.topics.length ? <View style={[styles.chips, { marginTop: 10 }]}>{profile.topics.map((topic) => <View key={topic} style={[styles.chip, { backgroundColor: colors.macLav }]}><UiText style={[styles.chipText, { color: colors.macLavInk }]}>{topic}</UiText></View>)}</View> : null}
+            {(intro ?? profile.selfIntro?.text ?? "").trim() ? (
+              <>
+                <UiText style={[styles.lbl, { marginTop: 12 }]}>{t("introLbl")}</UiText>
+                <UiText style={[styles.introText, { marginTop: 4 }]}>{(intro ?? profile.selfIntro?.text ?? "").trim()}</UiText>
+              </>
+            ) : null}
+          </View>
+        ) : null}
       </JourneyPage>
     );
   }

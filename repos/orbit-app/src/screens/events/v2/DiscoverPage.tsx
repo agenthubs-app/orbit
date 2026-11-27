@@ -14,6 +14,8 @@ import { EmailNotice } from "../../../email-verification/EmailNotice";
 import { SHELL_GUTTER } from "../../../components/ShellTopBar";
 import { openMainTab } from "../../../components/shell-navigation";
 import { planNewGoalHref } from "../../../api/compute/plan-href";
+import { firstProfileGoalForPlan, type ProfileGoalPlanKind } from "../../../api/compute/profile-onboarding-goal";
+import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
 import { BottomSheet, FilterOption, FullScreenSearch, Icon, Toggle, UiPressable, UiText } from "../../../components/ui";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
 import { createThemedStyles } from "../../../design/theme";
@@ -28,7 +30,7 @@ import { AREAS, PERIODS, THEMES, areaLabel, discoverWhen, feeText, periodLabel, 
 import { RelevanceChips, registrationChipLabel, relevanceChips, useRelevanceT } from "./Relevance";
 import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
 import { useJourneyT } from "./useJourneyT";
-import { BoneCard, Bones } from "./loading-ui";
+import { Bone, BoneCard, Bones } from "./loading-ui";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
 import { recentSearchKey } from "../../../data/account-local-caches";
@@ -36,8 +38,8 @@ import { useOrbitApiBaseUrl } from "../../../api/ApiBaseUrlProvider";
 import { coverUri } from "./event-cover";
 import { EventSummarySheet } from "./EventSummarySheet";
 
-// Opens on this month with no area: a fixed 东京 filter left people elsewhere (and online events) with an empty page.
-export const APP_DISCOVER_QUERY: EventDiscoverQuery = { areas: [], period: "this_month", planFirst: true, sort: "date", themes: [] };
+// 2026-10-29 探す 时期规则（同 Web DEFAULT_DISCOVER_QUERY）：默认 これから · 场所不限 · 推荐顺；開催済み = 过去 1 年。
+export const APP_DISCOVER_QUERY: EventDiscoverQuery = { areas: [], period: "upcoming", planFirst: true, sort: "recommended", themes: [] };
 const FORMATS: readonly EventDiscoverFormat[] = ["speakers", "networking", "small"];
 
 /** 路由参数里的条件（`/events?tab=discover&period=this_week&areas=tokyo&themes=manufacturing_dx&q=CFO&filters=1`）。 */
@@ -81,6 +83,26 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const [draft, setDraft] = useState<EventDiscoverQuery>((): EventDiscoverQuery => openFilters && addDesignMock("open-path")
     ? { ...initialQuery, themes: ["funding", "saas"], formats: ["networking"] }
     : initialQuery);
+  // 2026-11-27（同 Web de28c836a）：没计划时的引导卡——文案随资料里的目标（有目标且对得上计划类型时服务端已按目标粗排）；
+  // 右上角可关，按账号记在本机。undefined = 目标还没读到（卡片先出骨架）。
+  const client = useOrbitApiClient();
+  const [goal, setGoal] = useState<{ text: string; suggestedKind: ProfileGoalPlanKind | null } | null | undefined>(undefined);
+  const goalWanted = Boolean(data?.popularityFallback);
+  useEffect(() => {
+    if (!goalWanted || goal !== undefined) return;
+    let live = true;
+    void client.get<{ profile?: { relationshipGoal?: string | null } | null }>("/api/profile").then((res) => {
+      if (!live) return;
+      const saved = res.success ? firstProfileGoalForPlan(res.data?.profile?.relationshipGoal ?? "") : null;
+      setGoal(saved && saved.text.trim() ? { text: saved.text.trim(), suggestedKind: saved.suggestedKind } : null);
+    }).catch(() => { if (live) setGoal(null); });
+    return () => { live = false; };
+  }, [client, goalWanted, goal]);
+  const guideKey = `orbit:discover:plan-guide-closed:${auth.actorId ?? "anon"}`;
+  const [guideClosed, setGuideClosed] = useState(false);
+  useEffect(() => { let live = true; void AsyncStorage.getItem(guideKey).then((v) => { if (live) setGuideClosed(v === "1"); }).catch(() => undefined); return () => { live = false; }; }, [guideKey]);
+  const closeGuide = () => { setGuideClosed(true); void AsyncStorage.setItem(guideKey, "1").catch(() => undefined); };
+  const goalRanked = Boolean(goal?.suggestedKind);
   // 门禁开发开关：聚焦不弹软键盘（画板从不画系统键盘）。
   const noKeyboard = addDesignMock("no-keyboard");
 
@@ -127,7 +149,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   }, [api, draft, sheet]);
   useEffect(() => {
     if (!data || !onSubtitle) return;
-    onSubtitle(data.popularityFallback ? t("dSubtitleEmpty") : data.total <= 5 && data.all.length > 0 ? t("dSubtitleFewLong", { n: data.total }) : t("dSubtitleMany", { n: data.planFitTotal, period: query.period ? periodLabel(query.period, t) : "", total: data.total }));
+    onSubtitle(query.period === "past" ? t("dSubtitlePast", { n: data.total }) : data.popularityFallback ? t("dSubtitleEmpty") : data.total <= 5 && data.all.length > 0 ? t("dSubtitleFewLong", { n: data.total }) : t("dSubtitleMany", { n: data.planFitTotal, period: query.period ? periodLabel(query.period, t) : "", total: data.total }));
   }, [data, onSubtitle, query.period, t]);
 
   // 2026-11-23 event-side-panel-proposal ④：点卡片 / 行先出底部简介面板；进详情靠面板里的「查看详情」。
@@ -135,9 +157,11 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const open = useCallback((row: EventDiscoverRow, tone?: string) => setSelected({ row, tone: tone ?? colors.macTeal }), [colors.macTeal]);
   const closeSummary = useCallback(() => setSelected(null), []);
   const patch = (next: Partial<EventDiscoverQuery>) => setQuery((current) => ({ ...current, ...next }));
-  const clear = (key: keyof EventDiscoverQuery) => setQuery((current) => { const next = { ...current }; delete next[key]; if (key === "period") { delete next.from; delete next.to; } return next; });
-  const flat = data !== null && !data.popularityFallback && data.total <= 5 && data.all.length > 0;
-  const count = (query.period ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
+  // 时期清掉 = 回到默认 これから（同 Web）。
+  const clear = (key: keyof EventDiscoverQuery) => setQuery((current) => { const next = { ...current }; delete next[key]; if (key === "period") { delete next.from; delete next.to; next.period = "upcoming"; } return next; });
+  const past = query.period === "past";
+  const flat = data !== null && !past && !data.popularityFallback && data.total <= 5 && data.all.length > 0;
+  const count = (query.period && query.period !== "upcoming" ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
   // すべて is always by date (2026-11-15: no score order any more).
   const rows = useMemo(() => (data ? [...data.all].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)) : []), [data]);
   const toneBg = (tone: JourneyTone) => (tone === "teal" ? colors.macTeal : tone === "lav" ? colors.macLav : tone === "blue" ? colors.macBlue : tone === "apricot" ? colors.macApricot : colors.macPink);
@@ -147,6 +171,25 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const customRange = (value: EventDiscoverQuery) => [value.from, value.to].filter(Boolean).map((day) => `${Number(day!.slice(5, 7))}/${Number(day!.slice(8, 10))}`).join("–");
   const toggleIn = <T extends string>(list: readonly T[] | undefined, value: T) => (list?.includes(value) ? list.filter((item) => item !== value) : [...(list ?? []), value]);
 
+  // 已结束（2026-11-23 ④ M2）：封面保持原色，左上角「已结束」角标；不放费用和标签。
+  const pastRow = (row: EventDiscoverRow, index: number) => {
+    const cover = coverUri(row.coverUrl, baseUrl);
+    const tone = toneBg(rowTone(index));
+    return (
+      <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row, tone)} style={styles.ecRow} testID={`events-discover-past-${row.eventId}`}>
+        {selected?.row.eventId === row.eventId ? <View pointerEvents="none" style={styles.ecSel} /> : null}
+        <View>
+          {cover ? <Image source={{ uri: cover }} resizeMode="cover" style={styles.ecThumb} accessibilityIgnoresInvertColors />
+            : <View style={[styles.ecThumb, styles.ecThumbEmoji, { backgroundColor: tone }]}><UiText style={styles.ecEmoji}>{row.emoji}</UiText></View>}
+          <View style={styles.endTag} testID={`events-discover-ended-${row.eventId}`}><View style={styles.endTagBg} /><UiText style={styles.endTagText}>{rt("eventsV2.panelEnded")}</UiText></View>
+        </View>
+        <View style={styles.ecText}>
+          <UiText style={styles.ecTitle} numberOfLines={2}>{row.title}</UiText>
+          <UiText style={styles.ecMeta} numberOfLines={1}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</UiText>
+        </View>
+      </UiPressable>
+    );
+  };
   const datebox = (iso: string, tall = false) => { const p = tokyo(iso); return <View style={styles.datebox}><UiText style={styles.dateDay}>{p?.day ?? ""}</UiText><UiText style={[styles.dateMonth, tall ? { lineHeight: 15.4 } : null]}>{p ? t("monthLabel", { m: p.month }) : ""}</UiText></View>; };
   const chip = (label: string, onPress: () => void, on: boolean, key: string, caret = false) => (
     <UiPressable key={key} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[styles.chip, on ? { backgroundColor: colors.macLav } : null]}>
@@ -171,8 +214,8 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
       {/* 2026-11-21 手机扫描：数据未到时不知道是否走「人気順」引导，先只出骨架，不画筛选块（之前先画「今月 ✕」再整体换掉）。 */}
       {data === null ? (
         <Bones testID="events-discover-loading" style={styles.loadingBones}><BoneCard rows={2} /><BoneCard rows={3} /></Bones>
-      ) : data.popularityFallback ? null : <View style={styles.chips}>
-        {query.period ? chip(query.period === "custom" && query.from ? customRange(query) : periodLabel(query.period, t), () => clear("period"), true, "period") : null}
+      ) : data.popularityFallback && !past ? null : <View style={styles.chips}>
+        {query.period && query.period !== "upcoming" ? chip(query.period === "custom" && query.from ? customRange(query) : periodLabel(query.period, t), () => clear("period"), true, "period") : null}
         {(query.areas ?? []).map((a) => chip(areaLabel(a, t), () => patch({ areas: (query.areas ?? []).filter((x) => x !== a) }), true, `a-${a}`))}
         {(query.themes ?? []).map((x) => chip(themeLabel(x, t), () => patch({ themes: (query.themes ?? []).filter((v) => v !== x) }), true, `t-${x}`))}
         {query.freeOnly ? chip(t("freeOnly"), () => clear("freeOnly"), true, "free") : null}
@@ -180,8 +223,11 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         {data?.popularityFallback || flat || query.freeOnly ? null : chip(t("feeLbl"), openSheet, false, "fee", true)}
       </View>}
 
-      {data?.popularityFallback ? (
+      {data?.popularityFallback && !past ? (
         <>
+          {guideClosed ? (
+            <UiPressable accessibilityRole="button" accessibilityLabel={t(goal ? "makePlanShort" : "setGoal")} onPress={() => openMainTab(router, planNewGoalHref("app"))} style={styles.reopen} testID="events-discover-reopen-plan"><UiText style={styles.more}>{t(goal ? "makePlanShort" : "setGoal")}</UiText></UiPressable>
+          ) : (
           <View style={[styles.card, styles.guide]} testID="events-discover-empty">
             <View pointerEvents="none" style={styles.guideGlow}>
               <Svg width={220} height={220}>
@@ -190,11 +236,19 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
                 <Rect x={0} y={0} width={220} height={220} fill="url(#events-discover-guide-glow)" />
               </Svg>
             </View>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("close")} onPress={closeGuide} style={styles.guideClose} testID="events-discover-guide-close"><Icon name="x" size={16} color={colors.ink3Text} /></UiPressable>
             <UiText style={styles.lbl}>{t("noPlanLbl")}</UiText>
-            <UiText style={styles.guideTitle}>{`${t("noPlanTitleShort")}\n${t("noPlanTitleRest")}`}</UiText>
-            <UiText style={styles.guideSub}>{t("noPlanSubShort")}</UiText>
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("setGoal")} onPress={() => openMainTab(router, planNewGoalHref("app"))} style={styles.btnBlock46}><Icon name="target" size={16} color={colors.bg} /><UiText style={styles.btnPrimaryText}>{t("setGoal")}</UiText></UiPressable>
+            {goal === undefined ? (
+              <Bones testID="events-discover-goal-pending"><Bone w="70%" h={18} style={{ marginTop: 8 }} /><Bone w="80%" h={14} style={{ marginTop: 10 }} /></Bones>
+            ) : (
+              <>
+                <UiText style={styles.guideTitle}>{goalRanked ? t("noPlanTitleRanked") : goal ? t("noPlanTitleGoal") : `${t("noPlanTitleShort")}\n${t("noPlanTitleRest")}`}</UiText>
+                <UiText style={styles.guideSub}>{t(goalRanked ? "noPlanSubRanked" : goal ? "noPlanSubGoal" : "noPlanSubShort")}</UiText>
+              </>
+            )}
+            <UiPressable accessibilityRole="button" accessibilityLabel={t(goal ? "planFromGoal" : "setGoal")} onPress={() => openMainTab(router, planNewGoalHref("app"))} style={styles.btnBlock46} testID="events-discover-plan-button"><Icon name="target" size={16} color={colors.bg} /><UiText style={styles.btnPrimaryText}>{t(goal ? "planFromGoal" : "setGoal")}</UiText></UiPressable>
           </View>
+          )}
           <View style={styles.grid3}>
             {([["🔗", "tileUrl", colors.macBlue, "/events/assess?mode=url"], ["🎟️", "tileCode", colors.macTeal, "/events?code=1"], ["👥", "tileCommunity", colors.macPink, "/events?tab=discover"]] as const).map(([emoji, key, bg, href]) => (
               <UiPressable key={key} accessibilityRole="button" accessibilityLabel={t(key)} onPress={() => router.push(href as Href)} style={styles.tile}>
@@ -252,7 +306,20 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         </>
       ) : null}
 
-      {!flat && data && data.community.length ? (
+      {/* 開催済み：结果全是已结束的，同一灰卡片样式平铺，最近的在前；没有时说去掉条件试试。 */}
+      {past && data ? (data.all.length ? (
+        <View testID="events-discover-past-all">
+          <View style={styles.lh}><UiText style={styles.lhTitle}>{t("pastTitle", { n: data.total })}</UiText><UiText style={styles.lhLbl}>{t("byNewest")}</UiText></View>
+          <View style={styles.ecList}>{data.all.map(pastRow)}</View>
+        </View>
+      ) : (
+        <View style={[styles.card, styles.noMatch]} testID="events-discover-past-empty">
+          <UiText style={styles.noMatchTitle}>{t("pastEmpty")}</UiText>
+          <UiText style={[styles.lhLbl, { marginTop: 6 }]}>{t("pastEmptySub")}</UiText>
+        </View>
+      )) : null}
+
+      {!past && !flat && data && data.community.length ? (
         <View style={[styles.card, styles.comm]} testID="events-discover-community">
           <View style={[styles.cardH, { marginBottom: 4 }]}><UiText style={styles.h3}>{t("communityTitle")}</UiText><UiText style={styles.more}>{t("countN", { n: data.community.length })}</UiText></View>
           {data.community.map((row, index) => {
@@ -269,7 +336,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         </View>
       ) : null}
 
-      {!flat && data && data.planFit.length ? (
+      {!past && !flat && data && data.planFit.length ? (
         <View style={styles.section} testID="events-discover-planfit">
           <View style={styles.cardH}><UiText style={styles.h3}>{rt("eventsV2.relDiscoverPeople")}</UiText><UiText style={styles.more}>{t("countN", { n: data.planFitTotal })}</UiText></View>
           {/* 2026-11-21 event-card-compact-proposal 推荐案 B（用户确认）：手机用左图右文列表行——88×88 缩略图（封面居中裁方 / 没封面 = emoji 色块），
@@ -300,7 +367,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         </View>
       ) : null}
 
-      {!flat && !data?.popularityFallback && rows.length ? (
+      {!past && !flat && !data?.popularityFallback && rows.length ? (
         <View style={[styles.card, styles.all]} testID="events-discover-all">
           <View style={[styles.cardH, { marginBottom: 0, marginTop: 8 }]}>
             <UiText style={styles.h3}>{t("allPlain")}</UiText>
@@ -317,36 +384,23 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
       ) : null}
 
       {/* 已结束（2026-11-23 ④ M2）：封面保持原色，左上角「已结束」角标；不放费用和标签。最近的在前。 */}
-      {data && !data.popularityFallback && data.past?.length ? (
+      {!past && data && !data.popularityFallback && data.past?.length ? (
         <View testID="events-discover-past">
-          <View style={styles.lh}><UiText style={styles.lhTitle}>{rt("eventsV2.pastTitle", { n: data.pastTotal ?? data.past.length })}</UiText><UiText style={styles.lhLbl}>{rt("eventsV2.pastNewest")}</UiText></View>
-          <View style={styles.ecList}>
-            {data.past.map((row, index) => {
-              const cover = coverUri(row.coverUrl, baseUrl);
-              const tone = toneBg(rowTone(index));
-              return (
-                <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row, tone)} style={styles.ecRow} testID={`events-discover-past-${row.eventId}`}>
-                  {selected?.row.eventId === row.eventId ? <View pointerEvents="none" style={styles.ecSel} /> : null}
-                  <View>
-                    {cover ? <Image source={{ uri: cover }} resizeMode="cover" style={styles.ecThumb} accessibilityIgnoresInvertColors />
-                      : <View style={[styles.ecThumb, styles.ecThumbEmoji, { backgroundColor: tone }]}><UiText style={styles.ecEmoji}>{row.emoji}</UiText></View>}
-                    <View style={styles.endTag} testID={`events-discover-ended-${row.eventId}`}><View style={styles.endTagBg} /><UiText style={styles.endTagText}>{rt("eventsV2.panelEnded")}</UiText></View>
-                  </View>
-                  <View style={styles.ecText}>
-                    <UiText style={styles.ecTitle} numberOfLines={2}>{row.title}</UiText>
-                    <UiText style={styles.ecMeta} numberOfLines={1}>{[discoverWhen(row.startsAt, language), row.venue].filter(Boolean).join(" · ")}</UiText>
-                  </View>
-                </UiPressable>
-              );
-            })}
+          <View style={styles.lh}>
+            <UiText style={styles.lhTitle}>{rt("eventsV2.pastTitle", { n: data.pastTotal ?? data.past.length })}</UiText>
+            {/* 超过列出的条数（50）时「すべて見る」= 切到 開催済み（同 Web）。 */}
+            {(data.pastTotal ?? 0) > data.past.length
+              ? <UiPressable accessibilityRole="button" accessibilityLabel={t("pastSeeAll")} onPress={() => patch({ period: "past" })} testID="events-discover-past-all-link"><UiText style={styles.more}>{t("pastSeeAll")}</UiText></UiPressable>
+              : <UiText style={styles.lhLbl}>{rt("eventsV2.pastNewest")}</UiText>}
           </View>
+          <View style={styles.ecList}>{data.past.map(pastRow)}</View>
         </View>
       ) : null}
 
-      {data && !data.popularityFallback && !flat && rows.length === 0 && data.community.length === 0 && data.planFit.length === 0 ? (
+      {!past && data && !data.popularityFallback && !flat && rows.length === 0 && data.community.length === 0 && data.planFit.length === 0 ? (
         <View style={[styles.card, styles.noMatch]} testID="events-discover-no-match">
           <UiText style={styles.noMatchTitle}>{t("noMatchTitle")}</UiText>
-          {count ? <UiPressable accessibilityRole="button" accessibilityLabel={t("noMatchClear")} onPress={() => setQuery({ areas: [], planFirst: true, sort: query.sort ?? "date", themes: [] })} style={[styles.btnSm, styles.noMatchBtn]} testID="events-discover-clear"><UiText style={styles.btnSmText}>{t("noMatchClear")}</UiText></UiPressable> : null}
+          {count ? <UiPressable accessibilityRole="button" accessibilityLabel={t("noMatchClear")} onPress={() => setQuery({ ...APP_DISCOVER_QUERY, ...(query.sort ? { sort: query.sort } : {}) })} style={[styles.btnSm, styles.noMatchBtn]} testID="events-discover-clear"><UiText style={styles.btnSmText}>{t("noMatchClear")}</UiText></UiPressable> : null}
         </View>
       ) : null}
 
@@ -364,7 +418,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         <View style={styles.sheet} testID="events-discover-sheet">
           <View style={[styles.row, { justifyContent: "space-between", marginBottom: 2 }]}>
             <UiText style={styles.sheetTitle}>{t("filtersLbl")}</UiText>
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("clear")} onPress={() => setDraft({ areas: [], planFirst: true, sort: APP_DISCOVER_QUERY.sort ?? "date", themes: [] })} style={styles.ghostBtn}><UiText style={styles.ghostBtnText}>{t("clear")}</UiText></UiPressable>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("clear")} onPress={() => setDraft({ ...APP_DISCOVER_QUERY })} style={styles.ghostBtn}><UiText style={styles.ghostBtnText}>{t("clear")}</UiText></UiPressable>
           </View>
           <View style={styles.fgrp}><UiText style={styles.lbl}>{t("periodLbl")}</UiText><View style={styles.fchips}>{PERIODS.map((p) => <FilterOption key={p} label={periodLabel(p, t)} selected={draft.period === p} onToggle={() => setDraft(({ from: _from, to: _to, ...d }) => ({ ...d, period: p }))} />)}<FilterOption label={draft.period === "custom" && draft.from ? `📅 ${customRange(draft)}` : `📅 ${t("pCustom")}`} selected={draft.period === "custom"} onToggle={() => { setSheet(false); setTimeout(() => setPickDay("from"), 350); }} /></View></View>
           <View style={styles.fgrp}><UiText style={styles.lbl}>{t("areaLbl")}</UiText><View style={styles.fchips}>{AREAS.map((a) => <FilterOption key={a} label={areaLabel(a, t)} selected={Boolean(draft.areas?.includes(a))} onToggle={() => setDraft((d) => ({ ...d, areas: toggleIn(d.areas, a) }))} />)}</View></View>
@@ -522,6 +576,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   btnPrimaryText: { color: colors.bg, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   btnBlock46: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, flexDirection: "row", gap: 6, height: 46, justifyContent: "center" },
   guide: { marginTop: 14, overflow: "hidden", padding: 20 },
+  // 引导卡右上角关闭（同 Web .pGuideClose）；关掉后留一个小入口。
+  guideClose: { alignItems: "center", height: 32, justifyContent: "center", position: "absolute", right: 10, top: 10, width: 32, zIndex: 1 },
+  reopen: { alignSelf: "flex-end", marginTop: 14, paddingVertical: 4 },
   guideGlow: { height: 220, opacity: 0.9, position: "absolute", right: -80, top: -90, width: 220 },
   guideTitle: { color: colors.ink, fontSize: 21, fontWeight: "800", lineHeight: 29, marginVertical: 4 },
   guideSub: { color: colors.ink2, fontSize: 15, lineHeight: 23, marginBottom: 14 },

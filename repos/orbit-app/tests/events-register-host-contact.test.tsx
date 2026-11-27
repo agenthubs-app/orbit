@@ -320,6 +320,16 @@ test("what cannot be changed is said on arrival, with the way to the event page;
   }
 });
 
+test("decided or closed (Web b8a6c97f1): what was submitted is shown read-only under the notice; nothing can be edited", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/join/current`]: mine("registered", { blocked: "JOIN_LOCKED" }), [`${base}/join/profile`]: { ...profile, items: editItems } } });
+  const card = page.getByTestId("events-join-submitted");
+  await card.waitFor();
+  assert.match(await card.innerText(), /参会资料[\s\S]*已提交[\s\S]*想见的人[\s\S]*SaaS[\s\S]*第一版介绍。/u);
+  assert.equal(await card.getByRole("button").count(), 0, "read-only");
+  assert.deepEqual((await posts(page, "/join/profile")).map((body: { edit: boolean }) => body.edit), [true]);
+  assert.deepEqual(await posts(page, "/join/next"), []);
+});
+
 test("nothing is asked or sent until it is known whether this is new; when that cannot be read there is a retry", async (t) => {
   const slow = await harness.open(t, { screen: "register", params: { id: eventId }, slowPrefix: `${base}/join/current`, slowMs: 900, responses: responses(null) });
   await slow.waitForTimeout(300);
