@@ -212,10 +212,10 @@ test("phone widths: no desktop table, no sideways scroll, nothing under the bott
           if (facts.lastBottom > facts.navTop + 0.5) failures.push(`${tag}: last content ${facts.last} (bottom ${Math.round(facts.lastBottom)}) under the capsule (top ${Math.round(facts.navTop)})`);
           const errors = errorsOf(page);
           if (errors.length) failures.push(`${tag}: page errors ${errors.slice(0, 2).join(" | ")}`);
-          if (SHOTS && width === 390) {
+          if (SHOTS) {
             mkdirSync(SHOTS, { recursive: true });
             await page.evaluate(() => window.scrollTo(0, 0));
-            await page.screenshot({ path: `${SHOTS}/${key}-${state}-390.png`, fullPage: true });
+            await page.screenshot({ path: `${SHOTS}/${key}-${state}-${width}.png`, fullPage: true });
           }
           await page.close();
         }
