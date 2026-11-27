@@ -7,7 +7,8 @@
  *   purge-preview --email <邮箱> [--user-id <账号id>]           按邮箱解析账号，列出将清除的类别与数量
  *   purge --email <邮箱> --user-id <账号id> [--apply]          彻底删除这一个账号（主办方/共同运营者会被拒）
  *   email-preview --name <姓名片段> --new-email <新邮箱>         找候选账号、确认新邮箱没被占用
- *   change-email --user-id <账号id> --from <旧邮箱> --to <新邮箱> [--apply]   换登录邮箱
+ *   change-email --user-id <账号id> --from <旧邮箱> --to <新邮箱> [--also-profile-contact] [--apply]
+ *                                                              换登录邮箱；加 --also-profile-contact 时资料里的联系邮箱一起换
  *   verify-login --email <邮箱>                                只读：这个邮箱现在能不能登录/找回密码
  *   event-pending --event <活动id>                             只读：该活动待审核人数
  *   deletions-in-progress                                      只读：注销申请按状态计数（pending/purging = 删除中）
@@ -56,7 +57,7 @@ async function main() {
         print("email-preview", await previewControlledEmailChange({ db, workspaceId, name: required("name"), newEmail: required("new-email") }));
         break;
       case "change-email":
-        print("change-email", await runControlledEmailChange({ db, workspaceId, userId: required("user-id"), fromEmail: required("from"), toEmail: required("to"), apply }));
+        print("change-email", await runControlledEmailChange({ db, workspaceId, userId: required("user-id"), fromEmail: required("from"), toEmail: required("to"), alsoProfileContactEmail: process.argv.includes("--also-profile-contact"), apply }));
         break;
       case "verify-login": {
         const email = normalizeAuthEmail(required("email"));

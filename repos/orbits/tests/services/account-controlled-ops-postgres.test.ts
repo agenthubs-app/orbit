@@ -135,6 +135,8 @@ test("controlled email change: candidates, taken address, re-keyed sign-in row, 
     const person = await account("nakahara", "old.addr@example.test", { displayName: "中原 太郎", migratedFrom: "party-app:test", mustChangePassword: true,
       emailVerifiedAt: "2026-11-02T00:00:00.000Z", passwordReset: { tokenHash: "old-token", delivery: "sent", expiresAt: "2100-01-01T00:00:00.000Z" },
       emailVerification: { sentAt: "2026-11-02T00:00:00.000Z" }, consents: [{ termsVersion: "1" }] });
+    await pool.query(`update orbit_records set payload=payload||'{"handles":{"email":"Old.Addr@example.test","phone":"090"}}'::jsonb
+      where workspace_id=$1 and collection_name='profiles' and user_id=$2`, [workspaceId, person.actorId]);
     await account("taken", "taken@example.test");
     const { previewControlledEmailChange, runControlledEmailChange } = await import("../../features/account/controlled-ops/email-change");
 
@@ -150,15 +152,19 @@ test("controlled email change: candidates, taken address, re-keyed sign-in row, 
 
     await assert.rejects(runControlledEmailChange({ db, workspaceId, userId: "user:taken", fromEmail: person.email, toEmail: "new.addr@example.test", apply: true }), /TARGET_EMAIL_ID_MISMATCH/u);
     await assert.rejects(runControlledEmailChange({ db, workspaceId, userId: person.userId, fromEmail: person.email, toEmail: "taken@example.test", apply: true }), /NEW_EMAIL_TAKEN/u);
-    const dry = await runControlledEmailChange({ db, workspaceId, userId: person.userId, fromEmail: person.email, toEmail: "New.Addr@example.test" });
+    const dry = await runControlledEmailChange({ db, workspaceId, userId: person.userId, fromEmail: person.email, toEmail: "New.Addr@example.test", alsoProfileContactEmail: true });
     assert.equal(dry.kind, "dry-run");
+    assert.equal(dry.profileContactEmailMatches, 1);
     const row = async (email: string) => (await pool.query(`select user_id,search_text,payload from orbit_records where workspace_id=$1 and collection_name='auth_users' and record_id=$2`, [workspaceId, `auth_user:${email}`])).rows[0];
     assert.ok(await row(person.email));
     assert.equal(await row("new.addr@example.test"), undefined);
 
     const authenticatedBefore = Date.now() - 1000;
-    const changed = await runControlledEmailChange({ db, workspaceId, userId: person.userId, fromEmail: person.email, toEmail: "New.Addr@example.test", apply: true });
-    assert.deepEqual(changed, { kind: "changed", userId: person.userId, actorId: person.actorId, from: "o***@example.test", to: "n***@example.test" });
+    const changed = await runControlledEmailChange({ db, workspaceId, userId: person.userId, fromEmail: person.email, toEmail: "New.Addr@example.test", alsoProfileContactEmail: true, apply: true });
+    assert.deepEqual(changed, { kind: "changed", userId: person.userId, actorId: person.actorId, from: "o***@example.test", to: "n***@example.test",
+      profileContactEmailMatches: 1, profileContactEmailChanged: 1 });
+    const profile = (await pool.query(`select payload from orbit_records where workspace_id=$1 and collection_name='profiles' and user_id=$2`, [workspaceId, person.actorId])).rows[0].payload;
+    assert.deepEqual(profile.handles, { email: "new.addr@example.test", phone: "090" });
     assert.equal(await row(person.email), undefined);
     const moved = await row("new.addr@example.test");
     assert.equal(moved.user_id, person.userId);

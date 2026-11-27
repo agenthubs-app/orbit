@@ -119,8 +119,8 @@ export function previewControlledEmailChange(input: { db: TransactionalPostgresC
 }
 
 export type ControlledEmailChangeResult =
-  | { kind: "dry-run"; userId: string; actorId: string; from: string; to: string }
-  | { kind: "changed"; userId: string; actorId: string; from: string; to: string };
+  | { kind: "dry-run"; userId: string; actorId: string; from: string; to: string; profileContactEmailMatches: number }
+  | { kind: "changed"; userId: string; actorId: string; from: string; to: string; profileContactEmailMatches: number; profileContactEmailChanged: number };
 
 /**
  * Dry run unless `apply` is exactly true. Old email, new email and account id must all be given and agree.
@@ -132,6 +132,8 @@ export function runControlledEmailChange(input: {
   userId: string;
   fromEmail: string;
   toEmail: string;
+  /** Also move the account's own profile contact email (profile.handles.email) when it is the old address. */
+  alsoProfileContactEmail?: boolean;
   apply?: boolean;
   now?: () => Date;
 }): Promise<ControlledEmailChangeResult> {
@@ -146,7 +148,12 @@ export function runControlledEmailChange(input: {
     const run = async (sql: TransactionalSqlExecutor) => {
       const target = await resolveControlledAccountTarget(sql, workspaceId, { email: from, userId: input.userId });
       if (await isTaken(sql, workspaceId, to)) throw new Error("NEW_EMAIL_TAKEN");
-      const masked = { userId: target.userId, actorId: target.actorId, from: maskEmail(from), to: maskEmail(to) };
+      const contact = await sql.query<{ n: number }>(`select count(*)::int as n from orbit_records where workspace_id=$1
+        and collection_name='profiles' and user_id=$2 and lifecycle_state<>'deleted' and lower(trim(payload->'handles'->>'email'))=$3`,
+      [workspaceId, target.actorId, from]);
+      const masked = { userId: target.userId, actorId: target.actorId, from: maskEmail(from), to: maskEmail(to),
+        profileContactEmailMatches: contact.rows[0]?.n ?? 0 };
+      if (input.alsoProfileContactEmail === true && masked.profileContactEmailMatches !== 1) throw new Error("PROFILE_CONTACT_EMAIL_NOT_UNIQUE");
       if (input.apply !== true) return { kind: "dry-run" as const, ...masked };
       await acquireSyncCommitOrderLock(sql);
       const locked = await sql.query(`select record_id from orbit_records where workspace_id=$1 and collection_name='auth_users'
@@ -162,7 +169,16 @@ export function runControlledEmailChange(input: {
       const removed = await sql.query(`delete from orbit_records where workspace_id=$1 and collection_name='auth_users' and record_id=$2
         and payload->>'id'=$3 returning record_id`, [workspaceId, target.authRecordId, target.userId]);
       if (removed.rows.length !== 1) throw new Error("EMAIL_MOVE_FAILED");
-      return { kind: "changed" as const, ...masked };
+      let profileContactEmailChanged = 0;
+      if (input.alsoProfileContactEmail === true) {
+        const updated = await sql.query(`update orbit_records set payload=jsonb_set(payload,'{handles,email}',to_jsonb($4::text)),
+            search_text=replace(coalesce(search_text,''),payload->'handles'->>'email',$4::text),updated_at=$5::timestamptz
+          where workspace_id=$1 and collection_name='profiles' and user_id=$2 and lifecycle_state<>'deleted'
+            and lower(trim(payload->'handles'->>'email'))=$3 returning record_id`, [workspaceId, target.actorId, from, to, now]);
+        profileContactEmailChanged = updated.rows.length;
+        if (profileContactEmailChanged !== 1) throw new Error("PROFILE_CONTACT_EMAIL_NOT_UNIQUE");
+      }
+      return { kind: "changed" as const, ...masked, profileContactEmailChanged };
     };
     return input.apply === true
       ? db.transaction(run, { isolation: "serializable" })
