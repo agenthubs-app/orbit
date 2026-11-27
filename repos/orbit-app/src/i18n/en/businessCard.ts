@@ -1,5 +1,8 @@
 export const businessCard = {
   "businessCard.review": "Review business card",
+  "businessCard.quotaUpgrade": "This month's {count} card scans are used up. They come back on {date}. Pro allows {upgrade} card scans a month.",
+  "businessCard.quotaPro": "This month's {count} card scans are used up. They come back on {date}. Everything you already have can still be viewed as usual.",
+  "businessCard.quotaNotAccepted": "Not accepted: {count}.",
   "businessCard.image": "Business card image",
   "businessCard.imageLoading": "Loading image...",
   "businessCard.noImage": "No business card image",

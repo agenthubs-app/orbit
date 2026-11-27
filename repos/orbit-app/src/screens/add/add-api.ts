@@ -3,6 +3,7 @@
 // candidates, the contact draft queue and the R12 manual contact routes. Answers are
 // read through the synced schemas (unknown enum values read leniently); a failure
 // becomes one small union the screens map to UI. No AI runs here.
+import { aiLimitDetailOf, CARD_SCAN_LIMIT_CODE, type AiLimitDetail } from "../../api/ai-limit";
 import { useMemo } from "react";
 import type { ZodType } from "zod";
 
@@ -55,6 +56,8 @@ export type AddFailure =
   | { kind: "notImplemented" }
   /** 示例データ (the demo account) is read only: writes answer 403 SAMPLE_READ_ONLY. */
   | { kind: "sample" }
+  /** 2026-11-27 分档：这个月的扫名片张数用完了（429 CARD_SCAN_MONTHLY_LIMIT）——不是失败，不给「重试」。 */
+  | { kind: "quota"; detail: AiLimitDetail }
   | { kind: "other"; status: number; reason: string | null };
 
 export type AddResult<T> = { ok: true; data: T } | { ok: false; failure: AddFailure };
@@ -64,6 +67,7 @@ export function addFailureOf(result: Extract<ApiResult<unknown>, { success: fals
   if (!result.success && isNotImplemented(result)) return { kind: "notImplemented" };
   const reason = result.success ? null : result.error.context?.reason ?? null;
   if (result.status === 403 && reason === "SAMPLE_READ_ONLY") return { kind: "sample" };
+  if (result.status === 429 && !result.success && reason === CARD_SCAN_LIMIT_CODE) return { detail: aiLimitDetailOf(result.error.context), kind: "quota" };
   return { kind: "other", reason, status: result.status };
 }
 
@@ -89,7 +93,8 @@ export interface AddApi {
   checkManualDuplicates(input: ManualContactDuplicateCheckInput, signal?: AbortSignal): Promise<AddResult<ManualContactDuplicateCheckResult>>;
   suggestOrganizations(query: string, signal?: AbortSignal): Promise<AddResult<ManualContactOrganizationSuggestionsResult>>;
   undoManual(contactId: string): Promise<AddResult<ManualContactUndoResult>>;
-  createBatch(attempt: CreationAttempt): Promise<AddResult<IngestBatchDetailContract>>;
+  /** `quota`（2026-11-27 分档）：只受理了一部分（超出本月张数的名片没有受理）——没受理的张数与提示字段。 */
+  createBatch(attempt: CreationAttempt): Promise<AddResult<IngestBatchDetailContract> & { quota?: { notAccepted: number; detail: AiLimitDetail } }>;
   getBatch(batchId: string, ownerId: string | null): Promise<AddResult<IngestBatchDetailContract>>;
   uploadPending(detail: IngestBatchDetailContract, files: ReadonlyMap<string, PreparedBatchImage>, signal: AbortSignal, native?: BatchImageNative): Promise<UploadPassResult>;
   finalize(batchId: string): Promise<AddResult<IngestBatchContract>>;
@@ -152,8 +157,14 @@ export function createAddApi(client: OrbitApiClient): AddApi {
     async createBatch(attempt) {
       const result = await client.post<unknown>(INGEST_COLLECTION_PATH, { body: attempt });
       if (!isHttpSuccess(result)) return fail(addFailureOf(result));
-      const detail = acceptedIngestCreate(result, attempt);
-      return detail ? { data: detail, ok: true } : unreadable(result.status);
+      // 2026-11-27 分档：超出本月张数的名片没有受理（按 seq 列出）；建出的批次只含受理的部分，按受理的部分核对。
+      const quota = record(record(result.data).quota);
+      const notAccepted = new Set(Array.isArray(quota.notAcceptedSeqs) ? quota.notAcceptedSeqs.filter((seq): seq is number => typeof seq === "number") : []);
+      const accepted = notAccepted.size ? { ...attempt, manifest: attempt.manifest.filter((entry) => !notAccepted.has(entry.seq)) } : attempt;
+      const detail = acceptedIngestCreate(result, accepted);
+      if (!detail) return unreadable(result.status);
+      const context = Object.fromEntries(Object.entries(quota).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+      return { data: detail, ok: true, ...(notAccepted.size ? { quota: { detail: aiLimitDetailOf(context), notAccepted: notAccepted.size } } : {}) };
     },
     async getBatch(batchId, ownerId) {
       const result = await client.get<unknown>(ingestBatchPath(batchId));

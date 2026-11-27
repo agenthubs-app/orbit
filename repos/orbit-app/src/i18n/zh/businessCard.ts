@@ -1,5 +1,8 @@
 export const businessCard = {
   "businessCard.review": "复核名片",
+  "businessCard.quotaUpgrade": "这个月的 {count} 张已用完，{date}恢复。升级到 Pro 每月可扫 {upgrade} 张。",
+  "businessCard.quotaPro": "这个月的 {count} 张已用完，{date}恢复。已有的内容照常可以查看。",
+  "businessCard.quotaNotAccepted": "其中 {count} 张没有受理。",
   "businessCard.image": "名片图片",
   "businessCard.imageLoading": "正在读取图片...",
   "businessCard.noImage": "暂无名片图片",

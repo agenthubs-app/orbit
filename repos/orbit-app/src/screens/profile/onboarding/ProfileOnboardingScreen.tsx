@@ -501,7 +501,11 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
       if (!mounted.current) return;
       const card = await scanOwnBusinessCard(client, image);
       if (!mounted.current) return;
-      if (!card.ok) { setScan({ kind: "failed", message: t("onboarding.v3.scanFailed") }); return; }
+      if (!card.ok) {
+        const quota = card.kind === "cardQuota" ? card.detail : null;
+        setScan({ kind: "failed", message: quota ? t(quota.upgradeLimit ? "businessCard.quotaUpgrade" : "businessCard.quotaPro", aiLimitParams(quota, locale.language)) : t("onboarding.v3.scanFailed") });
+        return;
+      }
       const read = { name: card.name, company: card.company, title: card.title, email: card.email, phone: card.phone, lineId: card.handles.lineId, wechatId: card.handles.wechatId, homeMarket: card.region ? regionDisplay(card.region, t, locale.language) : "" };
       const found = (Object.keys(read) as TextKey[]).filter(key => read[key] && (!(PROFILE_CONTACT_METHODS as readonly string[]).includes(key) || !latest.current.basic[key]?.trim()));
       if (!found.length) { setScan({ kind: "failed", message: t("onboarding.v3.scanFailed") }); return; }

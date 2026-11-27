@@ -4,7 +4,7 @@
  * receipt and a readback, a visible version conflict, the intro draft and the own
  * business-card scan.
  */
-import { AI_MONTHLY_LIMIT_CODE, aiLimitDetailOf, type AiLimitDetail } from "./ai-limit";
+import { AI_MONTHLY_LIMIT_CODE, aiLimitDetailOf, CARD_SCAN_LIMIT_CODE, type AiLimitDetail } from "./ai-limit";
 import type { OrbitApiClient } from "./client";
 import type { ManualProfileContract } from "./contract/profile";
 import type { OwnCardScanContract, ProfileAutofillInferenceContract, ProfileAutofillInferenceRequestContract } from "./contract/profile-autofill";
@@ -131,9 +131,11 @@ export async function scanOwnBusinessCard(
   client: OrbitApiClient,
   image: OwnCardImage,
   signal?: AbortSignal,
-): Promise<({ ok: true } & OwnCard) | OnboardingFailure> {
+): Promise<({ ok: true } & OwnCard) | OnboardingFailure | { ok: false; kind: "cardQuota"; detail: AiLimitDetail }> {
   const body = { imageBase64: image.base64, imageName: image.fileName, ...(image.size && image.size > 0 ? { imageSizeBytes: image.size } : {}), mimeType: image.mimeType };
   const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.contactDraftBusinessCardScan, { body, ...(signal ? { signal } : {}) });
+  // 2026-11-27 分档：这个月的扫名片张数用完了（不是网络错误，不重试）。
+  if (!result.success && result.status === 429 && result.error.code === CARD_SCAN_LIMIT_CODE || !result.success && result.error.context?.reason === CARD_SCAN_LIMIT_CODE) return { detail: aiLimitDetailOf(result.error.context), kind: "cardQuota", ok: false };
   if (!succeeded(result) || !result.success) return failure(result);
   const data = result.data as Partial<OwnCardScanContract> | null;
   if (!data?.draft) return { ok: false, kind: "failed" };

@@ -1,5 +1,6 @@
 // R23 plan screens: small business pieces shared by the goal input, the flow page
 // and the manual edit page. Built from src/components/ui and theme tokens only.
+import { goalMonthlyText } from "./goal-quota";
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -117,10 +118,12 @@ export function SectionTitle({ title, trailing }: { title: string; trailing?: Re
 /** AI_LIMIT and the goal limits: an explanation, never the failure card (UI-SPEC). */
 export function LimitNote({ failure }: { failure: Extract<PlanFailure, { kind: "aiLimit" | "goalMonthlyLimit" | "goalLimit" }> }) {
   const { styles } = useStyles();
-  const { t } = useOrbitLocale();
+  const { t, language } = useOrbitLocale();
   const text = failure.kind === "aiLimit"
     ? t(failure.limit === "monthly" ? "plan.limit.aiMonthly" : "plan.limit.aiDaily")
-    : t(failure.kind === "goalMonthlyLimit" ? "plan.limit.goalMonthly" : "plan.limit.goalActive");
+    : failure.kind === "goalMonthlyLimit"
+      ? goalMonthlyText(t, failure.detail, language) ?? t("plan.limit.goalMonthly")
+      : t("plan.limit.goalActive");
   return (
     <View accessibilityRole="text" style={styles.limit}>
       <UiText style={styles.limitText}>{text}</UiText>

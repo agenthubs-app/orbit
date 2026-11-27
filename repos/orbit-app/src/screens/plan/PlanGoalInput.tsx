@@ -6,6 +6,8 @@
 // 像素返工（RD-16）：照 b10 ①（#0）与 b12 A-R23-02a–c（画板 124 / 126 / 128）的 kit 源码搬——
 // .guide 卡（右上 lav 光斑）、.fld 输入（46 高、聚焦 plum-500 边）、.fopt 选项、.btn.xl 主按钮、
 // 作りかけ卡（.fm 五段进度）、上限卡（.card.flat ⏳）与「目標 2つ」列表、faded サンプル类型卡。
+import { goalMonthlyText, useGoalMonthlyQuota } from "./goal-quota";
+import type { AiLimitDetail } from "../../api/ai-limit";
 import { useRouter, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, TextInput, View } from "react-native";
@@ -58,6 +60,7 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
   }, [api, picked, text]);
 
   const monthlyOut = intakes.newGoalsLeftThisMonth <= 0;
+  const goalQuota = useGoalMonthlyQuota(monthlyOut);
   const activeOut = intakes.activeGoals >= intakes.activeGoalLimit;
   const blocked = monthlyOut || activeOut;
   // QA-A2: an unfinished flow can be dropped (放弃); hide it here until the list reloads.
@@ -148,7 +151,7 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
             );
           })}
         </View>
-        {monthlyOut ? <LimitCard kind="monthly" /> : activeOut ? <LimitCard kind="active" goals={active} /> : null}
+        {monthlyOut ? <LimitCard kind="monthly" quota={goalQuota} /> : activeOut ? <LimitCard kind="active" goals={active} /> : null}
         {/* 空着也画成可按（b12 A-R23-02a）：按下把焦点给输入框，有字才建。 */}
         <KitButton xl primary icon="sparkle" label={t("plan.goal.start")} disabled={blocked || creating} onPress={() => (text.trim() || kind ? void create() : input.current?.focus())} style={[styles.start, blocked && styles.startAfterLimit]} testID="goal-start" />
         {failure ? isLimitFailure(failure) ? <LimitNote failure={failure} /> : <InlineProblem text={failureText(failure)} /> : null}
@@ -216,7 +219,7 @@ function intakeStage(status: PlanIntakeListItem["status"]): 0 | 1 | 2 | 3 {
 }
 
 /** 今月の上限 / 目標 2つ（b12 画板 126 / 128 .card.flat ⏳）：说明 + 何时恢复 / 现在的两个目标。 */
-function LimitCard({ kind, goals = [] }: { kind: "monthly" | "active"; goals?: readonly PlanGoalListItem[] }) {
+function LimitCard({ kind, goals = [], quota = null }: { kind: "monthly" | "active"; goals?: readonly PlanGoalListItem[]; quota?: AiLimitDetail | null }) {
   const { styles, colors } = useStyles();
   const kit = useKitStyles().styles;
   const { t, language } = useOrbitLocale();
@@ -231,8 +234,9 @@ function LimitCard({ kind, goals = [] }: { kind: "monthly" | "active"; goals?: r
         <View style={styles.row10}>
           <KitEmo emoji="⏳" tone="apricot" sm />
           <View style={kit.grow}>
-            <UiText style={styles.limitTitle}>{t(kind === "monthly" ? "plan.limit.goalMonthly" : "plan.limit.goalActive")}</UiText>
-            <UiText style={[kit.lbl, styles.limitNote]}>{kind === "monthly" ? t("plan.limit.goalMonthlyNote", { date: next.toLocaleDateString(locale, { day: "numeric", month: "long" }), days }) : t("plan.limit.goalActiveNote")}</UiText>
+            {/* 2026-11-27 分档：知道份数时写出份数、恢复日期与 Pro 的份数（已含何时恢复，不再重复下面那行）。 */}
+            <UiText style={styles.limitTitle}>{(kind === "monthly" ? goalMonthlyText(t, quota, language) : null) ?? t(kind === "monthly" ? "plan.limit.goalMonthly" : "plan.limit.goalActive")}</UiText>
+            {kind === "monthly" && quota?.limit ? null : <UiText style={[kit.lbl, styles.limitNote]}>{kind === "monthly" ? t("plan.limit.goalMonthlyNote", { date: next.toLocaleDateString(locale, { day: "numeric", month: "long" }), days }) : t("plan.limit.goalActiveNote")}</UiText>}
           </View>
         </View>
       </View>

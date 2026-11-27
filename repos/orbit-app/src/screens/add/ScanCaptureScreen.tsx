@@ -8,6 +8,7 @@
 //   then the v2 batch is created, uploaded and finalized, and the batch page opens. The upload
 //   runs in scan-upload-queue (R12 review m7): leaving this page does not stop it.
 // No live frame hints and no auto-capture (§9 #6).
+import { aiLimitParams, type AiLimitDetail } from "../../api/ai-limit";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Image, ScrollView, StyleSheet, View } from "react-native";
@@ -35,6 +36,8 @@ import { runScanUpload, startScanUpload, subscribeScanUpload, type ScanUploadSta
 
 type Mode = "loading" | "guide" | "camera" | "upload";
 type UploadState = { done: number; total: number; problem: "start" | "upload" | "unavailable" | null; busy: boolean };
+/** 2026-11-27 分档：这个月的扫名片张数（公开的上限）——用完了（limited）或只受理了一部分（notAccepted 张）。 */
+type QuotaState = { detail: AiLimitDetail; notAccepted: number | null } | null;
 
 export function scanBatchHref(batchId: string): string {
   return `/contacts/new/scan/${encodeURIComponent(batchId)}`;
@@ -43,7 +46,7 @@ export function scanBatchHref(batchId: string): string {
 export function ScanCaptureScreen() {
   const router = useRouter();
   const api = useAddApi();
-  const { t } = useOrbitLocale();
+  const { language, t } = useOrbitLocale();
   const { styles } = useAddStyles();
   const params = useLocalSearchParams<{ from?: string | string[]; returnTo?: string | string[] }>();
   const returnTo = appGuideReturnTo(params.returnTo);
@@ -53,6 +56,7 @@ export function ScanCaptureScreen() {
   const [tray, setTray] = useState<ShotTray>(EMPTY_TRAY);
   const [notice, setNotice] = useState<"limit" | "pick" | "camera" | null>(null);
   const [upload, setUpload] = useState<UploadState>({ busy: false, done: 0, problem: null, total: 0 });
+  const [quota, setQuota] = useState<QuotaState>(null);
   const attempt = useRef<CreationAttempt | null>(null);
   const batchId = useRef<string | null>(null);
   const unwatch = useRef<(() => void) | null>(null);
@@ -91,6 +95,7 @@ export function ScanCaptureScreen() {
   async function startUpload(images: IngestCardImage[]) {
     setMode("upload");
     setUpload({ busy: true, done: 0, problem: null, total: images.length });
+    setQuota(null);
     let submission: CreationAttempt;
     try {
       submission = creationAttempt(images, attempt.current, () => newAddKey("batch"));
@@ -103,9 +108,16 @@ export function ScanCaptureScreen() {
     // Created while the person already left: the upload still starts (it does not need this page).
     if (!created.ok) {
       if (!mounted.current) return;
+      if (created.failure.kind === "quota") {
+        // 用完了：不是上传失败，不给「重试」；写出张数、恢复日期与 Pro 的张数。
+        setQuota({ detail: created.failure.detail, notAccepted: null });
+        setUpload((current) => ({ ...current, busy: false, problem: null, total: 0 }));
+        return;
+      }
       setUpload((current) => ({ ...current, busy: false, problem: created.failure.kind === "notImplemented" ? "unavailable" : "start" }));
       return;
     }
+    if (created.quota && mounted.current) setQuota({ detail: created.quota.detail, notAccepted: created.quota.notAccepted });
     const files = new Map<string, PreparedBatchImage>();
     for (const item of created.data.items) {
       const image = images[item.seq - 1];
@@ -180,6 +192,14 @@ export function ScanCaptureScreen() {
               <UiText style={styles.title}>{t("add.scan.uploadingTitle", { done: upload.done, n: upload.total })}</UiText>
               <ProgressBar value={upload.total ? Math.round((upload.done / upload.total) * 100) : 0} accessibilityLabel={t("add.scan.uploadingTitle", { done: upload.done, n: upload.total })} />
               <Body>{t("add.scan.uploadingLead")}</Body>
+              {quota ? (
+                <View style={[styles.notice, styles.noticeError]} testID="add-scan-quota">
+                  <View style={styles.grow}>
+                    {quota.notAccepted ? <Caption tone="error">{t("businessCard.quotaNotAccepted", { count: quota.notAccepted })}</Caption> : null}
+                    <Caption tone="error">{t(quota.detail.upgradeLimit ? "businessCard.quotaUpgrade" : "businessCard.quotaPro", aiLimitParams(quota.detail, language))}</Caption>
+                  </View>
+                </View>
+              ) : null}
               {upload.problem ? (
                 <View style={[styles.notice, styles.noticeError]}>
                   <View style={styles.grow}>

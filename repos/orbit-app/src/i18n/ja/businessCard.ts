@@ -1,5 +1,8 @@
 export const businessCard = {
   "businessCard.review": "名刺を確認",
+  "businessCard.quotaUpgrade": "今月の{count}枚を使い切りました。{date}に戻ります。Pro にすると毎月{upgrade}枚までスキャンできます。",
+  "businessCard.quotaPro": "今月の{count}枚を使い切りました。{date}に戻ります。これまでの内容はいつもどおりご覧いただけます。",
+  "businessCard.quotaNotAccepted": "うち{count}枚は受け付けませんでした。",
   "businessCard.image": "名刺画像",
   "businessCard.imageLoading": "画像を読み込んでいます...",
   "businessCard.noImage": "名刺画像はありません",

@@ -5,6 +5,7 @@
 // 具体化する」 starts the same generation flow as the first goal (POST …/intakes, source
 // next_goal), 「自分で決める」 opens the goal input. With two active goals (or no new goals
 // left this month) the choice explains the limit and is disabled — never a paid entry.
+import { useGoalMonthlyQuota } from "./goal-quota";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -60,6 +61,7 @@ export function PlanNextGoalScreen({ planId }: { planId: string }) {
   const candidates = (next?.candidates ?? []).slice(0, 2);
   const full = Boolean(quota && quota.activeGoals >= quota.activeGoalLimit);
   const monthlyOut = Boolean(quota && quota.newGoalsLeftThisMonth <= 0);
+  const goalQuota = useGoalMonthlyQuota(monthlyOut);
   const blocked = full || monthlyOut;
   // 选中项按目標文记（重新读取后候选顺序变了也不会指到别的目標）；不在新候选里就回到默认。
   const selected = choice !== null && (choice === SELF || candidates.some((candidate) => candidate.goalText === choice)) ? choice : candidates[0]?.goalText ?? SELF;
@@ -96,7 +98,7 @@ export function PlanNextGoalScreen({ planId }: { planId: string }) {
               ))}
               <Option candidate={null} tone="apricot" selected={selected === SELF} disabled={blocked} onSelect={() => setChoice(SELF)} />
             </View>
-            {full ? <LimitNote failure={{ kind: "goalLimit" }} /> : monthlyOut ? <LimitNote failure={{ kind: "goalMonthlyLimit" }} /> : null}
+            {full ? <LimitNote failure={{ kind: "goalLimit" }} /> : monthlyOut ? <LimitNote failure={goalQuota ? { detail: goalQuota, kind: "goalMonthlyLimit" } : { kind: "goalMonthlyLimit" }} /> : null}
             <View style={styles.flat}><UiText style={styles.flatText}>{t("plan.next.noDeadline")}</UiText></View>
             {failure ? isLimitFailure(failure) ? <LimitNote failure={failure} /> : <FailureNote failure={failure} onReload={() => void read()} /> : null}
             <KitButton primary icon="sparkle" label={t("plan.done.start")} disabled={blocked || creating} onPress={() => void go()} style={styles.start} testID="next-start" />

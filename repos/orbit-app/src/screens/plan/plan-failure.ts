@@ -1,5 +1,6 @@
 // R23: how a plan endpoint's failure envelope maps to the UI (UI-SPEC「常见错误原因 → 界面」).
 // Pure (no React) so the rules are testable on their own.
+import { aiLimitDetailOf, type AiLimitDetail } from "../../api/ai-limit";
 import type { PlanAiLimitKind } from "../../api/contract/plan-v2";
 import { isNotImplemented } from "../../api/compute/not-implemented";
 import type { ApiResult } from "../../api/types";
@@ -10,7 +11,8 @@ export type PlanFailure =
   | { kind: "aiFailed" }
   | { kind: "aiBusy" }
   | { kind: "aiLimit"; limit: PlanAiLimitKind; retryOn: string | null }
-  | { kind: "goalMonthlyLimit" }
+  /** `detail`（2026-11-27 分档）：服务端给的份数、恢复时间与 Pro 的份数（quota* 字段）。 */
+  | { kind: "goalMonthlyLimit"; detail?: AiLimitDetail }
   | { kind: "goalLimit" }
   | { kind: "stale" }
   /** R25: this month's 見直し are used up (`retryOn` = the next Tokyo month start). */
@@ -31,7 +33,7 @@ export function planFailureOf(result: Extract<ApiResult<unknown>, { success: fal
     case "AI_FAILED": return { kind: "aiFailed" };
     case "AI_BUSY": return { kind: "aiBusy" };
     case "AI_LIMIT": return { kind: "aiLimit", limit: result.error.context?.limit === "monthly" ? "monthly" : "daily", retryOn: result.error.context?.retryOn ?? null };
-    case "GOAL_MONTHLY_LIMIT": return { kind: "goalMonthlyLimit" };
+    case "GOAL_MONTHLY_LIMIT": return { detail: aiLimitDetailOf(result.error.context), kind: "goalMonthlyLimit" };
     case "PLAN_GOAL_LIMIT": return { kind: "goalLimit" };
     case "STALE": return { kind: "stale" };
     case "REVIEW_LIMIT": return { kind: "reviewLimit", retryOn: result.error.context?.retryOn ?? null };

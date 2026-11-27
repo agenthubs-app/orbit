@@ -1,3 +1,4 @@
+import { aiLimitParams } from "../../api/ai-limit";
 import * as Crypto from "expo-crypto";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
@@ -103,7 +104,11 @@ export function AccountSuggestionsScreen() {
       if (!active()) return;
       const scanned = await scanOwnBusinessCard(client, card, abort.current?.signal);
       if (!active()) return;
-      if (!scanned.ok) { setError(t("me.failed")); return; }
+      if (!scanned.ok) {
+        // 2026-11-27 分档：这个月的扫名片张数用完了——写出张数、恢复日期与 Pro 的张数，不说「失败」。
+        setError(scanned.kind === "cardQuota" ? t(scanned.detail.upgradeLimit ? "businessCard.quotaUpgrade" : "businessCard.quotaPro", aiLimitParams(scanned.detail, language)) : t("me.failed"));
+        return;
+      }
       await extract("business-card", `Name: ${scanned.name}\nCompany: ${scanned.company}\nRole: ${scanned.title}`);
     } catch { if (active()) setError(t("me.failed")); }
   }
