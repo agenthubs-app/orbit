@@ -271,6 +271,8 @@ export const hostCopy = {
   mWhyHost: { ja: "主催者が配置", zh: "由主办方安排", en: "Placed by the host", kind: "body" },
   mTableMenu: { ja: "テーブルの操作", zh: "桌的操作", en: "Table actions", kind: "label" },
   mAbsent: { ja: "欠席連絡 {n}名", zh: "请假{n}人", en: "{n} absent", kind: "chip" },
+  /** b13 HM-M3：折叠的桌卡里写短（展开的头部用 mAbsent）。 */
+  mAbsentShort: { ja: "欠席 {n}", zh: "请假{n}", en: "{n} absent", kind: "chip" },
   mRound: { ja: "第{n}ラウンド {from}–{to}", zh: "第{n}轮{from}–{to}", en: "Round {n} {from}–{to}", kind: "label" },
   mRoundShort: { ja: "第{n}ラウンド", zh: "第{n}轮", en: "Round {n}", kind: "label" },
   mRoundsLabel: { ja: "ラウンド", zh: "轮次", en: "Rounds", kind: "label" },

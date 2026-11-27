@@ -22,7 +22,7 @@ function TableRow({ table, t, tones, open, why, canMove, onToggle, onWhy, onMove
       <button type="button" className={`btn ${mp.tcH}`} aria-expanded={open} onClick={onToggle}>
         <span className={`${mp.tno} ${open ? "" : mp.tnoSm}`}>{table.table}</span>
         <span className={mp.meta}><b>{table.theme ?? t("mTableN", { n: table.members.length, t: table.table })}</b>{open ? <span className={s.lbl}>{t("mTableN", { n: table.members.length, t: table.table })}</span> : null}</span>
-        {table.absent > 0 ? <span className={`${s.chip} ${s.c_coral}`}>{t("mAbsent", { n: table.absent })}</span> : null}
+        {table.absent > 0 ? <span className={`${s.chip} ${s.c_coral}`}>{t(open ? "mAbsent" : "mAbsentShort", { n: table.absent })}</span> : null}
         {open ? null : <span className={s.lbl}>{t("nPeople", { n: table.members.length })}</span>}
         <Icon name={open ? "down" : "right"} size={16} />
       </button>

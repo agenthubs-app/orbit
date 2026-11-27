@@ -1,22 +1,26 @@
 /* < 768 マッチング（b13 HM-M1–M10）。数值照画板 .mstat / .tno / .tc / .mr / .tjump / .tpick / .crow；色・角丸・文字は token。 */
-.col { grid-column: 1 / -1; min-width: 0; padding-bottom: 96px; display: flex; flex-direction: column; gap: 12px; }
+.col { grid-column: 1 / -1; min-width: 0; padding-bottom: 96px; display: flex; flex-direction: column; gap: 14px; }
+/* b13：卡间距 = kit --gap 14；连续的折叠桌卡（.tc.one）之间、折叠桌卡后的桌卡 8。 */
+.one + .one, .one + .tc { margin-top: -6px; }
 .meta { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; text-align: left; }
 .meta b { font-size: var(--fs-body); font-weight: var(--fw-heavy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meta > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .guide.guide { padding: 20px; background: var(--surface); border-radius: var(--r-card-web); position: relative; overflow: hidden; }
 .gHead { display: flex; gap: 12px; align-items: flex-start; }
-.gT { font-size: var(--fs-emph); font-weight: var(--fw-heavy); line-height: var(--lh-snug); }
+/* b13 HM-M1：空状态标题 16 / 800 / 1.4。 */
+.gT { font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); line-height: var(--lh-label); }
 .gS.gS { margin-top: 4px; line-height: var(--lh-prose); }
 .checks { margin-top: 12px; }
 .card.card { display: block; padding: 18px; }
-.cardH { margin: 0 0 6px; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
-.crow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
-.crowBtn.crowBtn { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 12px 0; border-top: 1px solid var(--line); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); cursor: pointer; }
+.cardH { margin: 0 0 12px; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
+.crow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); font-size: var(--fs-body-sm); font-weight: var(--fw-semibold); }
+.crowBtn.crowBtn { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 12px 0; border-top: 1px solid var(--line); font-size: var(--fs-body-sm); font-weight: var(--fw-semibold); cursor: pointer; }
 .crowCol.crowCol { flex-direction: column; align-items: flex-start; gap: 8px; }
-.toggles > * { padding-left: 0; padding-right: 0; }
-/* 条件开关行的标签粗体（b13 .crow 13/700）。 */
-.toggles [class*=setLabel] { font-weight: var(--fw-bold); }
+/* b13 .crow：开关行与上面两行同一节距（上下 12、每行一条上边线，行高 51）。 */
+.toggles > * { padding: 12px 0; border-top: 1px solid var(--line); }
+/* 条件行标签字重同画板 .crow > span:first-child（13 / 600；2026-11-27 实测，之前记成 700 是误读）。 */
+.toggles [class*=setLabel] { font-weight: var(--fw-semibold); }
 .hint { margin-top: 6px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
 .grid2 > :global(.btn) { height: 48px; }
@@ -39,23 +43,27 @@
 .unpl.unpl { display: block; padding: 14px 16px; }
 .unplHead { display: flex; gap: 12px; align-items: flex-start; }
 .unplHead b { font-size: var(--fs-body); }
-.unplSub.unplSub { line-height: var(--lh-prose); margin-top: 2px; }
+.unplSub.unplSub { line-height: var(--lh-body-relaxed); margin-top: 2px; }
 .unplRow { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
 .avs { display: flex; flex: none; }
 .avs > * + * { margin-left: -8px; }
-.avBtn.avBtn { all: unset; cursor: pointer; border-radius: var(--r-pill); box-shadow: 0 0 0 2px var(--surface-2); }
+.avBtn.avBtn { all: unset; cursor: pointer; border-radius: var(--r-pill); box-shadow: 0 0 0 2px var(--surface); }
+/* b13 .avs：头像重叠 8px、白圈（all: unset 会清掉上面 .avs > * + * 的边距，这里用同等以上的选择器再写一次）。 */
+.avBtn.avBtn + .avBtn.avBtn { margin-left: -8px; }
 .names { flex: 1 1 0%; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .tc.tc { display: block; padding: 14px 16px; }
 .one.one { padding: 10px 14px; }
 .tcH.tcH { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; cursor: pointer; }
 .tcH svg { color: var(--ink-3); flex: none; }
+/* b13 .tc-h：展开桌卡标题与「テーブル A · 5名」之间 3px，头部高 42。 */
+.tcH .meta > span { margin-top: 3px; }
 .one .meta b { font-size: var(--fs-row); }
 .mr { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
 .tcH + .mr { margin-top: 8px; }
 .mr .meta b { font-size: var(--fs-row); font-weight: var(--fw-bold); }
 .mr .meta > span { font-size: var(--fs-label); color: var(--ink-3); }
-.mvBtn.mvBtn { height: 30px; min-height: 0; padding: 0 10px; border: 0; border-radius: var(--r-pill); background: transparent; font-size: var(--fs-meta); font-weight: var(--fw-bold); color: var(--ink-2); flex: none; }
+.mvBtn.mvBtn { height: 32px; min-height: 0; padding: 0 8px; border: 0; border-radius: var(--r-pill); background: transparent; font-size: var(--fs-meta); font-weight: var(--fw-bold); color: var(--ink-2); flex: none; }
 .whyRow { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
 .whyBody.whyBody { margin-top: 8px; }
 
