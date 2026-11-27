@@ -28,7 +28,9 @@ test("SMTP recovery reuses party-app config, verifies acceptance and suppresses 
   await mailer.send("member@example.com", "https://orbit.example.com/app/account/reset-password#token=secret", "reset/key");
   assert.equal(sent?.to, "member@example.com");
   assert.equal(sent?.messageId, "<reset-key@orbit.example.com>");
-  assert.match(String(sent?.text), /30/);
+  assert.match(String(sent?.text), /7 天内有效/);
+  assert.match(String(sent?.text), /expires 7 days after/);
+  assert.doesNotMatch(String(sent?.text), /30/);
   const rejected = createSmtpPasswordResetMailer(config, { sendMail: async () => { throw new Error("SMTP password private-password rejected"); } } as never);
   await assert.rejects(rejected.send("member@example.com", "https://orbit.example.com", "key"), { message: "Password reset delivery failed" });
   assert.equal(passwordResetSmtpConfig({ SMTP_PORT: "0" }), null);
@@ -341,8 +343,17 @@ test("password recovery persists, retries, atomically consumes and revokes prior
     // Expiry and supersession leave credentials unchanged.
     await service.request(email);
     const expiring = openPasswordResetToken((await row()).passwordReset.sealedToken, secret);
-    clock = new Date(clock.getTime() + 31 * 60_000);
+    clock = new Date(clock.getTime() + 7 * 24 * 60 * 60_000 - 60_000);
+    assert.equal(await store.isValid(passwordResetDigest(expiring), clock.toISOString()), true, "a mailed link is still redeemable just before 7 days");
+    clock = new Date(clock.getTime() + 2 * 60_000);
     assert.equal((await service.reset(expiring, "expired-password")).success, false);
+    // A newer request supersedes the earlier link even while both are inside 7 days.
+    await service.request(email);
+    const superseded = openPasswordResetToken((await row()).passwordReset.sealedToken, secret);
+    clock = new Date(clock.getTime() + 61_000);
+    await service.request(email);
+    assert.equal((await service.reset(superseded, "superseded-password")).success, false);
+    clock = new Date(clock.getTime() + 61_000);
     await service.request(email);
     const oldJob = await store.claim(clock.toISOString(), new Date(clock.getTime() + 60_000).toISOString(), "crashed-lease");
     assert.ok(oldJob);

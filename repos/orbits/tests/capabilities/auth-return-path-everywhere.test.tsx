@@ -135,7 +135,8 @@ test("password reset: the page asked from is remembered on this browser and hand
   try {
     rememberPasswordResetReturnPath("/app/events/evt-1?inv=AB12-CD34", 1_000);
     assert.equal(readPasswordResetReturnPath(2_000), "/app/events/evt-1?inv=AB12-CD34");
-    assert.equal(readPasswordResetReturnPath(1_000 + 30 * 60 * 1000 + 1), "", "expires with the reset link");
+    assert.equal(readPasswordResetReturnPath(1_000 + 30 * 60 * 1000 + 1), "/app/events/evt-1?inv=AB12-CD34", "still there after 30 minutes");
+    assert.equal(readPasswordResetReturnPath(1_000 + 7 * 24 * 60 * 60 * 1000 + 1), "", "expires with the reset link (7 days)");
     rememberPasswordResetReturnPath("https://evil.example", 1_000);
     assert.equal(readPasswordResetReturnPath(2_000), "/app/home");
     forgetPasswordResetReturnPath();

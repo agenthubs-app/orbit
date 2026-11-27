@@ -34,7 +34,7 @@ export function createResendPasswordResetMailer(config: { apiKey: string; from: 
         method: "POST", redirect: "error", signal: AbortSignal.timeout(15_000),
         headers: { authorization: `Bearer ${config.apiKey}`, "content-type": "application/json", "idempotency-key": idempotencyKey },
         body: JSON.stringify({ from: config.from, to: [email], subject: "重置你的 Orbit 密码 / Reset your Orbit password",
-          text: `请打开以下链接设置新密码，链接在申请后 30 分钟内有效，且只能使用一次。\n\n${resetUrl}\n\n如果你没有申请重置，请忽略这封邮件。\nOpen the link to set a new password. It expires 30 minutes after your request and can only be used once. If you did not request this, ignore this email.` }),
+          text: `请打开以下链接设置新密码，链接在申请后 7 天内有效，且只能使用一次。\n\n${resetUrl}\n\n如果你没有申请重置，请忽略这封邮件。\nOpen the link to set a new password. It expires 7 days after your request and can only be used once. If you did not request this, ignore this email.` }),
       });
       const result = await response.json().catch(() => null) as { id?: unknown } | null;
       if (!response.ok || typeof result?.id !== "string" || !result.id) throw new Error("Password reset delivery failed");

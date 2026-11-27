@@ -14,11 +14,11 @@ import { normalizeProfileAuthReturnPath } from "../../profile/profile-onboarding
 
 /**
  * 找回密码时的原页面：邮件里的重设链接只带 token（地址由服务端异步投递任务生成），所以在申请的浏览器本机记住
- * `next`，重设完成后的「用新密码登录」带回去。与重设链接同寿命（30 分钟，PASSWORD_RESET_TTL_MS）；
+ * `next`，重设完成后的「用新密码登录」带回去。与重设链接同寿命（7 天，PASSWORD_RESET_TTL_MS）；
  * 换设备 / 清了存储时照常回默认首页。
  */
 const RESET_RETURN_KEY = "orbit:auth:reset-next";
-const RESET_RETURN_TTL_MS = 30 * 60 * 1000;
+const RESET_RETURN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function rememberPasswordResetReturnPath(next: string, now = Date.now()): void {
   try {

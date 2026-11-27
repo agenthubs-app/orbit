@@ -1,6 +1,8 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
-export const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
+// 7 days (product decision 2026-11-27: migrated party-app members recover their accounts from a bulk notice).
+// Still single-use and superseded by any newer request; only the window a mailed link stays redeemable grew.
+export const PASSWORD_RESET_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const PASSWORD_RESET_COOLDOWN_MS = 60 * 1000;
 
 export function passwordResetDigest(token: string): string {
