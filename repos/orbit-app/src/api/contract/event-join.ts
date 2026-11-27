@@ -54,7 +54,17 @@ export interface EventJoinProfile {
   /** Organizer review deadline (「審査 〜10/3」), when the event is screened. */
   reviewUntil?: string | null;
   review: boolean;
+  /**
+   * 2026-11-27 用户新增：主办方开了「已加群的报名自动通过」（审核制活动才有）。true = 确认页必须先答「是否已联系主办方报名并加入微信群？」
+   * （不占 5 题、不走 AI）；改资料（edit）时只有审核中的人会问（选「已加群」同样自动通过），其他状态缺省。旧客户端不认这个字段 = 不问 = 照旧进审核。
+   */
+  wechatCheck?: boolean;
+  /** 只在 `wechatCheck` 时给：选「还没有」时就地显示的主办方联系方式（null = 主办方没填）。 */
+  hostContact?: HostEventContact | null;
 }
+
+/** 确认页那道必答题的回答（submit 的 `wechatJoined`）：已加群 / 还没有。 */
+export type EventJoinWechatAnswer = "joined" | "not_yet";
 
 /**
  * `GET /api/events/[id]/join/current` — read before anything is asked: am I already registered, may I still change it, and what

@@ -37,6 +37,44 @@ test("with a WeChat / LINE ID the contact opens right after applying; closing it
   assert.equal(await page.getByText("请联系主办方完成付款，主办方确认后会通过审核。", { exact: true }).count(), 1);
 });
 
+test("WeChat auto-approval (2026-11-27, Web bc61df199): a required question above 申请; 已加群 sends joined and the done page is confirmed", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/join/profile`]: { ...profile, wechatCheck: true, hostContact: { lineId: null, note: null, wechatId: "host_wx" } }, [`${base}/join/submit`]: { ...result(null), status: "registered" } } });
+  await page.getByTestId("events-join-wechat-unanswered").waitFor();
+  assert.match(await page.getByTestId("events-join-wechat-unanswered").innerText(), /是否已联系主办方报名并加入微信群？[\s\S]*已加群[\s\S]*还没有/u);
+  assert.equal(await page.getByTestId("events-join-wechat-hint").innerText(), "请先回答是否已加群");
+  assert.equal(await page.getByTestId("events-join-apply").isDisabled(), true);
+  await page.getByTestId("events-join-wechat-option-not_yet").click();
+  assert.equal(await page.getByTestId("events-join-wechat-note").innerText(), "报名后请添加主办方微信并备注姓名，确认后通过审核");
+  await page.getByText("host_wx", { exact: true }).waitFor();
+  await page.getByTestId("events-join-wechat-option-joined").click();
+  assert.equal(await page.getByTestId("events-join-wechat-note").count(), 0);
+  await page.getByTestId("events-join-apply").click();
+  await page.getByTestId("events-join-done").waitFor();
+  const [body] = await posts(page, "/join/submit");
+  assert.equal(body.wechatJoined, "joined");
+  assert.match(await page.getByTestId("events-join-done").innerText(), /确定参加/u);
+});
+
+test("WeChat question when someone in review edits (Web 921896562): 保存修改 waits for it and sends joined", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...editing("pending_review"), [`${base}/join/profile`]: { ...profile, items: editItems, selfIntro: { source: "profile", text: "资料里的介绍。" }, wechatCheck: true } } });
+  await page.getByTestId("events-join-wechat-unanswered").waitFor();
+  assert.equal(await save(page).isDisabled(), true);
+  await page.getByTestId("events-join-wechat-option-joined").click();
+  await save(page).click();
+  await page.getByText("修改已保存", { exact: true }).waitFor();
+  const [body] = await posts(page, "/join/submit");
+  assert.deepEqual([body.edit, body.wechatJoined], [true, "joined"]);
+});
+
+test("no WeChat question when the host has not turned it on: nothing extra is sent", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: responses(null) });
+  await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
+  await page.getByText("已收到报名", { exact: true }).waitFor();
+  assert.equal(await page.locator('[data-testid^="events-join-wechat"]').count(), 0);
+  const [body] = await posts(page, "/join/submit");
+  assert.equal("wechatJoined" in body, false);
+});
+
 test("calendar (2026-11-27, as Web): written on applying, the done page says so; 移除 deletes it, 添加 puts it back", async (t) => {
   const tentative = { endsAt: "2099-12-10T21:30:00+09:00", startsAt: "2099-12-10T19:00:00+09:00", title: "【暂定】活动" };
   const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null),

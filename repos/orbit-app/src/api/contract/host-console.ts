@@ -187,6 +187,8 @@ export interface HostPeopleRow {
   attendCount: number;
   status: HostPeopleBucket;
   applicationVersion: number;
+  /** 2026-11-27 用户新增：报名时自报「已加群」并因活动开关自动通过（行上显示「自报已加群 · 自动通过」，主办方对着付款名单核对）。 */
+  wechatAutoAdmitted?: boolean;
 }
 
 export interface HostPeopleCounts {
@@ -447,6 +449,8 @@ export interface HostSetupResponse {
   capacity: number | null;
   registrationClosesAt: string | null;
   admissionMode: "first_come" | "review";
+  /** 2026-11-27 用户新增：已加群的报名自动通过（只对审核制有意义；默认关；公開した設定で効く）。 */
+  wechatAutoAdmit?: boolean;
   applyPath: string | null;
   /** 未公開の変更 N件。 */
   unpublishedChanges: number;
@@ -469,6 +473,8 @@ export interface HostSetupDraftInput {
   capacity: number | null;
   registrationClosesAt: string | null;
   admissionMode: "first_come" | "review";
+  /** 2026-11-27：缺省 = 保留现有设定（旧客户端不带）。 */
+  wechatAutoAdmit?: boolean;
 }
 
 /** `POST /api/host/events/[id]/setup/publish`：公開する / 変更を公開。 */

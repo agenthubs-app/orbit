@@ -9,7 +9,7 @@ import type { EventCodeResolveResponse } from "../../../api/contract/event-code"
 import type { EventAttendeeProfile } from "../../../api/contract/event-attendee-profile";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../../api/contract/event-after";
 import type { EventDiscoverQuery, EventDiscoverResponse } from "../../../api/contract/event-discover";
-import type { EventJoinAnswer, EventJoinCalendarRemoveResult, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../api/contract/event-join";
+import type { EventJoinAnswer, EventJoinCalendarRemoveResult, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinResult, EventJoinStep, EventJoinTentativeResult, EventJoinWechatAnswer } from "../../../api/contract/event-join";
 import type { EventOverviewResponse } from "../../../api/contract/event-overview";
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../api/contract/event-prep";
 import type { EventRecommendationDismissReason } from "../../../api/contract/event-recommendation-feedback";
@@ -77,7 +77,8 @@ export function createJourneyApi(client: OrbitApiClient, read: Read) {
     joinNext: (eventId: string, answers: readonly EventJoinAnswer[], more = false, focus?: EventJoinProfileItemKey) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/next`, { body: { answers, more, ...(focus ? { focus } : {}) } }), eventJoinStepSchema as ZodType<EventJoinStep>),
     joinProfile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean, edit = false) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/profile`, { body: { answers, draft, ...(edit ? { edit } : {}) } }), eventJoinProfileSchema as ZodType<EventJoinProfile>),
     // edit: changing a registration they already have (a cancelled or rejected one is refused instead of registered again).
-    joinSubmit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string, edit = false) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/submit`, { body: { answers, idempotencyKey: newIdempotencyKey(), ...(edit ? { edit } : {}), ...(selfIntro ? { selfIntro } : {}) } }), eventJoinResultSchema as ZodType<EventJoinResult>),
+    // wechatJoined（2026-11-27，同 Web bc61df199 / 921896562）：主办方开了「已加群自动通过」时确认页那道必答题的回答。
+    joinSubmit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string, edit = false, wechatJoined?: EventJoinWechatAnswer | null) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/submit`, { body: { answers, idempotencyKey: newIdempotencyKey(), ...(edit ? { edit } : {}), ...(selfIntro ? { selfIntro } : {}), ...(wechatJoined ? { wechatJoined } : {}) } }), eventJoinResultSchema as ZodType<EventJoinResult>),
     joinTentative: (eventId: string) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/tentative`, { body: { idempotencyKey: newIdempotencyKey() } }), eventJoinTentativeResultSchema as ZodType<EventJoinTentativeResult>),
     // 2026-11-27：报名成功时服务端已写入日历；「移除」删掉它，之后不再自动加（直到再点「添加」）。
     joinRemoveCalendar: (eventId: string) => read(client.delete<unknown>(`/api/events/${id(eventId)}/join/tentative`), eventJoinCalendarRemoveResultSchema as ZodType<EventJoinCalendarRemoveResult>),

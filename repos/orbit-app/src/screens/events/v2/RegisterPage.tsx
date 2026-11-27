@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AccessibilityInfo, Platform, StyleSheet, TextInput, View } from "react-native";
 
-import type { EventJoinAnswer, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep } from "../../../api/contract/event-join";
+import type { EventJoinAnswer, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinWechatAnswer } from "../../../api/contract/event-join";
 import type { EventOverviewResponse } from "../../../api/contract/event-overview";
 import { designIcons } from "../../../api/design/icons";
 import { Icon, UiPressable, UiText, useToast } from "../../../components/ui";
@@ -96,6 +96,8 @@ function RegisterFlow() {
     setCalendar(written ? { final: written.final, state: "added", title: written.title } : { final: done.status === "registered", state: "none", title: done.tentative?.title ?? "" });
   }, []);
   const [intro, setIntro] = useState<string | null>(null);
+  // 2026-11-27（同 Web）：主办方开了「已加群自动通过」时确认页的必答题；问不问由服务端定（新报名，或审核中的人改资料时）。
+  const [wechat, setWechat] = useState<EventJoinWechatAnswer | null>(null);
   const [editingIntro, setEditingIntro] = useState(false);
   const [why, setWhy] = useState(false);
   // 自我介绍草稿：running = 正在写（不能报名、不能改介绍）；failed = 失败或超时（可以自己写，也可以直接报名）。改资料不写草稿。
@@ -274,12 +276,12 @@ function RegisterFlow() {
     if (list.length) showEdit(list, answers, true); else void askMore(key);
   };
   const apply = async () => {
-    if (!mode || busy || drafting === "running") return;
+    if (!mode || busy || drafting === "running" || (profile?.wechatCheck && !wechat)) return;
     setBusy(true);
     // The introduction on the review page goes with the registration, edited or not: the event's other attendees see it, and
     // one that is not sent is cleared on the server.
     const confirmed = (intro ?? profile?.selfIntro?.text ?? "").trim().slice(0, 400);
-    const res = await api.joinSubmit(eventId, answers, confirmed || undefined, editing);
+    const res = await api.joinSubmit(eventId, answers, confirmed || undefined, editing, profile?.wechatCheck ? wechat : null);
     setBusy(false);
     if (res.ok) { setResult(res.data); settle(res.data); setContactOpen(!editing && shouldOpenHostContact(res.data.hostContact)); announceEventChanged(eventId); return; }
     const refusal = res.code ? REFUSAL[res.code] : undefined;
@@ -392,6 +394,7 @@ function RegisterFlow() {
     const missing = (profile?.items ?? []).filter((item) => !item.done);
     const firstMissing = missing.find((item) => item.key === "target" || item.key === "offer") ?? missing[0];
     const applyLabel = t(drafting === "running" ? "introDrafting" : editing ? "joinSave" : "applyNow");
+    const wechatNeeded = Boolean(profile?.wechatCheck) && !wechat;
     return (
       <View style={styles.flex1}>
       <JourneyPage key="review" title={t("profileTitle")} subtitle={editing ? event?.title ?? "" : t("draftedByAi")} leftIcon="x" leftLabel={t("close")} fallback={detail} onLeft={close} testID="events-join-review">
@@ -460,12 +463,27 @@ function RegisterFlow() {
           <UiText style={[styles.lbl, { marginBottom: 8 }]}>{t("visibilityTitle")}</UiText>
           <View style={[styles.row, { gap: 8 }]}><View style={[styles.chip, { backgroundColor: colors.macTeal }]}><UiText style={[styles.chipText, { color: colors.macTealInk }]}>{t("visAll")}</UiText></View><UiText style={[styles.sub, styles.fill]}>{t("visAllFields")}</UiText></View>
         </View>
+        {profile?.wechatCheck ? (
+          <>
+            <View style={[styles.card, styles.gap]} testID={`events-join-wechat-${wechat ?? "unanswered"}`}>
+              <UiText style={styles.h3}>{t("wechatQ")}</UiText>
+              <View accessibilityRole="radiogroup" accessibilityLabel={t("wechatQ")} style={[styles.row, styles.wechatOpts]}>
+                {(["joined", "not_yet"] as const).map((value) => {
+                  const on = wechat === value;
+                  return <UiPressable key={value} accessibilityRole="radio" accessibilityLabel={t(value === "joined" ? "wechatJoined" : "wechatNotYet")} accessibilityState={{ checked: on }} onPress={() => setWechat(value)} style={[styles.opt, styles.optInCard, on ? styles.optOn : null]} testID={`events-join-wechat-option-${value}`}><UiText style={[styles.optText, on ? { color: colors.ink } : null]}>{t(value === "joined" ? "wechatJoined" : "wechatNotYet")}</UiText></UiPressable>;
+                })}
+              </View>
+              {wechat === "not_yet" ? <UiText style={[styles.sub, { marginTop: 10 }]} testID="events-join-wechat-note">{t("wechatNotYetLine")}</UiText> : null}
+            </View>
+            {wechat === "not_yet" && profile.hostContact !== undefined ? <HostContactCard contact={profile.hostContact} t={t} style={styles.gap} /> : null}
+          </>
+        ) : null}
         {/* 底部固定区的高度：卡片能滚到它上面。 */}
         <View style={{ height: 70 }} />
       </JourneyPage>
       {/* b2 regPersona（同 Web 手机版 .pFoot）：主按钮固定在底部（整宽 48、深色），上面一行就绪提示（中性色；缺项不拦报名，「补上」只问那一项），下面一行编辑期限。 */}
       <FadeFoot testID="events-join-foot">
-        {profile ? (coverage >= 100 ? (
+        {wechatNeeded ? <UiText accessibilityLiveRegion="polite" style={[styles.readyText, { textAlign: "center" }]} testID="events-join-wechat-hint">{t("wechatPickFirst")}</UiText> : profile ? (coverage >= 100 ? (
           <View style={[styles.row, styles.ready]} accessibilityRole="text" accessibilityLiveRegion="polite" testID="events-join-ready-done">
             <Icon name="check" size={16} color={colors.ok} /><UiText style={[styles.readyText, { color: colors.ok }]}>{t("readyAll")}</UiText>
           </View>
@@ -475,7 +493,7 @@ function RegisterFlow() {
             {firstMissing ? <UiPressable accessibilityRole="button" accessibilityLabel={t("fillIn")} disabled={busy} onPress={() => void askMore(firstMissing.key)} testID={`events-join-fill-${firstMissing.key}`}><UiText style={styles.textLink}>{t("fillIn")}</UiText></UiPressable> : null}
           </View>
         )) : null}
-        <UiPressable accessibilityRole="button" accessibilityLabel={applyLabel} accessibilityState={{ disabled: busy || drafting === "running" }} disabled={busy || drafting === "running"} onPress={() => void apply()} style={[styles.block48, styles.footBtn, drafting === "running" ? styles.blockWait : null]} testID="events-join-apply"><UiText style={styles.primaryText}>{applyLabel}</UiText></UiPressable>
+        <UiPressable accessibilityRole="button" accessibilityLabel={applyLabel} accessibilityState={{ disabled: busy || drafting === "running" || wechatNeeded }} disabled={busy || drafting === "running" || wechatNeeded} onPress={() => void apply()} style={[styles.block48, styles.footBtn, drafting === "running" || wechatNeeded ? styles.blockWait : null]} testID="events-join-apply"><UiText style={styles.primaryText}>{applyLabel}</UiText></UiPressable>
         {profile?.editableUntil ? <UiText style={[styles.lbl, { textAlign: "center" }]}>{t("editableUntil", { date: monthDaySlash(profile.editableUntil) })}</UiText> : null}
       </FadeFoot>
       </View>
@@ -593,6 +611,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   block48: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, height: 48, justifyContent: "center", marginTop: 14 },
   primaryText: { color: colors.bg, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   flex1: { flex: 1 },
+  wechatOpts: { flexWrap: "wrap", gap: 8, marginTop: 12 },
+  // 白卡片里的选项：浅灰底才看得出是按钮（选中后照常 accentSoft + 描边）。
+  optInCard: { backgroundColor: colors.surface2, paddingHorizontal: 18, paddingVertical: 10 },
   footBtn: { marginTop: 0 },
   // .pReady：居中、gap 6、ink-2 粗体（2026-11-27 起不用珊瑚色）；满分时 ok 色带对勾。
   ready: { gap: 6, justifyContent: "center" },
