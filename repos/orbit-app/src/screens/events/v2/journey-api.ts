@@ -9,7 +9,7 @@ import type { EventCodeResolveResponse } from "../../../api/contract/event-code"
 import type { EventAttendeeProfile } from "../../../api/contract/event-attendee-profile";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../../api/contract/event-after";
 import type { EventDiscoverQuery, EventDiscoverResponse } from "../../../api/contract/event-discover";
-import type { EventJoinAnswer, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../api/contract/event-join";
+import type { EventJoinAnswer, EventJoinCalendarRemoveResult, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../api/contract/event-join";
 import type { EventOverviewResponse } from "../../../api/contract/event-overview";
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../api/contract/event-prep";
 import type { EventRecommendationDismissReason } from "../../../api/contract/event-recommendation-feedback";
@@ -21,7 +21,7 @@ import { eventAfterConfirmResultSchema, eventAfterResponseSchema } from "../../.
 import { eventAttendeeProfileSchema } from "../../../api/schema/event-attendee-profile";
 import { eventCodeResolveResponseSchema } from "../../../api/schema/event-code";
 import { eventDiscoverResponseSchema } from "../../../api/schema/event-discover";
-import { eventJoinCancelResultSchema, eventJoinCurrentSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../api/schema/event-join";
+import { eventJoinCalendarRemoveResultSchema, eventJoinCancelResultSchema, eventJoinCurrentSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../api/schema/event-join";
 import { eventOverviewResponseSchema } from "../../../api/schema/event-overview";
 import { eventPrepResponseSchema } from "../../../api/schema/event-prep";
 import { eventRecommendationDismissResultSchema } from "../../../api/schema/event-recommendation-feedback";
@@ -79,6 +79,8 @@ export function createJourneyApi(client: OrbitApiClient, read: Read) {
     // edit: changing a registration they already have (a cancelled or rejected one is refused instead of registered again).
     joinSubmit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string, edit = false) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/submit`, { body: { answers, idempotencyKey: newIdempotencyKey(), ...(edit ? { edit } : {}), ...(selfIntro ? { selfIntro } : {}) } }), eventJoinResultSchema as ZodType<EventJoinResult>),
     joinTentative: (eventId: string) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/tentative`, { body: { idempotencyKey: newIdempotencyKey() } }), eventJoinTentativeResultSchema as ZodType<EventJoinTentativeResult>),
+    // 2026-11-27：报名成功时服务端已写入日历；「移除」删掉它，之后不再自动加（直到再点「添加」）。
+    joinRemoveCalendar: (eventId: string) => read(client.delete<unknown>(`/api/events/${id(eventId)}/join/tentative`), eventJoinCalendarRemoveResultSchema as ZodType<EventJoinCalendarRemoveResult>),
     joinCancel: (eventId: string) => read(client.post<unknown>(`/api/events/${id(eventId)}/join/cancel`, { body: { idempotencyKey: newIdempotencyKey() } }), eventJoinCancelResultSchema as ZodType<EventJoinCancelResult>),
   };
 }

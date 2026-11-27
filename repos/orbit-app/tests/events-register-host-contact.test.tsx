@@ -37,6 +37,30 @@ test("with a WeChat / LINE ID the contact opens right after applying; closing it
   assert.equal(await page.getByText("请联系主办方完成付款，主办方确认后会通过审核。", { exact: true }).count(), 1);
 });
 
+test("calendar (2026-11-27, as Web): written on applying, the done page says so; 移除 deletes it, 添加 puts it back", async (t) => {
+  const tentative = { endsAt: "2099-12-10T21:30:00+09:00", startsAt: "2099-12-10T19:00:00+09:00", title: "【暂定】活动" };
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null),
+    [`${base}/join/submit`]: { ...result(null), calendar: { final: false, scheduleItemId: "s1", title: "【暂定】活动" }, tentative },
+    // One path for POST and DELETE in the harness: this answer fits both (the add and the remove result).
+    [`${base}/join/tentative`]: { endsAt: tentative.endsAt, eventId, removed: true, scheduleItemId: "s1", startsAt: tentative.startsAt, title: "【暂定】活动" } } });
+  await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
+  const added = page.getByTestId("events-join-calendar-added");
+  await added.waitFor();
+  assert.match(await added.innerText(), /已暂定加入日历[\s\S]*「【暂定】活动」[\s\S]*查看日历[\s\S]*移除/u);
+  await page.getByTestId("events-join-calendar-remove").click();
+  await page.getByTestId("events-join-calendar-removed").getByText("已从日历移除", { exact: true }).waitFor();
+  assert.ok((await page.evaluate(() => (window as any).fixture.requests as string[])).some((item) => item.startsWith(`delete:${"/api/events/"}`) && item.includes("/join/tentative")));
+  await page.getByTestId("events-join-calendar-add").click();
+  await page.getByTestId("events-join-calendar-added").waitFor();
+});
+
+test("calendar not written (removed before): the done page offers 加入日历", async (t) => {
+  const tentative = { endsAt: "2099-12-10T21:30:00+09:00", startsAt: "2099-12-10T19:00:00+09:00", title: "活动" };
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/join/submit`]: { ...result(null), calendar: null, status: "registered", tentative } } });
+  await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
+  await page.getByTestId("events-join-calendar-none").getByText("加入日历", { exact: true }).waitFor();
+});
+
 test("without an ID nothing pops up; the done page still shows the card with 暂无", async (t) => {
   const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: responses({ lineId: null, note: "当天现场联系", wechatId: null }) });
   await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
@@ -79,7 +103,7 @@ test("first come, first served: 报名 → 确定参加 → 当天, nothing abou
   assert.doesNotMatch(confirmed, /审核|结果/u);
   const screened = await done("pending_review");
   assert.match(screened, /报名[\s\S]*审核[\s\S]*结果通知[\s\S]*当天/u);
-  assert.match(screened, /结果出来后自动更新/u);
+  // 2026-11-27：日历在报名时已写入，卡片只写时间与标题（同 Web calendarLineFinal），不再说「结果出来后自动更新」。
 });
 
 test("the review names everything attendees see, wrapped inside the card", async (t) => {
@@ -179,7 +203,7 @@ test("someone registered, in review or waitlisted starts on the review with the 
     await page.getByText("修改已保存", { exact: true }).waitFor();
     const [body] = await posts(page, "/join/submit");
     assert.deepEqual([body.answers, body.edit, body.selfIntro], [given, true, "第一版介绍。"], "unchanged, sent back as it was");
-    assert.equal(await page.getByTestId("events-join-calendar").count(), 0);
+    assert.equal(await page.locator('[data-testid^="events-join-calendar"]').count(), 0);
     assert.equal(await page.getByTestId("host-contact-sheet").count(), 0);
   }
 });

@@ -89,7 +89,12 @@ function RegisterFlow() {
   const touched = useRef(new Set<string>());
   // 申込完了直後：主催者の連絡先（ID がある時だけ）を自動で開く。閉じても完了ページのカードに残る。
   const [contactOpen, setContactOpen] = useState(false);
-  const [calendar, setCalendar] = useState<"asked" | "added" | "declined">("asked");
+  // 2026-11-27（同 Web）：报名成功时服务端已写入日历（result.calendar）；完成页只告知，可「移除」/「添加」。
+  const [calendar, setCalendar] = useState<{ state: "added" | "removed" | "none"; title: string; final: boolean } | null>(null);
+  const settle = useCallback((done: EventJoinResult) => {
+    const written = done.calendar;
+    setCalendar(written ? { final: written.final, state: "added", title: written.title } : { final: done.status === "registered", state: "none", title: done.tentative?.title ?? "" });
+  }, []);
   const [intro, setIntro] = useState<string | null>(null);
   const [editingIntro, setEditingIntro] = useState(false);
   const [why, setWhy] = useState(false);
@@ -213,11 +218,11 @@ function RegisterFlow() {
       if (!live) return;
       if (replay && params.to === "done" && current.done) {
         const res = await api.joinSubmit(eventId, answered, given.current.intro?.trim().slice(0, 400) || undefined);
-        if (live && res.ok) { setResult(res.data); setContactOpen(shouldOpenHostContact(res.data.hostContact)); }
+        if (live && res.ok) { setResult(res.data); settle(res.data); setContactOpen(shouldOpenHostContact(res.data.hostContact)); }
       }
     })();
     return () => { live = false; };
-  }, [api, eventId, params.replay, params.to, attempt, showStep, openEdit, draftIntro]);
+  }, [api, eventId, params.replay, params.to, attempt, showStep, openEdit, draftIntro, settle]);
 
   const question = step?.question ?? null;
   const reviewing = Boolean(step?.done) && !result;
@@ -276,7 +281,7 @@ function RegisterFlow() {
     const confirmed = (intro ?? profile?.selfIntro?.text ?? "").trim().slice(0, 400);
     const res = await api.joinSubmit(eventId, answers, confirmed || undefined, editing);
     setBusy(false);
-    if (res.ok) { setResult(res.data); setContactOpen(!editing && shouldOpenHostContact(res.data.hostContact)); announceEventChanged(eventId); return; }
+    if (res.ok) { setResult(res.data); settle(res.data); setContactOpen(!editing && shouldOpenHostContact(res.data.hostContact)); announceEventChanged(eventId); return; }
     const refusal = res.code ? REFUSAL[res.code] : undefined;
     if (refusal && refusal !== "joinCancelled") { setBlocked(refusal); return; }
     toast.error(t(refusal ?? "submitFailed"));
@@ -292,7 +297,14 @@ function RegisterFlow() {
     setBusy(true);
     const res = await api.joinTentative(eventId);
     setBusy(false);
-    if (res.ok) { setCalendar("added"); announceEventChanged(eventId); toast.success(t(result?.status === "pending_review" ? "tentativeAdded" : "calendarAdded")); } else toast.error(t("submitFailed"));
+    if (res.ok) { setCalendar((current) => ({ final: current?.final ?? result?.status === "registered", state: "added", title: res.data.title || current?.title || "" })); announceEventChanged(eventId); } else toast.error(t("submitFailed"));
+  };
+  const removeCalendar = async () => {
+    if (busy) return;
+    setBusy(true);
+    const res = await api.joinRemoveCalendar(eventId);
+    setBusy(false);
+    if (res.ok) { setCalendar((current) => (current ? { ...current, state: "removed" } : current)); announceEventChanged(eventId); } else toast.error(t("submitFailed"));
   };
   // × goes back to the detail it was opened from (a replace left a second detail in the stack); a deep link has none, so it opens the detail.
   const close = () => (router.canGoBack() ? router.back() : router.replace(detail as Href));
@@ -338,16 +350,21 @@ function RegisterFlow() {
           {pending ? <UiText style={[styles.sub, { marginTop: 12 }]}>{contactLine ?? t("reviewWait")}</UiText> : null}
         </View>
         {result.hostContact !== undefined ? <HostContactCard contact={result.hostContact} t={t} style={styles.gap} /> : null}
-        {result.tentative && calendar === "asked" && !editing ? (
-          <View style={[styles.card, styles.gap, styles.confirm]} testID="events-join-calendar">
+        {/* 写日历：报名成功时已写入，这里只告知；「移除」= 删掉且以后不再自动加；移除后可「添加」回来。 */}
+        {calendar && result.tentative && !editing ? (
+          <View style={[styles.card, styles.gap, styles.confirm]} testID={`events-join-calendar-${calendar.state}`}>
             <View style={[styles.row, { gap: 8 }]}>
               <View style={[styles.emoSm, { backgroundColor: colors.macLav }]}><UiText style={styles.emoSmText}>📅</UiText></View>
-              <UiText style={styles.title13}>{t(pending ? "calAsk" : "calAskConfirmed")}</UiText>
+              <UiText accessibilityLiveRegion="polite" style={styles.title13}>{t(calendar.state === "removed" ? "calRemoved" : calendar.state === "none" ? "calNotAdded" : calendar.final ? "calAdded" : "calAddedTentative")}</UiText>
             </View>
-            <UiText style={[styles.sub, { marginBottom: 10, marginTop: 6 }]}>{t(pending ? "calendarLine" : "calendarLineConfirmed", { range: eventRange(result.tentative.startsAt, result.tentative.endsAt, language), title: result.tentative.title })}</UiText>
+            <UiText style={[styles.sub, { marginBottom: 10, marginTop: 6 }]}>{t("calendarLineFinal", { range: eventRange(result.tentative.startsAt, result.tentative.endsAt, language), title: calendar.title || result.tentative.title })}</UiText>
             <View style={[styles.row, { gap: 8 }]}>
-              <UiPressable accessibilityRole="button" accessibilityLabel={t("addIt")} onPress={() => void addTentative()} style={[styles.btnSm, styles.primary]}><UiText style={[styles.btnSmText, { color: colors.bg }]}>{t("addIt")}</UiText></UiPressable>
-              <UiPressable accessibilityRole="button" accessibilityLabel={t("noNeed")} onPress={() => setCalendar("declined")} style={styles.btnSm}><UiText style={styles.btnSmText}>{t("noNeed")}</UiText></UiPressable>
+              {calendar.state === "added" ? (
+                <>
+                  <UiPressable accessibilityRole="button" accessibilityLabel={t("viewCalendar")} onPress={() => router.push("/schedule" as Href)} style={styles.btnSm} testID="events-join-calendar-view"><UiText style={styles.btnSmText}>{t("viewCalendar")}</UiText></UiPressable>
+                  <UiPressable accessibilityRole="button" accessibilityLabel={t("removeIt")} disabled={busy} onPress={() => void removeCalendar()} style={styles.btnSm} testID="events-join-calendar-remove"><UiText style={styles.btnSmText}>{t("removeIt")}</UiText></UiPressable>
+                </>
+              ) : <UiPressable accessibilityRole="button" accessibilityLabel={t("addIt")} disabled={busy} onPress={() => void addTentative()} style={[styles.btnSm, styles.primary]} testID="events-join-calendar-add"><UiText style={[styles.btnSmText, { color: colors.bg }]}>{t("addIt")}</UiText></UiPressable>}
             </View>
           </View>
         ) : null}
