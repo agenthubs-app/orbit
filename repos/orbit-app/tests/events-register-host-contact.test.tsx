@@ -126,7 +126,26 @@ test("without fromProfile (an older server) the list is as before, with the same
   assert.equal(await page.getByText("来自资料", { exact: true }).count(), 0);
   await page.getByRole("button", { name: "添加", exact: true }).click();
   const asked = await page.evaluate(() => (window as any).fixture.postBodies.filter((call: any) => call.path.endsWith("/join/next")).at(-1).body);
-  assert.deepEqual(asked, { answers: [], more: true });
+  // 2026-11-27（Web 8e0a5ff3a）：「添加」只问那一项。
+  assert.deepEqual(asked, { answers: [], focus: "offer", more: true });
+});
+
+test("review (2026-11-27, Web 8e0a5ff3a): no 回到问题; a missing item is a neutral 「n项未填 · 补上」 that asks only that item; 申请 stays enabled", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/join/profile`]: { ...profile, coverage: 75, items: [{ done: true, key: "purpose" }, { done: false, key: "offer" }] } } });
+  await page.getByTestId("events-join-ready-missing").waitFor();
+  assert.equal(await page.getByTestId("events-join-ready-missing").innerText(), "1项未填\n补上");
+  assert.equal(await page.getByRole("button", { name: "回到问题", exact: true }).count(), 0);
+  assert.equal(await page.getByTestId("events-join-apply").isDisabled(), false);
+  await page.getByTestId("events-join-fill-offer").click();
+  const asked = await page.evaluate(() => (window as any).fixture.postBodies.filter((call: any) => call.path.endsWith("/join/next")).at(-1).body);
+  assert.deepEqual(asked, { answers: [], focus: "offer", more: true });
+});
+
+test("review at 100 %: 资料已完整, no 补上", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/join/profile`]: { ...profile, coverage: 100, items: [{ done: true, key: "purpose" }, { done: true, key: "offer" }] } } });
+  await page.getByTestId("events-join-ready-done").waitFor();
+  assert.equal(await page.getByTestId("events-join-ready-done").innerText(), "资料已完整");
+  assert.equal(await page.getByText("补上", { exact: true }).count(), 0);
 });
 
 // 改资料（2026-11-26）：进页先读 join/current；已报名 / 审核中 / 候补从上次的回答和介绍开始，逐项改；改不了的先说明。

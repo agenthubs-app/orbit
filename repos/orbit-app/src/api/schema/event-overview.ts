@@ -30,6 +30,7 @@ export const eventOverviewResponseObject = z.object({
   priceYen: z.number().int().min(0).nullable().optional().catch(null),
   capacity: z.number().int().min(0).nullable().optional().catch(null),
   remaining: z.number().int().min(0).nullable().optional().catch(null),
+  waitlistEnabled: z.boolean().optional().catch(undefined),
   review: z.boolean(),
   deadlineSoon: z.boolean(),
   description: z.string().nullable().optional(),

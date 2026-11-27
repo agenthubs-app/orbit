@@ -86,8 +86,14 @@ export interface EventJoinResult {
   reviewUntil?: string | null;
   startsAt: string;
   endsAt?: string | null;
-  /** 「カレンダーに仮で入れますか？」 suggestion; written only after the user confirms (`join/tentative`). */
+  /** What a calendar entry for this event looks like (older clients offer it with `join/tentative`, which returns the one already written). */
   tentative?: { startsAt: string; endsAt: string; title: string } | null;
+  /**
+   * 2026-11-27: the calendar entry written automatically on a successful registration (in review = tentative title, confirmed = final
+   * title); null = not written (the person removed it before, or the calendar could not be written — offer `join/tentative`).
+   * Absent on `edit` submissions. Removed with `DELETE join/tentative`.
+   */
+  calendar?: { scheduleItemId: string; title: string; final: boolean } | null;
   /** 主催者の連絡先（刚报名成功的人能看；null = 主办方没填）。完成页有 ID 就自动弹窗。 */
   hostContact?: HostEventContact | null;
 }
@@ -98,7 +104,16 @@ export interface EventJoinCancelResult {
   status: "cancelled";
 }
 
-/** `POST /api/events/[id]/join/tentative` — the tentative calendar entry; renamed / removed when the review result arrives. */
+/** `DELETE /api/events/[id]/join/tentative` — 「移除」: the entry is deleted and not written again automatically until the person adds it. */
+export interface EventJoinCalendarRemoveResult {
+  eventId: string;
+  removed: true;
+}
+
+/**
+ * `POST /api/events/[id]/join/tentative` — add the calendar entry (returns the existing one when it is still there); renamed / removed /
+ * moved as the registration and the event change.
+ */
 export interface EventJoinTentativeResult {
   eventId: string;
   scheduleItemId: string;

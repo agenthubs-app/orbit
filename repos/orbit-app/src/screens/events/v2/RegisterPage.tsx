@@ -2,7 +2,7 @@
 // 数据：/api/events/[id]/join/*（问题 = 现有 AI 访谈 ≤5 问；资料按规则实时更新，只在问完时生成自己紹介草稿）。与 Web RegisterFlow 同一套接口与文案。
 // 门禁开发开关 open-path 下可带 `?replay=答1|答2a,答2b|答3a,答3b&to=select|review|done` 自动答到指定状态（画板从不画点击过程）。
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AccessibilityInfo, Platform, StyleSheet, TextInput, View } from "react-native";
 
 import type { EventJoinAnswer, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep } from "../../../api/contract/event-join";
@@ -257,12 +257,12 @@ function RegisterFlow() {
     setBusy(false);
     if (nextStep.data.done) await draftIntro(next);
   };
-  // 「追加」：访谈认为够了也再问一题（live 由 AI 决定，可能仍然结束 → 留在确认页）。`focus`：会用资料补上的那一项，改成自己回答。
-  const askMore = async (focus?: EventJoinProfileItemKey) => {
+  // 确认页「追加 / 補う / 編集」：只问那一项（可选入口；2026-11-27 起 5 题问完不再追问，同 Web 8e0a5ff3a）。
+  const askMore = async (focus: EventJoinProfileItemKey) => {
     setBusy(true);
     const res = await api.joinNext(eventId, answers, true, focus);
     setBusy(false);
-    if (res.ok) { showStep(res.data); setOptional(editing); } else toast.error(t("submitFailed"));
+    if (res.ok) { showStep(res.data); if (editing) setOptional(Boolean(res.data.question)); } else toast.error(t("submitFailed"));
   };
   const editItem = (key: EventJoinProfileItemKey) => {
     const list = answers.flatMap((item) => (asked[item.field]?.item === key ? [asked[item.field]!.question] : []));
@@ -372,8 +372,12 @@ function RegisterFlow() {
     const offerMissing = (profile?.items ?? []).some((item) => item.key === "offer" && !item.done);
     const coverage = profile?.coverage ?? 0;
     const shownIntro = intro ?? profile?.selfIntro?.text ?? "";
+    const missing = (profile?.items ?? []).filter((item) => !item.done);
+    const firstMissing = missing.find((item) => item.key === "target" || item.key === "offer") ?? missing[0];
+    const applyLabel = t(drafting === "running" ? "introDrafting" : editing ? "joinSave" : "applyNow");
     return (
-      <JourneyPage key="review" title={t("profileTitle")} subtitle={editing ? event?.title ?? "" : t("draftedByAi")} leftIcon={editing ? "x" : "left"} leftLabel={t(editing ? "close" : "backToQuestions")} fallback={detail} onLeft={editing ? close : () => void askMore()} testID="events-join-review">
+      <View style={styles.flex1}>
+      <JourneyPage key="review" title={t("profileTitle")} subtitle={editing ? event?.title ?? "" : t("draftedByAi")} leftIcon="x" leftLabel={t("close")} fallback={detail} onLeft={close} testID="events-join-review">
         <View style={styles.card}>
           <View style={[styles.row, { gap: 16 }]}>
             <ScoreRing size={96} stroke={9} value={coverage} color={colors.plum700} label={`${coverage}%`} fontSize={22}>
@@ -392,7 +396,7 @@ function RegisterFlow() {
                   </View>
                   {item.fromProfile ? <UiPressable accessibilityRole="button" accessibilityLabel={`${t("edit")} ${t(ITEM_LABEL[item.key])}`} disabled={busy} onPress={() => void askMore(item.key)} style={styles.btnXs}><UiText style={styles.btnXsText}>{t("edit")}</UiText></UiPressable>
                     : editing && item.done && item.key !== "company" ? <UiPressable accessibilityRole="button" accessibilityLabel={`${t("edit")} ${t(ITEM_LABEL[item.key])}`} disabled={busy} onPress={() => editItem(item.key)} style={styles.btnXs}><UiText style={styles.btnXsText}>{t("edit")}</UiText></UiPressable> : null}
-                  {item.done ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("add")} disabled={busy} onPress={() => void askMore(editing ? item.key : undefined)} style={styles.btnXs}><UiText style={styles.btnXsText}>{t("add")}</UiText></UiPressable>}
+                  {item.done ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("add")} disabled={busy} onPress={() => void askMore(item.key)} style={styles.btnXs} testID={`events-join-add-${item.key}`}><UiText style={styles.btnXsText}>{t("add")}</UiText></UiPressable>}
                 </View>
               ))}
               {/* 改资料：主办方的其他问题（不属于任何一项）各占一行。 */}
@@ -439,9 +443,25 @@ function RegisterFlow() {
           <UiText style={[styles.lbl, { marginBottom: 8 }]}>{t("visibilityTitle")}</UiText>
           <View style={[styles.row, { gap: 8 }]}><View style={[styles.chip, { backgroundColor: colors.macTeal }]}><UiText style={[styles.chipText, { color: colors.macTealInk }]}>{t("visAll")}</UiText></View><UiText style={[styles.sub, styles.fill]}>{t("visAllFields")}</UiText></View>
         </View>
-        <UiPressable accessibilityRole="button" accessibilityLabel={t(drafting === "running" ? "introDrafting" : editing ? "joinSave" : "applyNow")} accessibilityState={{ disabled: busy || drafting === "running" }} disabled={busy || drafting === "running"} onPress={() => void apply()} style={[styles.block48, drafting === "running" ? styles.blockWait : null]} testID="events-join-apply"><UiText style={styles.primaryText}>{t(drafting === "running" ? "introDrafting" : editing ? "joinSave" : "applyNow")}</UiText></UiPressable>
-        {profile?.editableUntil ? <UiText style={[styles.lbl, { marginTop: 8, textAlign: "center" }]}>{t("editableUntil", { date: monthDaySlash(profile.editableUntil) })}</UiText> : null}
+        {/* 底部固定区的高度：卡片能滚到它上面。 */}
+        <View style={{ height: 70 }} />
       </JourneyPage>
+      {/* b2 regPersona（同 Web 手机版 .pFoot）：主按钮固定在底部（整宽 48、深色），上面一行就绪提示（中性色；缺项不拦报名，「补上」只问那一项），下面一行编辑期限。 */}
+      <FadeFoot testID="events-join-foot">
+        {profile ? (coverage >= 100 ? (
+          <View style={[styles.row, styles.ready]} accessibilityRole="text" accessibilityLiveRegion="polite" testID="events-join-ready-done">
+            <Icon name="check" size={16} color={colors.ok} /><UiText style={[styles.readyText, { color: colors.ok }]}>{t("readyAll")}</UiText>
+          </View>
+        ) : (
+          <View style={[styles.row, styles.ready]} accessibilityLiveRegion="polite" testID="events-join-ready-missing">
+            <UiText style={styles.readyText}>{t("readyMissing", { n: missing.length })}</UiText>
+            {firstMissing ? <UiPressable accessibilityRole="button" accessibilityLabel={t("fillIn")} disabled={busy} onPress={() => void askMore(firstMissing.key)} testID={`events-join-fill-${firstMissing.key}`}><UiText style={styles.textLink}>{t("fillIn")}</UiText></UiPressable> : null}
+          </View>
+        )) : null}
+        <UiPressable accessibilityRole="button" accessibilityLabel={applyLabel} accessibilityState={{ disabled: busy || drafting === "running" }} disabled={busy || drafting === "running"} onPress={() => void apply()} style={[styles.block48, styles.footBtn, drafting === "running" ? styles.blockWait : null]} testID="events-join-apply"><UiText style={styles.primaryText}>{applyLabel}</UiText></UiPressable>
+        {profile?.editableUntil ? <UiText style={[styles.lbl, { textAlign: "center" }]}>{t("editableUntil", { date: monthDaySlash(profile.editableUntil) })}</UiText> : null}
+      </FadeFoot>
+      </View>
     );
   }
 
@@ -555,6 +575,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   blockWait: { opacity: 0.45 },
   block48: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, height: 48, justifyContent: "center", marginTop: 14 },
   primaryText: { color: colors.bg, fontSize: 15, fontWeight: "700", lineHeight: 22 },
+  flex1: { flex: 1 },
+  footBtn: { marginTop: 0 },
+  // .pReady：居中、gap 6、ink-2 粗体（2026-11-27 起不用珊瑚色）；满分时 ok 色带对勾。
+  ready: { gap: 6, justifyContent: "center" },
+  readyText: { color: colors.ink2, fontSize: 14, fontWeight: "700", lineHeight: 21 },
+  textLink: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21, textDecorationLine: "underline" },
   doneHero: { alignItems: "center", paddingHorizontal: 18, paddingVertical: 26 },
   popcheck: { alignItems: "center", backgroundColor: colors.macTeal, borderRadius: radius.pill, height: 76, justifyContent: "center", width: 76 },
   doneTitle: { color: colors.ink, fontSize: 20, fontWeight: "800", lineHeight: 30, marginTop: 14, textAlign: "center" },
@@ -567,3 +593,24 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   ghostBlock: { alignItems: "center", borderRadius: radius.pill, height: 40, justifyContent: "center" },
   ghostText: { color: colors.ink2, fontSize: 15, fontWeight: "700", lineHeight: 22 },
 }));
+
+/** .pFoot：固定在底部，padding 22 18 14+安全区、gap 8，底色从透明渐变到 bg（28%）。 */
+function FadeFoot({ children, testID }: { children: ReactNode; testID?: string }) {
+  const { colors } = useStyles();
+  const [size, setSize] = useState({ h: 0, w: 0 });
+  return (
+    <View style={footStyles.foot} pointerEvents="box-none" testID={testID} onLayout={(event) => setSize({ h: event.nativeEvent.layout.height, w: event.nativeEvent.layout.width })}>
+      {size.w > 0 ? (
+        <Svg width={size.w} height={size.h} style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Defs><LinearGradient id="joinFoot" x1={0} y1={0} x2={0} y2={size.h} gradientUnits="userSpaceOnUse"><Stop offset={0} stopColor={colors.bg} stopOpacity={0} /><Stop offset={0.28} stopColor={colors.bg} stopOpacity={1} /></LinearGradient></Defs>
+          <Rect x={0} y={0} width={size.w} height={size.h} fill="url(#joinFoot)" />
+        </Svg>
+      ) : null}
+      {children}
+    </View>
+  );
+}
+
+const footStyles = StyleSheet.create({
+  foot: { bottom: 0, gap: 8, left: 0, paddingBottom: 30, paddingHorizontal: 18, paddingTop: 22, position: "absolute", right: 0 },
+});
