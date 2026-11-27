@@ -24,6 +24,7 @@ import {
 } from "./contract";
 import { buildDeterministicCandidates } from "./candidate-retrieval";
 import { offerAnswersNeed, topicsShare } from "./match-concepts";
+import { matchBenefit } from "./match-benefit";
 import { validateRecommendations } from "./recommendation-validation";
 import type {
   EventOperationsRepository,
@@ -528,6 +529,92 @@ function deterministicAssignments(input: {
     // Word overlap stays as a small tie-breaker for free-text values outside the concept table.
     return affinity + conceptFit(left, right) + complementarity * 2 - sameCompany * 30 - repeatedPairPenalty;
   };
+  // Table quality (2026-11-28): a table sparks when every member has someone there who answers what they came for.
+  // gain = what a member gets from a tablemate (match-benefit.ts) plus the AI's own picks; the table value rewards each
+  // member's best and second-best tablemate, so scarce people (the only investors) spread across tables instead of
+  // gathering where the pair sum is highest.
+  const gainCache = new Map<string, number>();
+  const gain = (member: EventOperationsParticipant, mate: EventOperationsParticipant): number => {
+    const key = `${member.participantId}\u0000${mate.participantId}`;
+    let value = gainCache.get(key);
+    if (value === undefined) {
+      value = matchBenefit(member, mate).value
+        + (recommended.has(key) ? 0.8 : 0)
+        + (affinityByParticipant.get(member.participantId)?.has(mate.participantId) ? 0.3 : 0);
+      gainCache.set(key, value);
+    }
+    return value;
+  };
+  const tableValue = (
+    members: readonly EventOperationsParticipant[],
+    metBefore: (left: string, right: string) => boolean,
+    repeatedPairPenalty: number,
+  ): number => {
+    let value = 0;
+    for (const member of members) {
+      let best = 0;
+      let second = 0;
+      for (const mate of members) {
+        if (mate === member) continue;
+        const own = gain(member, mate) * (metBefore(member.participantId, mate.participantId) ? 0.2 : 1);
+        if (own > best) [best, second] = [own, best];
+        else if (own > second) second = own;
+      }
+      value += best * 10 + second * 4;
+    }
+    for (let left = 0; left < members.length; left += 1) {
+      for (let right = left + 1; right < members.length; right += 1) {
+        const repeated = metBefore(members[left]!.participantId, members[right]!.participantId);
+        value += pairScore(members[left]!, members[right]!, repeated ? repeatedPairPenalty : 0) * 0.25;
+      }
+    }
+    return value;
+  };
+  const companyAllowed = (members: readonly EventOperationsParticipant[]): boolean => {
+    const counts = new Map<string, number>();
+    for (const member of members) {
+      const company = member.company?.trim().toLocaleLowerCase("en");
+      if (!company) continue;
+      const count = (counts.get(company) ?? 0) + 1;
+      if (count > companyLimit(company)) return false;
+      counts.set(company, count);
+    }
+    return true;
+  };
+  /** Swap members between tables while the total table value improves (first improvement, bounded passes). */
+  const refine = (
+    groups: EventOperationsParticipant[][],
+    value: (members: readonly EventOperationsParticipant[]) => number,
+    allowed: (members: readonly EventOperationsParticipant[]) => boolean,
+    swapAllowed: (before: readonly (readonly EventOperationsParticipant[])[], after: readonly (readonly EventOperationsParticipant[])[]) => boolean = () => true,
+  ) => {
+    const values = groups.map(value);
+    for (let pass = 0; pass < 12; pass += 1) {
+      let improved = false;
+      for (let a = 0; a < groups.length; a += 1) {
+        for (let b = a + 1; b < groups.length; b += 1) {
+          for (let i = 0; i < groups[a]!.length; i += 1) {
+            for (let j = 0; j < groups[b]!.length; j += 1) {
+              const left = [...groups[a]!];
+              const right = [...groups[b]!];
+              [left[i], right[j]] = [right[j]!, left[i]!];
+              if (!allowed(left) || !allowed(right) || !swapAllowed([groups[a]!, groups[b]!], [left, right])) continue;
+              const leftValue = value(left);
+              const rightValue = value(right);
+              if (leftValue + rightValue > values[a]! + values[b]! + 1e-6) {
+                groups[a] = left;
+                groups[b] = right;
+                values[a] = leftValue;
+                values[b] = rightValue;
+                improved = true;
+              }
+            }
+          }
+        }
+      }
+      if (!improved) break;
+    }
+  };
   const ordered = [...input.participants].sort((left, right) => {
     const leftCompany = left.company?.trim().toLocaleLowerCase("en") ?? "";
     const rightCompany = right.company?.trim().toLocaleLowerCase("en") ?? "";
@@ -572,6 +659,7 @@ function deterministicAssignments(input: {
       )[0]!;
     roundOneParticipants[selected.index]!.push(participant);
   }
+  refine(roundOneParticipants, (members) => tableValue(members, () => false, 0), companyAllowed);
   const remixedOrder: EventOperationsParticipant[] = [];
   for (let seat = 0; seat < input.tableSize; seat += 1) {
     for (const table of roundOneParticipants) {
@@ -647,6 +735,33 @@ function deterministicAssignments(input: {
         break;
       }
     }
+  }
+  const metInRoundOne = (left: string, right: string) => roundOneOrigin.get(left) === roundOneOrigin.get(right);
+  // Keep the remix's slack: a host may still move people in round one before publishing, and publish refuses a round
+  // two that concentrates one round-one table (R17). The refinement never raises the largest same-origin group above
+  // the remix's, nor the number of repeated pairs.
+  const originCounts = (members: readonly EventOperationsParticipant[]) => {
+    const counts = new Map<number, number>();
+    for (const member of members) {
+      const origin = roundOneOrigin.get(member.participantId)!;
+      counts.set(origin, (counts.get(origin) ?? 0) + 1);
+    }
+    return [...counts.values()];
+  };
+  const remixMaxOrigin = Math.max(1, ...roundTwoParticipants.map((members) => Math.max(0, ...originCounts(members))));
+  const repeatedPairs = (members: readonly EventOperationsParticipant[]) =>
+    originCounts(members).reduce((sum, count) => sum + (count * (count - 1)) / 2, 0);
+  // With no headroom anywhere (e.g. 2 tables of 4: every round-two table must be exactly 2 + 2), keep the remix: any
+  // reshuffle there can turn a later host move into a publish refusal.
+  const headroom = roundTwoParticipants.every((members) => Math.max(0, ...originCounts(members)) <= Math.ceil(members.length / 2) - 1);
+  if (headroom) {
+    refine(
+      roundTwoParticipants,
+      (members) => tableValue(members, metInRoundOne, 40),
+      // One seat below the publish limit, so one host move cannot break publish.
+      (members) => companyAllowed(members) && Math.max(0, ...originCounts(members)) <= Math.min(remixMaxOrigin, Math.ceil(members.length / 2) - 1),
+      (before, after) => after.reduce((sum, members) => sum + repeatedPairs(members), 0) <= before.reduce((sum, members) => sum + repeatedPairs(members), 0),
+    );
   }
   const assignments = (
     groups: readonly (readonly EventOperationsParticipant[])[],
@@ -924,10 +1039,10 @@ export function createEventOperationsEngine({
       const candidatesBySource = new Map<string, EventOperationsParticipant[]>();
       const allowedTargetIdsBySource = new Map<string, Set<string>>();
       for (const sourceParticipantId of claimed.participantIds) {
-        const sourceCandidates = candidateRecords.filter(
-          (candidate) =>
-            candidate.sourceParticipantId === sourceParticipantId,
-        );
+        const sourceCandidates = candidateRecords
+          .filter((candidate) => candidate.sourceParticipantId === sourceParticipantId)
+          // Best first (2026-11-28): the provider offers the model only the top real matches.
+          .sort((left, right) => left.retrievalRank - right.retrievalRank);
         candidatesBySource.set(
           sourceParticipantId,
           sourceCandidates.flatMap((candidate) => {
@@ -1721,3 +1836,6 @@ export function createEventOperationsEngine({
     },
   };
 }
+
+/** Tests and offline replays only. */
+export const __eventOperationsEngineTestExports = { deterministicAssignments };

@@ -11,6 +11,7 @@ import {
   topicConcept,
   topicsShare,
 } from "./match-concepts";
+import { introductionScore } from "./match-benefit";
 
 const MAX_CANDIDATES_PER_SOURCE = 32;
 const MAX_FACETS_PER_KIND = 8;
@@ -305,15 +306,9 @@ export function buildDeterministicCandidates(input: {
             target.company.trim().toLocaleLowerCase("en"),
       );
       const real = realById.get(targetParticipantId);
-      // Real matches rank first. Within them (2026-11-28): someone who answers the source's own needs, more so when the
-      // help runs both ways; then someone only the source can help; then shared topics; then the original overlap score.
-      const realScore = real
-        ? 1_000_000
-          + Math.min(real.answersSource, 3) * 100_000
-          + (real.answersSource > 0 && real.answeredBySource > 0 ? 150_000 : 0)
-          + Math.min(real.answeredBySource, 3) * 30_000
-          + Math.min(real.sharedTopics, 5) * 1_000
-        : 0;
+      // Real matches rank first, ordered by what the introduction is worth to the reader (match-benefit.ts:
+      // their event goal first, prospects for sellers, the kind of person asked for, generic offers discounted).
+      const realScore = real ? 1_000_000 + Math.round(Math.min(introductionScore(source, target), 9.9) * 100_000) : 0;
       const retrievalScore =
         realScore +
         sourceNeedTargetOffer * 18 +

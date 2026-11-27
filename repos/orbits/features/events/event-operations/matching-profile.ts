@@ -93,9 +93,13 @@ export function matchingParticipant(
     .filter((text, index, all): text is string => Boolean(text) && all.indexOf(text) === index)
     .join(" / ")
     .slice(0, 300);
+  const goals = answers ? terms(answers.desiredOutcome) : [];
+  const wants = answers ? terms(answers.targetAttendees) : [];
   return {
     ...participant,
     ...(about ? { about } : {}),
+    ...(goals.length ? { goals } : {}),
+    ...(wants.length ? { wants } : {}),
     needs,
     offers,
     role: participant.role ?? account?.role?.trim() ?? null,

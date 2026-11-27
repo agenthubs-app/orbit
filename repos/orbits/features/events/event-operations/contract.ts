@@ -38,6 +38,8 @@ export interface EventOperationsParticipant {
   energyStyle: string | null;
   evidenceIds: readonly string[];
   experienceHighlight: string | null;
+  /** What they came to this event for (the event-goal answer, split into terms); generation snapshot only. */
+  goals?: readonly string[];
   industry: string | null;
   languages: readonly string[];
   lateRegistration: boolean;
@@ -50,6 +52,8 @@ export interface EventOperationsParticipant {
   role: string | null;
   seniority: string | null;
   topics: readonly string[];
+  /** Who they said they want to meet (split into terms); generation snapshot only. */
+  wants?: readonly string[];
 }
 
 export interface EventOperationsConfiguration {

@@ -126,3 +126,26 @@ test("candidates who answer the reader's own needs rank above people only the re
   const order = candidates.filter((c) => c.sourceParticipantId === reader.participantId).sort((a, b) => a.retrievalRank - b.retrievalRank).map((c) => c.targetParticipantId);
   assert.deepEqual(order.slice(0, 2), [investor.participantId, helpee.participantId]);
 });
+
+test("what a meeting is worth: the event goal first, opportunities for deal-seekers, the kind of person asked for, generic offers discounted", async () => {
+  const { matchBenefit, introductionScore } = await import("../../features/events/event-operations/match-benefit");
+  const founder = card("founder", { goals: ["寻找投资"], needs: ["寻找投资", "创业者"], offers: ["产品与技术咨询"], wants: ["创业者"] });
+  const investor = card("investor", { needs: ["创业者"], offers: ["投資家・VCの紹介"], role: "代表取締役" });
+  const mentor = card("mentor", { offers: ["行业经验"] });
+  assert.ok(matchBenefit(founder, investor).answered > matchBenefit(founder, mentor).answered, "a specific offer answers the goal better than generic experience");
+  assert.ok(matchBenefit(founder, investor).kind > 0, "an owner counts as the founder / executive asked for");
+  assert.ok(matchBenefit(investor, founder).prospect > 0, "for an investor a founder raising money is an opportunity");
+  assert.equal(introductionScore({ ...founder, company: "A" }, card("colleague", { company: "a", offers: ["投資家・VCの紹介"] })), 0, "a colleague is never an introduction");
+});
+
+test("seating gives every table someone who answers what its members came for", async () => {
+  const { __eventOperationsEngineTestExports } = await import("../../features/events/event-operations/engine");
+  const founders = Array.from({ length: 4 }, (_, index) => card(`founder${index}`, { goals: ["寻找投资"], needs: ["寻找投资"], offers: ["产品与技术咨询"] }));
+  const investors = Array.from({ length: 2 }, (_, index) => card(`investor${index}`, { offers: ["投資家・VCの紹介"], needs: ["技術的なアドバイス"] }));
+  const others = Array.from({ length: 2 }, (_, index) => card(`other${index}`, { offers: ["行业经验"] }));
+  const participants = [...investors, ...others, ...founders];
+  const tables = __eventOperationsEngineTestExports.deterministicAssignments({ features: participants.map((participant) => ({ affinityParticipantIds: [], facilitationHint: "", participantId: participant.participantId, primaryTopic: "", secondaryTopic: "" })), participants, tableSize: 4 });
+  for (const table of tables.filter((assignment) => assignment.roundNumber === 1)) {
+    assert.equal(table.participantIds.filter((id) => id.startsWith("participant_investor")).length, 1, "the two investors sit at different tables");
+  }
+});

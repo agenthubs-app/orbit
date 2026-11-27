@@ -1,3 +1,4 @@
+import { introductionScore } from "./match-benefit";
 import { offerAnswersNeed, topicsShare, unsupportedProfileTerms } from "./match-concepts";
 import {
   DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL,
@@ -1021,6 +1022,8 @@ export function mergeTrilingualTable(tables: Readonly<Record<TextLanguage, Event
  * Japanese only, so 3 sources x 4 picks x 5 texts stays well inside one bounded output.
  */
 export const TRILINGUAL_MAX_RECOMMENDATION_SHARD = 3;
+/** Real matches offered to the model per source, best first (2026-11-28). */
+const TRILINGUAL_CHOOSE_POOL = 8;
 
 /** Trilingual calls: every invalid-JSON shape is retried (never trimmed or accepted), within the task's attempt limit. */
 const TRILINGUAL_RETRYABLE_JSON_SHAPES: ReadonlySet<EventOperationsJsonFailureShape> = new Set(["empty", "fence_or_prefix", "trailing_text", "unterminated_envelope", "parse_syntax"]);
@@ -1596,9 +1599,11 @@ export function createEventOperationsAiProvider({
     // K = min(N, |E|) picks from that set E; fewer than N only ever means "not enough real matches", never a
     // model that gave up (2026-11-22: 12 people x N=5 forced unrelated pairs).
     const legalPairsBetween = (left: string, right: string) => factsByKey.get(left)!.flatMap((own) => factsByKey.get(right)!.filter((fact) => isLegalFactPair(own, fact)).map((fact) => [own.id, fact.id]));
+    // 2026-11-28: the model chooses among the program's best real matches only (shortlist order = what the
+    // introduction is worth to the reader, match-benefit.ts), so a weak tag match can never displace a real fit.
     const matchable = new Map(tokenizedSources.tokenSources.map((token) => {
       const sourceFacts = factsByKey.get(token.sourceKey)!;
-      return [token.sourceKey, [...token.candidateIdByKey.keys()].filter((key) => factsByKey.get(key)!.some((fact) => sourceFacts.some((own) => isLegalFactPair(own, fact))))];
+      return [token.sourceKey, [...token.candidateIdByKey.keys()].filter((key) => factsByKey.get(key)!.some((fact) => sourceFacts.some((own) => isLegalFactPair(own, fact)))).slice(0, TRILINGUAL_CHOOSE_POOL)];
     }));
     const pickCount = new Map(tokenizedSources.tokenSources.map((token) => [token.sourceKey, Math.min(Math.max(0, Math.floor(input.recommendationCount)), matchable.get(token.sourceKey)!.length)]));
     const pickKeys = (sourceKey: string) => Array.from({ length: pickCount.get(sourceKey)! }, (_, index) => `p${index + 1}`);
@@ -1620,7 +1625,8 @@ export function createEventOperationsAiProvider({
       return { answersSourceNeeds, sharedTopics, sourceAnswersTheirNeeds };
     };
     const chooseSources = tokenizedSources.tokenSources.map((token) => ({
-      candidates: matchable.get(token.sourceKey)!.map((key) => ({ candidateKey: key, ...promptPerson(key), matchPairs: legalPairsBetween(token.sourceKey, key), ...pairDirections(token.sourceKey, key) })),
+      candidates: matchable.get(token.sourceKey)!.map((key) => ({ candidateKey: key, ...promptPerson(key), fitScore: Math.round(introductionScore(participantByKey.get(token.sourceKey)!, participantByKey.get(key)!) * 10) / 10, matchPairs: legalPairsBetween(token.sourceKey, key), ...pairDirections(token.sourceKey, key) })),
+      eventGoal: participantByKey.get(token.sourceKey)!.goals ?? [],
       sourceKey: token.sourceKey,
       ...promptPerson(token.sourceKey),
     }));
@@ -1628,12 +1634,11 @@ export function createEventOperationsAiProvider({
       config,
       systemInstruction: `${systemInstruction}\nYou choose who should meet whom at a networking event, from the supplied facts only. Return exactly one JSON document.`,
       userText: `For each sourceKey, choose exactly the number of different people shown in the JSON shape (an empty list when the source has no candidates) from that source's own candidates, best first. score is an integer 0..100.
-Every candidate listed has at least one real match with the source; matchPairs lists all of them (a need answered by the other person's offer, or a topic both share), as decided by the server. For every pick, basis lists one or more pairs copied from that candidate's matchPairs — no other pair is accepted. Rank by how directly and how strongly those pairs connect the two people, not by list order.
-Choose the people the source would most want to talk to:
-1. First, candidates who answer the source's own needs (answersSourceNeeds > 0), best when the help also runs the other way (sourceAnswersTheirNeeds > 0 too).
-2. Judge real fit from each person's context facts (industry, role, and what they actually do): an investor for a founder who needs funding, a customer or channel in the source's market, a partner in an adjacent business, someone who knows the market the source is entering. A tag match between unrelated businesses is weak.
-3. Then candidates only the source can help (sourceAnswersTheirNeeds only), then a shared topic only.
-4. Rank low a candidate who offers the same thing the source offers and answers none of the source's needs.
+Every candidate listed has at least one real match with the source; matchPairs lists all of them (a need answered by the other person's offer, or a topic both share), as decided by the server. For every pick, basis lists one or more pairs copied from that candidate's matchPairs — no other pair is accepted.
+Choose the people the source would thank us for introducing — someone who moves what the source came for (eventGoal) forward, not a generic contact:
+1. Candidates are listed best first by fitScore, the server's estimate of what the meeting is worth to the source (their event goal first; for a source who came to sell, a candidate who needs what they offer is a prospect; the kind of person they asked for; generic offers such as industry experience or introductions count less). Keep that order unless the context facts show otherwise.
+2. Read each person's context facts (industry, role, what they actually do). Move a candidate up when their work concretely fits the source's (an investor for a founder raising money, a buyer or channel in the market the source sells into, an adjacent business to partner with, someone already doing what the source is starting). Move a candidate down when the match rests only on a generic tag and their work is unrelated.
+3. A candidate who offers the same thing as the source and answers none of the source's needs comes last.
 
 JSON shape (exact keys and list lengths):
 ${JSON.stringify(chooseShape)}
@@ -1748,7 +1753,7 @@ ${JSON.stringify(chooseSources)}`,
 These texts are shown to the reader (the source person) about themselves. Address the reader as あなた (あなたは… / あなたの…) whenever a sentence needs that subject, never leaving it ambiguous who is meant; never name the reader. Refer to the target only as {TARGET} (the server adds the name and さん), and to the target's company only as {TARGET:company} next to {TARGET}, only when targetHasCompany is true. No other placeholders exist; never add braces.
 
 For every pair id:
-- r1 and r2: two different reasons why あなた should meet {TARGET}. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer that answers it most directly (for a funding need, a funding or investor offer — not an unrelated one); a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build r1 on the strongest supplied basis pair. The server lists every real pair: needAnswers (a need answered by the other person's offer, either direction) and sharedTopics; a reason's ev must contain one of those pairs exactly — no other pairing is accepted. For r2, in this order: a second pair from needAnswers if it is equally direct; else a pair from sharedTopics; else r2 stays on r1's pair (same ev) and names one concrete thing to discuss or ask first. Never stretch an unrelated offer to fit a need.
+- r1 and r2: two different reasons why あなた should meet {TARGET}. Each reason states only what its cited facts say and lists them in ev. A need belongs to its owner and is answered only by the other person's offer that answers it most directly (for a funding need, a funding or investor offer — not an unrelated one); a topic is an interest, never an ability or knowledge; never attribute one person's fact to the other. Build r1 on the strongest supplied basis pair. The server lists every real pair: needAnswers (a need answered by the other person's offer, either direction) and sharedTopics; a reason's ev must contain one of those pairs exactly — no other pairing is accepted. For r2, in this order: a second pair from needAnswers if it is equally direct; else a pair from sharedTopics; else r2 stays on r1's pair (same ev) and names one concrete thing to discuss or ask first. Never stretch an unrelated offer to fit a need. When a context fact (what a person actually does: their business, market, role) shows concretely why the pair matters — the target could buy, sell, fund, or open a market for the reader — add that context fact to ev and say it plainly in the reason; this is what makes a reason specific instead of generic.
 Let the sentence shape follow what the reason rests on: a reason about a need and an offer may start from either person or from the need itself; a shared-topic reason may start from the topic; a concrete starting point may start from the action. Use a verb that fits the fact (knowledge is had, a service is offered, an introduction is made). Across the pairs of one person, no two reasons may share the same opening or the same sentence pattern; write each one fresh.
 - q1 and q2: two questions あなた asks {TARGET} directly, in polite Japanese, without any placeholder or name.
 - hint: one practical tip for あなた to start the conversation.
