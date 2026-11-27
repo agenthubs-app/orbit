@@ -38,10 +38,10 @@ const ascii = (json: string) => json.replace(/[\u0080-\uffff]/g, (c) => `\\u${c.
 let code: { js: string; css: string };
 test.before(async () => { code = await shellBundle(PAGE); });
 
-async function openDiscover(browser: Browser, width: number, dark = false): Promise<Page> {
+async function openDiscover(browser: Browser, width: number, dark = false, goal = ""): Promise<Page> {
   const page = await open(browser, code, {
     width, dark, origin: "https://orbit.test/app/events?tab=discover",
-    html: `<div id="root"></div><script>window.shellFixture=${JSON.stringify({ lang: "zh", signedIn: true, unread: false, calls: [], path: "/app/events" })};window.discoverFixture=${ascii(JSON.stringify(DISCOVER))};</script>`,
+    html: `<div id="root"></div><script>window.shellFixture=${JSON.stringify({ lang: "zh", signedIn: true, unread: false, calls: [], path: "/app/events" })};window.discoverFixture=${ascii(JSON.stringify(DISCOVER))};window.goalFixture=${ascii(JSON.stringify(goal))};</script>`,
   });
   await page.locator("[data-discover-row]").first().waitFor({ state: "attached" });
   await page.locator("[data-discover-past-section]").waitFor({ state: "attached" });
@@ -102,3 +102,51 @@ for (const [name, pick] of engines) {
     }
   });
 }
+
+// 2026-11-27 第二件：手机「还没有计划」按 390 画板——主卡（可关，按账号记住）+ 卡片外一行三列入口小方块。
+test("390 no-plan block: board-sized card, tiles in one row, close is remembered, a small way back to the plan", async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await openDiscover(browser, 390);
+    const guide = page.locator("[data-discover-empty]");
+    await guide.waitFor();
+    await page.locator("[data-discover-goal-pending]").waitFor({ state: "detached" });
+    const box = await guide.boundingBox();
+    assert.ok(box && box.height <= 240, `main card ${box?.height}px tall (board ~220)`);
+    const tiles = await page.locator("[data-discover-tiles] > a").evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top), h: r.height }; }));
+    assert.equal(tiles.length, 3);
+    assert.equal(new Set(tiles.map((tile) => tile.top)).size, 1, "three tiles in one row");
+    assert.ok(tiles.every((tile) => tile.h <= 100), "tiles ~90 tall");
+    assert.equal(await page.locator("[data-discover-reopen-plan]").count(), 0);
+    await page.locator("[data-discover-guide-close]").click();
+    await guide.waitFor({ state: "detached" });
+    assert.equal(await page.locator("[data-discover-tiles] > a").count(), 3, "tiles stay after closing");
+    assert.equal(await page.locator("[data-discover-reopen-plan]").getAttribute("href"), "/app/tasks?tab=plan");
+    const stored = await page.evaluate(() => Object.keys(window.localStorage).filter((key) => key.startsWith("orbit:discover:plan-guide-closed:")));
+    assert.equal(stored.length, 1, "remembered per account");
+    assert.deepEqual(errorsOf(page), []);
+    await page.close();
+  } finally {
+    await browser.close();
+  }
+});
+
+// 第三件：有目标（对得上计划类型）没计划 → 提示换成「已按你的目标排序」，按钮仍去生成计划；没有目标 → 「设定目标」。
+test("390 no-plan copy follows the profile goal", async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const ranked = await openDiscover(browser, 390, false, "寻找投资");
+    await ranked.getByText("已按你的目标排序").waitFor();
+    assert.equal(await ranked.locator("[data-discover-empty] a").innerText(), "用目标生成计划");
+    await ranked.close();
+    const brand = await openDiscover(browser, 390, false, "提升品牌曝光");
+    await brand.getByText("用你的目标做好计划后，能见到该见的人的活动会排在前面").waitFor();
+    await brand.close();
+    const none = await openDiscover(browser, 390);
+    await none.locator("[data-discover-goal-pending]").waitFor({ state: "detached" });
+    assert.equal(await none.locator("[data-discover-empty] a").innerText(), "设定目标");
+    await none.close();
+  } finally {
+    await browser.close();
+  }
+});

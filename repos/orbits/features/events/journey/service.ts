@@ -137,7 +137,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       }
       const attended = new Set(mine.filter((item) => item.status === "attended" && item.organizerKey).map((item) => item.organizerKey!));
       const myIds = new Set(mine.filter((item) => item.status !== "cancelled" && item.status !== "rejected" && item.status !== "planned").map((item) => item.eventId));
-      return buildDiscover({ attendedOrganizers: attended, candidates, feedback, followedOrganizers: followed, hasPlan: judged.hasPlan, hrefFor, myEventIds: myIds, now: at, planGoal: judged.goal, query, signedIn: true }, forDaily ? { dailyCandidates: true } : undefined);
+      return buildDiscover({ attendedOrganizers: attended, candidates, feedback, followedOrganizers: followed, goalKeywords: judged.goalKeywords, hasPlan: judged.hasPlan, hrefFor, myEventIds: myIds, now: at, planGoal: judged.goal, query, signedIn: true }, forDaily ? { dailyCandidates: true } : undefined);
   }
 
   return {

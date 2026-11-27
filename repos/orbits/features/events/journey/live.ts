@@ -19,7 +19,7 @@ import { resolvePlanV2Service } from "../../plans/v2/service-factory";
 import { getSelfProfileForAi } from "../../profile/self-profile-reader";
 import { createConfiguredTaskService } from "../../tasks/service-factory";
 import { createPostgresActorRecordStore } from "../actor-records/store";
-import { getConfiguredEventAssessmentRuntime } from "../assessment/configured";
+import { getConfiguredEventAssessmentRuntime, readProfileGoalKeywords } from "../assessment/configured";
 import { judgeEvent } from "../assessment/judge";
 import { canAccessEventCapability } from "../event-access/capability-policy";
 import { EVENT_ACCESS_CAPABILITIES } from "../event-access/contract";
@@ -408,7 +408,8 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
     async judge(actorId, eventIds, language) {
       const context = await runtime.plan.context(actorId, language);
       const hasPlan = Boolean(context.planId) && context.types.length > 0;
-      if (!hasPlan) return { goal: null, hasPlan: false, results: {} };
+      // 2026-11-27：没有计划 → 只读一次资料目标，给「探す」粗排用的关键词（不逐场读、不用 AI）。
+      if (!hasPlan) return { goal: null, goalKeywords: await readProfileGoalKeywords(actorId).catch(warned("r27_journey_goal_keywords_failed", [] as readonly string[])), hasPlan: false, results: {} };
       const ids = [...new Set(eventIds.filter(Boolean))].slice(0, JUDGE_LIMIT);
       const assessmentByEvent = await myAssessmentIdsByEvent(query, workspaceId, actorId, ids).catch(warned("r27_journey_assessment_ids_failed", new Map<string, string>()));
       const results: Awaited<ReturnType<JourneyLivePorts["judge"]>>["results"] = {};

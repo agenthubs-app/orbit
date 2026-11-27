@@ -27,6 +27,7 @@ import { ringColor } from "./events-model";
 import { RelevanceCard, RelevanceChips, registrationChipText, relevanceRows, relevanceTitle } from "./Relevance";
 import { journeyApi } from "./journey-api";
 import { readSavedPlanGoal, type SavedPlanGoal } from "../plan/saved-goal";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
 import r from "./record.module.css";
@@ -271,6 +272,14 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowI
     readSavedPlanGoal().then((goal) => { rememberAnswer(SAVED_GOAL_KEY, { goal }); setSavedGoal(goal); }, () => setSavedGoal((value) => value ?? null));
   }, [goalWanted]);
   const goal = signedIn ? savedGoal : null;
+  // 有目标、目标对得上计划类型（融资 / 获客 / 招聘 / 合作）时服务端已按目标粗排（live.ts goalRanking，不用 AI）。
+  const goalRanked = Boolean(goal?.suggestedKind);
+  // 手机引导卡「关掉」：按账号记在本机（2026-11-27）。
+  const { account } = useSharedReadAccount();
+  const guideKey = `orbit:discover:plan-guide-closed:${account ?? "anon"}`;
+  const [guideClosed, setGuideClosed] = useState(false);
+  useEffect(() => { try { setGuideClosed(window.localStorage.getItem(guideKey) === "1"); } catch { setGuideClosed(false); } }, [guideKey]);
+  const closeGuide = () => { setGuideClosed(true); try { window.localStorage.setItem(guideKey, "1"); } catch { /* 存不了就只在这次关掉 */ } };
 
   useEffect(() => {
     const q = search.trim();
@@ -433,9 +442,48 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle, nowI
     </>
   );
 
+  // 390（b2 #11 discover('empty')，2026-11-27 用户反馈太高）：主卡（标题 19 / 整宽 46 按钮，右上角可关）+ 卡片外一行三列入口小方块（只有图标和标题）。
+  // 关掉后按账号记住（本机），只留三个入口；列表标题旁留「做计划」小入口。
+  const tiles = (
+    <div className={d.pTiles} data-discover-tiles="">
+      {([["🔗", "t_blue", "tileUrl", "/app/events?tab=assess"], ["🎟️", "t_teal", "tileCode", "/app/events?tab=assess&code=1"], ["👥", "t_pink", "tileCommunity", "/app/events?tab=discover"]] as const).map(([emoji, tone, title, href]) => (
+        <a key={title} href={href} className={`${styles.card} ${d.pTile}`}><span className={`${styles.emo} ${styles[tone]}`}>{emoji}</span>{t(title)}</a>
+      ))}
+    </div>
+  );
+  const planHref = "/app/tasks?tab=plan";
+  const phoneGuide = (
+    <>
+      {guideClosed ? null : (
+        <div className={`${styles.card} ${d.pGuide}`} data-discover-empty="">
+          <button type="button" className={`btn ${d.pGuideClose}`} aria-label={std.action.close} onClick={closeGuide} data-discover-guide-close=""><Icon name="x" size={16} /></button>
+          <div className={styles.lbl}>{t("noPlanLbl")}</div>
+          {goal === undefined ? (
+            <div aria-busy aria-label={std.loading.loading} data-discover-goal-pending="">
+              <div className={d.pGuideTitle}><i className={styles.pendBone} style={{ width: "70%", height: 18 }} aria-hidden /></div>
+              <div className={styles.sub}><i className={styles.pendBone} style={{ width: "80%" }} aria-hidden /></div>
+            </div>
+          ) : (
+            <>
+              <div className={d.pGuideTitle}>{goalRanked ? t("noPlanTitleRanked") : goal ? t("noPlanTitleGoal") : <>{t("noPlanTitleShort")}<br />{t("noPlanTitleRest")}</>}</div>
+              <div className={`${styles.sub} ${d.pGuideSub}`}>{t(goalRanked ? "noPlanSubRanked" : goal ? "noPlanSubGoal" : "noPlanSubShort")}</div>
+            </>
+          )}
+          <a className={`btn ${styles.btn} ${styles.primary} ${d.pGuideBtn}`} href={planHref}><Icon name="target" size={16} />{t(goal === null ? "setGoal" : "planFromGoal")}</a>
+        </div>
+      )}
+      {tiles}
+      {data.all.length ? null : <div className={`${styles.cardH} ${d.sectionHead}`}><h3>{t("samplePreview")} <SampleTag /></h3></div>}
+      {data.all.length ? null : ([1, 2, 3] as const).map((n, index) => (
+        <EventCard key={n} faded listRow index={index} language={language} t={t} onOpen={() => undefined} metaOverride={t(`sample${n}Meta`)} row={{ emoji: ["🎤", "🤝", "📚"][index]!, eventId: `sample-${n}`, href: "#", relevance: SAMPLE_RELEVANCE[index]!, startsAt: "", title: t(`sample${n}Title`) }} />
+      ))}
+    </>
+  );
+  const reopenPlan = guideClosed ? <a className={d.pReopen} href={planHref} data-discover-reopen-plan="">{t(goal === null ? "setGoal" : "makePlanShort")}</a> : null;
+
   // 2026-11-27 用户反馈：手机上永远不出现表格。没有计划（popularityFallback）也走手机卡片列表；表格在 CSS 里另按视口宽度隐藏。
   if (tier === "narrow" && (past || data.popularityFallback || !flat) && !data.signedOut) {
-    return <>{overlay}<PhoneDiscover lead={!past && data.popularityFallback ? guide : null} showSearch={showSearch} onPick={pick} data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return key === "period" ? { ...next, period: "upcoming" } : next; })} onOpen={open} /></>;
+    return <>{overlay}<PhoneDiscover lead={!past && data.popularityFallback ? phoneGuide : null} listAction={!past && data.popularityFallback ? reopenPlan : null} showSearch={showSearch} onPick={pick} data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return key === "period" ? { ...next, period: "upcoming" } : next; })} onOpen={open} /></>;
   }
 
   const card = (row: EventDiscoverRow, index: number, band = false) => <EventCard key={row.eventId} row={row} index={index} band={band} language={language} t={t} selected={selected === row.eventId} onSelect={() => pick(row)} onOpen={() => open(row.href)} />;
@@ -592,7 +640,7 @@ export function DiscoverRail({ row, language }: { row: EventDiscoverRow; languag
 
 /** 探す 没有选中活动时的右栏（b2 #11）：iOrbit 的探す专用开场与两条提问。 */
 // ---------- 390（b12 #348）：App 式探す——搜索 + 筛选按钮（件数）、已选 chip、コミュニティ列表、プランに効く横滑卡、すべて列表 ----------
-function PhoneDiscover({ lead, showSearch, data, query, language, t, search, onSearch, onQuery, onClear, onOpen, onPick }: { /** 没有计划时列表上方的引导卡（2026-11-27）。 */ lead?: ReactNode; showSearch: boolean; data: EventDiscoverResponse; query: EventDiscoverQuery; language: OrbitLanguage; t: JourneyT; search: string; onSearch: (value: string) => void; onQuery: (patch: Partial<EventDiscoverQuery>) => void; onClear: (key: keyof EventDiscoverQuery) => void; onOpen: (href: string) => void; /** 2026-11-23：卡片点开底部简介面板。 */ onPick: (row: EventDiscoverRow) => void }) {
+function PhoneDiscover({ lead, listAction, showSearch, data, query, language, t, search, onSearch, onQuery, onClear, onOpen, onPick }: { /** 没有计划时列表上方的引导卡（2026-11-27）。 */ lead?: ReactNode; /** 「全部」标题右侧、「按日期」前的小入口。 */ listAction?: ReactNode; showSearch: boolean; data: EventDiscoverResponse; query: EventDiscoverQuery; language: OrbitLanguage; t: JourneyT; search: string; onSearch: (value: string) => void; onQuery: (patch: Partial<EventDiscoverQuery>) => void; onClear: (key: keyof EventDiscoverQuery) => void; onOpen: (href: string) => void; /** 2026-11-23：卡片点开底部简介面板。 */ onPick: (row: EventDiscoverRow) => void }) {
   const [sheet, setSheet] = useState(false);
   const [page, setPage] = useState(0);
   const count = (query.period && query.period !== "upcoming" ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
@@ -656,7 +704,7 @@ function PhoneDiscover({ lead, showSearch, data, query, language, t, search, onS
       ) : null}
       {rows.length ? (
         <section className={d.pSection} data-discover-all="">
-          <div className={`${styles.cardH} ${d.pListH}`}><h3>{past ? t("pastTitle", { n: data.total }) : t("allPlain")}</h3><span className={styles.lbl}>{past ? t("byNewest") : t("byDate")}</span></div>
+          <div className={`${styles.cardH} ${d.pListH}`}><h3>{past ? t("pastTitle", { n: data.total }) : t("allPlain")}</h3><span className={`${styles.lbl} ${d.pListMeta}`}>{listAction}{past ? t("byNewest") : t("byDate")}</span></div>
           {listRows(rows, past)}
         </section>
       ) : past ? <div className={`${styles.card} ${styles.flat} ${d.pAll}`} data-discover-past-empty=""><b>{t("pastEmpty")}</b><div className={styles.lbl}>{t("pastEmptySub")}</div></div> : null}

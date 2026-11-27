@@ -171,3 +171,15 @@
 /* 手机根容器：子项再宽也不撑开页面（横向滚动只发生在筛选条、横滑卡这些自己的容器里）。 */
 .pRoot { min-width: 0; max-width: 100%; }
 .pLead { display: grid; gap: 12px; margin-top: 12px; min-width: 0; }
+
+/* ---------- 2026-11-27 手机「还没有计划」按 390 画板（b2 #11 discover('empty')）：主卡 + 卡片外一行三列入口；主卡可关 ---------- */
+.pGuide.pGuide { position: relative; padding: 20px; gap: 0; }
+.pGuideClose.pGuideClose { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-3); display: grid; place-items: center; cursor: pointer; }
+.pGuideClose :global(svg) { width: 14px; height: 14px; }
+.pGuideTitle { font-size: var(--fs-section); font-weight: var(--fw-heavy); line-height: 1.4; margin: 4px 0; padding-right: 24px; }
+.pGuideSub.pGuideSub { margin-bottom: 14px; }
+.pGuideBtn.pGuideBtn { display: flex; width: 100%; height: 46px; min-height: 0; justify-content: center; gap: 6px; }
+.pTiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pTile.pTile { margin: 0; padding: 14px 6px; display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink); text-decoration: none; text-align: center; min-width: 0; }
+.pListMeta.pListMeta { display: inline-flex; align-items: center; gap: 10px; }
+.pReopen { color: var(--ink-2); font-weight: var(--fw-bold); text-decoration: none; }

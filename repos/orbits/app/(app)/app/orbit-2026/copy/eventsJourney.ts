@@ -94,6 +94,10 @@ export const eventsJourneyCopy = {
   noPlanSubGoal: { ja: "今は日付順で表示しています。", zh: "现在按日期排序。", en: "Showing by date for now.", kind: "label" },
   planFromGoal: { ja: "目標からプランを作る", zh: "用目标生成计划", en: "Make a plan from my goal", kind: "button" },
   setGoal: { ja: "目標を設定する", zh: "设定目标", en: "Set a goal", kind: "button" },
+  // 2026-11-27：有目标没计划时按目标粗排（不用 AI）后的提示；手机关掉引导卡后列表标题旁的小入口。
+  noPlanTitleRanked: { ja: "目標に合う順に並べています", zh: "已按你的目标排序", en: "Sorted by your goal", kind: "cardTitle" },
+  noPlanSubRanked: { ja: "プランを作ると、もっと正確になります。", zh: "做好计划后会更准。", en: "A plan makes this more precise.", kind: "label" },
+  makePlanShort: { ja: "プランを作る", zh: "做计划", en: "Make a plan", kind: "button" },
   tileUrl: { ja: "URL で評価", zh: "用网址评估", en: "Assess a link", kind: "label" },
   tileUrlShort: { ja: "URL で評価", zh: "网址评估", en: "Assess link", kind: "chip" },
   tileUrlSub: { ja: "気になる告知ページを判定", zh: "判断感兴趣的活动页面", en: "Check an event page", kind: "label" },

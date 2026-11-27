@@ -19,6 +19,7 @@ import type {
 import type { EventDiscoverParsedQuery } from "../../../shared/api-schema/event-discover";
 import { guessPlace } from "../../../shared/compute/event-travel-estimate";
 import { tokyoParts } from "../../../shared/compute/event-score-input";
+import { lowerText } from "../../../shared/compute/compute-text";
 import type { EventRelevance } from "../../../shared/contract/event-relevance";
 
 export const DISCOVER_THEME_KEYWORDS: Readonly<Record<EventDiscoverTheme, RegExp>> = {
@@ -178,6 +179,11 @@ export interface DiscoverInput {
   signedIn: boolean;
   hasPlan: boolean;
   planGoal?: string | null;
+  /**
+   * 2026-11-27：没有计划、但资料里的目标对得上计划模板（融资 / 获客 / 招聘 / 合作）时，该模板的关键词。
+   * すべて 按「说明里提到目标关键词的在前，其余按日期」粗排，命中的卡片带「主题相近」事实；纯规则，不用 AI。有计划时不看。
+   */
+  goalKeywords?: readonly string[];
   followedOrganizers: ReadonlySet<string>;
   attendedOrganizers: ReadonlySet<string>;
   /** Events I already registered for / attended (never recommended back). */
@@ -218,6 +224,19 @@ function endedOf(ended: Enriched[], toRow: (item: Enriched) => EventDiscoverRow)
   return { past: ended.slice(0, ALL_ROWS).map(toRow), pastTotal: ended.length };
 }
 
+/** 活动标题 / 说明 / 主办方里出现的目标关键词（按关键词表顺序、去重，≤2 个，用作「主题相近」的依据）。 */
+export function goalKeywordHits(candidate: Pick<DiscoverCandidate, "title" | "description" | "organizerName">, keywords: readonly string[]): string[] {
+  const text = lowerText([candidate.title, candidate.description, candidate.organizerName].filter(Boolean).join(" "));
+  const hits: string[] = [];
+  for (const keyword of keywords) {
+    if (hits.length >= 2) break;
+    const key = lowerText(keyword.trim());
+    // 「資金調達」已中时不再列「調達」（互相包含的算一个）。
+    if (key && text.includes(key) && !hits.some((hit) => { const h = lowerText(hit); return h.includes(key) || key.includes(h); })) hits.push(keyword);
+  }
+  return hits;
+}
+
 export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?: boolean } = {}): EventDiscoverResponse {
   const href = input.hrefFor ?? ((eventId: string) => `/events/${eventId}`);
   const enriched = input.candidates.map(enrich);
@@ -226,9 +245,15 @@ export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?:
   const scored = input.signedIn && input.hasPlan;
   // 開催済み：不打分、不推荐，只按开始时间倒序列出（DISCOVER-RULES D4）。
   const past = input.query.period === "past";
+  // 没有计划时按资料目标粗排（不在開催済み、不在未登录）。
+  const goalHits = new Map<string, string[]>();
+  if (input.signedIn && !input.hasPlan && !past && input.goalKeywords?.length) {
+    for (const item of matched) { const hits = goalKeywordHits(item.candidate, input.goalKeywords); if (hits.length) goalHits.set(item.candidate.eventId, hits); }
+  }
   const effects = new Map(matched.map((item) => [item.candidate.eventId, feedbackEffect({ area: item.area, eventId: item.candidate.eventId, organizerId: item.candidate.organizerId, startsAt: item.candidate.startsAt, themes: item.themes }, input.feedback)]));
   const toRow = (item: Enriched, communityReason?: EventDiscoverCommunityReason | null, ended = past): EventDiscoverRow => {
     const judge = scored && !ended ? item.candidate.judge ?? null : null;
+    const goalTopic = !scored && !ended ? goalHits.get(item.candidate.eventId) : undefined;
     return {
       area: item.area,
       ...(item.candidate.coverUrl ? { coverUrl: item.candidate.coverUrl } : {}),
@@ -254,6 +279,7 @@ export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?:
         ...(judge.knownAttendees?.length ? { knownAttendees: judge.knownAttendees } : {}),
         ...(judge.relevance ? { relevance: judge.relevance } : {}),
       } : {}),
+      ...(goalTopic ? { relevance: { group: "topic", known: null, people: [], topic: { labels: goalTopic }, warnings: [] } satisfies EventRelevance } : {}),
     };
   };
   // 2026-11-15 去分数：不再按分数排；興味なし降权的往后放，其余按日期。
@@ -263,7 +289,9 @@ export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?:
 
   // すべて：一律日付順（2026-11-15 去分数：不再有人气順 / おすすめ順；「会いたい人が来る」一行已经把相关的提到前面）。
   // `sort` / `planFirst` 参数仍接受（旧版 App 会带），对すべて不再起作用。
-  const allSorted = [...matched].sort(past ? (a, b) => byDate(b, a) : byDate);
+  // 2026-11-27：没有计划但有目标 → 提到目标关键词的在前（组内仍按日期），结果确定。
+  const goalFirst = (item: Enriched) => (goalHits.has(item.candidate.eventId) ? 0 : 1);
+  const allSorted = [...matched].sort(past ? (a, b) => byDate(b, a) : goalHits.size ? (a, b) => goalFirst(a) - goalFirst(b) || byDate(a, b) : byDate);
   // 会いたい人が来る：报名者 / 登壇者里有计划想见类型的活动，按日期（被点了興味なし的不进）。
   const planFitAll = scored && !past ? matched.filter((item) => recommendable(item) && item.candidate.judge?.relevance?.group === "people")
     .sort((a, b) => penalized(a) - penalized(b) || byDate(a, b)) : [];

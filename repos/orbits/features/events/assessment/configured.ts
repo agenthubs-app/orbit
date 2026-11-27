@@ -10,6 +10,8 @@
  * - 当前目标 = `PlanV2Service.summary().current`（首页 / Task 显示的那一个，DESIGN §3.5「多目标」）。
  */
 import { PLAN_GOAL_TEMPLATES } from "../../../shared/compute/plan-templates";
+import { firstProfileGoalForPlan } from "../../../shared/compute/profile-onboarding-goal";
+import { createProfileService } from "../../profile/service-factory";
 import { DEFAULT_EVENT_SCORE_PREFERENCES } from "../../../shared/compute/event-score";
 import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-copy";
 import { resolveModuleMode } from "../../../shared/services/module-mode";
@@ -68,6 +70,21 @@ export async function readPreferencesForAssessment(query: Query, workspaceId: st
     if (options.strict) throw error;
     return { homeArea: null, preferences: DEFAULT_EVENT_SCORE_PREFERENCES };
   }
+}
+
+/**
+ * 2026-11-27：没有计划时「探す」按资料目标粗排用的关键词——引导第②步存在资料 relationshipGoal 里的目标，
+ * 第一个选项对得上计划模板（融资 / 获客 / 招聘 / 合作）才有；品牌曝光、行业趋势、自由文本 → 空（按日期）。纯规则，不用 AI。
+ */
+export function goalKeywordsForProfileGoal(relationshipGoal: string | null | undefined): readonly string[] {
+  const kind = firstProfileGoalForPlan(relationshipGoal ?? "").suggestedKind;
+  return kind ? PLAN_GOAL_TEMPLATES[kind].keywords : [];
+}
+
+/** 读资料目标并换成关键词（一次资料读取；读失败 = 空，照日期排）。 */
+export async function readProfileGoalKeywords(actorId: string): Promise<readonly string[]> {
+  const result = await createProfileService("live").getProfile({ actorId });
+  return result.success === false ? [] : goalKeywordsForProfileGoal(result.data.profile?.relationshipGoal);
 }
 
 /** 当前目标的判定上下文（live 计划；没有计划 → 空类型）。 */

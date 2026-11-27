@@ -284,7 +284,7 @@ const allRow = (e) => `<div class="li">${datebox(e.md)}<div class="meta"><b>${e.
 function discover(s) {
   const head = topbar('イベント', s === 'empty' ? 'あなた向けのイベントを探す' : s === 'few' ? '条件に合うイベント 3件' : '今月 28件 · プランに効く 6件', `<button class="rbtn">${ic('search')}</button>`, `<button class="rbtn">${ic('calendar')}</button>`) + segTop(2); /* 审计：顶栏与 app.html イベント 一致（🔍 / 📅），不另设 🔔 */
   if (s === 'empty') return head + searchRow(0) + `
-    <div class="guide rise p-guide" style="margin-top:14px"><div class="lbl">まだプランがありません</div>
+    <div class="guide rise p-guide" style="margin-top:14px;position:relative"><button class="p-guide-close" aria-label="閉じる" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:999px;background:var(--surface-2);color:var(--ink-3);display:grid;place-items:center;font-size:14px;font-weight:700">✕</button><div class="lbl">まだプランがありません</div>
       <div style="font-size:19px;font-weight:800;line-height:1.4;margin:4px 0">目標を決めると、<br>会うべき人が来るイベントが上に並びます</div>
       <div class="sub" style="margin-bottom:14px">今は「人気順」で表示しています。約1分で設定できます。</div>
       <button class="btn primary block tap-demo" style="height:46px">${ic('target', 'sm')}目標を設定する</button></div>
@@ -732,7 +732,7 @@ h += wb('Web ② ポスター補完', '信息不足', webFrame({ nav: 3, head: '
 /* ② */
 h += sec('② 探す（イベントを見つける）', 'イベント 页顶部 [評価 | 参加予定 | 探す]；推荐基于计划，社群活动置顶，筛选 = App 底部弹层 / Web 弹出层');
 h += boards([
-  ['探す', 'empty', phone({ body: discover('empty'), tab: 3, pins: pin(1, '.p-guide') }), ['无计划时只给一个主动作「目標を設定する」；其余入口退到 3 个马卡龙小卡；下方淡化サンプル + 幽灵行预告']],
+  ['探す', 'empty', phone({ body: discover('empty'), tab: 3, pins: pin(1, '.p-guide') + pin(2, '.p-guide-close') }), ['无计划时只给一个主动作「目標を設定する」；其余入口退到 3 个马卡龙小卡；下方淡化サンプル + 幽灵行预告', '2026-11-27 用户反馈这块太高：主卡右上角加「閉じる」（按账号记住）；关掉后只留卡片外一行 3 个入口小方块，「すべて」标题右侧「日付順」前留「プランを作る」小入口']],
   ['探す', 'few', phone({ body: discover('few'), tab: 3, pins: pin(1, '.p-widen') }), ['结果少时给「放宽条件」一键建议，每条带可增加的件数（对标 Airbnb / 食べログ 的 0 件放宽提示）']],
   ['探す', 'many', phone({ body: discover('many'), tab: 3, pins: pin(1, '.p-filter') + pin(2, '.p-comm') + pin(3, '.p-rec') }), ['筛选钮带已选数量角标；点 → 底部弹层（见右）', '社群活动置顶：会员限定/先行申込的 chip 用马卡龙小面积', '「プランに効く」横滑卡：理由一句 + 「?」展开依据；分数环单色系']],
   ['探す · 絞り込み', '弹层', phone({ body: discover('many'), tab: 3, overlay: filterSheet, pins: pin(1, '.p-fsheet') + pin(2, '.p-fshow') }), ['底部弹层从下滑入 + 背景暗化；chip 多选，选中=灰紫描边', '主按钮实时显示命中件数（28件），点 → 关闭弹层并刷新列表']],

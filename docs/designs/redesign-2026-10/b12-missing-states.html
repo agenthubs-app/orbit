@@ -6873,7 +6873,7 @@ const allRow = (e) => `<div class="li">${datebox(e.md)}<div class="meta"><b>${e.
 function discover(s) {
   const head = topbar('イベント', s === 'empty' ? 'あなた向けのイベントを探す' : s === 'few' ? '条件に合うイベント 3件' : '今月 28件 · プランに効く 6件', `<button class="rbtn">${ic('search')}</button>`, `<button class="rbtn">${ic('calendar')}</button>`) + segTop(2); /* 审计：顶栏与 app.html イベント 一致（🔍 / 📅），不另设 🔔 */
   if (s === 'empty') return head + searchRow(0) + `
-    <div class="guide rise p-guide" style="margin-top:14px"><div class="lbl">まだプランがありません</div>
+    <div class="guide rise p-guide" style="margin-top:14px;position:relative"><button class="p-guide-close" aria-label="閉じる" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:999px;background:var(--surface-2);color:var(--ink-3);display:grid;place-items:center;font-size:14px;font-weight:700">✕</button><div class="lbl">まだプランがありません</div>
       <div style="font-size:19px;font-weight:800;line-height:1.4;margin:4px 0">目標を決めると、<br>会うべき人が来るイベントが上に並びます</div>
       <div class="sub" style="margin-bottom:14px">今は「人気順」で表示しています。約1分で設定できます。</div>
       <button class="btn primary block tap-demo" style="height:46px">${ic('target', 'sm')}目標を設定する</button></div>
