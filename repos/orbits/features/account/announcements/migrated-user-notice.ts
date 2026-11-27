@@ -229,12 +229,22 @@ export interface NoticeRunSummary {
   failureReasons?: Record<string, number>;
 }
 
+/**
+ * 两封信之间的间隔（毫秒）。生产发信是个人 Gmail SMTP，连发会被限速（EAUTH，2026-11-27），默认 8 秒；
+ * 用 ORBIT_MIGRATION_NOTICE_INTERVAL_MS 调整（整数，1000–60000，越界或写错用默认）。
+ */
+export const NOTICE_INTERVAL_DEFAULT_MS = 8_000;
+export function noticeIntervalMs(env: Env): number {
+  const value = Number(env.ORBIT_MIGRATION_NOTICE_INTERVAL_MS);
+  return Number.isInteger(value) && value >= 1_000 && value <= 60_000 ? value : NOTICE_INTERVAL_DEFAULT_MS;
+}
+
 export async function runMigratedUserNotice(input: NoticeRunInput): Promise<NoticeRunSummary> {
   const mode = noticeMode(input.env);
   const campaign = input.campaign ?? NOTICE_CAMPAIGN;
   const now = input.now ?? (() => new Date());
   const sleep = input.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
-  const intervalMs = input.intervalMs ?? 1_000;
+  const intervalMs = input.intervalMs ?? noticeIntervalMs(input.env);
   const budgetMs = input.budgetMs ?? 9 * 60_000;
   if (mode === "off") { input.log("disabled", { hint: "set ORBIT_MIGRATION_NOTICE_MODE=dry|test|apply" }); return { mode }; }
   const productionMail = isProductionMailEnvironment(input.env);

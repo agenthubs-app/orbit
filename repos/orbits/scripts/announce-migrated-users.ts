@@ -6,6 +6,7 @@
  *   ORBIT_ACCOUNT_OPS=build-only ORBIT_MIGRATION_NOTICE_MODE=test  ORBIT_MIGRATION_NOTICE_TEST_TO=<address> npx tsx …
  *   ORBIT_ACCOUNT_OPS=build-only ORBIT_MIGRATION_NOTICE_MODE=apply ORBIT_MIGRATION_NOTICE_EXPECTED_COUNT=<dry count> npx tsx …
  *
+ * ORBIT_MIGRATION_NOTICE_INTERVAL_MS: gap between two sends (default 8000; Gmail SMTP throttles bursts).
  * Without ORBIT_MIGRATION_NOTICE_MODE it does nothing. test/apply refuse unless NODE_ENV and VERCEL_ENV are both
  * `production` (otherwise the mailer would redirect). Output: counts, domains and masked samples only.
  */

@@ -6,6 +6,7 @@ import { loadLocalEnv } from "../../scripts/load-local-env";
 import {
   classifyRecipients, createRecordStoreNoticeLedger, loadMigratedAccounts, maskNoticeEmail, MIGRATED_FROM, NOTICE_FROM_NAME, NOTICE_SUBJECT,
   NOTICE_TEXT, runMigratedUserNotice, type MigratedAccountRow, type NoticeLedger, type NoticeLedgerEntry,
+  noticeIntervalMs,
 } from "../../features/account/announcements/migrated-user-notice";
 import type { TransactionalMail, TransactionalMailer, TransactionalMailResult } from "../../features/mail/transactional";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
@@ -149,7 +150,7 @@ test("apply paces sends about a second apart and stops starting new ones when th
   const { mailer, sent } = stubMailer(() => { clock += 300; return null; });
   const summary = await runMigratedUserNotice({
     env: { ...PROD, ORBIT_MIGRATION_NOTICE_MODE: "apply", ORBIT_MIGRATION_NOTICE_EXPECTED_COUNT: "5" }, mailer, log: () => undefined,
-    loadRows: async () => rows, ledger: memoryLedger(), now: () => new Date(clock), sleep: async (ms) => { waits.push(ms); clock += ms; }, budgetMs: 2_200,
+    loadRows: async () => rows, ledger: memoryLedger(), now: () => new Date(clock), sleep: async (ms) => { waits.push(ms); clock += ms; }, intervalMs: 1_000, budgetMs: 2_200,
   });
   assert.deepEqual(waits, [700, 700]);
   assert.equal(sent.length, 3);
@@ -200,4 +201,11 @@ test("Postgres: recipient query reads current migrated sign-in rows; ledger clai
     await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
     await admin.end();
   }
+});
+
+test("send interval: 8 s by default (Gmail SMTP throttles bursts), ORBIT_MIGRATION_NOTICE_INTERVAL_MS within 1–60 s overrides", () => {
+  assert.equal(noticeIntervalMs({}), 8_000);
+  assert.equal(noticeIntervalMs({ ORBIT_MIGRATION_NOTICE_INTERVAL_MS: "12000" }), 12_000);
+  assert.equal(noticeIntervalMs({ ORBIT_MIGRATION_NOTICE_INTERVAL_MS: "200" }), 8_000);
+  assert.equal(noticeIntervalMs({ ORBIT_MIGRATION_NOTICE_INTERVAL_MS: "fast" }), 8_000);
 });
