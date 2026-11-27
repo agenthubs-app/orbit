@@ -315,7 +315,7 @@ function PrepInner({ eventId, language }: { eventId: string; language: OrbitLang
           })}
           {data.followupSuggestion && !followDone ? (
             <div className={`${styles.card} ${q.confirm}`} data-prep-follow="">
-              <b className={q.confirmTitle}>{t("followAskWeb", { time: hm(data.followupSuggestion.startsAt).replace(/^0/, "") })}</b>
+              <b className={q.confirmTitle}>{t("followAskWeb", { date: eventRange(data.followupSuggestion.startsAt, null, language).replace(/\s*\d{1,2}:\d{2}$/, ""), time: hm(data.followupSuggestion.startsAt).replace(/^0/, "") })}</b>
               <div className={styles.row} style={{ gap: 8, marginTop: 10 }}>
                 <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} onClick={() => void addFollowup()}>{t("addIt")}</button>
                 <button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => setFollowDone("skipped")}>{t("notNow")}</button>
