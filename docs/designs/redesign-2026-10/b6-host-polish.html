@@ -23,6 +23,22 @@
   .sugg { background: var(--surface); border-radius: 18px; padding: 14px; transition: transform .15s var(--ease); cursor: pointer; }
   .ghost-tr td { color: var(--ink-4); }
   .ghost-tr i { display: inline-block; height: 10px; border-radius: 5px; background: var(--surface-2); }
+  /* 申込の推移（trendW，照实现 signup-trend.module.css） */
+  .tw { display: grid; gap: 10px; }
+  .tw-sum { display: flex; align-items: baseline; gap: 12px; font-size: 12px; color: var(--ink-3); }
+  .tw-sum b { font-family: var(--font-num); font-size: 22px; font-weight: 800; color: var(--ink); margin-right: 2px; }
+  .tw-plot { position: relative; display: grid; align-items: end; gap: 6px; border-bottom: 1px solid var(--line); }
+  .tw-grid { position: absolute; left: 0; right: 0; top: 22px; border-top: 1px dashed var(--line); }
+  .tw-col { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+  .tw-col i { display: block; width: 100%; max-width: 40px; border-radius: 4px 4px 0 0; background: var(--plum-300); }
+  .tw-col i.hi { background: var(--plum-700); }
+  .tw-col i.z { height: 2px; background: var(--line); border-radius: 0; }
+  .tw-v { margin-bottom: 4px; white-space: nowrap; font-family: var(--font-num); font-size: 12px; font-weight: 700; color: var(--ink); line-height: 1; }
+  .tw-mk { display: grid; gap: 6px; margin-bottom: -4px; font-size: 11px; font-weight: 700; color: var(--ink-2); }
+  .tw-mk span { text-align: center; white-space: nowrap; }
+  .tw-mk span.on::after { content: ""; display: block; width: 1px; height: 6px; margin: 2px auto 0; background: var(--ink-3); }
+  .tw-ax { display: grid; gap: 6px; font-size: 11px; color: var(--ink-3); font-family: var(--font-num); }
+  .tw-ax span { text-align: center; white-space: nowrap; }
   .bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; }
   .bars i { flex: 1; border-radius: 8px 8px 4px 4px; background: var(--plum-300); position: relative; }
   .bars i.hi { background: var(--plum-700); }
@@ -1022,10 +1038,22 @@ const chatRail = `<h4>${ic('layers', 'sm')}参照しているもの</h4>
   <div class="mac lav" style="font-size:12px">メール・メッセージは下書きまで。送信はあなたが行います。</div>`;
 
 /* ---- 主催（運営台） ---- */
+/* 申込の推移（2026-11-27 补画：照 2026-11-13 用户要求重做的实现 SignupTrend）：合计 + 最多一天、事件标注、虚线、峰值人数、M/D 日期轴、柱宽上限 40。 */
+function trendW(values, start, o = {}) {
+  const h = o.height || 120, marks = o.marks || {}, n = values.length;
+  const [y, m, d] = start.split('-').map(Number);
+  const labels = values.map((_, k) => { const t = new Date(Date.UTC(y, m - 1, d + k)); return `${t.getUTCMonth() + 1}/${t.getUTCDate()}`; });
+  const total = values.reduce((a, b) => a + b, 0), max = Math.max(0, ...values), peak = max > 0 ? values.indexOf(max) : -1, step = Math.max(1, Math.ceil(n / 7));
+  const cols = `grid-template-columns:repeat(${n},minmax(0,1fr))`;
+  return `<div class="tw"><div class="tw-sum"><span><b>${total}</b>名</span><span>${peak >= 0 ? `最多 ${labels[peak]}・${max}名` : 'この期間の申込はありません'}</span></div>`
+    + (Object.keys(marks).length ? `<div class="tw-mk" style="${cols}">${values.map((_, k) => `<span class="${marks[k] ? 'on' : ''}">${marks[k] || ''}</span>`).join('')}</div>` : '')
+    + `<div class="tw-plot" style="height:${h}px;${cols}"><span class="tw-grid"></span>${values.map((v, k) => `<span class="tw-col">${k === peak ? `<span class="tw-v">${v}</span>` : ''}<i class="${k === peak ? 'hi' : ''}${v === 0 ? ' z' : ''}" style="${v > 0 ? `height:${Math.max(4, Math.round(v / max * (h - 22)))}px` : ''}"></i></span>`).join('')}</div>`
+    + `<div class="tw-ax" style="${cols}">${labels.map((l, k) => `<span>${k % step === 0 || k === n - 1 ? l : ''}</span>`).join('')}</div></div>`;
+}
 function hostPage() {
   return mainhead('CFO Night Tokyo vol.18', '主催 · 本日 19:00 · 渋谷ストリーム 4F ホール', `<button class="rbtn">${ic('left')}</button>`, `<div class="avs">${[C[2], C[5], C[4]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div><button class="btn">${ic('users', 'sm')}共同運営者</button><button class="rbtn k-hmore">${ic('more')}</button>`) + `<div class="htabs k-htabs"><button class="on">概要</button><button>マッチング</button><button>参加者<span class="cnt-b">12</span></button><button>受付</button><button>申込設定</button><button>レポート</button></div><div class="wgrid">
     ${[['申込', 128, '定員 150', 'lav'], ['マッチ可能', 112, 'プロフィール完了', 'blue'], ['受付済み', 0, '19:00 開場', 'teal'], ['推薦の生成', 96, '%', 'apricot']].map(([l, v, d, c]) => `<div class="card span3"><span class="chip ${c}">${l}</span><div class="big" style="margin-top:10px">${num(v)}${d === '%' ? '<small>%</small>' : ''}</div><div class="lbl">${d === '%' ? '1人あたり 5名を推薦' : d}</div></div>`).join('')}
-    <div class="card span8"><div class="card-h"><h3>申込の推移</h3><span class="lbl">直近14日</span></div><div class="bars">${[4, 6, 5, 9, 7, 12, 8, 6, 10, 14, 9, 11, 16, 11].map((h, k) => `<i class="${k === 12 ? 'hi' : ''}" style="height:${h * 6}px"></i>`).join('')}</div></div>
+    <div class="card span8"><div class="card-h"><h3>申込の推移</h3><span class="lbl">直近14日</span></div>${trendW([4, 6, 5, 9, 7, 12, 8, 6, 10, 14, 9, 11, 16, 11], '2026-09-24')}</div>
     <div class="card span4"><div class="card-h"><h3>運営の進捗</h3></div>${[['申込受付', 1], ['マッチング生成', 1], ['グループ確認', 1], ['結果を公開', 0], ['当日受付', 0]].map(([t, d], k) => `<div class="chk ${d ? 'done' : ''}"><span class="box">${d ? ic('check', 'sm') : ''}</span><div style="flex:1"><b>${t}</b></div>${k === 3 ? '<button class="btn sm primary">公開する</button>' : ''}</div>`).join('')}</div>
     <div class="card span12 flat row k-hprof" style="gap:12px;flex-direction:row;align-items:center"><span class="emo apricot" style="color:var(--mac-apricot-ink)"><span class="lic i-alert"></span></span><div style="flex:1"><b>プロフィール未完了 16名</b><div class="lbl">マッチング精度が下がります。Orbit から定型のお知らせを通知できます（通知前に確認画面）</div></div><button class="btn">一覧を見る</button></div></div>`;
 }
@@ -1184,13 +1212,25 @@ function center(s) {
 }
 
 /* ============ 単一イベント運営ヘッダ ============ */
+/* 申込の推移（2026-11-27 补画：照 2026-11-13 用户要求重做的实现 SignupTrend）：合计 + 最多一天、事件标注、虚线、峰值人数、M/D 日期轴、柱宽上限 40。 */
+function trendW(values, start, o = {}) {
+  const h = o.height || 120, marks = o.marks || {}, n = values.length;
+  const [y, m, d] = start.split('-').map(Number);
+  const labels = values.map((_, k) => { const t = new Date(Date.UTC(y, m - 1, d + k)); return `${t.getUTCMonth() + 1}/${t.getUTCDate()}`; });
+  const total = values.reduce((a, b) => a + b, 0), max = Math.max(0, ...values), peak = max > 0 ? values.indexOf(max) : -1, step = Math.max(1, Math.ceil(n / 7));
+  const cols = `grid-template-columns:repeat(${n},minmax(0,1fr))`;
+  return `<div class="tw"><div class="tw-sum"><span><b>${total}</b>名</span><span>${peak >= 0 ? `最多 ${labels[peak]}・${max}名` : 'この期間の申込はありません'}</span></div>`
+    + (Object.keys(marks).length ? `<div class="tw-mk" style="${cols}">${values.map((_, k) => `<span class="${marks[k] ? 'on' : ''}">${marks[k] || ''}</span>`).join('')}</div>` : '')
+    + `<div class="tw-plot" style="height:${h}px;${cols}"><span class="tw-grid"></span>${values.map((v, k) => `<span class="tw-col">${k === peak ? `<span class="tw-v">${v}</span>` : ''}<i class="${k === peak ? 'hi' : ''}${v === 0 ? ' z' : ''}" style="${v > 0 ? `height:${Math.max(4, Math.round(v / max * (h - 22)))}px` : ''}"></i></span>`).join('')}</div>`
+    + `<div class="tw-ax" style="${cols}">${labels.map((l, k) => `<span>${k % step === 0 || k === n - 1 ? l : ''}</span>`).join('')}</div></div>`;
+}
 const coAvs = `<div class="avs">${[C[2], C[5], C[4]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div>`;
 const hostHead = (ev, sub, on, extra = '') => mainhead(ev, sub, backBtn, `${coAvs}<button class="btn">${ic('users', 'sm')}共同運営者</button>${extra}<button class="rbtn k-hmore">${ic('more')}</button>`) +
   `<div class="htabs">${['概要', 'マッチング', '参加者', '受付', '申込設定', 'レポート'].map(t => `<button class="${t === on ? 'on' : ''}">${t}${t === '参加者' && on !== '参加者' ? '<span class="cnt-b">12</span>' : ''}</button>`).join('')}</div>`;
 function overview() {
   return hostHead(HE[0].n, '主催 · 本日 19:00 · 渋谷ストリーム 4F ホール', '概要') + `<div class="wgrid">
     ${[['申込', 128, '定員 150', 'lav'], ['マッチ可能', 112, 'プロフィール完了', 'blue'], ['受付済み', 86, '到着率 67%', 'teal'], ['審査待ち', 12, '当日枠の判断', 'apricot']].map(([l, v, d, c]) => `<div class="card span3"><span class="chip ${c}">${l}</span><div class="big" style="margin-top:10px">${num(v)}</div><div class="lbl">${d}</div></div>`).join('')}
-    <div class="card span8"><div class="card-h"><h3>申込の推移</h3><span class="lbl">直近14日</span></div><div class="bars">${[4, 6, 5, 9, 7, 12, 8, 6, 10, 14, 9, 11, 16, 11].map((h, k) => `<i class="${k === 12 ? 'hi' : ''}" style="height:${h * 6}px"></i>`).join('')}</div></div>
+    <div class="card span8"><div class="card-h"><h3>申込の推移</h3><span class="lbl">直近14日</span></div>${trendW([4, 6, 5, 9, 7, 12, 8, 6, 10, 14, 9, 11, 16, 11], '2026-09-24')}</div>
     <div class="card span4"><div class="card-h"><h3>運営の進捗</h3></div>${[['申込受付', 1], ['マッチング生成', 1], ['グループ確認', 1], ['結果を公開', 0], ['当日受付', 0]].map(([t, d]) => `<div class="chk ${d ? 'done' : ''}"><span class="box">${d ? ic('check', 'sm') : ''}</span><div style="flex:1"><b>${t}</b></div></div>`).join('')}</div></div>`;
 }
 
@@ -1227,7 +1267,7 @@ const publishModal = `<div class="overlay"></div><div class="modal wmodal w480">
   <span class="emo lav">📣</span><div style="font-size:19px;font-weight:800;margin-top:12px">マッチング結果を公開しますか？</div>
   <div class="sub" style="margin-top:6px;line-height:1.7">公開すると、参加者 112名のアプリにテーブル番号と同席者が表示され、通知が届きます。</div>
   <div style="margin-top:14px">${[['第1ラウンド', '22テーブル · 109名', 'ok'], ['第2ラウンド', '22テーブル · 109名', 'ok'], ['未配置', '3名 · 当日受付で割り当て', 'w']].map(([l, v, st]) => `<div class="setrow"><span class="${st === 'ok' ? 'chip teal' : 'chip coral'}">${st === 'ok' ? ic('check', 'sm') : '!'}</span><b style="font-size:13px">${l}</b><span class="lbl" style="margin-left:auto">${v}</span></div>`).join('')}</div>
-  <div class="mac apricot" style="font-size:12px;margin-top:10px">公開後にテーブルを変更すると、影響を受ける参加者にだけ再通知されます。</div>
+  <div class="mac apricot" style="font-size:12px;margin-top:10px">公開後はテーブルを変更できません。配置を確認してから公開してください。</div>
   <div class="row" style="gap:10px;margin-top:14px;font-size:12.5px"><span class="cbx on">${ic('check', 'sm')}</span>共同運営者（3名）にも公開を知らせる</div>
   <div class="row" style="gap:10px;margin-top:20px;justify-content:flex-end"><button class="btn">キャンセル</button><button class="btn primary">公開する</button></div></div>`;
 
@@ -1284,33 +1324,51 @@ const QS = [
   ['CFO Night への参加は何回目ですか？', '単一選択', ['初めて', '2〜3回目', '4回以上'], 1],
   ['食事の配慮が必要な場合はご記入ください', '自由記述', [], 0],
 ];
-const qEdit = (q, k) => `<div class="qcard edit"><div class="row" style="gap:10px"><span class="handle">⋮⋮</span><span class="chip lav">Q${k + 1}</span><div class="input" style="flex:1;height:40px;background:var(--surface-2);color:var(--ink);font-weight:700">${q[0]}</div><button class="lbtn">${ic('x', 'sm')}</button></div>
+const qEdit = (q, k) => `<div class="qcard edit"><div class="row" style="gap:10px"><span class="handle">⋮⋮</span><span class="chip lav">Q${k + 1}</span><div class="input" style="flex:1;height:40px;background:var(--surface-2);color:var(--ink);font-weight:700">${q[0]}</div><button class="lbtn"><span style="display:inline-flex;transform:rotate(-90deg)">${ic('right', 'sm')}</span></button><button class="lbtn">${ic('x', 'sm')}</button></div>
   <div class="row" style="gap:10px;margin-top:12px"><div class="seg">${['単一選択', '複数選択', '自由記述'].map(t => `<button class="${t === q[1] ? 'on' : ''}">${t}</button>`).join('')}</div><span class="lbl" style="margin-left:auto">必須</span><span class="tgl ${q[3] ? 'on' : ''}"></span></div>
-  <div style="margin-top:12px">${q[2].map(o => `<div class="qopt"><span class="handle">⋮⋮</span><span class="${q[1] === '複数選択' ? 'cbx' : 'rad'}"></span>${o}<span class="muted" style="margin-left:auto">${ic('x', 'sm')}</span></div>`).join('')}<div class="qopt" style="background:transparent;border:1.5px dashed var(--surface-3);color:var(--ink-3)">${ic('plus', 'sm')}選択肢を追加</div></div></div>`;
+  ${q[2].length > 1 ? '<div class="row" style="justify-content:flex-end;margin-top:10px"><span style="font-size:12px;font-weight:700;white-space:nowrap;padding:0 8px">並べ替え</span></div>' : ''}<div style="margin-top:12px">${q[2].map(o => `<div class="qopt"><span class="handle">⋮⋮</span><span class="${q[1] === '複数選択' ? 'cbx' : 'rad'}"></span>${o}<span class="muted" style="margin-left:auto">${ic('x', 'sm')}</span></div>`).join('')}<div class="qopt" style="background:transparent;border:1.5px dashed var(--surface-3);color:var(--ink-3)">${ic('plus', 'sm')}選択肢を追加</div></div></div>`;
 const qRow = (q, k) => `<div class="qcard row" style="gap:10px"><span class="handle">⋮⋮</span><span class="chip">Q${k + 1}</span><b class="clamp1" style="flex:1;font-size:13px">${q[0]}</b><span class="chip ${q[1] === '自由記述' ? 'apricot' : q[1] === '複数選択' ? 'blue' : 'lav'}">${q[1]}</span>${q[3] ? '<span class="chip coral">必須</span>' : '<span class="lbl">任意</span>'}<button class="lbtn">${ic('pen', 'sm')}</button></div>`;
 const preview = (qs, desc, ev = HE[0]) => `<div class="pv"><div class="row between"><b style="font-size:13px">プレビュー · 申込者の画面</b><div class="seg"><button class="on">スマホ</button><button>PC</button></div></div>
   <div style="max-width:340px;margin:14px auto 0"><span class="emo ${ev.c}">${ev.emo}</span><b style="display:block;font-size:16px;margin-top:8px">${ev.n}</b><div class="lbl">${ev.d} · ${ev.place}</div>
   <div class="sub clamp2" style="margin-top:8px;font-size:12px">${desc || '（説明文を入力するとここに表示されます）'}</div>
   ${qs.map((q, k) => `<div class="pq"><b>${q[0]}${q[3] ? ' <span style="color:var(--coral)">*</span>' : ''}</b>${q[2].length ? q[2].slice(0, 3).map((o, j) => `<div class="o"><span class="${q[1] === '複数選択' ? 'cbx' : 'rad'} ${j === 0 && k === 0 ? 'on' : ''}">${q[1] === '複数選択' ? '' : ''}</span>${o}</div>`).join('') : '<div class="ghost-row" style="height:38px;margin-top:8px">自由に入力</div>'}</div>`).join('')}
   <button class="btn primary block" style="margin-top:12px">申し込む</button></div></div>`;
+/* 2026-11-27 补画（申込設定，照已上线的实现）：アジェンダ卡（11-15 必填可编辑）+ 单独保存、主催者の連絡先卡（11-26）+ 保存、説明文 2000 字、
+   質問：编辑中题目可上移 / 選択肢並べ替え、添加行带「質問集から選ぶ」与「並べ替え」；空表单也显示質問区与底部操作条。 */
+const AGENDA18 = [['19:00', '受付・開場', 'ウェルカムドリンク'], ['19:15', 'オープニング', '主催挨拶'], ['19:30', 'キーノート', '「シリーズA前後の資本政策」伊藤 直子'], ['20:00', 'テーブルトーク R1', 'テーマ別 6名卓'], ['20:10', 'テーブルトーク R2', '席替えあり'], ['20:40', 'テーブルトーク R3', '席替えあり'], ['21:10', 'フリー交流', ''], ['21:30', '終了', '']];
+const agBox = (v, extra = '') => `<span style="height:30px;border-radius:10px;background:var(--surface);display:flex;align-items:center;padding:0 10px;font-size:12.5px;min-width:0;${extra}">${v}</span>`;
+const agendaW = rows => `<div class="card"><div class="card-h"><h3>アジェンダ</h3><span class="lbl">${rows.length}/40行 · ドラッグで並べ替え</span></div>
+  ${rows.length === 1 && !rows[0][0] ? '<div style="margin-bottom:10px;font-size:11.5px;color:var(--coral-text, var(--coral))">まだアジェンダがありません。参加者には「主催者はまだアジェンダを公開していません」と表示されます。</div>' : ''}
+  ${rows.map(([t, n, d]) => `<div style="display:grid;grid-template-columns:14px 74px 1fr 26px;gap:8px;align-items:center;background:var(--surface-2);border-radius:14px;padding:6px 8px 6px 10px;margin-bottom:6px"><span style="color:var(--ink-4);font-size:12px;letter-spacing:-2px">⋮⋮</span>${agBox(`<b style="font-family:var(--font-num);flex:1;text-align:center;${t ? '' : 'color:var(--ink)'}">${t || '--:--'}</b>${ic('clock', 'sm')}`, 'padding:0 6px')}${agBox(n || '<span style="color:var(--ink-4)">タイトル</span>')}<span style="text-align:center;color:var(--ink-3);font-size:13px;${rows.length <= 1 ? 'opacity:.3' : ''}">×</span>${d ? `<span style="grid-column:3/4">${agBox(d, 'font-size:12px;color:var(--ink-2)')}</span>` : '<span style="grid-column:3/4;font-size:11.5px;color:var(--plum-700);padding:0 2px">＋ 補足を追加</span>'}</div>`).join('')}
+  <div class="row" style="gap:8px;margin-top:4px"><button class="btn sm" style="height:28px;min-height:0;padding:0 12px;font-size:12px;background:var(--surface-2);border:0;font-weight:700">＋ 行を追加</button>${rows.length > 1 ? '<button class="btn sm" style="height:28px;min-height:0;padding:0 12px;font-size:12px;background:var(--surface-2);border:0;font-weight:700">並べ替え</button>' : ''}</div></div>
+  <div class="row" style="justify-content:flex-end;margin-top:-8px"><button class="btn primary" style="opacity:.45">アジェンダを保存</button></div>`;
+const contactW = fill => `<div class="card"><div class="card-h"><h3>主催者の連絡先（任意）</h3><span class="lbl">申込んだ人だけに表示されます</span></div>
+  ${[['WeChat ID', fill ? 'cfonight-tokyo' : ''], ['LINE ID', fill ? 'cfonight_tokyo' : '']].map(([l, v]) => `<div class="setrow"><span class="lbl" style="width:132px">${l}</span><div class="input" style="flex:1;height:40px;color:var(--ink)">${v}</div></div>`).join('')}
+  <div style="margin-top:10px"><div class="lbl" style="font-weight:700;color:var(--ink-2);margin-bottom:8px">参加者へのひとこと</div><div class="ta ${fill ? '' : 'ph'}" style="min-height:0;padding-bottom:30px">${fill ? '申込後、LINE か WeChat で「お名前」をお送りください。参加費のお支払いを確認したら承認し、グループにご招待します。' : '例：申込後、WeChat にお名前を送ってください。参加費の入金を確認したら承認します。'}<span class="counter">${fill ? 63 : 0} / 200</span></div></div></div>
+  <div class="row" style="justify-content:flex-end;margin-top:-8px"><button class="btn primary" style="opacity:.45">保存</button></div>`;
+const qAddRow = (n) => `<div class="row k-qadd" style="gap:8px;margin-top:12px"><button class="btn sm" ${n >= 5 ? 'style="opacity:.4"' : ''}>${ic('book', 'sm')}質問集から選ぶ</button><span class="lbl">質問を追加</span>${['単一選択', '複数選択', '自由記述'].map(t => `<button class="btn sm" ${n >= 5 ? 'disabled style="opacity:.4;pointer-events:none"' : ''}>${ic('plus', 'sm')}${t}</button>`).join('')}${n >= 5 ? '<span class="lbl" style="margin-left:4px">5問まで</span>' : ''}${n > 1 ? '<span style="margin-left:auto;font-size:12px;font-weight:700;white-space:nowrap;padding:0 8px">並べ替え</span>' : ''}</div>`;
 function regForm(s) {
   const head = hostHead(s === 'empty' ? HE[1].n : HE[0].n, s === 'many' ? '主催 · 申込フォーム公開中' : '主催 · 申込フォーム未公開', '申込設定');
   const settings = `<div class="card span5"><div class="card-h"><h3>受付の設定</h3></div>${(s === 'empty' ? [['定員', '60名'], ['申込締切', '10月20日（火）23:59'], ['承認方式', 'seg'], ['WeChat 参加済みは自動承認', 'seg2'], ['申込ページ', 'orbit.app/e/mfg-dx-asakai-3']] : [['定員', '150名'], ['申込締切', '10月6日（火）23:59'], ['承認方式', 'seg'], ['WeChat 参加済みは自動承認', 'seg2'], ['申込ページ', 'orbit.app/e/cfo-night-18']]).map(([l, v]) => `<div class="setrow"><span class="lbl" style="width:84px">${l}</span>${v === 'seg' ? '<div class="seg"><button>先着順</button><button class="on">審査制</button></div>' : v === 'seg2' ? '<div class="seg"><button class="on">オフ</button><button>オン</button></div>' : `<b style="font-size:13px" class="clamp1">${v}</b>`}</div>`).join('')}</div>`;
   if (s === 'empty') return head + `<div class="wgrid">
     <div class="span7" style="display:grid;gap:18px;align-content:start">
-      <div class="card"><div class="card-h"><h3>説明文</h3><span class="lbl">200字まで</span></div><div class="ta ph">どんな人が集まり、何が得られる会かを書きましょう。例：製造業の DX 担当者とスタートアップが、現場の課題を持ち寄る朝会です。<span class="counter">0 / 200</span></div></div>
-      <div class="card"><div class="card-h"><h3>テンプレートから始める</h3></div><div class="grid2">${[['🥂', 'lav', '交流会', '立場・話したいテーマ・会いたい人'], ['📚', 'blue', '勉強会', '経験レベル・関心トピック'], ['🪑', 'pink', 'ラウンドテーブル', '課題・事前に共有したいこと'], ['📄', 'apricot', '白紙から', '質問を自分で作る']].map(([e, c, t, d]) => `<div class="mac ${c} row" style="gap:10px;cursor:pointer"><span style="font-size:22px">${e}</span><div><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div></div>
-      <div class="card" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1"><b>質問案を 3つ追加しますか？</b><div class="lbl">「製造業 DX 朝会」の過去 2回の回答傾向から作成しました</div></div><button class="btn sm">やめる</button><button class="btn sm primary">追加する</button></div></div></div>
-    <div class="span5" style="display:grid;gap:18px;align-content:start">${preview([], '', HE[1])}${settings.replace('span5', '')}</div></div>`;
+      <div class="card"><div class="card-h"><h3>説明文</h3><span class="lbl">2000字まで</span></div><div class="ta ph">どんな人が集まり、何が得られる会かを書きましょう。例：製造業の DX 担当者とスタートアップが、現場の課題を持ち寄る朝会です。<span class="counter">0 / 2000</span></div></div>
+      ${agendaW([['', '', '']])}
+      <div class="card"><div class="card-h"><h3>テンプレートから始める</h3></div><div class="grid2">${[['🥂', 'lav', '交流会', '立場・業界・話したいテーマ・会いたい人'], ['📚', 'blue', '勉強会', '立場・経験・話したいテーマ・事前の課題'], ['🪑', 'pink', 'ラウンドテーブル', '立場・いまの課題・会社のフェーズ・共有したいこと'], ['📄', 'apricot', '白紙から', '質問を自分で作る']].map(([e, c, t, d]) => `<div class="mac ${c} row" style="gap:10px;cursor:pointer"><span style="font-size:22px">${e}</span><div><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div></div>
+      <div class="card" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1"><b>質問案を 3つ追加しますか？</b><div class="lbl">「製造業 DX 朝会」の過去 2回の回答傾向から作成しました</div></div><button class="btn sm">やめる</button><button class="btn sm primary">追加する</button></div></div>
+      <div class="card"><div class="card-h"><h3>質問</h3><span class="lbl">回答はテーブル編成に使われます</span></div><div class="lbl">立場・業界・会いたい人など 33問</div>${qAddRow(0)}</div>
+      <div class="card row" style="gap:12px;padding:14px 20px"><span class="chip apricot">下書き</span><button class="btn" style="margin-left:auto">下書き保存</button><button class="btn primary">公開する</button></div></div>
+    <div class="span5" style="display:grid;gap:18px;align-content:start">${preview([], '', HE[1])}${settings.replace('span5', '')}${contactW(false)}</div></div>`;
   const many = s === 'many', qs = many ? QS : QS.slice(0, 2);
   return head + `<div class="wgrid">
     <div class="span7" style="display:grid;gap:18px;align-content:start">
-      <div class="card"><div class="card-h"><h3>説明文</h3><span class="lbl">200字まで</span></div><div class="ta">${many ? DESC : DESC.slice(0, 64)}<span class="counter" style="${many && DESC.length > 180 ? 'color:var(--coral)' : ''}">${many ? DESC.length : 64} / 200</span></div></div>
+      <div class="card"><div class="card-h"><h3>説明文</h3><span class="lbl">2000字まで</span></div><div class="ta">${many ? DESC : DESC.slice(0, 64)}<span class="counter">${many ? DESC.length : 64} / 2000</span></div></div>
+      ${agendaW(AGENDA18)}
       <div class="card"><div class="card-h"><h3>質問 <span class="lbl" style="font-weight:500">${qs.length}問 · ドラッグで並べ替え</span></h3><span class="lbl">回答はテーブル編成に使われます</span></div>
         ${qs.map((q, k) => (many ? k === 1 : k === 0) ? qEdit(q, k) : qRow(q, k)).join('')}
-        <div class="row k-qadd" style="gap:8px;margin-top:12px"><span class="lbl">質問を追加</span>${['単一選択', '複数選択', '自由記述'].map(t => `<button class="btn sm" ${qs.length >= 5 ? 'disabled style="opacity:.4;pointer-events:none"' : ''}>${ic('plus', 'sm')}${t}</button>`).join('')}${qs.length >= 5 ? '<span class="lbl" style="margin-left:4px">5問まで</span>' : ''}</div></div>
+        ${qAddRow(qs.length)}</div>
       <div class="card row" style="gap:12px;padding:14px 20px"><span class="chip ${many ? 'teal' : 'apricot'}">${many ? '公開中' : '下書き'}</span><span class="lbl">${many ? '未公開の変更 2件 · 2分前に自動保存' : '2分前に自動保存'}</span><button class="btn" style="margin-left:auto">下書き保存</button><button class="btn primary">${many ? '変更を公開' : '公開する'}</button></div></div>
-    <div class="span5" style="display:grid;gap:18px;align-content:start">${preview(qs.slice(0, 3), many ? DESC : DESC.slice(0, 64))}${settings.replace('span5', '')}</div></div>`;
+    <div class="span5" style="display:grid;gap:18px;align-content:start">${preview(qs.slice(0, 3), many ? DESC : DESC.slice(0, 64))}${settings.replace('span5', '')}${contactW(true)}</div></div>`;
 }
 
 /* ============ A6 レポート ============ */
@@ -1320,7 +1378,7 @@ function report(s, view = 'all') {
   if (s === 'empty') return head + `<div class="wgrid">
     <div class="card span8 guide" style="padding:26px"><div class="row" style="gap:16px"><span class="emo lav" style="width:56px;height:56px;font-size:28px">📊</span><div><div style="font-size:22px;font-weight:800">レポートは開催後に表示されます</div><div class="sub">受付率・名刺交換・会後フォローは当日と翌日以降に集まります。いまは申込の推移だけ確認できます。</div></div></div></div>
     <div class="card span4"><div class="lbl">申込</div><div class="big">${num(42)}<small>/ 60名</small></div>${bar(70)}<div class="lbl">開催まで 14日</div></div>
-    <div class="card span12"><div class="card-h"><h3>申込の推移</h3><span class="lbl">公開から 9日</span></div><div class="bars" style="height:90px">${[3, 5, 8, 4, 6, 2, 5, 4, 5].map(h => `<i style="height:${h * 9}px"></i>`).join('')}${Array(12).fill('<i style="background:var(--surface-2);height:12px"></i>').join('')}</div></div>
+    <div class="card span12"><div class="card-h"><h3>申込の推移</h3><span class="lbl">公開から 9日</span></div>${trendW([3, 5, 8, 4, 6, 2, 5, 4, 5], '2026-09-29', { height: 96 })}</div>
     <div class="span12 card-h" style="margin:4px 0 -6px"><h3>開催後はこう見えます <span class="sample-tag">サンプル</span></h3></div>
     <div class="span12 wgrid faded">${[['受付率', '84%'], ['名刺交換', '312組'], ['交換率', '91%'], ['会後フォロー', '52名']].map(([l, v]) => `<div class="card span3"><div class="lbl">${l}</div><div class="big">${v}</div></div>`).join('')}</div></div>`;
   const few = s === 'few';
@@ -1337,7 +1395,7 @@ function report(s, view = 'all') {
     <div class="card span3"><div class="lbl">名刺交換</div><div class="big" style="margin-top:6px">${num(k.ex)}<small>組</small></div><div class="lbl">1人あたり ${k.per}名</div></div>
     <div class="card span3" data-why-box><div class="row between"><span class="lbl">交換率</span><span class="why">?</span></div><div class="big" style="margin-top:6px">${num(k.rate)}<small>%</small></div><div class="lbl">1人以上と交換した参加者</div><div class="why-body" hidden>受付済み ${k.chk}名のうち、Orbit の名刺交換（QR・名刺スキャン）が 1件以上記録された人の割合。</div></div>
     <div class="card span3"><div class="lbl">会後フォロー</div><div class="big" style="margin-top:6px">${num(k.fol)}<small>名</small></div><span class="delta">${k.folp}% · 7日以内</span></div>
-    <div class="card span8"><div class="card-h"><h3>申込の推移</h3><span class="lbl">告知から開催まで 21日</span></div><div class="bars">${(few ? [1, 2, 1, 3, 0, 1, 2, 1, 0, 2, 1, 1, 0, 1, 2, 1, 0, 1, 2, 1, 1] : [3, 5, 4, 11, 7, 6, 5, 4, 6, 9, 5, 4, 7, 12, 8, 6, 5, 7, 10, 4, 2]).map((h, j) => `<i class="${j === 3 || j === 13 ? 'hi mk' : ''}" data-mk="${j === 3 ? '告知メール' : j === 13 ? '登壇者発表' : ''}" style="height:${h * (few ? 28 : 8)}px"></i>`).join('')}</div><div class="axis">${(few ? ['8月7日', '8月14日', '8月21日', '8月27日'] : ['8月20日', '8月27日', '9月3日', '9月9日']).map(d => `<span>${d}</span>`).join('')}</div></div>
+    <div class="card span8"><div class="card-h"><h3>申込の推移</h3><span class="lbl">告知から開催まで 21日</span></div>${trendW(few ? [1, 2, 1, 3, 0, 1, 2, 1, 0, 2, 1, 1, 0, 1, 2, 1, 0, 1, 2, 1, 1] : [3, 5, 4, 11, 7, 6, 5, 4, 6, 9, 5, 4, 7, 12, 8, 6, 5, 7, 10, 4, 2], few ? '2026-08-07' : '2026-08-20', { marks: { 3: '告知メール', 13: '登壇者発表' } })}</div>
     <div class="card span4"><div class="card-h"><h3>会後のフォロー</h3><span class="lbl">参加者が記録</span></div><div class="fun">${[['名刺交換した人', few ? 21 : 107, 100], ['フォローの下書きを作成', few ? 18 : 74, few ? 86 : 69], ['フォロー済み（本人が記録）', k.fol, Math.round(k.fol / (few ? 21 : 107) * 100)], ['面談を設定', few ? 6 : 19, few ? 29 : 18]].map(([l, v, p], j) => `<div class="f"><span>${l}</span><b class="score">${v}</b>${bar(p, j > 1 ? 'rose' : '')}</div>`).join('')}</div></div>
     <div class="card span6"><div class="card-h"><h3>テーブル別の名刺交換</h3><span class="lbl">第1ラウンド</span></div>${(few ? [['A', 14], ['B', 12], ['C', 11], ['D', 11]] : [['A', 19], ['B', 17], ['C', 16], ['D', 15], ['E', 9], ['F', 14]]).map(([t, v]) => `<div class="hbar"><span class="tno" style="width:26px;height:26px;font-size:12px;border-radius:9px">${t}</span>${bar(v / 20 * 100, v < 10 ? 'warn' : 'thin')}<b class="score" style="text-align:right">${v}</b></div>`).join('')}${few ? '' : '<div class="mac pink" style="font-size:12px;margin-top:12px">テーブル E は欠席 2名で 3名卓に。次回は当日の再配置を検討</div>'}</div>
     <div class="card span6"><div class="card-h"><h3>参加者の立場</h3><span class="lbl">申込回答 Q1</span></div>${[['スタートアップの経営者・CFO', 46], ['投資家', 28], ['事業会社', 17], ['士業・支援機関', 9]].map(([l, p], j) => `<div class="row between" style="font-size:12.5px;margin-top:${j ? 8 : 0}px"><span>${l}</span><span class="muted">${p}%</span></div>${bar(p, j % 2 ? 'rose' : '')}`).join('')}</div></div>`;
@@ -1551,7 +1609,7 @@ h += board('申込設定', 'many', wf({ nav: 'host', head: '', body: regForm('ma
 h += sec('A · レポート', '全体 / 自分の視点 切换；受付率环、交换率、申込推移柱、会后跟进漏斗');
 h += board('レポート', 'empty', wf({ nav: 'host', head: '', body: report('empty') }), null, W);
 h += board('レポート', 'few', wf({ nav: 'host', head: '', body: report('few') }), null, W);
-h += board('レポート · 全体', 'many', wf({ nav: 'host', head: '', body: report('many'), pins: pin(1, '.mainhead .seg') + pin(2, '.bars .mk') + pin(3, '.fun') }), ['全体 / 自分の視点 切换（同一 URL ?view=me），切换时数字重放 count-up', '柱状图上的事件标记（告知メール/登壇者発表）解释申请峰值；悬停柱显示当日人数', '会后跟进漏斗：交换 → 草稿 → 本人记录已跟进 → 约到面谈；只计「本人记录」，不读邮件'], W);
+h += board('レポート · 全体', 'many', wf({ nav: 'host', head: '', body: report('many'), pins: pin(1, '.mainhead .seg') + pin(2, '.tw-mk .on') + pin(3, '.fun') }), ['全体 / 自分の視点 切换（同一 URL ?view=me），切换时数字重放 count-up', '柱状图上的事件标记（告知メール/登壇者発表）解释申请峰值；悬停柱显示当日人数', '会后跟进漏斗：交换 → 草稿 → 本人记录已跟进 → 约到面谈；只计「本人记录」，不读邮件'], W);
 h += board('レポート · 自分の視点', 'many', wf({ nav: 'host', head: '', body: report('many', 'me'), pins: pin(1, '.mrow .btn.primary') + pin(2, '.card[style*=dashed]') }), ['未跟进的人一键「下書きを作成」→ 草稿编辑器；明示「送信はあなたが行います」', '写入计划日志是虚线确认卡，点「追加する」才写入'], W);
 
 h += sec('A · 共同運営者', '右侧抽屉：管理者 / 受付 / 閲覧，招待，角色变更理由必填 + 变更履历。对标 Google Drive 共享面板 + GitHub 权限变更审计');
