@@ -86,3 +86,27 @@ test("worker (R17 复核): a failed mail is retried, a claimed row is not taken 
     assert.deepEqual(await deliverHostNotices({ client, mailer, now: () => t, workspaceId }), { failed: 0, sent: 1, skipped: 0 }, "retried after the lease and the mail went out");
   });
 });
+
+test("worker mail (2026-11-27): addressed by profile name in the recipient's language, not the account name in Japanese", hostDatabaseTest, async () => {
+  await withHostDatabase(async ({ client, pool, workspaceId }) => {
+    await lockedFixtureQuery(pool, `insert into event_ops_events (workspace_id, event_id, organizer_actor_id, created_at, updated_at, lifecycle_state_v2, title, created_by) values ($1, 'evt_l', 'host', now(), now(), 'published', '第六期 中日创业交流会', 'host')`, [workspaceId]);
+    const people = [["actor:zh", "cherlytae@example.com", "小雨", { mode: "manual", language: "zh" }], ["actor:none", "none@example.com", null, null], ["actor:last", "last@example.com", "Ken", { mode: "system", language: null, lastUiLanguage: "en" }]] as const;
+    for (const [id, email, profileName, pref] of people) {
+      await lockedFixtureQuery(pool, `insert into orbit_records (workspace_id, collection_name, record_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'auth_users', $2, 'auth', $3, $4::jsonb, now(), now())`, [workspaceId, `auth_user:${email}`, id, JSON.stringify({ displayName: email.split("@")[0], email, id })]);
+      if (profileName) await lockedFixtureQuery(pool, `insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'profiles', $2, $3, 'manual', $2, $4::jsonb, now(), now())`, [workspaceId, `profile:${id}`, id, JSON.stringify({ accountId: id, displayName: profileName })]);
+      if (pref) await lockedFixtureQuery(pool, `insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'account_language_preferences', $2, $3, 'manual', $2, $4::jsonb, now(), now())`, [workspaceId, `lang:${id}`, id, JSON.stringify({ actorId: id, ...pref })]);
+    }
+    await client.transaction(async (executor) => {
+      for (const [id] of people) await enqueueHostNotice(executor, { actorId: id, eventId: "evt_l", kind: "admission_approved", workspaceId });
+    });
+    const mails: { to: string; subject: string; text: string }[] = [];
+    const mailer = { send: async (mail: { to: string; subject: string; text: string }) => { mails.push(mail); return { delivered: true, redirected: true }; } };
+    await deliverHostNotices({ client, mailer, workspaceId });
+    const by = (to: string) => mails.find((mail) => mail.to === to)!;
+    assert.match(by("cherlytae@example.com").text, /^小雨，你好\n\n你已获准参加第六期 中日创业交流会。/u, "profile name, Chinese greeting and body");
+    assert.equal(by("cherlytae@example.com").subject, "【第六期 中日创业交流会】参加已获批准");
+    assert.doesNotMatch(by("cherlytae@example.com").text, /cherlytae|様|イベントを見る/u);
+    assert.match(by("none@example.com").text, /^none 様\n\n/u, "no profile name and no preference: account name, Japanese");
+    assert.match(by("last@example.com").text, /^Hi Ken,\n\nYour place at/u, "following the system: the last UI language");
+  });
+});

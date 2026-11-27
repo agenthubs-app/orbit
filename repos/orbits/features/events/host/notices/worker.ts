@@ -13,7 +13,8 @@ import { createInboxRecordUpserter } from "../../../notifications/inbox-record-s
 import { createPostgresInboxRecordTransaction } from "../../../notifications/storage/inbox-record-repository";
 import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import type { EventOperationsPostgresClient } from "../../event-operations/storage/postgres-client";
-import { renderHostNotice } from "./templates";
+import { hostNoticeMailLanguage, renderHostNotice, renderHostNoticeMail } from "./templates";
+import { displayNameSql } from "../../event-operations/storage/canonical-registration-repository";
 
 export const HOST_NOTICE_MAX_ATTEMPTS = 5;
 export const HOST_NOTICE_CLAIM_LEASE_SECONDS = 300;
@@ -61,7 +62,8 @@ export async function deliverHostNotices(deps: HostNoticeWorkerDeps, limit = 50)
         [workspaceId, row.event_id],
       );
       const facts = event.rows[0];
-      const user = await client.query<{ email: string | null; name: string | null }>(`select payload ->> 'email' as email, payload ->> 'displayName' as name from orbit_records where workspace_id = $1 and collection_name = 'auth_users' and payload ->> 'id' = $2 limit 1`, [workspaceId, row.actor_id]);
+      // 称呼用资料姓名，没有才用账号名（与名单、详情、站内信同一规则：displayNameSql）。
+      const user = await client.query<{ email: string | null; name: string | null }>(`select u.payload ->> 'email' as email, ${displayNameSql("$1", "$2", "(u.payload ->> 'displayName')")} as name from orbit_records u where u.workspace_id = $1 and u.collection_name = 'auth_users' and u.payload ->> 'id' = $2 limit 1`, [workspaceId, row.actor_id]);
       const account = user.rows[0];
       if (!facts || !account) {
         await client.query(`update event_host_notice_outbox set status = 'skipped', last_error = $3 where workspace_id = $1 and notice_id = $2`, [workspaceId, row.notice_id, !facts ? "event_missing" : "no_account"]);
@@ -96,7 +98,12 @@ export async function deliverHostNotices(deps: HostNoticeWorkerDeps, limit = 50)
       const allowed = deps.emailAllowed ? await deps.emailAllowed(row.actor_id).catch(() => true) : true;
       if (account.email && allowed && deps.mailer && row.kind !== "desktop_link") {
         const origin = deps.appOrigin ?? "https://orbitailink.com";
-        const mailed = await deps.mailer.send({ fromName: facts.display_name ? `${facts.display_name}（Orbit 経由）` : undefined, idempotencyKey: row.idempotency_key, subject: `【${facts.title ?? ""}】${copy.ja.title}`, text: `${account.name ?? ""} 様\n\n${copy.ja.body}\n\nイベントを見る: ${origin}${href}\n\n配信停止はアプリの設定から`, to: account.email });
+        // 语言只看收件人：手动设置 → 最近使用的界面语言（lastUiLanguage）→ 日文；主办方用什么语言操作不影响。
+        const pref = await client.query<{ mode: string | null; language: string | null; last: string | null }>(`select payload ->> 'mode' as mode, payload ->> 'language' as language, payload ->> 'lastUiLanguage' as last from orbit_records where workspace_id = $1 and collection_name = 'account_language_preferences' and payload ->> 'actorId' = $2 and lifecycle_state <> 'deleted' order by updated_at desc limit 1`, [workspaceId, row.actor_id]);
+        const p = pref.rows[0];
+        const lang = hostNoticeMailLanguage(p?.mode === "manual" && p.language ? p.language : p?.last);
+        const mail = renderHostNoticeMail(lang, { name: account.name, eventTitle: facts.title ?? "", title: copy[lang].title, body: copy[lang].body, url: `${origin}${href}`, organizerName: facts.display_name });
+        const mailed = await deps.mailer.send({ ...(mail.fromName ? { fromName: mail.fromName } : {}), idempotencyKey: row.idempotency_key, subject: mail.subject, text: mail.text, to: account.email });
         // 发送失败 / 被拒要重试（不能标 sent）；未配置、无重定向目标只是不发邮件，收件箱已写好。
         if (!mailed.delivered && (mailed.reason === "failed" || mailed.reason === "rejected")) throw new Error(`mail_${mailed.reason}`);
       }

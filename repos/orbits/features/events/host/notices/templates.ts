@@ -85,3 +85,25 @@ export function renderHostNotice(kind: HostNoticeKind, context: NoticeContext, h
   }
   return out;
 }
+
+/** 通知邮件的整封文字（2026-11-27）：按收件人语言；称呼用资料姓名（没有才用账号名）。 */
+const MAIL: Record<Lang, { greet: (name: string) => string; view: string; stop: string; via: (host: string) => string }> = {
+  ja: { greet: (name) => `${name} 様`, view: "イベントを見る", stop: "配信停止はアプリの設定から", via: (host) => `${host}（Orbit 経由）` },
+  zh: { greet: (name) => `${name}，你好`, view: "查看活动", stop: "可在应用的设置中停止接收此类邮件", via: (host) => `${host}（经由 Orbit）` },
+  en: { greet: (name) => `Hi ${name},`, view: "View the event", stop: "To stop these emails, change your settings in the app.", via: (host) => `${host} via Orbit` },
+};
+
+export function hostNoticeMailLanguage(value: unknown): Lang {
+  return value === "zh" || value === "en" || value === "ja" ? value : "ja";
+}
+
+export function renderHostNoticeMail(lang: Lang, input: { name: string | null; eventTitle: string; title: string; body: string; url: string; organizerName: string | null }): { subject: string; text: string; fromName?: string } {
+  const m = MAIL[lang];
+  const name = input.name?.trim();
+  return {
+    subject: `【${input.eventTitle}】${input.title}`,
+    text: `${name ? `${m.greet(name)}\n\n` : ""}${input.body}\n\n${m.view}: ${input.url}\n\n${m.stop}`,
+    ...(input.organizerName ? { fromName: m.via(input.organizerName) } : {}),
+  };
+}
+
