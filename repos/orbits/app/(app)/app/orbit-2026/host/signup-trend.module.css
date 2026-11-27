@@ -26,7 +26,7 @@
 /* b13 HM-R1 .bars-m / .axis（< 768 レポート，compact）：上留 18 给柱顶标签、柱间 4、圆角 4/4/2/2、无底线；标签 9.5 / 800 / plum-700；轴 10.5 两端对齐。 */
 .compact { gap: 0; }
 .compact .plot { gap: 4px; padding-top: 18px; border-bottom: 0; box-sizing: border-box; }
-.compact .bar { max-width: none; border-radius: var(--r-dot) var(--r-dot) var(--r-hair) var(--r-hair); }
+.compact .bar { max-width: none; border-top-left-radius: var(--r-dot); border-top-right-radius: var(--r-dot); border-bottom-left-radius: var(--r-hair); border-bottom-right-radius: var(--r-hair); }
 .mk { margin-bottom: 4px; white-space: nowrap; font-size: var(--fs-micro); font-weight: var(--fw-heavy); color: var(--plum-700); line-height: 1; }
 .axisM { display: flex; justify-content: space-between; margin-top: 6px; font-size: var(--fs-tiny); color: var(--ink-3); font-family: var(--font-num); }
 
