@@ -79,8 +79,16 @@
 }
 @media (max-width: 767px) {
   .span6, .side, .sampleHead, .sampleGrid { grid-column: auto; }
-  .sampleGrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .sampleGrid.sampleGrid > * { grid-column: 1 / -1; }
+  /* b13 HM-R4 開催前：引导卡 20 / 圆角 24、图标 40、标题 17 / 800 / 1.5、说明 1.6；示例 2×2（.kgrid）间距 10、格子 14 / 24、数字 30。 */
+  .beforeCard.beforeCard { padding: 20px; border-radius: var(--r-xl); }
+  .beforeRow { gap: 12px; align-items: flex-start; }
+  .emoXl { width: 40px; height: 40px; font-size: var(--fs-emoji-md); }
+  .beforeTitle { font-size: var(--fs-title-xxs); line-height: 1.5; }
+  .beforeTitle + div { margin-top: 4px; line-height: var(--lh-prose); }
+  .sampleHead.sampleHead { margin: 6px 0 2px; }
+  .sampleGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .sampleGrid.sampleGrid > * { grid-column: auto; padding: 14px; border-radius: var(--r-xl); }
+  .sampleGrid .mt0 { margin-top: 6px; font-size: var(--fs-number-kpi); line-height: 1.05; }
   /* b13 HM-R1 .fun .f：行间 10、标签与进度条之间 6、条下 2、数字 14。 */
   .fun { gap: 10px; }
   .f { row-gap: 0; }

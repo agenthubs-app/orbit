@@ -62,6 +62,7 @@ function Why({ label, body, open, onToggle }: { label: string; body: string; ope
 }
 
 function Before({ all, t }: { all: HostReportAll; t: HostT }) {
+  const phone = usePhone();
   const pct = all.capacity ? Math.round((all.applied / all.capacity) * 100) : 0;
   return (
     <>
@@ -79,7 +80,7 @@ function Before({ all, t }: { all: HostReportAll; t: HostT }) {
       </div>
       <div className={`${s.card} ${s.span12}`}>
         <div className={s.cardH}><h3>{t("trendTitle")}</h3>{all.daysSincePublish != null ? <span className={s.lbl}>{t("rpSincePub", { n: all.daysSincePublish })}</span> : null}</div>
-        <SignupTrend values={all.trend} startDate={all.trendStartDate} t={t} height={96} />
+        <SignupTrend values={all.trend} startDate={all.trendStartDate} t={t} height={phone ? 104 : 96} compact={phone} future={phone ? all.daysToStart ?? 0 : 0} />
       </div>
       <div className={`${s.cardH} ${r.sampleHead}`}><h3>{t("rpSampleHead")} <span className={s.sampleTag}>{t("sampleTag")}</span></h3></div>
       <div className={`${r.sampleGrid} ${s.faded}`} aria-hidden>

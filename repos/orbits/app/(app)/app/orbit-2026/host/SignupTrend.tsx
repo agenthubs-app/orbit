@@ -23,20 +23,23 @@ function dayLabel(startDate: string | undefined, index: number): string {
   return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 }
 
-export function SignupTrend({ values, startDate, t, height = 120, marks, compact = false }: { values: readonly number[]; startDate?: string; t: HostT; height?: number; marks?: readonly SignupTrendMark[]; /** < 768 レポート（b13 HM-R1）：合計行と柱上の人数なし、日付は「8月20日」、柱は低め。 */ compact?: boolean }) {
+export function SignupTrend({ values, startDate, t, height = 120, marks, compact = false, future = 0 }: { values: readonly number[]; startDate?: string; t: HostT; height?: number; marks?: readonly SignupTrendMark[]; /** < 768 レポート（b13 HM-R1）：合計行と柱上の人数なし、日付は「8月20日」、柱は低め。 */ compact?: boolean; /** compact のみ（b13 HM-R4 開催前）：開催日までの残り日数。灰色の低い占位柱を並べ、横軸は 開始 / 中間 / 開催日 の 3 つ。 */ future?: number }) {
   const [active, setActive] = useState<number | null>(null);
   const total = values.reduce((sum, value) => sum + value, 0);
   const max = Math.max(0, ...values);
   const peak = max > 0 ? values.indexOf(max) : -1;
   const step = Math.max(1, Math.ceil(values.length / 7));
+  const futureDays = compact ? Math.max(0, Math.floor(future)) : 0;
+  const slots = values.length + futureDays;
   const labels = values.map((_, index) => dayLabel(startDate, index));
-  const axisLabels = compact ? labels.map((label) => { const [m, d] = label.split("/"); return m && d ? t("dateMD", { d, m }) : label; }) : labels;
+  const slotLabels = futureDays ? Array.from({ length: slots }, (_, index) => dayLabel(startDate, index)) : labels;
+  const axisLabels = compact ? slotLabels.map((label) => { const [m, d] = label.split("/"); return m && d ? t("dateMD", { d, m }) : label; }) : labels;
   const axisStep = compact ? Math.max(1, Math.ceil((values.length - 1) / 3)) : step;
   const markOf = new Map((marks ?? []).map((mark) => [mark.index, mark.label]));
   const shown = active ?? peak;
   // b13 HM-R1（< 768 レポート）：事件日的柱加深、名称直接贴在柱顶（不另起标注行、不画虚线）；横轴两端对齐 4 个日期。
   const markedHi = compact && markOf.size > 0;
-  const axisIdx = compact ? [...new Set([...Array.from({ length: Math.ceil((labels.length - 1) / axisStep) }, (_, k) => k * axisStep), labels.length - 1])].filter((index) => index >= 0) : [];
+  const axisIdx = !compact ? [] : futureDays ? [...new Set([0, Math.round((slots - 1) / 2), slots - 1])] : [...new Set([...Array.from({ length: Math.ceil((labels.length - 1) / axisStep) }, (_, k) => k * axisStep), labels.length - 1])].filter((index) => index >= 0);
   return (
     <div className={`${st.wrap} ${compact ? st.compact : ""}`}>
       {compact ? null : <div className={st.summary}>
@@ -48,7 +51,7 @@ export function SignupTrend({ values, startDate, t, height = 120, marks, compact
           {values.map((_, index) => <span key={index} data-trend-mark={markOf.has(index) ? "" : undefined}>{markOf.get(index) ?? ""}</span>)}
         </div>
       ) : null}
-      <div className={st.plot} style={{ height, gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }} onMouseLeave={() => setActive(null)}>
+      <div className={st.plot} style={{ height, gridTemplateColumns: `repeat(${slots}, minmax(0, 1fr))` }} onMouseLeave={() => setActive(null)}>
         {compact ? null : <span className={st.grid} aria-hidden />}
         {values.map((value, index) => {
           const h = max > 0 ? Math.round((value / max) * (height - 22)) : 0;
@@ -69,6 +72,7 @@ export function SignupTrend({ values, startDate, t, height = 120, marks, compact
             </button>
           );
         })}
+        {Array.from({ length: futureDays }, (_, index) => <span key={`f${index}`} className={st.col} aria-hidden><i className={`${st.bar} ${st.ft}`} /></span>)}
       </div>
       {compact ? <div className={st.axisM} aria-hidden>{axisIdx.map((index) => <span key={index}>{axisLabels[index]}</span>)}</div> : <div className={st.axis} style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }} aria-hidden>
         {axisLabels.map((label, index) => <span key={index} className={index % axisStep === 0 && index < labels.length - 1 && labels.length - 1 - index < axisStep ? st.nearLast : undefined}>{index % axisStep === 0 || index === labels.length - 1 ? label : ""}</span>)}

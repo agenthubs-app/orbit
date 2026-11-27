@@ -30,3 +30,5 @@
 .mk { margin-bottom: 4px; white-space: nowrap; font-size: var(--fs-micro); font-weight: var(--fw-heavy); color: var(--plum-700); line-height: 1; }
 .axisM { display: flex; justify-content: space-between; margin-top: 6px; font-size: var(--fs-tiny); color: var(--ink-3); font-family: var(--font-num); }
 
+/* b13 HM-R4 .bars-m .ft（開催前）：开催日前的占位柱 8 高、surface-2。 */
+.compact .bar.ft { height: 8px; background: var(--surface-2); }
