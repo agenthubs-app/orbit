@@ -26,6 +26,7 @@ const PHONE_QUERY = "(max-width: 767px)";
 function usePhoneWidth() {
   const [phone, setPhone] = useState(false);
   useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
     const query = window.matchMedia(PHONE_QUERY);
     const sync = () => setPhone(query.matches);
     sync();
