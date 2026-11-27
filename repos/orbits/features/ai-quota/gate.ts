@@ -29,8 +29,8 @@ export interface AiQuotaReserveInput {
   takeover?: boolean;
 }
 
-/** 拒绝时是哪一道额度：手动重新分析 3 次、用户池总熔断 10 次、后台池 60 次、即时洞察生成 20 次（W0057）；R22：计划生成流程日上限 15、各用途的月上限。 */
-export type AiQuotaLimit = "manual" | "user" | "background" | "instant" | "plan_flow" | "monthly" | "event_assessment" | "purpose";
+/** 拒绝时是哪一道额度：手动重新分析 3 次、用户池总熔断 10 次、后台池 60 次、即时洞察生成 20 次（W0057）；R22：计划生成流程日上限 15、各用途的月上限；agent_chat = iOrbit 对话的每日轮数。 */
+export type AiQuotaLimit = "manual" | "user" | "background" | "instant" | "plan_flow" | "monthly" | "event_assessment" | "purpose" | "agent_chat";
 
 export type AiQuotaReservation =
   | {

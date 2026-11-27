@@ -29,6 +29,8 @@ import type {
   AgentSendReceiptContract,
   AgentSessionEventsPageContract,
 } from "../../../shared/contract/agent-v1";
+import type { AiQuotaGate } from "../../ai-quota/gate";
+import { runWithModelUsageMeter } from "../models/usage-meter";
 import { emitTrace, runWithTraceContext } from "../observability/trace";
 import {
   agentEntryFingerprint,
@@ -40,6 +42,7 @@ import {
   type AgentEntryStore,
   type AgentPendingResume,
 } from "./store";
+import { agentChatDailyLimitText, openAgentChatRound, type AgentChatRound } from "./usage-gate";
 
 export interface AgentEntryHistoryTurn {
   role: "user" | "assistant";
@@ -122,6 +125,11 @@ export interface AgentEntryDependencies {
   leaseMs?: number;
   heartbeatMs?: number;
   workerId?: string;
+  /**
+   * iOrbit 对话计量（2026-11-27）：AI 账本。每轮一次操作（`agent_chat`），每次模型 HTTP 一条子账，每人每东京日有轮数上限。
+   * 不给（测试、mock / hybrid）或账本不可用：照常对话、不记账（entry/usage-gate.ts）。
+   */
+  usage?: AiQuotaGate | null;
 }
 
 const DEFAULT_LEASE_MS = 30_000;
@@ -381,6 +389,7 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
   });
   let outcome: AgentEntryOutcome | null = null;
   const resume = record.pendingResume ?? null;
+  let round: AgentChatRound | null = null;
   try {
     const history = (await deps.sessions?.history(record.sessionId).catch(() => [])) ?? [];
     // A click resumes a request whose message is already in the session.
@@ -389,27 +398,34 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
         emitTrace({ error: error instanceof Error ? error.message : String(error), requestId: record.requestId, type: "error", where: "entry.appendUser" });
       });
     }
-    const fetchImplementation = createStoppableFetch(controller.signal, () => emitTrace({ requestId: record.requestId, type: "entry.model_call_refused" }));
-    // AG07: progress only (an event on the channel); a step reached after the round was stopped is not reported.
-    let lastStage: AgentRunStage | null = null;
-    const onStage = (stage: AgentRunStage) => {
-      if (stage === lastStage || controller.signal.aborted || !deps.store.markStage) return;
-      lastStage = stage;
-      void deps.store.markStage({ actorId, now: nowOf(deps), requestId: record.requestId, sessionId: record.sessionId, stage, workerId }).catch(() => undefined);
-    };
-    const execution = deps.execute({ actorId, fetchImplementation, history, input: record.input, onStage, requestId: record.requestId, sessionId: record.sessionId, signal: controller.signal, ...(resume ? { document: record.document, resume } : {}) });
-    execution.catch(() => undefined);
-    const result = await Promise.race([execution, stopped]);
-    if (result !== "stopped") {
-      outcome = {
-        answer: { sourceRefs: [...result.sourceRefs], text: result.text, ...(result.basis ? { basis: result.basis } : {}), ...(result.blocks?.length ? { blocks: [...result.blocks] } : {}), ...(result.memoryUse?.length ? { memoryUse: [...result.memoryUse] } : {}), ...(result.cardLine ? { cardLine: result.cardLine } : {}), ...(result.web && (result.web.queries.length || result.web.pages.length) ? { web: result.web } : {}) },
-        partResults: result.partResults?.length ? [...result.partResults] : [result.actionPreview && (result.actionPreview.status === "awaiting_confirmation" || result.actionPreview.status === "deferred")
-          ? { operationId: result.actionPreview.operations[0]?.operationId, partId: "p1", status: "awaiting_confirmation" }
-          : { partId: "p1", status: "answered" }],
-        status: result.status ?? "completed",
-        ...(result.actionPreview ? { actionPreview: result.actionPreview } : {}),
-        ...(result.clarifications ? { clarifications: result.clarifications } : {}),
+    // iOrbit 对话计量（2026-11-27）：账本明确说今天的轮数用完了，这一轮不调用模型，回一句固定的话；账本出问题照常对话。
+    round = await openAgentChatRound(deps.usage, { actorId, now: new Date(startedAt), requestId: record.requestId, selection: resume?.clientSelectionId ?? null });
+    if (round.kind === "limited") {
+      emitTrace({ requestId: record.requestId, retryOn: round.retryOn, sessionId: record.sessionId, type: "entry.daily_limit" });
+      outcome = { answer: { sourceRefs: [], text: agentChatDailyLimitText(record.input.locale) }, partResults: [{ partId: "p1", status: "answered" }], status: "completed" };
+    } else {
+      const fetchImplementation = createStoppableFetch(controller.signal, () => emitTrace({ requestId: record.requestId, type: "entry.model_call_refused" }));
+      // AG07: progress only (an event on the channel); a step reached after the round was stopped is not reported.
+      let lastStage: AgentRunStage | null = null;
+      const onStage = (stage: AgentRunStage) => {
+        if (stage === lastStage || controller.signal.aborted || !deps.store.markStage) return;
+        lastStage = stage;
+        void deps.store.markStage({ actorId, now: nowOf(deps), requestId: record.requestId, sessionId: record.sessionId, stage, workerId }).catch(() => undefined);
       };
+      const execution = runWithModelUsageMeter(round.meter, () => deps.execute({ actorId, fetchImplementation, history, input: record.input, onStage, requestId: record.requestId, sessionId: record.sessionId, signal: controller.signal, ...(resume ? { document: record.document, resume } : {}) }));
+      execution.catch(() => undefined);
+      const result = await Promise.race([execution, stopped]);
+      if (result !== "stopped") {
+        outcome = {
+          answer: { sourceRefs: [...result.sourceRefs], text: result.text, ...(result.basis ? { basis: result.basis } : {}), ...(result.blocks?.length ? { blocks: [...result.blocks] } : {}), ...(result.memoryUse?.length ? { memoryUse: [...result.memoryUse] } : {}), ...(result.cardLine ? { cardLine: result.cardLine } : {}), ...(result.web && (result.web.queries.length || result.web.pages.length) ? { web: result.web } : {}) },
+          partResults: result.partResults?.length ? [...result.partResults] : [result.actionPreview && (result.actionPreview.status === "awaiting_confirmation" || result.actionPreview.status === "deferred")
+            ? { operationId: result.actionPreview.operations[0]?.operationId, partId: "p1", status: "awaiting_confirmation" }
+            : { partId: "p1", status: "answered" }],
+          status: result.status ?? "completed",
+          ...(result.actionPreview ? { actionPreview: result.actionPreview } : {}),
+          ...(result.clarifications ? { clarifications: result.clarifications } : {}),
+        };
+      }
     }
   } catch (error) {
     if (!controller.signal.aborted) {
@@ -425,6 +441,8 @@ async function processRequest(deps: AgentEntryDependencies, actorId: string, rec
     clearInterval(heartbeat);
     runs.delete(runKey);
   }
+  // A round that made no model call is released by the ledger (not counted); a stopped round that did is counted as failed.
+  if (round?.kind === "open") await round.finish(outcome && outcome.status !== "failed" ? "succeeded" : "failed");
   if (!outcome) {
     emitTrace({ reason: "stopped", requestId: record.requestId, sessionId: record.sessionId, type: "entry.discarded" });
     return;

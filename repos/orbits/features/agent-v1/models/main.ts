@@ -8,10 +8,13 @@
  *   repair included); a lower deployment value wins. Over the limit no request is sent.
  * - The call runs inside the trace context with its node, so the eval preload records the raw
  *   model.request / model.response (with source) under that node and can inject faults there.
+ * - Each call is one HTTP on the round's usage meter (models/usage-meter.ts; the entry opens it): one ledger call row
+ *   with the provider's prompt / completion tokens, or no response when none came back. Without a meter nothing is recorded.
  */
 import { scrubModelInput } from "../domains/contact/field-grants";
 import { runOrbitAgentModelText } from "../../orbit-ai/gemini-provider";
 import { emitTrace, evalSetting, runWithTraceContext } from "../observability/trace";
+import { meteredModelCall } from "./usage-meter";
 
 export const DEFAULT_MAIN_MODEL = "deepseek-flash";
 export const DEFAULT_MODEL_CALL_LIMIT = 4;
@@ -68,18 +71,23 @@ export async function callMainModel(call: MainModelCall): Promise<MainModelResul
   const system = scrubModelInput(call.system, call.requestId);
   const user = scrubModelInput(call.user, call.requestId);
   if (system.withheld + user.withheld) emitTrace({ node: call.node, requestId: call.requestId, type: "model.contact_methods_withheld", withheld: system.withheld + user.withheld });
-  const result = await runWithTraceContext({ node: call.node, requestId: call.requestId }, () => runOrbitAgentModelText({
+  const model = mainModelName();
+  const result = await meteredModelCall({ model, provider: "deepseek" }, () => runWithTraceContext({ node: call.node, requestId: call.requestId }, () => runOrbitAgentModelText({
     config: {
       fetchImplementation: call.fetchImplementation,
       jsonOutput: true,
-      model: mainModelName(),
+      model,
       provider: "deepseek",
       requestTimeoutMs: call.timeoutMs ?? MODEL_NODE_TIMEOUT_MS,
       ...(call.maxTokens ? { maxTokens: call.maxTokens } : {}),
     },
     systemInstruction: system.text,
     userText: user.text,
-  }));
+  })), (outcome) => {
+    const usage = outcome.responseMetadata?.usage;
+    // Same rule as the event runner (events/journey/ledgered-runner.ts): no prompt tokens reported → recorded as no response.
+    return usage && usage.promptTokens !== null ? { inputTokens: usage.promptTokens, outputTokens: usage.completionTokens ?? 0 } : null;
+  });
   if (result.success === false) {
     emitTrace({ error: result.error.code, message: result.error.message, node: call.node, purpose: call.purpose, requestId: call.requestId, type: "model.failed" });
     return { message: result.error.message, ok: false, reason: "model_error", retryable: result.retryable };

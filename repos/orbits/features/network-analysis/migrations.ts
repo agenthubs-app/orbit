@@ -251,6 +251,29 @@ begin
 end;
 `,
   },
+  {
+    // iOrbit 对话（agent v1）接进账本（用户 2026-11-27 定：先补计量和每人每日上限）。同 v8 写法：按定义找 purpose 约束再重建；
+    // 生产执行等授权。没执行前对话照常、不记账（entry/usage-gate.ts 的 fail-open）。
+    name: "ai-usage-agent-chat",
+    version: 9,
+    sql: `
+declare
+  purpose_check record;
+begin
+  for purpose_check in
+    select conname from pg_constraint
+    where conrelid = 'ai_usage_ledger'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%purpose%'
+  loop
+    execute format('alter table ai_usage_ledger drop constraint %I', purpose_check.conname);
+  end loop;
+  alter table ai_usage_ledger add constraint ai_usage_ledger_purpose_check
+    check (purpose in ('plan', 'plan_refine', 'snapshot', 'memo_extraction', 'insight', 'enrichment',
+      'plan_intake', 'plan_background', 'plan_draft', 'plan_revise', 'plan_review_mark', 'plan_review', 'event_assessment',
+      'event_registration_interview', 'event_registration_question', 'event_post_summary', 'event_matching',
+      'plan_search', 'plan_prep', 'agent_chat'));
+end;
+`,
+  },
 ];
 
 /**

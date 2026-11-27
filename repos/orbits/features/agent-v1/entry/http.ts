@@ -15,6 +15,9 @@ import { agentEventsAfterSchema, agentSelectionInputSchema, agentSendInputSchema
 import type { FeatureMode } from "../../../shared/config/feature-mode";
 import type { AgentResultDocument } from "../../../shared/contract/agent-v1";
 import { AppError, getHttpStatusForAppErrorCode } from "../../../shared/errors/app-error";
+import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
+import type { AiQuotaGate } from "../../ai-quota/gate";
+import { createPostgresAiUsageLedger } from "../../ai-quota/ledger";
 import { createOrbitAgentChatSessionProvider } from "../../orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 import { emitTrace } from "../observability/trace";
 import { createGraphExecutor } from "../graph/executor";
@@ -35,6 +38,13 @@ function afterResponse(task: () => Promise<void>): void {
   }
 }
 
+/** iOrbit 对话计量（2026-11-27）：live 库上的 AI 账本；mock / hybrid 或没有库：不记账（照常对话）。 */
+function usageLedgerFor(mode: FeatureMode): AiQuotaGate | null {
+  if (mode === "mock" || mode === "hybrid") return null;
+  const runtime = createConfiguredTransactionalPostgresRuntime();
+  return runtime ? createPostgresAiUsageLedger({ client: runtime.client, workspaceId: runtime.workspaceId }) : null;
+}
+
 export function configuredAgentEntryDependencies(mode: FeatureMode, actorId: string): AgentEntryDependencies | null {
   const store = storeFor(mode);
   if (!store) return null;
@@ -45,6 +55,7 @@ export function configuredAgentEntryDependencies(mode: FeatureMode, actorId: str
     schedule: afterResponse,
     sessions: provider ? createSessionWriter(provider) : null,
     store,
+    usage: usageLedgerFor(mode),
   };
 }
 

@@ -15,6 +15,7 @@
  */
 export const GEMINI_DECISIONS_URL = "https://generativelanguage.googleapis.com/v1beta/decisions";
 export const JUDGMENT_MODEL = "gemini-decision-1";
+import { meteredModelCall } from "../models/usage-meter";
 import { emitTrace } from "../observability/trace";
 
 export const JUDGMENT_TIMEOUT_MS = 3_000;
@@ -133,8 +134,16 @@ export async function requestDecisions(request: DecisionRequest): Promise<Decisi
   }
 }
 
-/** One attempt, no retry (the record finder's picker: 2 s, then the rules decide; finder/live.ts). */
+/**
+ * One attempt, no retry (the record finder's picker: 2 s, then the rules decide; finder/live.ts).
+ * One HTTP on the round's usage meter (models/usage-meter.ts): input tokens only (the endpoint reports no output);
+ * a failure or a response without usage is recorded as no response.
+ */
 export async function requestDecisionsOnce(request: DecisionRequest): Promise<DecisionResult> {
+  return meteredModelCall({ model: JUDGMENT_MODEL, provider: "gemini" }, () => sendDecisionsOnce(request), (result) => (result.inputTokens === null ? null : { inputTokens: result.inputTokens, outputTokens: 0 }));
+}
+
+async function sendDecisionsOnce(request: DecisionRequest): Promise<DecisionResult> {
   const ids = Object.keys(request.questions);
   if (!ids.length) throw new Error("a judgment request needs at least one question");
   for (const id of ids) if (!QUESTION_ID.test(id)) throw new Error(`judgment question id ${id} is not accepted by the endpoint`);

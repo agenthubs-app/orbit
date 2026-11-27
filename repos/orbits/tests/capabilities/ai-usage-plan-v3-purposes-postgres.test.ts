@@ -62,7 +62,7 @@ test("ledger v8 accepts plan_search / plan_prep in the user pool, counts only re
     await runNetworkAnalysisMigrations(pool);
     const applied = () => pool.query("select version, name from network_analysis_schema_migrations order by version").then((result) => result.rows);
     assert.equal((await applied()).length, NETWORK_ANALYSIS_MIGRATIONS.length);
-    assert.deepEqual((await applied()).at(-1), { name: "ai-usage-plan-v3-purposes", version: 8 });
+    assert.deepEqual((await applied()).find((row) => row.version === 8), { name: "ai-usage-plan-v3-purposes", version: 8 });
 
     const client = createTransactionalPostgresClient({ connectionString: databaseUrl, pool: pool as never });
     const ledger = createPostgresAiUsageLedger({ client, workspaceId: WS });

@@ -17,6 +17,7 @@ import { randomUUID } from "node:crypto";
 
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
 import {
+  AGENT_CHAT_DAILY_LIMIT,
   AI_QUOTA_MAX_CALLS,
   AI_QUOTA_DAILY_PURPOSE_LIMITS,
   AI_QUOTA_MONTHLY_LIMITS,
@@ -24,6 +25,7 @@ import {
   BACKGROUND_POOL_DAILY_LIMIT,
   INSTANT_INSIGHT_DAILY_LIMIT,
   EVENT_ASSESSMENT_DAILY_LIMIT,
+  isAgentChatOperation,
   isEventAssessmentOperation,
   isInstantInsightOperation,
   isPlanFlowOperation,
@@ -61,6 +63,8 @@ export interface AiQuotaUsageToday {
   planFlow: number;
   /** R26：活动评估当日已用次数（独立上限 5，不占用户池 10 次）。 */
   eventAssessment: number;
+  /** iOrbit 对话当日已用轮数（独立上限 `AGENT_CHAT_DAILY_LIMIT`，不占用户池 10 次）。 */
+  agentChat: number;
 }
 
 export interface AiUsageOperationState {
@@ -101,8 +105,9 @@ const PLAN_FLOW_SQL = `(purpose in (${PLAN_FLOW_SQL_LIST}) or (purpose = 'plan_p
 const RECORD_ONLY_SQL = `(purpose = 'plan_search' or (purpose = 'plan_prep' and trigger <> '${PLAN_PREP_REGENERATE_TRIGGER}'))`;
 const USAGE_SQL = `/* ai-quota:usage-today */
   select
-    count(*) filter (where pool = 'user' and not (purpose = 'insight' and trigger = 'auto') and not ${PLAN_FLOW_SQL} and not ${RECORD_ONLY_SQL} and purpose <> 'event_assessment')::int as user_used,
+    count(*) filter (where pool = 'user' and not (purpose = 'insight' and trigger = 'auto') and not ${PLAN_FLOW_SQL} and not ${RECORD_ONLY_SQL} and purpose not in ('event_assessment', 'agent_chat'))::int as user_used,
     count(*) filter (where pool = 'user' and purpose = 'event_assessment')::int as event_assessment_used,
+    count(*) filter (where pool = 'user' and purpose = 'agent_chat')::int as agent_chat_used,
     count(*) filter (where pool = 'user' and ${PLAN_FLOW_SQL})::int as plan_flow_used,
     count(*) filter (where pool = 'user' and purpose = 'insight' and trigger = 'auto')::int as instant_used,
     count(*) filter (where pool = 'user' and purpose = 'snapshot' and trigger = 'manual')::int as manual_used,
@@ -179,6 +184,9 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
       } else if (isEventAssessmentOperation(request)) {
         // R26（events DESIGN §3.1）：活动评估只受自己的日上限 5 约束，不占用户池 10 次总熔断（月上限 10 在下面统一查）。
         if (count(usage?.event_assessment_used) >= EVENT_ASSESSMENT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "event_assessment" };
+      } else if (isAgentChatOperation(request)) {
+        // iOrbit 对话（2026-11-27）：只受自己的每日轮数上限约束，不占用户池 10 次总熔断。
+        if (count(usage?.agent_chat_used) >= AGENT_CHAT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "agent_chat" };
       } else if (isInstantInsightOperation(request)) {
         // W0057（D62）：即时洞察生成只受自己的 20 次上限约束，不占用户池 10 次总熔断。
         if (count(usage?.instant_used) >= INSTANT_INSIGHT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "instant" };
@@ -305,9 +313,9 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
     async readUsageToday(actorId, now) {
       try {
         const row = (await client.query<Row>(USAGE_SQL, [workspaceId, actorId, tokyoUsageDay(now)])).rows[0];
-        return { background: count(row?.background_used), eventAssessment: count(row?.event_assessment_used), instant: count(row?.instant_used), manual: count(row?.manual_used), planFlow: count(row?.plan_flow_used), user: count(row?.user_used) };
+        return { agentChat: count(row?.agent_chat_used), background: count(row?.background_used), eventAssessment: count(row?.event_assessment_used), instant: count(row?.instant_used), manual: count(row?.manual_used), planFlow: count(row?.plan_flow_used), user: count(row?.user_used) };
       } catch (error) {
-        if (isUndefinedTable(error)) return { background: 0, eventAssessment: 0, instant: 0, manual: 0, planFlow: 0, user: 0 };
+        if (isUndefinedTable(error)) return { agentChat: 0, background: 0, eventAssessment: 0, instant: 0, manual: 0, planFlow: 0, user: 0 };
         throw error;
       }
     },

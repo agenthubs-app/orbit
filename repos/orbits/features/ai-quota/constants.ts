@@ -30,7 +30,9 @@ export type AiQuotaPurpose =
   // R33（plan-v3/DESIGN.md §2.6，用户 2026-11-01 定）：起草前的联网搜索（provider = tavily，不计入计划生成流程的 15 次；
   // 每份计划 ≤8 次由 R34 在调用处守）与准备卡生成（初次 `trigger: "plan"` 不计日限、重生成 `manual` 计入 15 次，R37a 接）。
   | "plan_search"
-  | "plan_prep";
+  | "plan_prep"
+  // iOrbit 对话（agent v1，用户 2026-11-27 定）：一轮对话 = 1 次操作，只作防滥用的每日上限，不是会员额度。
+  | "agent_chat";
 export type AiQuotaTrigger = "auto" | "manual" | "plan";
 
 export const AI_QUOTA_POOLS: readonly AiQuotaPool[] = ["user", "background", "system"];
@@ -39,6 +41,7 @@ export const AI_QUOTA_PURPOSES: readonly AiQuotaPurpose[] = [
   "plan_intake", "plan_background", "plan_draft", "plan_revise", "plan_review_mark", "plan_review", "event_assessment",
   "event_registration_interview", "event_registration_question", "event_post_summary", "event_matching",
   "plan_search", "plan_prep",
+  "agent_chat",
 ];
 export const AI_QUOTA_TRIGGERS: readonly AiQuotaTrigger[] = ["auto", "manual", "plan"];
 
@@ -87,6 +90,10 @@ export const AI_QUOTA_MAX_CALLS: Readonly<Record<AiQuotaPurpose, number>> = {
   // R33：一次搜索 = 1 次 HTTP；一张准备卡 = 生成 + 对账修复（输入过长时另加 1 次「压缩成事实清单」）。
   plan_search: 1,
   plan_prep: 3,
+  // iOrbit 对话：一轮里所有模型出口的合计——主模型每轮预算 4 次（agent-v1/models/main.ts DEFAULT_MODEL_CALL_LIMIT，
+  // 含 finder reformulate、extract-memo）+ judgment 每轮 3 次请求（agent-v1/judgment/ask.ts JUDGMENT_CALLS_PER_ROUND，
+  // 超时/5xx 会立即重发一次，最多 2 次 HTTP）= 4 + 3×2 = 10。
+  agent_chat: 10,
 };
 
 /**
@@ -130,6 +137,16 @@ export const AI_QUOTA_MONTHLY_LIMITS: Readonly<Partial<Record<AiQuotaPurpose, nu
  */
 export const EVENT_ASSESSMENT_DAILY_LIMIT = 5;
 
+/**
+ * iOrbit 对话（用户 2026-11-27 定）：每人每东京自然日最多 100 轮。独立计数，**不占** `USER_POOL_DAILY_LIMIT` 的 10 次总熔断
+ * （先例：`INSTANT_INSIGHT_DAILY_LIMIT`、`PLAN_FLOW_DAILY_LIMIT`）。改数值只改这里。
+ */
+export const AGENT_CHAT_DAILY_LIMIT = 100;
+
+export function isAgentChatOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose }): boolean {
+  return input.pool === "user" && input.purpose === "agent_chat";
+}
+
 export function isEventAssessmentOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose }): boolean {
   return input.pool === "user" && input.purpose === "event_assessment";
 }
@@ -152,6 +169,7 @@ export const AI_QUOTA_PURPOSE_POOLS: Readonly<Partial<Record<AiQuotaPurpose, AiQ
   // R33：两者都在用户池（记在本人名下）。
   plan_search: "user",
   plan_prep: "user",
+  agent_chat: "user",
 };
 
 /**
