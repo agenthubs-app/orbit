@@ -646,6 +646,7 @@ export const hostCopy = {
   rpUnfollowed: { ja: "まだフォローしていない人", zh: "还没跟进的人", en: "Not followed up yet", kind: "title" },
   rpUnfollowedSub: { ja: "{n}名 · 交換から {d}日", zh: "{n}人 · 交换后{d}天", en: "{n} · {d} days since exchange", kind: "label" },
   rpPersonMeta: { ja: "{org} · {role} · テーブル {t}", zh: "{org} · {role} · {t}桌", en: "{org} · {role} · Table {t}", kind: "label" },
+  rpPersonMetaShort: { ja: "{org} · テーブル {t}", zh: "{org} · {t}桌", en: "{org} · Table {t}", kind: "label" },
   rpDraftShort: { ja: "下書き", zh: "草稿", en: "Draft", kind: "button" },
   rpDraft: { ja: "下書きを作成", zh: "写草稿", en: "Draft", kind: "button" },
   rpNoSend: { ja: "送信はしません · 送信はあなたが行います", zh: "不会自动发送 · 由你自己发送", en: "Orbit won't mail it · you do", kind: "label" },

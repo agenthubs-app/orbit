@@ -203,7 +203,7 @@ function Mine({ mine, t, why, onWhy, onLog, logOpen }: { mine: HostReportMine; t
           return (
             <div key={`${person.name}-${index}`} className={r.mrow}>
               <Avatar name={person.name} size="sm" />
-              <div className={r.meta}><b>{person.name}</b><span>{t("rpPersonMeta", { org: person.org ?? "", role: person.role ?? "", t: person.table ?? DASH })}</span></div>
+              <div className={r.meta}><b>{person.name}</b><span>{phone ? t("rpPersonMetaShort", { org: person.org ?? "", t: person.table ?? DASH }) : t("rpPersonMeta", { org: person.org ?? "", role: person.role ?? "", t: person.table ?? DASH })}</span></div>
               {person.standing && !phone ? <span className={`${s.chip} ${tone ? s[`c_${tone}`] : ""}`}>{person.standing}</span> : null}
               <a className={`btn ${s.btn} ${s.sm} ${index === 0 ? s.primary : ""}`} href={href}><Icon name="mail" size={16} />{t(phone ? "rpDraftShort" : "rpDraft")}</a>
             </div>

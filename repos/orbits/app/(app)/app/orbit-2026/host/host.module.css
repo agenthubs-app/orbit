@@ -253,7 +253,7 @@
   /* b13 HM-R1：报告页分段到 KPI 12、KPI 行间 10（.kgrid gap）、其余卡间 14（kit --gap）。 */
   .wgrid.wgrid:has(> .phReportSeg) { row-gap: 10px; }
   .wgrid.wgrid:has(> .phReportSeg) > .phReportSeg { margin-bottom: 2px; }
-  .wgrid.wgrid:has(> .phReportSeg) > :not(.half):not(.phReportSeg) { margin-top: 4px; padding: 18px; }
+  .wgrid.wgrid:has(> .phReportSeg) > .card:not(.half) { margin-top: 4px; padding: 18px; }
 }
 /* 报告视角切换：≥1024 在页头右侧，<1024 在页签下面（手机 + iPad 竖屏）。 */
 .phReportSeg.phReportSeg { display: none; }
