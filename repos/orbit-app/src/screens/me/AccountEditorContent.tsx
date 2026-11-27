@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PROFILE_CONTACT_METHODS, type ProfileContactMethod } from "../../api/compute/profile-contact-methods";
 import { StyleSheet, View } from "react-native";
 import { Avatar, Button, Card, Chip, Icon, ListRow, TextField, Toggle, UiText } from "../../components/ui";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../api/contract/industries";
@@ -18,7 +19,12 @@ function localToday(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-export function AccountEditorContent({ draft, t, patch, onTags }: { draft: ProfileEditDraft; t: OrbitTranslator; patch: (fields: Partial<ProfileEditDraft>) => void; onTags: (field: "offering" | "seeking") => void }) {
+/**
+ * UR-P9–P15（2026-11-27，同 Web 44c694152）：自己紹介 之后「連絡先」——与引导第①步同一份文案、占位与格式校验；选填、不写「1つ以上」；
+ * LINE / WeChat 直接给出，メール・電話收在「＋」里（有值或有错时展开）；点保存后格式不对只标那一栏（`contactErrors`，由保存时算出）。
+ * 「公開する項目」里原来固定的「メール・電話 · 名刺交換した相手のみ」一行去掉（谁能看写在这个分组里）。
+ */
+export function AccountEditorContent({ draft, t, patch, onTags, contactErrors = [] }: { draft: ProfileEditDraft; t: OrbitTranslator; patch: (fields: Partial<ProfileEditDraft>) => void; onTags: (field: "offering" | "seeking") => void; contactErrors?: readonly ("email" | "phone")[] }) {
   const { colors, styles } = useStyles();
   const { language } = useOrbitLocale();
   const { timeZone } = useOrbitTimeZone();
@@ -40,6 +46,18 @@ export function AccountEditorContent({ draft, t, patch, onTags }: { draft: Profi
   }
   const chevron = (open: boolean) => <Icon name={open ? "up" : "down"} size={16} color={colors.ink3Text} />;
   const visibility = draft.publicFields ?? { companyRole: true, offeringSeeking: true, intro: true };
+  const [more, setMore] = useState(false);
+  const handles = draft.handles ?? {};
+  const value = (key: ProfileContactMethod) => (typeof handles[key] === "string" ? handles[key] : "");
+  const openMore = more || Boolean(value("email").trim() || value("phone").trim()) || contactErrors.length > 0;
+  const setContact = (key: ProfileContactMethod, text: string) => patch({ handles: { ...handles, [key]: text } });
+  const contactField = (key: ProfileContactMethod) => {
+    const meta = { email: ["onboarding.v3.email", "onboarding.v3.emailPlaceholder", "email-address", 120], lineId: ["onboarding.v3.lineId", "onboarding.v3.lineIdPlaceholder", "default", 80], phone: ["onboarding.v3.phone", "onboarding.v3.phonePlaceholder", "phone-pad", 40], wechatId: ["onboarding.v3.wechatId", "onboarding.v3.wechatIdPlaceholder", "default", 80] } as const;
+    const [label, placeholder, keyboardType, maxLength] = meta[key];
+    const error = key === "email" && contactErrors.includes("email") ? t("onboarding.v3.badEmail") : key === "phone" && contactErrors.includes("phone") ? t("onboarding.v3.badPhone") : undefined;
+    return <TextField key={key} label={t(label)} value={value(key)} placeholder={t(placeholder)} keyboardType={keyboardType} autoCapitalize="none" autoCorrect={false} maxLength={maxLength} testID={`profile-contact-${key}`}
+      {...(error ? { error } : {})} onChangeText={text => setContact(key, text)} />;
+  };
   return <View style={styles.stack}>
     <View style={styles.avatar}><Avatar name={draft.displayName} size="lg" /></View>
     <Card style={styles.stack}>
@@ -62,6 +80,12 @@ export function AccountEditorContent({ draft, t, patch, onTags }: { draft: Profi
       <TextField label={t("me.intro")} multiline value={draft.bio} placeholder={t("me.bioHint")} onChangeText={value => patch({ bio: value })} />
       <UiText style={styles.secondary}>{t("me.introLimit", { count: profileVisibleLength(draft.bio), limit: profileBioLimit(draft.bio) })}</UiText>
     </Card>
+    <View testID="profile-contacts"><Card style={styles.stack}>
+      <UiText style={styles.heading} accessibilityRole="header">{t("me.contactTitle")}</UiText>
+      <UiText style={styles.secondary}>{t("onboarding.v3.contactSee")}</UiText>
+      {(openMore ? PROFILE_CONTACT_METHODS : PROFILE_CONTACT_METHODS.filter(key => key === "lineId" || key === "wechatId")).map(contactField)}
+      {openMore ? null : <Button label={t("onboarding.v3.contactMore")} icon="plus" variant="ghost" size="sm" onPress={() => setMore(true)} />}
+    </Card></View>
     <Card>{(["offering", "seeking"] as const).map(field => <View key={field} style={styles.tags}>
       <ListRow title={t(field === "offering" ? "me.offering" : "me.seeking")} trailing={
       <Button label={t("me.edit")} variant="ghost" size="sm" onPress={() => onTags(field)} />} />
@@ -73,7 +97,6 @@ export function AccountEditorContent({ draft, t, patch, onTags }: { draft: Profi
         return <ListRow key={field} title={title} trailing={
       <Toggle accessibilityLabel={title} value={visibility[field]} onValueChange={value => patch({ publicFields: { ...visibility, [field]: value } })} />} />;
       })}
-      <ListRow title={t("me.contact")} subtitle={t("me.exchangeOnly")} />
     </Card>
   </View>;
 }

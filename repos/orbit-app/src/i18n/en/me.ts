@@ -61,6 +61,7 @@ export const me = {
   "me.publicFields": "Public fields",
   "me.exchangeOnly": "Only after exchanging cards",
   "me.contact": "Email · phone",
+  "me.contactTitle": "Contact",
   "me.industry": "Industry",
   "me.location": "Location",
   "me.company": "Company",

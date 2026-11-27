@@ -61,6 +61,7 @@ export const me = {
   "me.publicFields": "公开项目",
   "me.exchangeOnly": "仅向交换名片的人展示",
   "me.contact": "邮箱、电话",
+  "me.contactTitle": "联系方式",
   "me.industry": "行业",
   "me.location": "所在地区",
   "me.company": "公司",

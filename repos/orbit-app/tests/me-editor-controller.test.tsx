@@ -114,3 +114,30 @@ test("R18a real editor random-source failure is visible without a write", { time
   assert.ok((await state(page)).feedback);
   assert.equal(await page.evaluate("window.calls.length"), 0);
 });
+
+// 「保存即确认」（2026-11-27，同 Web 44c694152）：四种联系方式改过才带 contactMethodsConfirmed，handles 去空格、空的不写、其他项照旧；
+// 邮箱 / 电话格式不对时不提交，并说哪一栏；回执里没有这个键也算成功。
+test("contact methods: a changed method saves with contactMethodsConfirmed and trimmed handles; a bad email sends nothing", { timeout: 15000 }, async t => {
+  const page = await open(t);
+  await run(page, 'window.editor.patch({handles:{website:"https://x.test",lineId:"  my_line ",email:"bad"}})');
+  await run(page, "window.badSave=window.editor.save()");
+  assert.equal(await page.evaluate("window.calls.length"), 0);
+  assert.equal((await state(page)).feedback, "メールの形式を確認してください");
+  assert.deepEqual(await page.evaluate("window.editor.contactErrors"), ["email"]);
+  await run(page, 'window.editor.patch({handles:{website:"https://x.test",lineId:"  my_line ",email:"  "}})');
+  await run(page, "window.goodSave=window.editor.save()");
+  const body = await page.evaluate("window.calls[0].body") as Record<string, unknown>;
+  assert.equal(body.contactMethodsConfirmed, true);
+  assert.deepEqual(body.handles, { lineId: "my_line", website: "https://x.test" });
+  // The server keeps the flag out of the profile: the fixture echoes the body, so drop it as the server does.
+  await run(page, "delete window.calls[0].body.contactMethodsConfirmed; window.resolveEditorCall(0)");
+  assert.equal(await page.evaluate("window.goodSave"), true);
+});
+
+test("contact methods untouched: no contactMethodsConfirmed, handles as they were", { timeout: 15000 }, async t => {
+  const page = await open(t);
+  await run(page, 'window.editor.patch({bio:"紹介だけ変える"})');
+  await run(page, "void window.editor.save()");
+  const body = await page.evaluate("window.calls[0].body") as Record<string, unknown>;
+  assert.equal("contactMethodsConfirmed" in body, false);
+});

@@ -61,6 +61,7 @@ export const me = {
   "me.publicFields": "公開する項目",
   "me.exchangeOnly": "名刺交換した相手のみ",
   "me.contact": "メール・電話",
+  "me.contactTitle": "連絡先",
   "me.industry": "業界",
   "me.location": "所在地",
   "me.company": "会社",
