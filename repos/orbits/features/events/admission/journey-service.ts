@@ -5,7 +5,6 @@ import {
   type EventParticipantProfileField,
 } from "../registration/contract";
 import {
-  EVENT_PROFILE_CORE_FIELDS,
   answersFromProfileResponses,
   type EventInterviewResponseSubmission,
   type EventProfileResponseSnapshot,
@@ -128,15 +127,9 @@ function completeVerifiedProfile(input: {
     responseIds.add(response.responseId);
     questionIds.add(response.questionId);
   }
-  const missingCore = EVENT_PROFILE_CORE_FIELDS.filter(
-    (field) => !answeredFields.has(field),
-  );
-  if (missingCore.length > 0) {
-    throw new EventAdmissionJourneyError(
-      "PROFILE_INCOMPLETE",
-      `Core event profile fields are unanswered: ${missingCore.join(", ")}.`,
-    );
-  }
+  // 2026-11-27 用户反馈：缺核心项（会いたい人・提供できること）不再拒绝申请。报名页先用资料标签补成固定题；
+  // 补不上就按空值收下，主办方侧照实显示未填（缺的字段 answers 里没有）。
+
   const answers = answersFromProfileResponses(input.responses);
   for (const field of answeredFields) {
     if (!answers[field]?.trim()) {

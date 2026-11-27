@@ -18,7 +18,6 @@ import { createConfiguredEventExperienceService } from "../../../../../features/
 import {
   answersFromProfileResponses,
   legacyResponsesFromAnswers,
-  missingCoreProfileFields,
   type EventInterviewResponseSubmission,
   type EventProfileResponseSnapshot,
 } from "../../../../../features/events/registration/interview-response-contract";
@@ -194,6 +193,13 @@ async function readRegistrationPayload(
         `Required event-registration answers are still missing: ${missingRequired.join(", ")}.`,
       );
     }
+    // 没有主办方问题集时，一项都没有的空提交仍然拒绝（缺几项可以，什么都没有不行）；问题集的必答按它自己的设定。
+    if (answerSnapshots.length === 0 && input.requiredFields === undefined) {
+      throw new InterviewQuestionTokenError(
+        "INTERVIEW_CORE_FIELDS_REQUIRED",
+        "At least one event-registration answer is required.",
+      );
+    }
     return {
       answers: answersFromProfileResponses(answerSnapshots),
       ...versionPrecondition,
@@ -215,7 +221,8 @@ function missingRequiredProfileFields(
   requiredFields?: readonly EventParticipantProfileField[],
 ): readonly EventParticipantProfileField[] {
   const answered = new Set(responses.map((response) => response.field));
-  const required = requiredFields ?? missingCoreProfileFields(responses);
+  // 2026-11-27 用户反馈：没有主办方必答设定时，缺核心项不再拒绝（报名页先用资料标签补，补不上按空值收下）。
+  const required = requiredFields ?? [];
   return required.filter((field) => !answered.has(field));
 }
 

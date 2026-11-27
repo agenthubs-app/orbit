@@ -262,7 +262,17 @@ test("registration GET fails closed with a JSON envelope when admission state ca
   assert.equal(body.error.code, "SERVICE_UNAVAILABLE");
 });
 
-test("plain registration answers cannot bypass the two required questions", async () => {
+test("2026-11-27: a registration with a core field blank is accepted as blank; an empty one is still refused", async () => {
+  const empty = await register(
+    new Request(`http://orbit.local/api/events/${eventId}/registration`, {
+      body: JSON.stringify({ answers: {} }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+    context,
+  );
+  assert.equal(empty.status, 422);
+
   const response = await register(
     new Request(`http://orbit.local/api/events/${eventId}/registration`, {
       body: JSON.stringify({
@@ -275,9 +285,9 @@ test("plain registration answers cannot bypass the two required questions", asyn
   );
   const body = await response.json();
 
-  assert.equal(response.status, 422);
-  assert.equal(body.success, false);
-  assert.match(body.error.message, /valueOffered/);
+  assert.equal(response.status, 200);
+  assert.equal(body.data.participantProfile.answers.targetAttendees, "Climate operators");
+  assert.equal(body.data.participantProfile.answers.valueOffered, undefined, "left blank, shown to the host as not filled");
 });
 
 test("cancelling without a registration returns a stable not-found envelope", async () => {
@@ -498,16 +508,6 @@ test("registration accepts only a complete set of actor-bound AI interview respo
   }));
 
   try {
-    const incomplete = await POST(
-      new Request(`http://orbit.local/api/events/${eventId}/registration`, {
-        body: JSON.stringify({ responses: responses.slice(0, 1) }),
-        headers: { "content-type": "application/json" },
-        method: "POST",
-      }),
-      context,
-    );
-    assert.equal(incomplete.status, 422);
-
     const accepted = await POST(
       new Request(`http://orbit.local/api/events/${eventId}/registration`, {
         body: JSON.stringify({ responses }),
@@ -652,7 +652,8 @@ test("registration merges unsigned seeded answers under verified responses", asy
       }),
       context,
     );
-    assert.equal(missingCore.status, 422);
+    // 2026-11-27 用户反馈：缺核心项不再拒绝（按空值收下）。
+    assert.equal(missingCore.status, 200);
   } finally {
     if (previousSecret === undefined) {
       delete process.env.ORBIT_INTERVIEW_SIGNING_SECRET;

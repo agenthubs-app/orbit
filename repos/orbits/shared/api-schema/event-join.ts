@@ -59,11 +59,11 @@ export const eventJoinCancelResultSchema = eventJoinCancelResultObject as z.ZodT
 
 export const eventJoinAnswerObject = z.object({ field: z.string().min(1).max(40), prompt: z.string().max(240), answer: z.string().trim().min(1).max(1000), questionToken: z.string().min(1).max(4000) }).strict();
 export const eventJoinAnswerSchema = eventJoinAnswerObject as z.ZodType<EventJoinAnswer>;
-// 最坏情况：主办方题 5 + 访谈的每个字段各 1 答（8 个字段）。新报名最多 5 + 4（join.ts JOIN_ANSWER_MAX）；改资料时上次的访谈回答
+// 最坏情况：主办方题 5 + 访谈的每个字段各 1 答（8 个字段）。新报名问 5 题，确认页用户自己点「追加」最多再 4 项（join.ts JOIN_ANSWER_MAX）；改资料时上次的访谈回答
 // 加上主办方后来加的题会超过它（5 + 6）。交给报名接口的签名回答按字段不重复，最多 8 条（interview-question-token）。
 export const EVENT_JOIN_ANSWERS_MAX = 5 + 8;
 const answers = z.array(eventJoinAnswerObject).max(EVENT_JOIN_ANSWERS_MAX);
-/** `focus`: ask this one item (the profile would fill it, the person wants to answer it). `more`: ask one more question although the interview judged it had enough (review 「追加」 / 「質問に戻る」). */
+/** `focus`: ask this one item (the profile would fill it, the person wants to answer it). `more`: old clients still send it; since 2026-11-27 a registration has at most 5 questions, so past 5 answers it only gets done (no error). */
 export const eventJoinNextInputObject = z.object({ answers, focus: z.enum(ITEM_KEYS).optional(), more: z.boolean().default(false) }).strict();
 /** `edit`: changing an existing registration (items the profile fills count from the start; no new draft is written). */
 export const eventJoinProfileInputObject = z.object({ answers, draft: z.boolean().default(false), edit: z.boolean().default(false) }).strict();

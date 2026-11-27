@@ -18,7 +18,7 @@ test("host questions come first, then the interview; answers are validated and s
   const base = createJoinMockPorts();
   const seenByAi: string[][] = [];
   const saved: Array<Record<string, string>> = [];
-  const service = createJoinService({ ports: { ...base, hostQuestions: async () => questions, async next(eventId, answers, language, more) { seenByAi.push(answers.map((answer) => answer.field)); return base.next(eventId, answers, language, more); }, saveHostAnswers: async (_actor, _event, answers) => { saved.push({ ...answers }); } } });
+  const service = createJoinService({ ports: { ...base, hostQuestions: async () => questions, async next(eventId, answers, language, more, plan) { seenByAi.push(answers.map((answer) => answer.field)); return base.next(eventId, answers, language, more, plan); }, saveHostAnswers: async (_actor, _event, answers) => { saved.push({ ...answers }); } } });
   const first = await service.next(JOURNEY_EVENT_ID, [], "ja");
   assert.deepEqual([first?.question?.field, first?.question?.multi, first?.index, first?.total], [`${HOST_QUESTION_FIELD_PREFIX}q1`, false, 1, 5]);
   const q1 = { answer: "投資家（VC・CVC・エンジェル）", field: "host:q1", prompt: questions[0]!.prompt, questionToken: "host:q1" };

@@ -12,10 +12,10 @@ export function createJoinMockPorts(): JoinPorts {
     // 示例活动的截止日是固定日期：示例里的「现在」在截止之前。
     now: () => Date.parse(JOURNEY_JOIN_SUBMITTED_AT),
     async event(eventId) { return eventId === JOURNEY_EVENT_ID ? EVENT : null; },
-    // 示例访谈问到「会いたい人」（第 3 问）就认为够了；确认页点「追加」（more）再问下一题（画板 #370：86 % · 提供できること △）。
-    // `plan`：跳过已覆盖的字段；满 5 题后的追问只问缺的项（同 live 访谈）。
-    async next(_eventId, answers, _language, more, plan) {
-      if (answers.length >= 3 && !more) return null;
+    // 示例访谈按画板 #20–#23 的顺序问满 5 题，四项都覆盖（2026-11-27 用户反馈：答完 5 题不该再缺项；
+    // 以前停在第 3 问、确认页 86 % · 提供できること △ 的状态不再出现）。
+    // `plan`：跳过已覆盖的字段；必须针对某一项时只问那一项（同 live 访谈）。
+    async next(_eventId, answers, _language, _more, plan) {
       const answered = new Set(answers.map((answer) => answer.field));
       const index = JOURNEY_JOIN_QUESTIONS.findIndex((item) => !answered.has(item.field) && !plan?.skipFields?.includes(item.field) && (!plan?.focusFields || plan.focusFields.includes(item.field)));
       const question = JOURNEY_JOIN_QUESTIONS[index];

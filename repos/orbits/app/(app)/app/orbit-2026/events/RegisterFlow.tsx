@@ -262,8 +262,8 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     const late = await first.late;
     if (seq === draftSeq.current && introRef.current === "" && late.ok && late.data.selfIntro?.source === "ai_draft") take(late);
   };
-  // 「追加」/「質問に戻る」：访谈认为够了也再问一题（live 由 AI 决定，可能仍然结束 → 留在确认页）。
-  const askMore = async (focus?: EventJoinProfileItemKey) => {
+  // 确认页「追加 / 補う / 編集」：只问那一项（可选入口，2026-11-27 起不再有自动的第 6 题；服务端在 AI 不出题时用固定题）。
+  const askMore = async (focus: EventJoinProfileItemKey) => {
     setBusy(true);
     const res = await joinApi.next(eventId, answers, true, focus);
     setBusy(false);
@@ -441,7 +441,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
             {item.fromProfile ? <span className={styles.lbl} data-join-from-profile={item.key}>{t("itemFromProfile")}</span> : null}
             {item.fromProfile ? <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} onClick={() => void askMore(item.key)}>{t("edit")}</button>
               : editing && item.done && item.key !== "company" ? <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} data-join-edit={item.key} onClick={() => editItem(item.key)}>{t("edit")}</button> : null}
-            {item.done ? null : <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} onClick={() => void askMore(editing ? item.key : undefined)}>{t("add")}</button>}
+            {item.done ? null : <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} data-join-add={item.key} onClick={() => void askMore(item.key)}>{t("add")}</button>}
           </div>
         ))}
         {editing ? answers.filter((item) => asked[item.field] && asked[item.field]!.item === null).map((item) => (
@@ -452,8 +452,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
           </div>
         )) : null}
         {missing.some((item) => item.key === "offer") ? <div className={`${styles.lbl} ${r.hint}`}>{t("offerHint")}</div> : null}
-        {/* 390：「質問に戻る」降为卡内的文字链（主按钮在底部固定区）。 */}
-        {phone && !editing ? <button type="button" className={`btn ${r.textLink} ${r.backLink}`} disabled={busy} onClick={() => void askMore()} data-join-back-questions="">{t("backToQuestions")}</button> : null}
+        {/* 2026-11-27 用户反馈：5 题问完不再追问，「質問に戻る」去掉（缺的项用上面每行的「追加」，可选）。 */}
       </div>
       {/* 390：参加用プロフィール卡不再出现，它独有的话题并到这里（b2 regPersona「話題」卡）。 */}
       {phone && profile?.topics.length ? (
@@ -494,14 +493,14 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
       {reviewCards}
       <div className={`${styles.row} ${r.go}`}>
         <span className={`${styles.lbl} ${r.grow}`}>{editableLine}</span>
-        {editing ? null : <button type="button" className={`btn ${styles.btn}`} disabled={busy} onClick={() => void askMore()}>{t("backToQuestions")}</button>}
         <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.nextBtn}`} disabled={busy || draft === "running"} aria-disabled={draft === "running"} onClick={() => void apply()}>{draft === "running" ? t("introDrafting") : t(editing ? "joinSave" : "applyNow")}</button>
       </div>
     </div>
   );
   // 390（b2 regPersona）：卡片直接排在页面上，主按钮在屏幕底部固定区（整宽 48、深色），上面一行就绪提示，下面一行「编辑期限」。
-  // 就绪提示：100% = 带对勾的一句；没到 = 还差几项 +「补上」（问缺的那一项）。自我介绍还在写时按钮保持「正在生成…」禁用。
-  const firstMissing = missing[0];
+  // 就绪提示：100% = 带对勾的一句；没到（旧数据等少见情况）= 几项未填 +「补上」（可选，只问那一项）——不拦报名，按钮照常可点。
+  // 自我介绍还在写时按钮保持「正在生成…」禁用。
+  const firstMissing = missing.find((item) => item.key === "target" || item.key === "offer") ?? missing[0];
   const phoneReview = (
     <div className={r.pPage} data-join-review="" data-join-phone="">
       {reviewCards}
@@ -511,7 +510,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         ) : (
           <div className={r.pReady} role="status" data-join-ready="missing">
             <span>{t("readyMissing", { n: missing.length })}</span>
-            {firstMissing ? <button type="button" className={`btn ${r.textLink}`} disabled={busy} onClick={() => void askMore(editing ? firstMissing.key : undefined)}>{t("fillIn")}</button> : null}
+            {firstMissing ? <button type="button" className={`btn ${r.textLink}`} disabled={busy} data-join-fill={firstMissing.key} onClick={() => void askMore(firstMissing.key)}>{t("fillIn")}</button> : null}
           </div>
         )) : null}
         <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.pMain}`} disabled={busy || draft === "running"} aria-disabled={draft === "running"} onClick={() => void apply()}>{draft === "running" ? t("introDrafting") : t(editing ? "joinSave" : "applyNow")}</button>

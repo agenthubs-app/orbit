@@ -30,11 +30,12 @@ test("questions: 会いたい人 is multi-select, 話したいテーマ at most 
   assert.equal(six.done, true, "past 5 answers the flow only ends (a follow-up is asked only for a missing item, see below)");
   const tooMany = Array.from({ length: 14 }, (_, n) => answer("industry", "x", n));
   assert.equal((await routes.joinNext(post({ answers: tooMany }), params)).status, 400, "more than 5 organizer questions + 8 interview fields is rejected");
+  // 2026-11-27 用户反馈：示例访谈也问满 5 题、四项都覆盖（不再停在第 3 题、确认页 86 % · 提供できること △）。
   const three = five.slice(0, 3);
-  const enough = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: three }), params)).json()).data);
-  assert.deepEqual([enough.done, enough.index], [true, 3], "the sample interview judges 3 answers enough (review shows 提供できること △)");
-  const more = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: three, more: true }), params)).json()).data);
-  assert.deepEqual([more.done, more.question?.field], [false, "valueOffered"], "「追加」 asks one more question");
+  const fourth = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: three }), params)).json()).data);
+  assert.deepEqual([fourth.done, fourth.index, fourth.question?.field], [false, 4, "valueOffered"]);
+  const offer = eventJoinStepSchema.parse((await (await routes.joinNext(post({ answers: three, focus: "offer" }), params)).json()).data);
+  assert.deepEqual([offer.done, offer.question?.field], [false, "valueOffered"], "the review's optional 「追加」 asks that one item");
 });
 
 test("profile coverage is a rule (company 44 + 14 each) and the AI persona only runs for the draft", async () => {
@@ -249,17 +250,19 @@ test("資料の「提供・求めていること」を非公開にした人：�
     const shown = projectPublicProfile({ ...own, publicFields: { companyRole: true, intro: true, offeringSeeking: open } } as never);
     const submitted: unknown[] = [];
     const asked: (readonly string[] | undefined)[] = [];
+    const skipped: (readonly string[] | undefined)[] = [];
     const service = createJoinService({ ports: fakePorts({
       hostQuestions: async () => (full ? hostQuestions : []) as never,
-      next: async (_event, _answers, _language, _more, plan) => { asked.push(plan?.focusFields); const field = plan?.focusFields?.[0] ?? "targetAttendees"; return { allowCustom: true, field, options: ["A", "B"], prompt: "どんな方に会いたいですか？", questionToken: "t" }; },
+      next: async (_event, _answers, _language, _more, plan) => { asked.push(plan?.focusFields); skipped.push(plan?.skipFields); const field = plan?.focusFields?.[0] ?? "targetAttendees"; return { allowCustom: true, field, options: ["A", "B"], prompt: "どんな方に会いたいですか？", questionToken: "t" }; },
       profileTags: async () => ({ goalIds: ["g"], offering: shown.offering ?? [], seeking: shown.seeking ?? [] }),
       submit: async (_event, _answers, from) => { submitted.push(from?.derived ?? []); return { status: "registered", submittedAt: "2026-11-26T00:00:00.000Z" }; },
     }) });
     if (!full) {
-      // 枠が空いている：どちらでも会いたい人は本人に聞く（公開時だけ資料の選択肢を先に選んでおく）。
+      // 2026-11-27：公開なら資料で覆える項（会いたい人・提供できること）は聞かない；非公開なら本人に聞く（核心项が先）。
       const step = await service.next("ev", [], "ja", false, "actor:a");
       assert.equal(step?.question?.field, "targetAttendees");
-      assert.deepEqual(step?.question?.prefill, open ? ["投資家"] : undefined);
+      assert.equal(skipped.at(-1)?.includes("targetAttendees"), open);
+      assert.equal(skipped.at(-1)?.includes("valueOffered"), open);
       continue;
     }
     const rest = [{ answer: "x", field: "desiredOutcome", prompt: "?", questionToken: "t" }, { answer: "y", field: "experienceHighlight", prompt: "?", questionToken: "t" }];
@@ -281,10 +284,10 @@ test("資料の「提供・求めていること」を非公開にした人：�
       await service.submit("actor:a", "ev", answered, "ja");
       assert.deepEqual(submitted.at(-1), [{ answer: "紹介", field: "valueOffered", source: "profile" }]);
     } else {
-      assert.equal(step?.done, false, "not filled silently: the missing core items are asked");
-      assert.deepEqual(asked.at(-1), ["targetAttendees", "valueOffered"]);
+      // 2026-11-27 用户反馈：5 题已用完就不再追问；不从资料静默补，留空照样能报名（确认页「追加」可选）。
+      assert.equal(step?.done, true, "no 6th question");
       assert.deepEqual([item("target"), item("offer")], [{ done: false, key: "target" }, { done: false, key: "offer" }]);
-      await service.submit("actor:a", "ev", all, "ja");
+      assert.equal((await service.submit("actor:a", "ev", all, "ja"))?.status, "registered");
       assert.deepEqual(submitted.at(-1), [], "nothing from the profile is submitted");
     }
   }

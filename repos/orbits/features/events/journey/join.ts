@@ -24,7 +24,10 @@ export class JoinRefusedError extends AppError {
 }
 
 export const JOIN_TOTAL = 5;
-/** 满 5 题后仍缺项：确认页「追加」只针对缺的那一项再问，缺几项补几项（目的・话题・想见的人・能提供 最多 4 项），不无限追问。 */
+/**
+ * 回答条数的上限（5 题 + 确认页用户自己点「补上」的 4 项）。2026-11-27 起新报名不再自动追问第 6 题；
+ * 只有用户主动点「补上 / 编辑」才会多答（可选），所以仍按这个上限收。
+ */
 export const JOIN_ANSWER_MAX = JOIN_TOTAL + 4;
 /** 每题约 20 秒（「残り 約1分」）。 */
 const SECONDS_PER_QUESTION = 20;
@@ -431,44 +434,69 @@ export function createJoinService(deps: { ports: JoinPorts }) {
     return writeCalendar(actorId, eventId, event, status === "registered", language, existing);
   };
   const service = {
+    /**
+     * 2026-11-27 用户反馈「问了那么多题还缺，再追问观感很差」：新报名一共最多 5 题（含主办方题），出题按覆盖来排——
+     * 每题前算「还没覆盖的项」与「剩余题数」，剩余 ≤ 未覆盖时下一题必须针对一个未覆盖项（核心项在前；AI 出题把它当硬约束，
+     * 不出 / 偏题 / 出错就用该项的固定题）。资料标签或主办方题已覆盖的项不再问。满 5 题就结束，不再有第 6 题
+     * （旧 App 照旧发 `more` 也只回结束）。`focus` = 用户在确认页自己点的「补上 / 编辑」，只问那一项（可选入口）。
+     */
     async next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more = false, actorId: string | null = null, focus: EventJoinProfileItemKey | null = null): Promise<EventJoinStep | null> {
       if (!(await ports.event(eventId))) return null;
       const filled = filledItems(answers);
       // 资料：预选（主办方题库题、访谈题）、告诉访谈哪些选项已有、核心项的兜底（提交时签成固定题）。
       const tags = actorId ? await profileTags(actorId, language) : null;
       const fromProfile = profileCoreAnswers(tags, language);
-      // 确认页点「编辑」资料补上的那一项（focus）：只问这一项，本人的回答代替资料。
-      const asked = ANSWER_ITEMS.find((item) => item === focus && !filled.has(item));
-      const missing = asked ? [asked] : ANSWER_ITEMS.filter((item) => !filled.has(item) && !fromProfile[item]);
-      // 满 5 题后：四项都有值就结束；还有缺项（主办方题占了名额）就只针对缺的项继续问，不受 5 题限制（上限 JOIN_ANSWER_MAX）。
-      // 核心项缺了报名接口会拒绝，所以不能停在这里；目的・话题也补齐，确认资料四项都有值。
-      const extra = Boolean(asked) || answers.length >= JOIN_TOTAL;
-      if (extra && (missing.length === 0 || (!asked && answers.length >= JOIN_ANSWER_MAX))) return joinStep(answers.length, null, language);
-      if (!extra) {
-        // R17：主办方的申込質問先问（按顺序），问完再由访谈补足；访谈只看访谈自己的回答。
-        // 题库题按当前界面语言显示（主办方自己改写过的题保持原文）；回答在提交时换回公开的写法（validHostAnswers）。
-        const hostQuestions = ports.hostQuestions ? await ports.hostQuestions(eventId).catch(() => []) : [];
-        const pending = hostQuestions.find((question) => !answers.some((answer) => answer.field === `${HOST_QUESTION_FIELD_PREFIX}${question.id}`));
-        if (pending) {
-          const shown = localizeQuestion(pending, language);
-          // 题库的立場 / 目的 / 话题题：资料对得上的选项先选上（按选项位置，对不上不选）。
-          const picked = hostQuestionProfilePrefill(pending, tags ? { goalIds: tags.goalIds, industryId: tags.industryId, secondaryIndustryId: tags.secondaryIndustryId, seniority: tags.seniority, topicKeys: profileTopicKeys(tags.topics) } : null)
-            .flatMap((index) => (shown.options[index] === undefined ? [] : [shown.options[index]!]));
-          const prefill = shown.kind === "single" ? picked.slice(0, 1) : picked;
-          const { max: _max, help: _help, ...asked } = hostJoinQuestion(pending, language);
-          const step = joinStep(answers.length, asked, language);
-          return prefill.length && step.question ? { ...step, question: { ...step.question, prefill } } : step;
-        }
-      }
-      // 访谈不再问：资料已有的公司・职位 / 行业，和已被回答（含主办方题）覆盖的项。满 5 题后的追问只问缺的项。
-      const covered = ANSWER_ITEMS.filter((item) => filled.has(item)).map((item) => FIELD_OF_ITEM[item]);
       // 资料里已有、会单独列出并预选的选项告诉访谈，免得生成同义项（「客户引荐」与「介绍人脉」）。
       const knownOptions = Object.fromEntries(["targetAttendees", "valueOffered", "experienceHighlight", "desiredOutcome"].map((field) => [field, profileOptionsFor(field, tags, language)] as const).filter(([, list]) => list.length));
-      const plan: JoinInterviewPlan = { ...(extra ? { focusFields: missing.map((item) => FIELD_OF_ITEM[item]) } : { skipFields: [...PROFILE_FIELDS, ...covered] }), ...(Object.keys(knownOptions).length ? { knownOptions } : {}) };
-      const question = await ports.next(eventId, answers.filter((answer) => !isHostAnswer(answer)), language, more || Boolean(asked), plan);
-      const step = joinStep(answers.length, question, language, extra ? answers.length + 1 : JOIN_TOTAL);
-      if (!step.question) return step;
-      return { ...step, question: prefillQuestion(step.question, tags, language) };
+      const withKnown = (plan: JoinInterviewPlan): JoinInterviewPlan => (Object.keys(knownOptions).length ? { ...plan, knownOptions } : plan);
+      const interview = answers.filter((answer) => !isHostAnswer(answer));
+      const answeredFields = new Set(interview.map((answer) => answer.field));
+      /**
+       * 问一题：`target` = 必须针对的项（AI 偏题 / 不出 / 出错 → 该项的固定题）；null = 访谈自由选。
+       * `fallback`：自由选时 AI 不出 / 出错 / 重复，还有没覆盖的项就落到它的固定题（不提前结束）。
+       */
+      const ask = async (plan: JoinInterviewPlan, target: AnswerItem | null, total: number, fallback: AnswerItem | null = target): Promise<EventJoinStep> => {
+        let question: Awaited<ReturnType<JoinPorts["next"]>> = null;
+        try {
+          question = await ports.next(eventId, interview, language, more || Boolean(target), withKnown(plan));
+        } catch (error) {
+          // 四项都已覆盖时多出来的题只是加分项：访谈出错就直接结束；否则落到固定题（没有固定题端口时照旧报错）。
+          if (fallback ? !ports.fixedQuestion || !actorId : target) throw error;
+        }
+        // 偏题：必须针对的项却问了别的；自由选时问了这次已经答过的字段（重复）。
+        if (question && (target ? itemOfAnswer(question.field) !== target : answeredFields.has(question.field))) question = null;
+        if (!question && fallback && ports.fixedQuestion && actorId) question = await ports.fixedQuestion(actorId, eventId, FIELD_OF_ITEM[fallback], language);
+        const step = joinStep(answers.length, question, language, total);
+        return step.question ? { ...step, question: prefillQuestion(step.question, tags, language) } : step;
+      };
+      // 确认页点「补上 / 编辑」的那一项（focus）：只问这一项，本人的回答代替资料。已经有回答就不问。
+      if (focus) {
+        const asked = ANSWER_ITEMS.find((item) => item === focus && !filled.has(item));
+        return asked ? ask({ focusFields: [FIELD_OF_ITEM[asked]] }, asked, answers.length + 1) : joinStep(answers.length, null, language);
+      }
+      if (answers.length >= JOIN_TOTAL) return joinStep(answers.length, null, language);
+      // R17：主办方的申込質問先问（按顺序），问完再由访谈补足；访谈只看访谈自己的回答。
+      // 题库题按当前界面语言显示（主办方自己改写过的题保持原文）；回答在提交时换回公开的写法（validHostAnswers）。
+      const hostQuestions = ports.hostQuestions ? await ports.hostQuestions(eventId).catch(() => []) : [];
+      const pending = hostQuestions.find((question) => !answers.some((answer) => answer.field === `${HOST_QUESTION_FIELD_PREFIX}${question.id}`));
+      if (pending) {
+        const shown = localizeQuestion(pending, language);
+        // 题库的立場 / 目的 / 话题题：资料对得上的选项先选上（按选项位置，对不上不选）。
+        const picked = hostQuestionProfilePrefill(pending, tags ? { goalIds: tags.goalIds, industryId: tags.industryId, secondaryIndustryId: tags.secondaryIndustryId, seniority: tags.seniority, topicKeys: profileTopicKeys(tags.topics) } : null)
+          .flatMap((index) => (shown.options[index] === undefined ? [] : [shown.options[index]!]));
+        const prefill = shown.kind === "single" ? picked.slice(0, 1) : picked;
+        const { max: _max, help: _help, ...hostAsked } = hostJoinQuestion(pending, language);
+        const step = joinStep(answers.length, hostAsked, language);
+        return prefill.length && step.question ? { ...step, question: { ...step.question, prefill } } : step;
+      }
+      // 还没覆盖的项（核心在前）；资料标签 / 已答（含主办方题）覆盖的不再问。
+      const uncovered = ANSWER_ITEMS.filter((item) => !filled.has(item) && !fromProfile[item]);
+      const left = JOIN_TOTAL - answers.length;
+      const target = uncovered.length > 0 && left <= uncovered.length ? uncovered[0]! : null;
+      if (target) return ask({ focusFields: [FIELD_OF_ITEM[target]] }, target, JOIN_TOTAL);
+      // 还有富余：访谈自由挑（核心 → 目的・话题 → 其它，见 remainingFieldsFor），跳过已覆盖的项与资料已有的公司・职位 / 行业。
+      const covered = ANSWER_ITEMS.filter((item) => filled.has(item) || fromProfile[item]).map((item) => FIELD_OF_ITEM[item]);
+      return ask({ skipFields: [...PROFILE_FIELDS, ...covered] }, null, JOIN_TOTAL, uncovered[0] ?? null);
     },
     /** 进报名页先读：新报名还是改资料、能不能改、上次的回答。改资料不调 AI。 */
     async current(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventJoinCurrent | null> {
@@ -524,7 +552,8 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const editableUntil = Date.parse(editableUntilAt) > Date.now() ? new Date(Date.parse(editableUntilAt)).toISOString() : null;
       // 资料标签兜底的核心项只在问完（满 5 题）后才算有值：答题中预填的项要用户确认那一题才算（否则一开始就 72 %）。
       const filled = filledItems(answers);
-      const exhausted = edit || answers.length >= JOIN_TOTAL;
+      // `draft`：只在问完时才请求（访谈提前问完、不到 5 答时也算）。
+      const exhausted = edit || draft || answers.length >= JOIN_TOTAL;
       const tags = exhausted && CORE_ITEMS.some((item) => !filled.has(item)) ? await profileTags(actorId, language) : null;
       const profileItems = resolveCoreAnswers(answers, tags, language).derived.filter((item) => item.source === "profile").map((item) => (item.field === "targetAttendees" ? "target" : "offer") as EventJoinProfileItemKey);
       return profileFromAnswers(answers, { editableUntil, profileItems, personaTopics: persona?.topics ?? [], review: event.review, reviewUntil: event.review ? event.registrationClosesAt : null, selfIntro: intro, selfIntroBasis: basis });

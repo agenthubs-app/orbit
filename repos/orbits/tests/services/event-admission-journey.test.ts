@@ -191,11 +191,12 @@ test("journey resolves a canonical alias, verifies against the canonical id, and
   assert.equal(result.status, "admitted");
 });
 
-test("journey rejects missing core fields without synthesizing an unanswered question", async () => {
+test("journey accepts missing core fields as blanks without synthesizing an unanswered question (2026-11-27 用户反馈)", async () => {
   let admissionWrites = 0;
+  let written: { profilePayload?: { answers?: Record<string, string> } } | null = null;
   const journey = createEventAdmissionJourneyService({
     admissionService: admissionService({
-      onSubmit() { admissionWrites += 1; },
+      onSubmit(_actor, value) { admissionWrites += 1; written = value as typeof written; },
     }),
     eventCoreService: eventCore(),
     // coreResponses is [positioning, targetAttendees, valueOffered,
@@ -204,18 +205,15 @@ test("journey rejects missing core fields without synthesizing an unanswered que
     verifyResponses: () => coreResponses.slice(0, 2),
   });
 
-  await assert.rejects(
-    journey.apply({
-      actorId,
-      eventReference: eventId,
-      responses: [{ answer: "signed answer", questionToken: "signed-token" }],
-    }),
-    (error: unknown) =>
-      error instanceof EventAdmissionJourneyError &&
-      error.code === "PROFILE_INCOMPLETE" &&
-      error.message.includes("valueOffered"),
-  );
-  assert.equal(admissionWrites, 0);
+  await journey.apply({
+    actorId,
+    eventReference: eventId,
+    responses: [{ answer: "signed answer", questionToken: "signed-token" }],
+  });
+  assert.equal(admissionWrites, 1);
+  const answers = (written as { profilePayload?: { answers?: Record<string, string> } } | null)?.profilePayload?.answers ?? {};
+  assert.ok(answers.targetAttendees, "the answered core field is kept");
+  assert.equal(answers.valueOffered, undefined, "the unanswered one stays blank (the host sees it as not filled)");
 });
 
 test("journey rejects legacy or participant-controlled profile snapshots", async () => {

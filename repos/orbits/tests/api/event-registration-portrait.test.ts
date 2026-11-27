@@ -25,7 +25,8 @@ test("read-only portrait source GET retains signed required questions for unregi
       assert.deepEqual(data.questionSet.questions.map((question: { participantProfileField: string; required: boolean }) => [question.participantProfileField, question.required]), [["targetAttendees", true], ["valueOffered", true]]);
       assert.equal(data.questionSet.questionSetHash, undefined);
       for (const question of data.questionSet.questions) assert.equal(verifyPortraitRegistrationQuestion({ workspaceId: "test", actorId: "self", eventId: "event", portraitQuestionToken: question.portraitQuestionToken, secret: "synthetic-readonly-secret" }).question.prompt, question.prompt);
-      const rejected = await POST(new Request("https://orbit.test/api/events/event/registration", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ intent: state === "cancelled" ? "reactivate" : "register", expectedRegistrationVersion: data.registration?.updatedAt ?? null, answers: { targetAttendees: "Builders" } }) }), context);
+      const rejected = await POST(new Request("https://orbit.test/api/events/event/registration", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ intent: state === "cancelled" ? "reactivate" : "register", expectedRegistrationVersion: data.registration?.updatedAt ?? null, answers: {} }) }), context);
+      // 2026-11-27：缺核心项不再拒绝；什么都没答的空提交仍拒绝。
       assert.equal(rejected.status, 422);
       assert.equal((await service.get({ eventId: "event", userId: "self" }))?.status ?? null, state === "cancelled" ? "cancelled" : null);
     }
