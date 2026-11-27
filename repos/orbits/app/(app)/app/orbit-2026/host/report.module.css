@@ -81,6 +81,11 @@
   .span6, .side, .sampleHead, .sampleGrid { grid-column: auto; }
   .sampleGrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .sampleGrid.sampleGrid > * { grid-column: 1 / -1; }
+  /* b13 HM-R1 .fun .f：行间 10、标签与进度条之间 6、条下 2、数字 14。 */
+  .fun { gap: 10px; }
+  .f { row-gap: 0; }
+  .f .bar { margin: 6px 0 2px; }
+  .f b { font-size: var(--fs-body); }
 }
 /* < 768 自分の視点（b13 HM-R3 .imp3）：3 个数并排 */
 .imp3 { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
