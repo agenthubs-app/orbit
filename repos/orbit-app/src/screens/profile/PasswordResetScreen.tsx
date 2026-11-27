@@ -25,7 +25,7 @@ export function PasswordResetScreen() {
   const params = useLocalSearchParams<{ "#"?: string | string[]; next?: string | string[] }>();
   // Opened from the login page it knows where that came from; opened from the mail, this device remembers it.
   const [remembered, setRemembered] = useState<string | null>(null);
-  useEffect(() => { void authReturnStorage.read().then(setRemembered); }, []);
+  useEffect(() => { void authReturnStorage.read("reset").then(setRemembered); }, []);
   const loginHref = loginHrefReturningTo(returnHref(params.next) ?? remembered);
   const fragment = typeof params["#"] === "string" ? params["#"] : undefined;
   const linkingUrl = useLinkingURL();

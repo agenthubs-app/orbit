@@ -93,3 +93,20 @@ test("a trip to the mail or to Google remembers the page on this device for half
   await broken.remember("/events/e1");
   assert.equal(await broken.read(), null);
 });
+
+test("a password-reset trip is kept 7 days under its own key (Web 3d65fd5ab); the Google trip keeps its half hour", async () => {
+  const { adapter } = memory();
+  let now = 1_000;
+  const storage = createAuthReturnStorage(adapter, () => now);
+  await storage.remember("/events/reset", "reset");
+  await storage.remember("/events/google");
+  now += 31 * 60 * 1000;
+  assert.equal(await storage.read(), null, "Google: half an hour");
+  assert.equal(await storage.read("reset"), "/events/reset");
+  now += 7 * 24 * 60 * 60 * 1000;
+  assert.equal(await storage.read("reset"), null, "reset: 7 days");
+  // A reset asked for before the split was kept under the Google key: still found while it lasts.
+  const legacy = createAuthReturnStorage(memory().adapter, () => 1_000);
+  await legacy.remember("/events/old");
+  assert.equal(await legacy.read("reset"), "/events/old");
+});

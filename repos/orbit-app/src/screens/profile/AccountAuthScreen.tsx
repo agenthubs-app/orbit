@@ -227,7 +227,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           setError(locale.t("auth.pendingUnconfirmed"));
         } else {
           setNotice(locale.t("auth.forgotAccepted"));
-          void authReturnStorage.remember(next);
+          void authReturnStorage.remember(next, "reset");
         }
       } catch {
         if (isCurrent()) setError(locale.t("auth.networkFailure"));
