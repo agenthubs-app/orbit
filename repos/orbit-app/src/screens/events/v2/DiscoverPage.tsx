@@ -162,8 +162,8 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const past = query.period === "past";
   const flat = data !== null && !past && !data.popularityFallback && data.total <= 5 && data.all.length > 0;
   const count = (query.period && query.period !== "upcoming" ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
-  // すべて is always by date (2026-11-15: no score order any more).
-  const rows = useMemo(() => (data ? [...data.all].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)) : []), [data]);
+  // すべて is always by date (2026-11-15: no score order any more). Without a plan the server order stays: a profile goal puts matching events first (Web de28c836a).
+  const rows = useMemo(() => (data ? (data.popularityFallback ? data.all : [...data.all].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))) : []), [data]);
   const toneBg = (tone: JourneyTone) => (tone === "teal" ? colors.macTeal : tone === "lav" ? colors.macLav : tone === "blue" ? colors.macBlue : tone === "apricot" ? colors.macApricot : colors.macPink);
   const openSheet = () => { setDraft(query); setSheet(true); };
   // 指定日期: a start day, then an end day (Tokyo dates; the server's custom period reads from / to).
@@ -208,26 +208,24 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         </View>
         <UiPressable accessibilityRole="button" accessibilityLabel={t("filtersLbl")} onPress={openSheet} style={styles.rbtn} testID="events-discover-filter">
           <Icon name="sliders" size={20} color={colors.ink2} />
-          {count && data && !data.popularityFallback ? <View style={styles.badge}><UiText style={styles.badgeText}>{count}</UiText></View> : null}
+          {count && data ? <View style={styles.badge}><UiText style={styles.badgeText}>{count}</UiText></View> : null}
         </UiPressable>
       </View>
       {/* 2026-11-21 手机扫描：数据未到时不知道是否走「人気順」引导，先只出骨架，不画筛选块（之前先画「今月 ✕」再整体换掉）。 */}
       {data === null ? (
         <Bones testID="events-discover-loading" style={styles.loadingBones}><BoneCard rows={2} /><BoneCard rows={3} /></Bones>
-      ) : data.popularityFallback && !past ? null : <View style={styles.chips}>
+      ) : <View style={styles.chips}>
         {query.period && query.period !== "upcoming" ? chip(query.period === "custom" && query.from ? customRange(query) : periodLabel(query.period, t), () => clear("period"), true, "period") : null}
         {(query.areas ?? []).map((a) => chip(areaLabel(a, t), () => patch({ areas: (query.areas ?? []).filter((x) => x !== a) }), true, `a-${a}`))}
         {(query.themes ?? []).map((x) => chip(themeLabel(x, t), () => patch({ themes: (query.themes ?? []).filter((v) => v !== x) }), true, `t-${x}`))}
         {query.freeOnly ? chip(t("freeOnly"), () => clear("freeOnly"), true, "free") : null}
-        {data?.popularityFallback || query.themes?.length ? null : chip(t("filterTheme"), openSheet, false, "theme", true)}
-        {data?.popularityFallback || flat || query.freeOnly ? null : chip(t("feeLbl"), openSheet, false, "fee", true)}
+        {query.themes?.length ? null : chip(t("filterTheme"), openSheet, false, "theme", true)}
+        {flat || query.freeOnly ? null : chip(t("feeLbl"), openSheet, false, "fee", true)}
       </View>}
 
       {data?.popularityFallback && !past ? (
         <>
-          {guideClosed ? (
-            <UiPressable accessibilityRole="button" accessibilityLabel={t(goal ? "makePlanShort" : "setGoal")} onPress={() => openMainTab(router, planNewGoalHref("app"))} style={styles.reopen} testID="events-discover-reopen-plan"><UiText style={styles.more}>{t(goal ? "makePlanShort" : "setGoal")}</UiText></UiPressable>
-          ) : (
+          {guideClosed ? null : (
           <View style={[styles.card, styles.guide]} testID="events-discover-empty">
             <View pointerEvents="none" style={styles.guideGlow}>
               <Svg width={220} height={220}>
@@ -257,7 +255,8 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
               </UiPressable>
             ))}
           </View>
-          <View style={[styles.card, { marginTop: 14 }]}>
+          {/* 2026-11-27（同 Web 手机 8d537213c / de28c836a）：没有计划也直接列真实活动；只有一场都没有时才画「有了计划后」示例。 */}
+          {data.all.length ? null : <View style={[styles.card, { marginTop: 14 }]} testID="events-discover-sample">
             <View style={styles.cardH}><View style={[styles.row, { gap: 8 }]}><UiText style={styles.h3}>{t("samplePreview")}</UiText><View style={styles.sampleTag}><UiText style={styles.sampleText}>{t("sampleTag")}</UiText></View></View></View>
             {/* 2026-11-21：示例也用新的左图右文行（与真卡一致，无「詳細」按钮）。 */}
             <View style={[styles.ecRow, styles.ecSample]}>
@@ -274,7 +273,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
             </View>
             <View style={[styles.ghostRow, { marginTop: 12 }]}><View style={styles.ghostDot} /><UiText style={styles.ghostText}>{t("sampleCommunityLine")}</UiText></View>
             <View style={[styles.ghostRow, { marginTop: 8 }]}><View style={styles.ghostDot} /><UiText style={styles.ghostText}>{t("sampleKnownLine")}</UiText></View>
-          </View>
+          </View>}
         </>
       ) : null}
 
@@ -367,11 +366,14 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         </View>
       ) : null}
 
-      {!past && !flat && !data?.popularityFallback && rows.length ? (
+      {!past && !flat && rows.length ? (
         <View style={[styles.card, styles.all]} testID="events-discover-all">
           <View style={[styles.cardH, { marginBottom: 0, marginTop: 8 }]}>
             <UiText style={styles.h3}>{t("allPlain")}</UiText>
-            <UiText style={styles.more}>{t("byDate")}</UiText>
+            <View style={[styles.row, { gap: 10 }]}>
+              {data?.popularityFallback && guideClosed ? <UiPressable accessibilityRole="button" accessibilityLabel={t(goal === null ? "setGoal" : "makePlanShort")} onPress={() => openMainTab(router, planNewGoalHref("app"))} testID="events-discover-reopen-plan"><UiText style={styles.more}>{t(goal === null ? "setGoal" : "makePlanShort")}</UiText></UiPressable> : null}
+              <UiText style={styles.more}>{t("byDate")}</UiText>
+            </View>
           </View>
           {rows.map((row, index) => (
             <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.li}>
@@ -384,7 +386,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
       ) : null}
 
       {/* 已结束（2026-11-23 ④ M2）：封面保持原色，左上角「已结束」角标；不放费用和标签。最近的在前。 */}
-      {!past && data && !data.popularityFallback && data.past?.length ? (
+      {!past && data && data.past?.length ? (
         <View testID="events-discover-past">
           <View style={styles.lh}>
             <UiText style={styles.lhTitle}>{rt("eventsV2.pastTitle", { n: data.pastTotal ?? data.past.length })}</UiText>
@@ -578,7 +580,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   guide: { marginTop: 14, overflow: "hidden", padding: 20 },
   // 引导卡右上角关闭（同 Web .pGuideClose）；关掉后留一个小入口。
   guideClose: { alignItems: "center", height: 32, justifyContent: "center", position: "absolute", right: 10, top: 10, width: 32, zIndex: 1 },
-  reopen: { alignSelf: "flex-end", marginTop: 14, paddingVertical: 4 },
   guideGlow: { height: 220, opacity: 0.9, position: "absolute", right: -80, top: -90, width: 220 },
   guideTitle: { color: colors.ink, fontSize: 21, fontWeight: "800", lineHeight: 29, marginVertical: 4 },
   guideSub: { color: colors.ink2, fontSize: 15, lineHeight: 23, marginBottom: 14 },

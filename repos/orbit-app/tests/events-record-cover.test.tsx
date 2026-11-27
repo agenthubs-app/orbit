@@ -139,7 +139,7 @@ test("discover 開催済み with nothing: says to drop place or theme filters", 
 });
 
 test("discover with no plan (Web de28c836a): the guide follows the profile goal and can be closed for this account", async (t) => {
-  const fallback = { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: true, total: 0 };
+  const fallback = { all: [discoverRow("g2", "2099-12-20T10:00:00+09:00"), discoverRow("g1", "2099-12-01T10:00:00+09:00")], community: [], planFit: [], planFitTotal: 0, popularityFallback: true, total: 2 };
   const ranked = await harness.open(t, { screen: "discover", responses: { "/api/events/discover": fallback, "/api/profile": { profile: { relationshipGoal: "寻找投资" } } } });
   const card = ranked.getByTestId("events-discover-empty");
   await card.getByText("已按你的目标排序", { exact: true }).waitFor();
@@ -149,6 +149,22 @@ test("discover with no plan (Web de28c836a): the guide follows the profile goal 
   assert.equal(await ranked.getByTestId("events-discover-empty").count(), 0);
   const plain = await harness.open(t, { screen: "discover", responses: { "/api/events/discover": fallback, "/api/profile": { profile: { relationshipGoal: "学习行业趋势" } } } });
   await plain.getByTestId("events-discover-empty").getByText("现在按日期排序。", { exact: true }).waitFor();
+});
+
+test("discover with no plan (Web 8d537213c): real events are listed under the guide in the server's order; the sample only when there is none", async (t) => {
+  const fallback = { all: [discoverRow("g2", "2099-12-20T10:00:00+09:00"), discoverRow("g1", "2099-12-01T10:00:00+09:00")], community: [], planFit: [], planFitTotal: 0, popularityFallback: true, total: 2,
+    past: [discoverRow("p1", "2026-10-01T10:00:00+09:00")], pastTotal: 1 };
+  const page = await harness.open(t, { screen: "discover", responses: { "/api/events/discover": fallback, "/api/profile": { profile: { relationshipGoal: "寻找投资" } } } });
+  const all = page.getByTestId("events-discover-all");
+  await all.waitFor();
+  const text = await all.innerText();
+  assert.ok(text.indexOf("Event g2") < text.indexOf("Event g1"), "goal-ranked order is kept, not re-sorted by date");
+  await page.getByTestId("events-discover-past").getByText("Event p1", { exact: true }).waitFor();
+  assert.equal(await page.getByTestId("events-discover-sample").count(), 0);
+  assert.equal(await page.getByTestId("events-discover-reopen-plan").count(), 0, "the plan entry is in the guide while it is open");
+  const empty = await harness.open(t, { screen: "discover", responses: { "/api/events/discover": { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: true, total: 0 }, "/api/profile": { profile: {} } } });
+  await empty.getByTestId("events-discover-sample").waitFor();
+  assert.equal(await empty.getByTestId("events-discover-all").count(), 0);
 });
 
 test("cover uri: a site path is completed against the API address; absolute stays; empty is no image", async () => {
