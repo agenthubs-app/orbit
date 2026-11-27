@@ -14,6 +14,9 @@
  *   deletions-in-progress                                      只读：注销申请按状态计数（pending/purging = 删除中）
  *   set-tier --email <邮箱> --user-id <账号id> --tier <free|pro> [--apply]
  *                                                              改账户档位（2026-11-27 分档；pro 只能这样设，没有公网接口）
+ *   merge --from <旧账号邮箱或id> --to <新账号邮箱或id> [--apply]
+ *                                                              把迁移来的旧账号并到新注册的账号（不带 --apply = 整套合并后回滚）；
+ *                                                              旧账号存档停用，留 account_merges 记录，可重跑
  *
  * 输出只有 id、类别和数量，邮箱一律打码。构建里用完就 `exit 1`，不产生新版本。
  */
@@ -23,6 +26,7 @@ import { authUserRecordId } from "../features/auth/storage/auth-user-live-record
 import { previewControlledAccountPurge, runControlledAccountPurge } from "../features/account/controlled-ops/account-purge";
 import { previewControlledEmailChange, runControlledEmailChange } from "../features/account/controlled-ops/email-change";
 import { runControlledTierChange } from "../features/account/controlled-ops/account-tier";
+import { runControlledAccountMerge } from "../features/account/controlled-ops/account-merge";
 import { maskEmail } from "../features/account/controlled-ops/target";
 import { assertControlledAccountOpsProcess } from "../features/account/data-rights/purge/local-gate";
 import { resolveLiveDatabaseConnectionConfig } from "../shared/storage/live-database-config";
@@ -67,6 +71,9 @@ async function main() {
               .reduce((only, email, _i, all) => (all.length === 1 ? email : only), "")
           : required("from");
         print("change-email", await runControlledEmailChange({ db, workspaceId, userId: required("user-id"), fromEmail, toEmail: required("to"), alsoProfileContactEmail: process.argv.includes("--also-profile-contact"), apply }));
+        break;
+      case "merge":
+        print("merge", await runControlledAccountMerge({ db, workspaceId, from: required("from"), to: required("to"), apply }));
         break;
       case "set-tier":
         print("set-tier", await runControlledTierChange({ db, workspaceId, email: required("email"), userId: required("user-id"), tier: required("tier"), apply }));

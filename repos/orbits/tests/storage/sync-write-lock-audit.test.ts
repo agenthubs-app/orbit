@@ -25,6 +25,8 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/account/controlled-ops/email-change.ts": { policy: "non-sync", statements: 2, collections: "auth_users (re-keyed sign-in row) and the account's own profile contact email; takes the commit-order lock" },
   // 2026-11-27 分档：build-time operator script only (scripts/account-ops.ts set-tier); one auth_users row (payload.tier).
   "features/account/controlled-ops/account-tier.ts": { policy: "non-sync", statements: 1, collections: "auth_users (payload.tier); takes the commit-order lock" },
+  // Build-time operator script only (scripts/account-ops.ts merge): one transaction behind the commit-order lock.
+  "features/account/controlled-ops/account-merge.ts": { policy: "locked", statements: 6, how: "runControlledAccountMerge takes acquireSyncCommitOrderLock before moving the old account's records (delete + insert under the owner guard)" },
   "features/account/data-rights/reauth.ts": { policy: "non-sync", statements: 2, collections: "account_reauth_receipts and account_reauth_limits" },
   "features/account/data-rights/records.ts": { policy: "non-sync", statements: 5, collections: "account_exports and account_export_locks" },
   "shared/storage/postgres-live-record-store.ts": { policy: "locked", statements: 5, how: "upsert/insertIfAbsent/updateIfCurrent/delete/reassignRecordOwner wrap sync collections in SYNC_COMMIT_ORDER_LOCK_CTE" },
@@ -101,6 +103,7 @@ export const EVENT_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableWri
   "scripts/demo-canonical-memberships.ts": { statements: 1, how: "the demo transaction takes the lock first" },
   "scripts/fix-chinichi-startup-event-details.ts": { statements: 1, how: "2026-11-12 one-off: its write transaction takes acquireSyncCommitOrderLock first" },
   "scripts/import-chinichi-party-results.ts": { statements: 3, how: "2026-11-12 one-off import: the write transaction takes acquireSyncCommitOrderLock first (also when called from migrate-chinichi-party-attendees)" },
+  "features/account/controlled-ops/account-merge.ts": { statements: 1, how: "account merge (build-time operator script): the transaction takes acquireSyncCommitOrderLock before re-pointing event rows" },
   "scripts/merge-chinichi-party-account.ts": { statements: 2, how: "2026-11-12 one-off merge: the write transaction takes acquireSyncCommitOrderLock first" },
   "scripts/migrate-chinichi-party-attendees.ts": { statements: 1, how: "2026-11-13 one-off attendee migration: the write transaction takes acquireSyncCommitOrderLock first" },
   "scripts/create-chinichi-organizer-profile.ts": { statements: 1, how: "2026-11-14 one-off: organizer page + linking the four events, in one transaction that takes acquireSyncCommitOrderLock first" },
