@@ -9362,3 +9362,116 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390, setPage, phoneContent };
   document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 })();
 </script>
+<!-- 补画 · 2026-11-27 · プラン（套餐页）设计稿：用户授权「先出设计稿」。数据 = GET /api/account/usage；数字 = features/ai-quota/tiers.ts。
+     Web 1440 / 390 / App；Free 通常 · Free 用完（名刺）· Pro；入口：Web 設定サブメニュー / 390 設定リスト / App 設定 / 超限提示「プランを見る」。只在文件末尾追加。 -->
+<script>
+(function () {
+  const { S8, setPage, phoneContent } = window.__r18bBoardKit;
+  const DEC1 = '12月1日';
+  /* tiers.ts の値（2026-11-27 用户定稿）。画板は日本語。 */
+  const SHOW = [['iOrbit との会話', '回'], ['名刺のスキャン', '枚'], ['新しい計画', '件']];
+  const LIMITS = { free: [100, 30, 1], pro: [1000, 300, 10] };
+  const USED = { free: [38, 12, 0], freeOut: [64, 30, 0], pro: [212, 48, 2] };
+  const COMPARE = [
+    ['iOrbit との会話', '月100回 · 1日100回', '月1,000回 · 1日100回'],
+    ['名刺のスキャン', '月30枚', '月300枚'],
+    ['新しい計画', '月1件', '月10件'],
+    ['計画の修正', '月30回', '月30回'],
+    ['計画の見直し', '月3回', '月3回'],
+    ['イベントの見極め', '1日5回 · 月10回', '1日5回 · 月10回'],
+    ['人脈の見直し', '1日3回 · 月10回', '1日3回 · 月10回'],
+    ['連絡先の見立て（追加直後）', '1日20回 · 月60回', '1日20回 · 月60回'],
+    ['連絡先の見立て（自動更新）', '月40回', '月40回'],
+    ['メモの読み取り', '月300回', '月300回'],
+    ['下書き（自己紹介 · 探していること · メール）', '合計 月60回', '合計 月60回'],
+  ];
+  const n = v => v.toLocaleString('ja-JP');
+  const tierOf = s => (s === 'pro' ? 'pro' : 'free');
+  /* 現在のプラン：ページ見出しの下の 1 行（Web = setPage の sub、App / 390 = topbar の sub）。 */
+  const currentLine = s => `現在のプラン · ${s === 'pro' ? 'Pro' : 'Free'}`;
+  /* 今月の利用：b7 planApp と同じ行（ラベル / 已用 / 上限 + bar）。上限に達した行は coral。 */
+  const usage = (s, web) => {
+    const lim = LIMITS[tierOf(s)], used = USED[s];
+    return `<div class="card k-puse ${web ? 'span12' : ''}"><div class="card-h"><h3>今月の利用</h3><span class="lbl">${DEC1}にリセット</span></div>
+      <div class="${web ? 'grid3' : ''}" style="${web ? 'gap:28px' : ''}">${SHOW.map(([l, u], k) => { const out = used[k] >= lim[k]; return `<div><div class="row between ${out ? 'k-pout' : ''}" style="font-size:12.5px;margin-top:${k && !web ? 12 : 4}px"><b>${l}</b><span class="muted"><b style="color:${out ? 'var(--coral)' : 'var(--ink)'};font-family:var(--font-num)">${n(used[k])}</b> / ${n(lim[k])} ${u}</span></div>${bar(Math.min(100, used[k] / lim[k] * 100), out ? 'warn' : '')}</div>`; }).join('')}</div></div>`;
+  };
+  /* Free と Pro：上限は公開なので、両プラン同じ項目も並べる。Free のときだけ Pro に「準備中」と問い合わせ（CTA はこの 1 つ）。 */
+  const compare = (s, web) => {
+    const free = s !== 'pro';
+    /* 窄い画面（390 / App）では「月 · 日」を 2 行に。 */
+    const v = t => (web ? t : t.replace(' · ', '<br>'));
+    const rows = COMPARE.map(([l, a, b], k) => `<tr ${s === 'freeOut' && k === 1 ? 'class="k-pcmp-hit" style="background:var(--surface-2)"' : ''}><td><b>${l}</b></td><td style="white-space:nowrap">${v(a)}</td><td style="white-space:nowrap">${a === b ? v(b) : `<b>${v(b)}</b>`}</td></tr>`).join('');
+    return `<div class="card k-pcmp ${web ? 'span12' : ''}"><div class="card-h"><h3>Free と Pro</h3>${free ? `<button class="btn sm k-pask">${ic('mail', 'sm')}お問い合わせ</button>` : ''}</div>
+      <div style="overflow-x:auto"><table class="table"><thead><tr><th>項目</th><th>Free</th><th>Pro${free ? ' <span class="chip" style="margin-left:6px">準備中</span>' : ''}</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="lbl" style="margin-top:10px">イベントの AI（申込の質問 · 自己紹介 · 会後まとめ · 席決め）は回数に数えません。連絡先 · 手入力 · 検索 · イベントへの参加は制限なし。</div></div>`;
+  };
+  const page = s => `<div class="wgrid">${usage(s, true)}${compare(s, true)}</div>`;
+  /* Web 設定：サブメニューに「プラン」（アカウントの下）を足す */
+  const withPlanMenu = html => html.replace(/(<a class="[^"]*">[\s\S]*?アカウント<\/a>)/, `$1<a class="on k-pmenu">${ic('star', 'sm')}プラン</a>`);
+  const web = s => withPlanMenu(setPage('', 'プラン', currentLine(s), page(s)));
+  /* 390：中身は App と同じ縦並び（利用は 1 列）。 */
+  const web390 = s => topbar('プラン', currentLine(s), `<button class="rbtn">${ic('left')}</button>`, '<span></span>') + usage(s, false) + compare(s, false);
+  /* App */
+  const app = s => topbar('プラン', currentLine(s), `<button class="rbtn">${ic('left')}</button>`, '<span></span>') + usage(s, false) + compare(s, false);
+  /* 超限提示（扫名片）に「プランを見る」：Free で Pro の方が多い項目だけ。 */
+  const notice = '今月の30枚を使い切りました。12月1日に戻ります。Pro にすると毎月300枚までスキャンできます。';
+  const toastOv = `<div class="toast k-pnotice" style="position:absolute;left:16px;right:16px;bottom:110px;border-radius:18px;align-items:flex-start;white-space:normal"><span class="tk" style="background:var(--coral)">${ic('x', 'sm')}</span><span class="tmsg" style="flex:1;font-weight:600;line-height:1.55">${notice}</span><button class="undo" style="white-space:nowrap">プランを見る</button></div>`;
+  const appScanNotice = topbar('名刺をスキャン', '', `<button class="rbtn">${ic('left')}</button>`, '<span></span>') + `<div class="card k-pnotice"><b style="font-size:15px">アップロード</b>
+    <div class="mac" style="background:var(--coral-soft);color:var(--coral-text);font-size:12.5px;line-height:1.6;margin-top:12px">${notice}</div>
+    <a class="row" style="gap:4px;margin-top:10px;font-size:12.5px;font-weight:700;color:var(--plum-700)">プランを見る${ic('right', 'sm')}</a></div>`;
+  /* 字段表：値 · 出どころ · 無いとき */
+  const fields = rows => `<table class="table" style="max-width:1100px;margin:-14px 0 40px;font-size:12px"><thead><tr><th>値</th><th>出どころ</th><th>無い / 読めないとき</th></tr></thead><tbody>${rows.map(([a, b, c]) => `<tr><td><b>${a}</b></td><td>${b}</td><td class="lbl">${c}</td></tr>`).join('')}</tbody></table>`;
+  const F_PAGE = [
+    ['現在のプラン（見出しの下）', 'GET /api/account/usage → tier（free / pro）', '読めない：この行を出さない'],
+    ['今月の利用 · 3 行', 'items[]（feature = agent_chat / card_scan / plan_new_goal）の used / limit', '読めない：行ごと「— / 上限」、bar なし'],
+    ['リセット日', 'items[].retryOn（東京の翌月1日）', '無い：「毎月1日にリセット」'],
+    ['上限に達した行（coral）', 'used ≥ limit', '—'],
+    ['Free と Pro の表', 'usage の tiers（= features/ai-quota/tiers.ts）。共通の上限も並べる', '読めない：表ごと出さない'],
+    ['準備中 · お問い合わせ（表の右上）', 'tier = free のときだけ。リンク先 = ヘルプの問い合わせ', 'tier = pro：両方出さない'],
+  ];
+  const F_NOTICE = [
+    ['提示文', '429 error.context の quota*（quotaLimit / quotaRetryOn / quotaUpgradeLimit）', '数字が無い（古いサーバー）：数字なしの文'],
+    ['プランを見る', 'quotaUpgradable = "true"（free で Pro の方が多い項目）だけ', 'pro / 両プラン同じ項目：出さない'],
+  ];
+  const F_ENTRY = [
+    ['プラン（行 · メニュー）', '固定', '—'],
+    ['行の補足「Free」「Pro」', 'GET /api/account/usage → tier', '読めない：補足なし'],
+  ];
+  const INDEX = window.__r18bBoardKit.INDEX;
+  const label = (id, title, note) => { INDEX.push([id, title]); return `<div class="board-label" id="b-${id}">${id} ${title}<span class="src">${note}</span></div>`; };
+  const webBoard = (id, title, note, mk, width) => `<div class="board" style="margin-bottom:34px">${label(id, title, note)}<div class="pair ${width === 390 ? '' : 'col'}">${webOne({ nav: 'settings', body: mk(), tab: -1 }, 'light', '', width)}${webOne({ nav: 'settings', body: mk(), tab: -1 }, 'dark', '', width)}</div></div>`;
+  const appBoard = (id, title, note, body, ov = '') => `<div class="board">${label(id, title, note)}<div class="pair">${phone({ tab: -1, body, overlay: ov, theme: 'light' })}${phone({ tab: -1, body, overlay: ov, theme: 'dark' })}</div></div>`;
+  const STATES = [['free', 'Free'], ['freeOut', 'Free · 名刺を使い切った'], ['pro', 'Pro']];
+  const SRC = '补画 2026-11-27 · 用户授权先出设计稿';
+
+  let html = S8('补画 · 2026-11-27 · プラン（Free / Pro）', '用户 11-27：账户分 Free / Pro，上限对用户公开。本页 = 現在のプラン · 今月の利用（三项）· Free と Pro（所有上限，两档相同的也列）· Pro 準備中 + お問い合わせ（没有支付，不画价格和付款）。沿用 b7 ご利用プラン 的卡片与用量行、设置页子菜单；Pro 账户不出现升级引导。');
+  /* 1 · Web 1440 */
+  for (const [s, t] of STATES) html += webBoard('W-PLAN-' + s + '-1440', 'プラン · ' + t + ' · 1440', SRC, () => web(s), 1440);
+  html += fields(F_PAGE);
+  /* 2 · Web 390（手机：顶栏不吸顶、不画底色 = 既有 phoneContent 的 topbar） */
+  for (const [s, t] of STATES) html += webBoard('W-PLAN-' + s + '-390', 'プラン · ' + t + ' · 390', SRC, () => web390(s), 390);
+  /* 3 · App */
+  for (const [s, t] of STATES) html += appBoard('A-PLAN-' + s, 'プラン · ' + t, SRC, app(s));
+  html += fields(F_PAGE);
+  /* 4 · 入口 */
+  html += S8('补画 · 2026-11-27 · プランへの入口', 'Web：設定サブメニュー「アカウント」の下（上の 1440 画板の左メニュー）、390 は設定リストの「アカウント」の下；App：設定のアカウントカードのすぐ下に「プラン」1 行（10-18「本期不显示付费方案」の位置）；超限提示：Free で Pro の方が多い項目だけ「プランを見る」→ 上の「Free · 名刺を使い切った」へ。');
+  /* 既存の設定リスト（W-R18a-20 / A 設定）と同じ srow 標記。 */
+  const srowH = (icon, t, sub = '', cls = '', chev = true) => `<div class="srow ${cls}"><span class="lbtn">${ic(icon, 'sm')}</span><div class="meta"><b>${t}</b>${sub ? `<span>${sub}</span>` : ''}</div><div class="end">${chev ? ic('right', 'sm') : ''}</div></div>`;
+  const back = `<button class="rbtn">${ic('left')}</button>`;
+  const meCard = `<div class="card row" style="gap:12px"><div class="av c1">佐</div><div><b>佐藤 健一</b><div class="lbl">k.sato@minatolink.example</div></div></div>`;
+  const WEB_MENU = [['user', 'プロフィール'], ['settings', 'アカウント'], ['star', 'プラン', 'Free', 'k-pentry'], ['sparkle', 'iOrbit が使う情報'], ['link', '連携'], ['bell', '通知'], ['grid', '言語と外観'], ['layers', '権限'], ['share', 'データの書き出し'], ['book', 'ヘルプ']];
+  const webList = () => topbar('設定', '', back, '<span></span>') + meCard + `<div class="sgroup">${WEB_MENU.map(([i, t, sub, cls]) => srowH(i, t, sub || '', cls || '')).join('')}${srowH('out', 'ログアウト', '', 'danger', false)}</div>`;
+  html += webBoard('W-PLAN-entry-390', '設定リスト · プラン行 · 390', SRC, webList, 390);
+  /* App 設定（A-R18a 設定の先頭部分と同じ：アカウントカード → グループ）。10-18「本期不显示付费方案」の位置に「プラン」1 行（グループ見出しは付けない：行名と重複するため）。 */
+  const appSettings = () => topbar('設定', '', back, '<span></span>') + `<div class="card row rise" style="gap:12px;padding:14px 16px"><div class="av c1">佐</div><div style="flex:1;min-width:0"><b>佐藤 健一</b><div class="lbl">k.sato@minatolink.example · Google でログイン</div></div>${ic('right', 'sm')}</div>
+    <div class="sgroup k-pentry" style="margin-top:14px">${srowH('star', 'プラン', 'Free')}</div>
+    <div class="glbl">サポート</div><div class="sgroup">${srowH('share', 'データの書き出し', '人脈・メモ・プランを CSV / JSON で')}${srowH('book', 'ヘルプ', '使い方・データについて')}</div>
+    <div class="glbl">通知</div><div class="sgroup">${srowH('bell', '通知', '1日 3件まで · 静かな時間帯 22:00–7:30')}</div>`;
+  html += appBoard('A-PLAN-entry', '設定 · プラン行', SRC, appSettings());
+  html += appBoard('A-PLAN-notice', '名刺スキャン · 上限 · プランを見る', SRC, appScanNotice);
+  html += webBoard('W-PLAN-notice-390', '名刺スキャン · 上限 toast · プランを見る · 390', SRC, () => topbar('名刺をスキャン', '', `<button class="rbtn">${ic('left')}</button>`, '<span></span>') + `<div class="card"><div class="card-h"><h3>選んだ写真</h3><span class="lbl">3枚</span></div><div class="grid3">${[1, 2, 3].map(() => '<div style="aspect-ratio:1.6;border-radius:12px;background:var(--surface-2)"></div>').join('')}</div></div>` + toastOv, 390);
+  html += fields(F_ENTRY.concat(F_NOTICE));
+  document.getElementById('out').insertAdjacentHTML('beforeend', group('g7 g11 plan-tiers', html));
+  document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
+})();
+</script>
