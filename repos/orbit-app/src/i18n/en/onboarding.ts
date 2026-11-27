@@ -128,6 +128,7 @@ export const onboarding = {
   "onboarding.v3.customPlaceholder": "Type to add",
   "onboarding.v3.introTitle": "Your introduction is ready",
   "onboarding.v3.introGenerating": "Drafting your introduction…",
+  "onboarding.v3.introTitleWrite": "Write a short introduction",
   "onboarding.v3.introLead": "Used on your event profile and at the top of email drafts.",
   "onboarding.v3.tone": "Style",
   "onboarding.v3.toneNative": "Business",

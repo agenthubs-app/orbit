@@ -128,6 +128,7 @@ export const onboarding = {
   "onboarding.v3.customPlaceholder": "入力して追加",
   "onboarding.v3.introTitle": "自己紹介文をつくりました",
   "onboarding.v3.introGenerating": "自己紹介文をつくっています…",
+  "onboarding.v3.introTitleWrite": "自己紹介を書いてください",
   "onboarding.v3.introLead": "イベントのプロフィールや、メール下書きの冒頭に使います。",
   "onboarding.v3.tone": "文体",
   "onboarding.v3.toneNative": "ビジネス",

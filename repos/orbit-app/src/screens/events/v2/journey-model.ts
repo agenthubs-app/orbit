@@ -1,5 +1,6 @@
 // R27 イベント参加者の動線（App）的纯函数：日期（东京时间）、色调、标签（与 Web orbit-2026/events/DiscoverTab.tsx 同口径）。
 import type { EventDiscoverArea, EventDiscoverPeriod, EventDiscoverTheme } from "../../../api/contract/event-discover";
+import type { EventJoinPrefilledField } from "../../../api/contract/event-join";
 
 export type JourneyTone = "teal" | "lav" | "blue" | "apricot" | "pink";
 const RECOMMEND_TONES: readonly JourneyTone[] = ["teal", "lav", "blue"];
@@ -40,6 +41,14 @@ export function rowTone(index: number): JourneyTone {
 }
 
 export type JourneyT = (key: string, values?: Record<string, string | number>) => string;
+
+const PREFILL_LABEL: Readonly<Record<EventJoinPrefilledField, string>> = { company: "prefillCompany", industry: "prefillIndustry", title: "prefillTitle" };
+
+/** 2026-11-27 走查（同 Web prefilledLine）：问题页「…已从资料填好」只列资料里真有的项；没有或没读到 = null（整行不显示）。 */
+export function prefilledLine(fields: readonly EventJoinPrefilledField[] | null | undefined, t: JourneyT): string | null {
+  if (!fields?.length) return null;
+  return t("regPrefilledFrom", { items: fields.map((field) => t(PREFILL_LABEL[field])).join(t("prefillSep")) });
+}
 type T = JourneyT;
 export const feeText = (yen: number | null | undefined, t: T) => (yen === 0 ? t("free") : typeof yen === "number" ? `¥${yen.toLocaleString("en-US")}` : null);
 export const periodLabel = (p: EventDiscoverPeriod, t: T) => t(`${p === "upcoming" ? "pUpcoming" : p === "past" ? "pPast" : p === "this_week" ? "pThisWeek" : p === "this_month" ? "pThisMonth" : p === "next_month" ? "pNextMonth" : "pCustom"}`);

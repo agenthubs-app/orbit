@@ -1,6 +1,6 @@
 // 主催者の連絡先（App；与 Web orbit-2026/events/HostContact.tsx 同规则、同文案）：申込済みの人だけにサーバーが返す
 // （EventOverviewResponse.hostContact / EventJoinResult.hostContact）。微信 / LINE 各一行 + 复制（expo-clipboard → toast「已复制」），
-// 有说明就显示说明；没有 ID 就「暂无」。审核中且有 ID 时加一句「请联系主办方（完成付款），主办方确认后会通过审核」。
+// 有说明就显示说明；只有说明没有 ID 就只显示说明；ID 和说明都没有就整张卡不显示（2026-11-27，同 Web）。审核中且有 ID 时加一句「请联系主办方（完成付款），主办方确认后会通过审核」。
 import * as Clipboard from "expo-clipboard";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
@@ -65,7 +65,7 @@ function ContactBody({ contact, t, reviewLine }: { contact: HostEventContact | n
       {reviewLine ? <UiText style={[styles.sub, styles.review]} testID="host-contact-review">{reviewLine}</UiText> : null}
       {rows.length
         ? <View style={styles.rows}>{rows.map((row) => <IdRow key={row.key} row={row} t={t} toast={toast} />)}</View>
-        : <UiText style={[styles.lbl, styles.none]} testID="host-contact-none">{t("contactNone")}</UiText>}
+        : contact?.note?.trim() ? null : <UiText style={[styles.lbl, styles.none]} testID="host-contact-none">{t("contactNone")}</UiText>}
       {contact?.note ? <UiText style={[styles.sub, styles.note]} testID="host-contact-note">{contact.note}</UiText> : null}
     </>
   );
@@ -75,6 +75,9 @@ function ContactBody({ contact, t, reviewLine }: { contact: HostEventContact | n
 export function HostContactCard({ contact, t, status, priceYen, style }: { contact: HostEventContact | null | undefined; t: JourneyT; status?: EventOverviewRegistrationStatus | null | undefined; priceYen?: number | null | undefined; style?: StyleProp<ViewStyle> }) {
   const { styles } = useStyles();
   const reviewLine = status === "pending_review" ? contactReviewLine(contact, priceYen, t) : null;
+  // 2026-11-27 走查（同 Web）：主办方既没有 ID 也没有说明 → 整张卡不显示（不再写「暂无」）。
+  const note = contact?.note?.trim();
+  if (!hostContactHasId(contact) && !note) return null;
   return (
     <View style={[styles.card, style]} testID={hostContactHasId(contact) ? "host-contact" : "host-contact-empty"}>
       <UiText style={styles.title}>{t("contactTitle")}</UiText>

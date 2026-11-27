@@ -128,6 +128,7 @@ export const onboarding = {
   "onboarding.v3.customPlaceholder": "输入后添加",
   "onboarding.v3.introTitle": "已写好自我介绍",
   "onboarding.v3.introGenerating": "正在写自我介绍…",
+  "onboarding.v3.introTitleWrite": "写一段自我介绍",
   "onboarding.v3.introLead": "用于活动资料和邮件草稿的开头。",
   "onboarding.v3.tone": "语气",
   "onboarding.v3.toneNative": "商务",

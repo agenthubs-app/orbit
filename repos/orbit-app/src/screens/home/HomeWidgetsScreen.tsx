@@ -28,6 +28,7 @@ import { useToast } from "../../components/ui/Toast";
 import { useBackHandler } from "../../components/ui/useBackHandler";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { floatShadow, radius } from "../../design/tokens";
+import { pageCopyFreshness } from "../../data/sync/page-copy-freshness";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -88,8 +89,22 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
   const profileCopy = usePageCopyResource<unknown>(accountProfilePath(undefined, false), () => false, { copy: { id: "self-profile" },
     scopeKey: JSON.stringify([actorId, auth.cookieHeader, baseUrl]), freshForMs: HOME_COPY_FRESH_MS, accept: value => accountScreenResponseSchema.safeParse(value).success });
   const profileParsed = profileCopy.kind === "success" || profileCopy.kind === "empty" ? accountScreenResponseSchema.safeParse(profileCopy.data) : null;
-  const displayName = (profileParsed?.success ? profileParsed.data.profile?.displayName?.trim() : "") || auth.user?.name?.trim() || "";
+  // 2026-11-27 走查：名字只取资料卡上的名字；资料还在读时不带名字（新账号的登录名是邮箱前缀，刚填的姓名不能被它盖住）。
+  // 只有资料读不到（出错、离线又没有副本）时才退回登录账号名。
+  const profileName = profileParsed?.success ? profileParsed.data.profile?.displayName?.trim() ?? "" : null;
+  const displayName = profileName ?? (profileCopy.kind === "failure" || profileCopy.kind === "offline" ? auth.user?.name?.trim() ?? "" : "");
   const greeting = shellGreeting(now, timeZone, displayName, t);
+  // 2026-11-27 走查：引导里刚填的姓名要出现在问候里。首页这个 tab 一直挂着，回到首页时如果离上次读资料之后有过写入
+  // （引导、资料编辑都会写），就重读一次资料；没有写入不多读（同 LF1 的新鲜窗口规则）。
+  const profileReadAt = useRef<string | null>(null);
+  useEffect(() => { if (profileCopy.kind === "success" || profileCopy.kind === "empty") profileReadAt.current = new Date().toISOString(); }, [profileCopy.kind, profileParsed?.success ? profileParsed.data.profile?.displayName : null]);
+  const refreshProfile = profileCopy.refresh;
+  useFocusEffect(useCallback(() => {
+    const readAt = profileReadAt.current;
+    if (!readAt || pageCopyFreshness.isFresh(readAt, Number.MAX_SAFE_INTEGER)) return;
+    profileReadAt.current = new Date().toISOString();
+    refreshProfile?.();
+  }, [refreshProfile]));
   const items = editing ? draft ?? [...layout.app] : layout.app;
   const menuSlot = menu ? layout.app.find(slot => slot.key === menu) : null;
   const navigate = (target: string) => {

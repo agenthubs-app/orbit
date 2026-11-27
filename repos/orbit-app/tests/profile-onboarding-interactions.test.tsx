@@ -574,12 +574,16 @@ test("a failed progress confirmation retains the saved step but does not drop la
 test("intro: drafted once on entry; failure can be retried or written by hand; 换一版 counts only successes", async t => {
   const page = await open(t, { ...withProfile({ ...complete, ...blank, relationshipGoal: "获取客户", offering: ["客户引荐"] }), ...flowAt(3), ai: "fail" });
   await page.getByText("这次没写出来。可以重试，或直接在下面写几句。", { exact: true }).waitFor();
+  // 2026-11-27: nothing was written, so the title asks for it instead of saying it is ready.
+  await page.getByRole("heading", { name: "写一段自我介绍" }).waitFor();
+  assert.equal(await page.getByText("已写好自我介绍", { exact: true }).count(), 0);
   await next(page).click();
   assert.deepEqual((await alerts(page)).slice(-2), ["请填写自我介绍", "还差1项：自我介绍"]);
   await set(page, { ai: "ok" });
   await page.getByRole("button", { name: "重试" }).click();
   await page.getByText("第2版：做 AI 会议纪要的产品负责人。", { exact: true }).waitFor();
   await page.getByText("还剩2次", { exact: true }).waitFor();
+  await page.getByRole("heading", { name: "已写好自我介绍" }).waitFor();
   await page.getByRole("button", { name: "换一版" }).click();
   await page.getByText("第3版：做 AI 会议纪要的产品负责人。", { exact: true }).waitFor();
   await page.getByText("还剩1次", { exact: true }).waitFor();

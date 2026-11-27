@@ -876,6 +876,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/events/v2/journey-api.ts","POST","/api/events/:id/join/profile"],
   ["src/screens/events/v2/journey-api.ts","POST","/api/events/:id/join/submit"],
   ["src/screens/events/v2/journey-api.ts","POST","/api/events/:id/join/tentative"],
+  // 2026-11-27: the done page removes the calendar entry written on registration (online write, like join/tentative).
+  ["src/screens/events/v2/journey-api.ts","DELETE","/api/events/:id/join/tentative"],
   ["src/screens/events/v2/journey-api.ts","POST","/api/events/:id/venue/memo"],
   ["src/screens/events/v2/journey-api.ts","POST","/api/organizers/:id/follow"],
   ["src/screens/events/v2/journey-api.ts","POST","/api/recommendations/events/:id/dismiss"],
@@ -887,6 +889,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   // LF2: the events tab reads its three lists as page copies (event-assessments, events-mine).
   ["src/screens/events/v2/EventsHome.tsx","GET","/api/events/assessments"],
   ["src/screens/events/v2/EventsHome.tsx","GET","/api/events/mine"],
+  // 2026-11-27: 探す without a plan reads the profile goal once for the guide (online read; no goal = the ranked guide).
+  ["src/screens/events/v2/DiscoverPage.tsx","GET","/api/profile"],
   ["src/screens/events/v2/events-api.ts","PATCH","/api/events/assessments/:id"],
   ["src/screens/events/v2/events-api.ts","POST","/api/events/assessments"],
   ["src/screens/events/v2/events-api.ts","POST","/api/events/assessments/:id/add-to-plan"],

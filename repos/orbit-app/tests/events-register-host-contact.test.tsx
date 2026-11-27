@@ -99,13 +99,37 @@ test("calendar not written (removed before): the done page offers 加入日历",
   await page.getByTestId("events-join-calendar-none").getByText("加入日历", { exact: true }).waitFor();
 });
 
-test("without an ID nothing pops up; the done page still shows the card with 暂无", async (t) => {
+test("without an ID nothing pops up; the done page shows the card with the note only (2026-11-27, as Web)", async (t) => {
   const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: responses({ lineId: null, note: "当天现场联系", wechatId: null }) });
   await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
   await page.getByText("已收到报名", { exact: true }).waitFor();
-  await page.getByTestId("host-contact-empty").getByText("暂无", { exact: true }).waitFor();
+  await page.getByTestId("host-contact-empty").getByText("当天现场联系", { exact: true }).waitFor();
+  assert.equal(await page.getByTestId("host-contact-none").count(), 0);
   assert.equal(await page.getByTestId("host-contact-sheet").count(), 0);
   assert.equal(await page.getByText("请联系主办方", { exact: false }).count(), 0);
+});
+
+test("no ID and no note: no host contact card at all (2026-11-27)", async (t) => {
+  const page = await harness.open(t, { screen: "register", params: { id: eventId }, responses: responses({ lineId: null, note: null, wechatId: null }) });
+  await page.getByRole("button", { name: "按这个内容报名", exact: true }).click();
+  await page.getByText("已收到报名", { exact: true }).waitFor();
+  assert.equal(await page.getByTestId("host-contact-empty").count(), 0);
+  assert.equal(await page.getByText("主办方联系方式", { exact: true }).count(), 0);
+});
+
+test("the question page names only what the profile already has (2026-11-27, join/profile prefilledFrom as Web)", async (t) => {
+  const asking = { done: false, index: 1, question: { allowCustom: true, field: "desiredOutcome", multi: false, options: ["找到客户"], prompt: "你最希望有什么收获？", questionToken: "q1" }, remainingMinutes: 2, total: 5 };
+  const open = (prefilledFrom: unknown) => harness.open(t, { screen: "register", params: { id: eventId }, responses: { ...responses(null), [`${base}/join/next`]: asking, [`${base}/join/profile`]: { ...profile, ...(prefilledFrom === undefined ? {} : { prefilledFrom }) } } });
+  const some = await open(["company", "industry"]);
+  await some.getByText("你最希望有什么收获？", { exact: true }).waitFor();
+  await some.getByTestId("events-join-prefilled").waitFor();
+  assert.equal(await some.getByTestId("events-join-prefilled").innerText(), "✓ 公司、行业已从资料填好，只需回答几个问题");
+  for (const missing of [[], undefined]) {
+    const page = await open(missing);
+    await page.getByText("你最希望有什么收获？", { exact: true }).waitFor();
+    await page.waitForTimeout(300);
+    assert.equal(await page.getByTestId("events-join-prefilled").count(), 0, String(missing));
+  }
 });
 
 test("the introduction on the review page is always sent: as drafted, trimmed and at most 400 characters, and not at all when emptied", async (t) => {
@@ -396,6 +420,8 @@ test("while the introduction is being written the review says so, cannot be appl
   await applyButton(page).click({ force: true });
   assert.deepEqual(await posts(page, "/join/submit"), []);
   await page.getByText("AI 写的介绍。", { exact: true }).waitFor();
+  // Only a draft the AI actually wrote is credited to it (2026-11-27).
+  await page.getByText("AI 根据回答写好了草稿", { exact: true }).waitFor();
   assert.equal(await page.getByTestId("events-join-intro-drafting").count(), 0);
   assert.equal(await page.getByTestId("events-join-intro-status").count(), 0);
   assert.equal(await applyButton(page).innerText(), "按这个内容报名");
@@ -404,16 +430,19 @@ test("while the introduction is being written the review says so, cannot be appl
   assert.equal((await posts(page, "/join/submit"))[0].selfIntro, "AI 写的介绍。");
 });
 
-test("a draft that fails falls back to the profile's introduction or nothing, says so, and sends what is shown", async (t) => {
+test("a draft that fails falls back to the profile's introduction or nothing; says so only when empty, never credits the AI, and sends what is shown", async (t) => {
   const none = await harness.open(t, { screen: "register", params: { id: eventId }, responses: plain, postDelays: draftOnly(300, { __status: 503 }) });
   await none.getByTestId("events-join-intro-failed").waitFor();
   assert.equal(await none.getByTestId("events-join-intro-failed").innerText(), "没能生成自我介绍，可以自己写或直接报名");
+  assert.equal(await none.getByText("AI 根据回答写好了草稿", { exact: true }).count(), 0);
   await applyButton(none).click();
   await none.getByText("已收到报名", { exact: true }).waitFor();
   assert.ok(!("selfIntro" in (await posts(none, "/join/submit"))[0]));
   const fromProfile = await harness.open(t, { screen: "register", params: { id: eventId }, responses: plain, postDelays: draftOnly(300, drafted("资料里的介绍。", "profile")) });
   await fromProfile.getByText("资料里的介绍。", { exact: true }).waitFor();
-  await fromProfile.getByTestId("events-join-intro-failed").waitFor();
+  // 2026-11-27: the person's own introduction is there, so nothing says it could not be written.
+  assert.equal(await fromProfile.getByTestId("events-join-intro-failed").count(), 0);
+  assert.equal(await fromProfile.getByText("AI 根据回答写好了草稿", { exact: true }).count(), 0);
   await applyButton(fromProfile).click();
   await fromProfile.getByText("已收到报名", { exact: true }).waitFor();
   assert.equal((await posts(fromProfile, "/join/submit"))[0].selfIntro, "资料里的介绍。");

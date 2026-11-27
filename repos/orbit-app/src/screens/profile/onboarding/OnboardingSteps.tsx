@@ -348,7 +348,7 @@ export function IntroStep({ bio, bioCount, disabled, editing, error, goals, inpu
   const tones = [{ key: "native", label: t("onboarding.v3.toneNative") }, { key: "en", label: t("onboarding.v3.toneEnglish") }] as const;
   return (
     <>
-      <UiText accessibilityRole="header" style={styles.h1}>{generating ? t("onboarding.v3.introGenerating") : t("onboarding.v3.introTitle")}</UiText>
+      <UiText accessibilityRole="header" style={styles.h1}>{t(generating ? "onboarding.v3.introGenerating" : failed ? "onboarding.v3.introTitleWrite" : "onboarding.v3.introTitle")}</UiText>
       <UiText style={styles.sub}>{t("onboarding.v3.introLead")}</UiText>
       <View accessibilityLabel={t("onboarding.v3.tone")} accessibilityRole="radiogroup" style={styles.seg}>
         {tones.map(item => {

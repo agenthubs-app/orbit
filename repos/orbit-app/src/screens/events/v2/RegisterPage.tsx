@@ -16,7 +16,7 @@ import { addDesignMock } from "../../add/add-design-mock";
 import { LinearGradient } from "../../plan/plan-svg";
 import { useJourneyApi } from "./journey-api";
 import { contactReviewLine, HostContactCard, HostContactSheet, shouldOpenHostContact } from "./HostContact";
-import { announceEventChanged, eventRange, monthDaySlash, tokyo } from "./journey-model";
+import { announceEventChanged, eventRange, monthDaySlash, prefilledLine, tokyo } from "./journey-model";
 import { JourneyPage } from "./JourneyPage";
 import { Bone, Bones } from "./loading-ui";
 import { ScoreRing } from "./ScoreRing";
@@ -102,6 +102,11 @@ function RegisterFlow() {
   const [why, setWhy] = useState(false);
   // 自我介绍草稿：running = 正在写（不能报名、不能改介绍）；failed = 失败或超时（可以自己写，也可以直接报名）。改资料不写草稿。
   const [drafting, setDrafting] = useState<"idle" | "running" | "failed">("idle");
+  // 2026-11-27 走查：只有这次 AI 真写出了草稿，确认页才说「AI 根据回答写好了草稿」（同 Web）。
+  const [aiDrafted, setAiDrafted] = useState(false);
+  // 问题页「已从资料填好」（同 Web）：服务端只在新报名第一次读取和改资料时给 prefilledFrom；页面记住第一次给的。
+  const [prefilled, setPrefilled] = useState<EventJoinProfile["prefilledFrom"] | null>(null);
+  useEffect(() => { if (profile?.prefilledFrom) setPrefilled(profile.prefilledFrom); }, [profile]);
   const draftRun = useRef(0);
   const freeRef = useRef<TextInput | null>(null);
   // The API speaks the screen language: changing it asks the current question again in the new one and keeps the answers given.
@@ -119,6 +124,8 @@ function RegisterFlow() {
     // VoiceOver hears the change: started, done, or that it could not be written.
     if (announced.current === drafting) return;
     announced.current = drafting;
+    // Failed with an introduction already there (the profile's own): nothing to say.
+    if (drafting === "failed" && given.current.intro?.trim()) return;
     const said = drafting === "running" ? "introDrafting" : drafting === "failed" ? "introDraftFailed" : "introDrafted";
     AccessibilityInfo.announceForAccessibility(tRef.current(said));
   }, [drafting]);
@@ -132,6 +139,7 @@ function RegisterFlow() {
       if (drafted.ok) setProfile(drafted.data);
       const self = drafted.ok ? drafted.data.selfIntro : null;
       setIntro(self?.text ?? "");
+      setAiDrafted(self?.source === "ai_draft");
       setDrafting(self?.source === "ai_draft" ? "idle" : "failed");
     };
     const request = api.joinProfile(eventId, answered, true);
@@ -299,7 +307,7 @@ function RegisterFlow() {
     // Cancelled meanwhile (another device): start over as a new registration.
     if (refusal && editing) {
       touched.current.clear();
-      setMode(null); setAnswers([]); setAsked({}); setQueue([]); setOptional(false); setStep(null); setProfile(null); setIntro(null); setEditingIntro(false); setSelected([]); setFree("");
+      setMode(null); setAnswers([]); setAsked({}); setQueue([]); setOptional(false); setStep(null); setProfile(null); setIntro(null); setAiDrafted(false); setPrefilled(null); setEditingIntro(false); setSelected([]); setFree("");
       setAttempt((value) => value + 1);
     }
   };
@@ -429,7 +437,7 @@ function RegisterFlow() {
     const wechatNeeded = Boolean(profile?.wechatCheck) && !wechat;
     return (
       <View style={styles.flex1}>
-      <JourneyPage key="review" title={t("profileTitle")} subtitle={editing ? event?.title ?? "" : t("draftedByAi")} leftIcon="x" leftLabel={t("close")} fallback={detail} onLeft={close} testID="events-join-review">
+      <JourneyPage key="review" title={t("profileTitle")} subtitle={!editing && aiDrafted ? t("draftedByAi") : event?.title ?? ""} leftIcon="x" leftLabel={t("close")} fallback={detail} onLeft={close} testID="events-join-review">
         <View style={styles.card}>
           <View style={[styles.row, { gap: 16 }]}>
             <ScoreRing size={96} stroke={9} value={coverage} color={colors.plum700} label={`${coverage}%`} fontSize={22}>
@@ -488,7 +496,7 @@ function RegisterFlow() {
           ) : editingIntro ? (
             <TextInput value={shownIntro} onChangeText={setIntro} multiline maxLength={400} accessibilityLabel={t("introLbl")} style={styles.textarea} />
           ) : <UiText style={styles.introText}>{shownIntro}</UiText>}
-          {drafting === "idle" ? null : <UiText accessibilityLiveRegion="polite" style={[styles.lbl, { marginTop: 8 }]} testID={drafting === "running" ? "events-join-intro-status" : "events-join-intro-failed"}>{t(drafting === "running" ? "introDrafting" : "introDraftFailed")}</UiText>}
+          {drafting === "idle" || (drafting === "failed" && intro?.trim()) ? null : <UiText accessibilityLiveRegion="polite" style={[styles.lbl, { marginTop: 8 }]} testID={drafting === "running" ? "events-join-intro-status" : "events-join-intro-failed"}>{t(drafting === "running" ? "introDrafting" : "introDraftFailed")}</UiText>}
           {why && profile?.selfIntroBasis ? <View style={styles.whyBody}><UiText style={styles.whyBodyText}>{profile.selfIntroBasis}</UiText></View> : null}
         </View>
         <View style={[styles.card, styles.gap, styles.flat]}>
@@ -533,6 +541,7 @@ function RegisterFlow() {
   }
 
   const nextLabel = selected.length > 1 ? t("nextChosen", { n: selected.length }) : t("next");
+  const prefill = prefilledLine(prefilled, t);
   return (
     <JourneyPage key="chat" title={t(editing ? "profileTitle" : "regTitle")} subtitle={event?.title ?? ""} leftIcon={optional ? "left" : "x"} leftLabel={t(optional ? "back" : "close")} fallback={detail} onLeft={optional ? () => showEdit([], answers, false) : close} footerRadius={26} followEnd testID="events-join-chat"
       footer={question ? (
@@ -560,7 +569,7 @@ function RegisterFlow() {
           <ProgressBar share={Math.max(0, step.index) / total} />
         </View>
       ) : null}
-      {step && !editing ? <View style={styles.prefill}><UiText style={styles.prefillText}>{t("regPrefilledLine")}</UiText></View> : null}
+      {step && !editing && prefill ? <View style={styles.prefill} testID="events-join-prefilled"><UiText style={styles.prefillText}>{prefill}</UiText></View> : null}
       <View style={styles.chatcol}>
         {(editing ? [] : answers).map((item, index) => (
           <View key={`${item.field}-${index}`} style={styles.chatcol}>

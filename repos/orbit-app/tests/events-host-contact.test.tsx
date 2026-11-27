@@ -28,14 +28,13 @@ test("card with contact: WeChat and LINE rows with their IDs and copy buttons, p
   assert.doesNotMatch(text, /暂无/u);
 });
 
-test("card without IDs: says 暂无, keeps the note, offers nothing to copy", () => {
-  for (const contact of [null, noteOnly]) {
-    const text = renderedText(<HostContactCard contact={contact} t={t} />);
-    assert.match(text, /主办方联系方式/u);
-    assert.match(text, /暂无/u);
-    assert.doesNotMatch(renderToHtml(<HostContactCard contact={contact} t={t} />), /aria-label="复制/u);
-  }
-  assert.match(renderedText(<HostContactCard contact={noteOnly} t={t} />), /当天现场联系/u);
+test("card without IDs (2026-11-27, as Web): only the note shows; nothing at all without a note", () => {
+  const noted = renderedText(<HostContactCard contact={noteOnly} t={t} />);
+  assert.match(noted, /主办方联系方式/u);
+  assert.match(noted, /当天现场联系/u);
+  assert.doesNotMatch(noted, /暂无/u);
+  assert.doesNotMatch(renderToHtml(<HostContactCard contact={noteOnly} t={t} />), /aria-label="复制/u);
+  for (const contact of [null, undefined, { lineId: null, note: " ", wechatId: null }]) assert.equal(renderToHtml(<HostContactCard contact={contact as never} t={t} />), "");
 });
 
 test("pending review with an ID asks to contact the organizer (pay only when there is a fee)", () => {

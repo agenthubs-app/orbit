@@ -107,6 +107,13 @@ test("UX: the avatar opens 我的, and the greeting uses the profile card's name
   assert.ok((await fixtureValue<string[]>(page, "navigation")).includes("/profile"));
 });
 
+test("2026-11-27: a profile without a name greets without one, never with the sign-in name (a new account's is the email prefix)", async (t) => {
+  const page = await harness.open(t, { screen: "home", responses: { ...responses, "/api/profile": { ...profilePayload, profile: { ...profilePayload.profile, displayName: "" } } } });
+  await page.getByText(/晚上好|早上好|你好|下午好/u).first().waitFor();
+  await page.waitForTimeout(300);
+  assert.equal(await page.getByText(/QA One|QA/u).count(), 0);
+});
+
 test("UX: without secretary notices the 秘书建议 card shows the agent's suggestions, not a no-contacts empty line", async (t) => {
   const page = await harness.open(t, { screen: "home", responses: { ...responses, "/api/todo/page": { ...emptyTodo, counts: { ...emptyTodo.counts, decisions: 1 },
     decisions: { items: [{ key: "agent_action:a1", source: "agent_action", sourceId: "a1", titlePreview: "给佐藤发感谢邮件", createdAt: "2026-10-17T00:00:00Z", actions: ["accept", "dismiss"] }], next: {} } } } });
