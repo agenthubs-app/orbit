@@ -26,7 +26,7 @@ async function readBoundedBody(request: Request): Promise<string | null> {
   }
 }
 
-export async function handlePasswordResetRequest(request: Request, operation: "request" | "reset", resolve: () => ResetRuntime = createConfiguredPasswordResetRuntime, wakeDelivery?: () => Promise<void>): Promise<Response> {
+export async function handlePasswordResetRequest(request: Request, operation: "request" | "reset", resolve: () => ResetRuntime = createConfiguredPasswordResetRuntime, wakeDelivery?: () => Promise<void>, /** 申请页面的语言（路由层从请求头 / cookie 解析），邮件按它发；请求体里的 language 优先。 */ language?: "ja" | "zh" | "en"): Promise<Response> {
   if (!request.headers.get("content-type")?.startsWith("application/json")) return response(415, { success: false, error: { code: "UNSUPPORTED_MEDIA_TYPE", message: "请使用正确的表单重试。" } });
   if (Number(request.headers.get("content-length") ?? 0) > MAX_REQUEST_BYTES) return response(413, { success: false, error: { code: "PAYLOAD_TOO_LARGE", message: "请求内容过长。" } });
   try {
@@ -41,7 +41,7 @@ export async function handlePasswordResetRequest(request: Request, operation: "r
         !(ORBIT_PRODUCTION_ORIGINS.has(runtime.origin) && ORBIT_PRODUCTION_ORIGINS.has(origin))) {
       return response(403, { success: false, error: { code: "FORBIDDEN", message: "请在 Orbit 页面重新提交。" } });
     }
-    const result = operation === "request" ? await runtime.service.request(body.email) : await runtime.service.reset(body.token, body.password);
+    const result = operation === "request" ? await runtime.service.request(body.email, mailLanguage(body.language) ?? language) : await runtime.service.reset(body.token, body.password);
     if (result.success === false) return response(400, { success: false, error: { code: result.code, message: result.code === "INVALID_TOKEN" ? "链接已失效或已使用，请重新申请。" : "请检查邮箱；新密码至少 8 位，UTF-8 长度不超过 72 字节。" } });
     if (operation === "request" && wakeDelivery) await wakeDelivery();
     const data = { message: operation === "request" ? "申请已受理。如果该邮箱支持密码恢复，你将收到重置链接；未收到时请稍后重试。" : "密码已更新，请使用新密码登录。" } satisfies PasswordResetResponse;
@@ -49,4 +49,8 @@ export async function handlePasswordResetRequest(request: Request, operation: "r
   } catch (error) {
     return response(error instanceof SyntaxError ? 400 : 503, { success: false, error: { code: error instanceof SyntaxError ? "VALIDATION_ERROR" : "SERVICE_UNAVAILABLE", message: error instanceof SyntaxError ? "请检查输入后重试。" : "暂时无法处理，请稍后重试。" } });
   }
+}
+
+function mailLanguage(value: unknown): "ja" | "zh" | "en" | undefined {
+  return value === "ja" || value === "zh" || value === "en" ? value : undefined;
 }

@@ -1,3 +1,4 @@
+import { passwordResetMail } from "./password-reset-mail";
 import nodemailer from "nodemailer";
 import type { PasswordResetMailer } from "./password-reset-service";
 
@@ -22,12 +23,13 @@ export function createSmtpPasswordResetMailer(config: NonNullable<ReturnType<typ
   logger: false, debug: false, disableFileAccess: true, disableUrlAccess: true,
 })): PasswordResetMailer {
   return {
-    async send(email, resetUrl, idempotencyKey) {
+    async send(email, resetUrl, idempotencyKey, language) {
+      const mail = passwordResetMail(language, resetUrl);
       try {
         const result = await transport.sendMail({ from: config.from, to: email, replyTo: config.replyTo,
           messageId: `<${idempotencyKey.replace(/[^a-zA-Z0-9-]/gu, "-")}@${new URL(resetUrl).hostname}>`,
-          subject: "重置你的 Orbit 密码 / Reset your Orbit password",
-          text: `请打开以下链接设置新密码，链接在申请后 7 天内有效，且只能使用一次。\n\n${resetUrl}\n\n如果你没有申请重置，请忽略这封邮件。\nOpen the link to set a new password. It expires 7 days after your request and can only be used once. If you did not request this, ignore this email.`,
+          subject: mail.subject,
+          text: mail.text,
         });
         if (!result.accepted?.some((recipient) => String(recipient).toLowerCase() === email.toLowerCase())) throw new Error("Rejected");
       } catch (error) {

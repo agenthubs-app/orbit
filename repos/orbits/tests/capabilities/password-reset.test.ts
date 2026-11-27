@@ -25,12 +25,19 @@ test("SMTP recovery reuses party-app config, verifies acceptance and suppresses 
   let sent: Record<string, unknown> | undefined;
   const transport = { sendMail: async (message: Record<string, unknown>) => { sent = message; return { accepted: ["member@example.com"] }; } } as never;
   const mailer = createSmtpPasswordResetMailer(config, transport);
-  await mailer.send("member@example.com", "https://orbit.example.com/app/account/reset-password#token=secret", "reset/key");
+  // 2026-11-27：按申请页面的语言发单一语言；没有语言（旧记录）时日文。
+  await mailer.send("member@example.com", "https://orbit.example.com/app/account/reset-password#token=secret", "reset/key", "zh");
   assert.equal(sent?.to, "member@example.com");
   assert.equal(sent?.messageId, "<reset-key@orbit.example.com>");
+  assert.equal(sent?.subject, "重置你的 Orbit 密码");
   assert.match(String(sent?.text), /7 天内有效/);
+  assert.doesNotMatch(String(sent?.text), /expires|30/);
+  await mailer.send("member@example.com", "https://orbit.example.com/app/account/reset-password#token=secret", "reset/key", "en");
+  assert.equal(sent?.subject, "Reset your Orbit password");
   assert.match(String(sent?.text), /expires 7 days after/);
-  assert.doesNotMatch(String(sent?.text), /30/);
+  await mailer.send("member@example.com", "https://orbit.example.com/app/account/reset-password#token=secret", "reset/key");
+  assert.equal(sent?.subject, "Orbit パスワードの再設定");
+  assert.match(String(sent?.text), /申請から 7 日間/);
   const rejected = createSmtpPasswordResetMailer(config, { sendMail: async () => { throw new Error("SMTP password private-password rejected"); } } as never);
   await assert.rejects(rejected.send("member@example.com", "https://orbit.example.com", "key"), { message: "Password reset delivery failed" });
   assert.equal(passwordResetSmtpConfig({ SMTP_PORT: "0" }), null);
@@ -286,13 +293,13 @@ test("password recovery persists, retries, atomically consumes and revokes prior
     const store = createPasswordResetStore(client, workspaceId);
     const service = createPasswordResetService(store, secret, () => clock);
     const row = async () => (await pool.query("SELECT payload FROM orbit_records WHERE workspace_id=$1 AND record_id=$2", [workspaceId, `auth_user:${email}`])).rows[0].payload;
-    const firstResponses = await Promise.all([service.request(email), service.request(email.toUpperCase()), service.request("unknown@example.com"), service.request("oauth@example.com")]);
+    const firstResponses = await Promise.all([service.request(email, "zh"), service.request(email.toUpperCase()), service.request("unknown@example.com"), service.request("oauth@example.com")]);
     assert.ok(firstResponses.every((result) => result.success));
     const runtime = httpResetRuntime(service);
     const httpRequest = (address: string) => new Request("https://orbit.example.com/api/auth/password-reset/request", {
       method: "POST", headers: { "content-type": "application/json", origin: runtime.origin }, body: JSON.stringify({ email: address }),
     });
-    const knownHttp = await handlePasswordResetRequest(httpRequest(email), "request", () => runtime);
+    const knownHttp = await handlePasswordResetRequest(httpRequest(email), "request", () => runtime, undefined, "zh");
     const unknownHttp = await handlePasswordResetRequest(httpRequest("unknown@example.com"), "request", () => runtime);
     const oauthHttp = await handlePasswordResetRequest(httpRequest("oauth@example.com"), "request", () => runtime);
     assert.equal(knownHttp.status, 202);
@@ -306,6 +313,7 @@ test("password recovery persists, retries, atomically consumes and revokes prior
     assert.deepEqual(knownReceipt, await oauthHttp.json(), "an OAuth-only account must have the same public receipt");
     const first = (await row()).passwordReset;
     assert.equal(first.attempts, 0);
+    assert.equal(first.language, "zh", "the reset mail follows the language of the page it was requested from");
     const token = openPasswordResetToken(first.sealedToken, secret);
     assert.equal(first.tokenHash, passwordResetDigest(token));
     assert.ok(!JSON.stringify(await row()).includes(token));
@@ -314,13 +322,15 @@ test("password recovery persists, retries, atomically consumes and revokes prior
     // New service instance represents a restarted worker reading the same queue.
     let sends = 0;
     let resetUrl = "";
+    let sentLanguage: string | undefined;
     const deliveryInput = { store: createPasswordResetStore(client, workspaceId), secret, origin: "https://orbit.example.com", now: () => clock,
-      mailer: { send: async (_email: string, url: string) => { sends += 1; resetUrl = url; if (sends === 1) throw new Error("provider unavailable"); } } };
+      mailer: { send: async (_email: string, url: string, _key: string, language?: string) => { sends += 1; resetUrl = url; sentLanguage = language; if (sends === 1) throw new Error("provider unavailable"); } } };
     assert.equal(await deliverPasswordResetMail(deliveryInput), "retry");
     assert.equal((await row()).passwordReset.delivery, "pending");
     assert.equal(await deliverPasswordResetMail(deliveryInput), "idle");
     clock = new Date(clock.getTime() + 20_000);
     const deliveries = await Promise.all([deliverPasswordResetMail(deliveryInput), deliverPasswordResetMail(deliveryInput)]);
+    assert.equal(sentLanguage, "zh");
     assert.deepEqual(deliveries.sort(), ["idle", "sent"]);
     assert.equal(sends, 2);
     assert.equal(new URL(resetUrl).search, "");

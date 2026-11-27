@@ -8,14 +8,14 @@ export type PasswordResetResult = { success: true } | { success: false; code: "I
 
 export function createPasswordResetService(store: PasswordResetStore, secret: string, now = () => new Date()) {
   return {
-    async request(email: unknown): Promise<PasswordResetResult> {
+    async request(email: unknown, language?: "ja" | "zh" | "en"): Promise<PasswordResetResult> {
       if (typeof email !== "string" || email.length > 254 || !isValidAuthEmail(email)) return { success: false, code: "INVALID_INPUT" };
       const timestamp = now();
       const token = randomBytes(32).toString("base64url");
       await store.request(normalizeAuthEmail(email), {
         tokenHash: passwordResetDigest(token), sealedToken: sealPasswordResetToken(token, secret),
         requestedAt: timestamp.toISOString(), expiresAt: new Date(timestamp.getTime() + PASSWORD_RESET_TTL_MS).toISOString(),
-        retryAt: timestamp.toISOString(), delivery: "pending", attempts: 0,
+        retryAt: timestamp.toISOString(), delivery: "pending", attempts: 0, ...(language ? { language } : {}),
       }, new Date(timestamp.getTime() - PASSWORD_RESET_COOLDOWN_MS).toISOString());
       // Same result for unknown, OAuth-only and throttled addresses; mail is asynchronous.
       return { success: true };
@@ -32,7 +32,7 @@ export function createPasswordResetService(store: PasswordResetStore, secret: st
 }
 
 export interface PasswordResetMailer {
-  send(email: string, resetUrl: string, idempotencyKey: string): Promise<void>;
+  send(email: string, resetUrl: string, idempotencyKey: string, language?: "ja" | "zh" | "en"): Promise<void>;
 }
 
 export async function deliverPasswordResetMail(input: {
@@ -48,7 +48,7 @@ export async function deliverPasswordResetMail(input: {
     const url = new URL("/app/account/reset-password", input.origin);
     // Fragment avoids putting the bearer token in server access logs and Referer headers.
     url.hash = new URLSearchParams({ token }).toString();
-    await input.mailer.send(job.email, url.toString(), `password-reset/${job.reset.tokenHash}`);
+    await input.mailer.send(job.email, url.toString(), `password-reset/${job.reset.tokenHash}`, job.reset.language);
     delivered = true;
   } catch {
     // Provider error bodies may echo email or the secret URL. Never log them.

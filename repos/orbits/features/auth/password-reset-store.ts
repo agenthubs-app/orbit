@@ -10,6 +10,8 @@ export interface PasswordResetRecord {
   delivery: "pending" | "sending" | "sent" | "failed";
   attempts: number;
   leaseId?: string;
+  /** 申请时页面的语言（邮件用；旧记录没有）。 */
+  language?: "ja" | "zh" | "en";
 }
 
 export interface PasswordResetMailJob {
