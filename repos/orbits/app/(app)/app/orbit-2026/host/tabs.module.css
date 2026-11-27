@@ -224,7 +224,9 @@
 .pubSheetT { font-size: var(--fs-title-xs); font-weight: var(--fw-heavy); margin-top: 10px; }
 .pubSheetS.pubSheetS { margin-top: 6px; line-height: var(--lh-prose-lg); }
 .pubSheetList { margin-top: 10px; }
-.pubSheetRow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.pubSheetRow { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); }
+/* b13 HM-M8 汇总行 = .crow：上下 12，第一行不画上边线。 */
+.pubSheetRow:first-child { border-top: 0; }
 .pubSheetRow b { flex: 1 1 0%; font-size: var(--fs-body-sm); }
 .pubSheetNote.pubSheetNote { margin-top: 8px; font-size: var(--fs-meta); line-height: var(--lh-prose); }
 .pubSheetActs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
