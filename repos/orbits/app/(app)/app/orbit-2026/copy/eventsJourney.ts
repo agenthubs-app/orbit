@@ -361,6 +361,10 @@ export const eventsJourneyCopy = {
   saveIntro: { ja: "保存", zh: "保存", en: "Save", kind: "button" },
   backToReview: { ja: "確認画面に戻る", zh: "返回确认页", en: "Back to review", kind: "button" },
   backToQuestions: { ja: "質問に戻る", zh: "回到问题", en: "Back to questions", kind: "button" },
+  // 390 确认页底部固定区的就绪提示（2026-11-27 用户：资料确认完之后报名按钮要更显眼）。
+  readyAll: { ja: "プロフィールがそろいました", zh: "资料已完整", en: "Your profile is complete", kind: "label" },
+  readyMissing: { ja: "あと{n}項目", zh: "还差{n}项", en: "{n} more to add", kind: "label" },
+  fillIn: { ja: "追加する", zh: "补上", en: "Fill in", kind: "button" },
   toDetail: { ja: "イベント詳細へ", zh: "去活动详情", en: "Event details", kind: "button" },
   appliedEditable: { ja: "申込済み · {date} まで編集可", zh: "已报名 · {date}前可修改", en: "Applied · editable until {date}", kind: "label" },
   // 2026-11-27 报名成功后自动加入日历（可移除）：完成页的日历卡只告知，不再问。

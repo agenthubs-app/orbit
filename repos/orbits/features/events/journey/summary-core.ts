@@ -84,7 +84,7 @@ export function summaryFromOverview(overview: EventOverviewResponse, now: Date):
     status,
     title: overview.title,
     venue: overview.venue ?? null,
-    waitlistEnabled: false,
+    waitlistEnabled: Boolean(overview.waitlistEnabled),
   };
 }
 

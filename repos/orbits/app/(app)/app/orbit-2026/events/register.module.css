@@ -86,3 +86,20 @@
 .pOpt.pOpt.on { background: var(--accent-soft); }
 .composer { position: fixed; left: 12px; right: 12px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); z-index: var(--z-sticky); border-radius: var(--r-cta); background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--glass-line); padding: 8px; display: flex; gap: 6px; align-items: center; box-shadow: var(--shadow-float); }
 .pIn { flex: 1 1 0%; min-width: 0; border: 0; padding: 0 0 0 6px; background: transparent; font: inherit; font-size: var(--fs-body-sm); color: var(--ink); }
+
+/* 390 ② 確認 / ③ 申込完了（b2 regPersona / regDone）：卡片直接排在页面上；主操作在屏幕底部固定区（同 onboarding .foot：整宽、深色、48 高、底部安全区）。 */
+.pPage { padding-bottom: calc(176px + env(safe-area-inset-bottom, 0px)); }
+.pFoot { position: fixed; z-index: var(--z-sticky); right: 0; bottom: 0; left: 0; display: grid; gap: 8px; padding: 22px 18px calc(14px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to bottom, transparent, var(--bg) 28%); }
+.pMain.pMain { display: flex; width: 100%; height: 48px; align-items: center; justify-content: center; font-size: var(--fs-card-title); }
+.pReady { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--coral-text); font-size: var(--fs-meta); font-weight: var(--fw-bold); }
+.pReadyOk.pReadyOk { color: var(--ok); }
+.pFootNote.pFootNote { text-align: center; }
+.pFootLink.pFootLink { justify-self: center; padding: 4px 0; }
+/* 次要操作 = 文字链（「質問に戻る」「プロフィールを編集」「補足」）。 */
+.textLink.textLink { display: inline-flex; height: auto; min-height: 0; align-items: center; padding: 0; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: var(--fs-meta); font-weight: var(--fw-bold); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.textLink.textLink:disabled { opacity: .5; cursor: default; }
+.backLink.backLink { display: flex; margin: 10px auto 0; }
+@media (max-width: 767px) {
+  /* 手机输入控件字号不小于 16px（iOS 不再放大页面）。 */
+  .pIn, .textarea { font-size: var(--fs-input-phone); }
+}

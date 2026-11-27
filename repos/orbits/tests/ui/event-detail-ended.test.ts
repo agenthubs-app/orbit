@@ -42,8 +42,17 @@ test('ended registered users retain their authorized roster without future prepa
 import { detailTiming } from '../../app/(app)/app/orbit-2026/events/detail-timing';
 test('canonical end and registration deadline boundaries do not invent an end at start time', () => {
  const timing = { endsAt: '2026-03-22T12:00:00Z', registrationClosesAt: '2026-03-22T09:00:00Z' };
- assert.deepEqual(detailTiming(timing, Date.parse('2026-03-22T08:59:59Z')), { ended: false, canRegister: true });
- assert.deepEqual(detailTiming(timing, Date.parse('2026-03-22T09:00:00Z')), { ended: false, canRegister: false });
- assert.deepEqual(detailTiming(timing, Date.parse(timing.endsAt)), { ended: true, canRegister: false });
- assert.deepEqual(detailTiming(null, Date.now()), { ended: false, canRegister: false });
+ assert.deepEqual(detailTiming(timing, Date.parse('2026-03-22T08:59:59Z')), { ended: false, canRegister: true, full: false, waitlist: false });
+ assert.deepEqual(detailTiming(timing, Date.parse('2026-03-22T09:00:00Z')), { ended: false, canRegister: false, full: false, waitlist: false });
+ assert.deepEqual(detailTiming(timing, Date.parse(timing.endsAt)), { ended: true, canRegister: false, full: false, waitlist: false });
+ assert.deepEqual(detailTiming(null, Date.now()), { ended: false, canRegister: false, full: false, waitlist: false });
+});
+
+test('2026-11-27 seats: no seat left is 満席 unless the organizer keeps a waitlist; seats left or no capacity stay open', () => {
+ const open = { endsAt: '2026-03-22T12:00:00Z', registrationClosesAt: '2026-03-22T09:00:00Z' };
+ const at = Date.parse('2026-03-22T08:00:00Z');
+ assert.deepEqual(detailTiming({ ...open, capacity: 30, remaining: 0 }, at), { ended: false, canRegister: true, full: true, waitlist: false });
+ assert.deepEqual(detailTiming({ ...open, capacity: 30, remaining: 0, waitlistEnabled: true }, at), { ended: false, canRegister: true, full: false, waitlist: true });
+ assert.deepEqual(detailTiming({ ...open, capacity: 30, remaining: 1 }, at), { ended: false, canRegister: true, full: false, waitlist: false });
+ assert.deepEqual(detailTiming({ ...open, capacity: null, remaining: null }, at), { ended: false, canRegister: true, full: false, waitlist: false });
 });

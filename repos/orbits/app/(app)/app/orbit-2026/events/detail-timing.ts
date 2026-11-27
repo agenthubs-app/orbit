@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
 
-type Timing = { endsAt?: string | null; registrationClosesAt?: string | null };
+type Timing = { endsAt?: string | null; registrationClosesAt?: string | null; capacity?: number | null; remaining?: number | null; waitlistEnabled?: boolean };
 
-/** Same end boundary as canonical event phase; counts remain registrations, not check-ins. */
+/**
+ * Same end boundary as canonical event phase; counts remain registrations, not check-ins.
+ * `canRegister` = the registration window is open (time only; the cover's 受付終了 chip and the public invite card read it).
+ * 2026-11-27 seats: `full` = no seat left and no waitlist (show 満席, no register entry); `waitlist` = no seat left but the
+ * organizer keeps a waitlist (the entry reads キャンセル待ちに並ぶ). A register entry needs `canRegister && !full`.
+ */
 export function detailTiming(data: Timing | null, now: number) {
   const end = Date.parse(data?.endsAt ?? "");
   const closes = Date.parse(data?.registrationClosesAt ?? "");
   const ended = Number.isFinite(end) && now >= end;
-  return { ended, canRegister: Boolean(data) && !ended && (!Number.isFinite(closes) || now < closes) };
+  const soldOut = typeof data?.capacity === "number" && data.capacity > 0 && data.remaining === 0;
+  return { ended, canRegister: Boolean(data) && !ended && (!Number.isFinite(closes) || now < closes), full: soldOut && !data?.waitlistEnabled, waitlist: soldOut && Boolean(data?.waitlistEnabled) };
 }
 
 /** Re-evaluate only at a local time boundary / foreground return. Never poll the API. */

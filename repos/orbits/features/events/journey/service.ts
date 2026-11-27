@@ -212,6 +212,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         priceYen: event.priceYen,
         registration: { href: `/events/${eventId}/register`, status: "none" },
         remaining: event.capacity ? Math.max(0, event.capacity - event.registrationCount) : null,
+        ...(event.waitlistEnabled ? { waitlistEnabled: true } : {}),
         review: event.review,
         startsAt: event.startsAt,
         title: event.title,

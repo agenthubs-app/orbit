@@ -35,6 +35,8 @@ export interface EventOverviewResponse {
   priceYen?: number | null;
   capacity?: number | null;
   remaining?: number | null;
+  /** 2026-11-27: no seat left still takes registrations, as the waitlist (キャンセル待ち). */
+  waitlistEnabled?: boolean;
   review: boolean;
   /** Registration closes within 72 hours. */
   deadlineSoon: boolean;

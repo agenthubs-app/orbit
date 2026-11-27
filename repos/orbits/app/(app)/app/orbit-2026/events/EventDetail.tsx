@@ -414,7 +414,7 @@ export function HostCard({ data, t, language, className, heading = true, compact
  * 已结束 =「参加しました」+「会場の記録」（没有记录、参加过 →「ふりかえり」；没报名 → 整卡不出）。截止且没报名 → 不出（封面 chip「受付終了」）。
  */
 function JoinCard({ data, t, language, onRegister, actions }: { data: EventOverviewResponse; t: JourneyT; language: OrbitLanguage; onRegister: () => void; actions?: DetailActions }) {
-  const { ended, canRegister } = useDetailTiming(data);
+  const { ended, canRegister, full, waitlist } = useDetailTiming(data);
   const { live } = useLiveClock(data);
   const status = data.registration.status;
   const id = encodeURIComponent(data.eventId);
@@ -428,19 +428,21 @@ function JoinCard({ data, t, language, onRegister, actions }: { data: EventOverv
       </div>
     );
   }
-  if (status === "none") {
+  // 2026-11-27：取り消し済みでも受付中ならもう一度申し込める（App と同じ）；満席（キャンセル待ちなし）は「満席」だけ。
+  if (status === "none" || (status === "cancelled" && canRegister)) {
     if (!canRegister) return null;
     const deadline = monthDayWeek(data.registrationClosesAt, language);
     return (
       <div className={`${styles.card} ${x.joinCard}`} data-detail-register="">
-        <b className={x.joinTtl}>{t("joinTitle")}</b>
+        {status === "cancelled" ? <div className={`${styles.row} ${styles.between}`}><b className={x.joinTtl}>{t("joinTitle")}</b><span className={styles.chip}>{t("stCancelled")}</span></div> : <b className={x.joinTtl}>{t("joinTitle")}</b>}
         {deadline || data.review ? (
           <div className={x.kvs}>
             {deadline ? <div className={x.kv}><span>{t("kvDeadline")}</span><b>{deadline}</b></div> : null}
             {data.review ? <div className={x.kv}><span>{t("kvReview")}</span><b>{t("kvReviewYes")}</b></div> : null}
           </div>
         ) : null}
-        <button type="button" className={`btn ${styles.btn} ${styles.primary} ${x.joinBtn}`} onClick={onRegister}>{t("register")}</button>
+        {full ? <button type="button" className={`btn ${styles.btn} ${x.joinBtn}`} disabled data-detail-full="">{t("spFull")}</button>
+          : <button type="button" className={`btn ${styles.btn} ${styles.primary} ${x.joinBtn}`} onClick={onRegister} data-detail-waitlist={waitlist ? "" : undefined}>{t(waitlist ? "spWaitlist" : "register")}</button>}
       </div>
     );
   }
@@ -498,7 +500,7 @@ export function usePhone(): boolean {
  * `onOpenPerson`：参加者行可点开「参加者の詳細」（只在能看到名单的已登录详情页传；公开页不传）。
  */
 export function PhoneDetailBody({ data, language, t, onRegister, onOpenPerson, actions }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; onRegister: () => void; onOpenPerson?: (seed: AttendeeSeed) => void; actions?: DetailActions }) {
-  const { ended, canRegister } = useDetailTiming(data);
+  const { ended, canRegister, full, waitlist } = useDetailTiming(data);
   const { live } = useLiveClock(data);
   const stage = useStage(data);
   const toast = useToast();
@@ -517,8 +519,10 @@ export function PhoneDetailBody({ data, language, t, onRegister, onOpenPerson, a
     { icon: "ticket" as const, text: [feeText(data.priceYen, t), data.capacity ? t("capacityN", { n: data.capacity }) : null, data.review ? t("reviewYes") : null].filter(Boolean).join(" · ") },
   ].filter((fact) => fact.text);
   const going = !ended && !live && (status === "registered" || status === "pending_review" || status === "waitlisted");
-  const bar: { label: string; href?: string; onClick?: () => void; star?: boolean } | null = ended ? null
-    : status === "none" ? (canRegister ? { label: data.signedOut ? t("signupRegister") : t("register"), onClick: onRegister, star: true } : null)
+  // 取り消し済みも受付中なら申込できる（App と同じ）；満席は押せない「満席」、キャンセル待ちありは「キャンセル待ちに並ぶ」。
+  const bar: { label: string; href?: string; onClick?: () => void; star?: boolean; disabled?: boolean } | null = ended ? null
+    : status === "none" || status === "cancelled" ? (!canRegister ? null : full ? { disabled: true, label: t("spFull"), star: true }
+      : { label: waitlist ? t("spWaitlist") : data.signedOut ? t("signupRegister") : t("register"), onClick: onRegister, star: true })
       : live && (status === "registered" || status === "attended") ? { href: `/app/events/${id}/live`, label: t("goVenue") }
         : status === "registered" ? { href: `/app/events/${id}/prep`, label: t("goPrep") } : null;
   return (
@@ -565,7 +569,7 @@ export function PhoneDetailBody({ data, language, t, onRegister, onOpenPerson, a
         <div className={x.ctabar} data-detail-cta="">
           {bar.star ? <button type="button" className={`btn ${x.ctaSave}`} aria-label={t("saveEvent")} onClick={() => void save()}><Icon name="star" size={20} /></button> : null}
           {bar.href ? <Link className={`btn ${styles.btn} ${styles.primary} ${x.ctaMain}`} href={bar.href}>{bar.label}</Link>
-            : <button type="button" className={`btn ${styles.btn} ${styles.primary} ${x.ctaMain}`} onClick={bar.onClick}>{bar.label}</button>}
+            : <button type="button" className={`btn ${styles.btn} ${bar.disabled ? "" : styles.primary} ${x.ctaMain}`} disabled={bar.disabled} onClick={bar.onClick} data-detail-full={bar.disabled ? "" : undefined}>{bar.label}</button>}
         </div>
       ) : null}
     </div>
@@ -638,7 +642,7 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
   // 参加の取り消し（b12 #374）：`?cancel=1` 打开确认框，只在已有报名时。
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
-  const { ended, canRegister } = useDetailTiming(data);
+  const { ended, canRegister, full, waitlist } = useDetailTiming(data);
   const { live } = useLiveClock(data);
   const holding = !ended && (data?.registration.status === "registered" || data?.registration.status === "pending_review" || data?.registration.status === "waitlisted");
   useEffect(() => {
@@ -660,7 +664,8 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
     const res = await eventsCall(`/api/events/${encodeURIComponent(eventId)}/join/cancel`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), method: "POST" }, eventJoinCancelResultSchema);
     setCancelBusy(false);
     if (!res.ok) { toast.error(t("cancelFailed")); return; }
-    setData((current) => (current ? { ...current, registration: { ...current.registration, status: "cancelled" } } : current));
+    // 取り消した席は空く（App と同じ）：確定していた人なら残り席を 1 戻す。満席表示がその場で「参加登録」に戻る。
+    setData((current) => (current ? { ...current, registration: { ...current.registration, status: "cancelled" }, ...(current.registration.status === "registered" && typeof current.remaining === "number" ? { remaining: Math.min(current.remaining + 1, current.capacity ?? Number.MAX_SAFE_INTEGER) } : {}) } : current));
     closeCancel();
     toast.success(t("cancelled"));
   };
@@ -675,7 +680,8 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
   const shareButton = <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void share()}><Icon name="share" size={phone ? 20 : 16} /></button>;
   // W2：≥1280 主按钮只在右栏参加卡（页头只留分享）；768–1279 没有右栏，主按钮在页头；< 768 在底部固定条。状态只说一次（不在页头放「終了」）。
   const headMain = ended ? (data?.venueRecord ? <Link className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${id}/live`} data-detail-record=""><Icon name="layers" size={16} />{t("venueRecord")}</Link> : status === "attended" ? <Link className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${id}/after`}>{t("goAfter")}</Link> : null)
-    : status === "none" ? (canRegister ? <button type="button" className={`btn ${styles.btn} ${x.accent}`} onClick={register} data-detail-head-register="">{t("register")}</button> : null)
+    : (status === "none" || status === "cancelled") && canRegister ? (full ? <span className={styles.chip} data-detail-full="">{t("spFull")}</span> : <button type="button" className={`btn ${styles.btn} ${x.accent}`} onClick={register} data-detail-head-register="">{t(waitlist ? "spWaitlist" : "register")}</button>)
+    : status === "none" ? null
       : live && (status === "registered" || status === "attended") ? <Link className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${id}/live`}>{t("goVenue")}</Link>
         : status === "registered" ? <Link className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${id}/prep`}>{t("goPrep")}</Link>
           : status === "waitlisted" ? <span className={styles.chip}>{t("stWaitlisted")}</span>

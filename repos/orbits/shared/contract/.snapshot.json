@@ -10094,6 +10094,11 @@
           "kind": "text",
           "type": "number | null"
         },
+        "waitlistEnabled": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
         "review": {
           "optional": false,
           "kind": "text",

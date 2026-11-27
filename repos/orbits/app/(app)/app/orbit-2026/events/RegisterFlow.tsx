@@ -428,8 +428,10 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   );
 
   const missing = (profile?.items ?? []).filter((item) => !item.done);
-  const review = (
-    <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-review="">
+  const coverage = profile?.coverage ?? 0;
+  const editableLine = profile?.editableUntil ? t("editableUntil", { date: monthDaySlash(profile.editableUntil) }) : null;
+  const reviewCards = (
+    <>
       <div className={`${styles.card} ${r.inner}`}>
         <div className={styles.cardH}><h3>{t("coverageTitle", { n: profile?.coverage ?? 0 })}</h3><span className={styles.lbl}>{t("coverageAddable")}</span></div>
         {(profile?.items ?? []).map((item) => (
@@ -450,7 +452,16 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
           </div>
         )) : null}
         {missing.some((item) => item.key === "offer") ? <div className={`${styles.lbl} ${r.hint}`}>{t("offerHint")}</div> : null}
+        {/* 390：「質問に戻る」降为卡内的文字链（主按钮在底部固定区）。 */}
+        {phone && !editing ? <button type="button" className={`btn ${r.textLink} ${r.backLink}`} disabled={busy} onClick={() => void askMore()} data-join-back-questions="">{t("backToQuestions")}</button> : null}
       </div>
+      {/* 390：参加用プロフィール卡不再出现，它独有的话题并到这里（b2 regPersona「話題」卡）。 */}
+      {phone && profile?.topics.length ? (
+        <div className={`${styles.card} ${r.inner} ${r.gap}`} data-join-topics="">
+          <div className={styles.cardH}><h3>{t("topicsLbl")}</h3></div>
+          <div className={`${styles.chips} ${r.chips}`}>{profile.topics.map((topic) => <span key={topic} className={`${styles.chip} ${styles.c_lav}`}>{topic}</span>)}</div>
+        </div>
+      ) : null}
       <div className={`${styles.card} ${r.inner} ${r.gap}`} aria-busy={draft === "running"}>
         <div className={styles.cardH}>
           <h3>{t("introLbl")} <span className={`${styles.lbl} ${r.introTag}`}>{t("introShown")}</span></h3>
@@ -476,17 +487,42 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         <div className={`${styles.lbl} ${r.scopeLbl}`}>{t("visibilityTitle")}</div>
         <div className={`${styles.row} ${r.scopeRow}`}><span className={`${styles.chip} ${styles.c_teal}`}>{t("visAll")}</span><span className={styles.sub}>{t("visAllFields")}</span></div>
       </div>
+    </>
+  );
+  const review = (
+    <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-review="">
+      {reviewCards}
       <div className={`${styles.row} ${r.go}`}>
-        <span className={`${styles.lbl} ${r.grow}`}>{profile?.editableUntil ? t("editableUntil", { date: monthDaySlash(profile.editableUntil) }) : null}</span>
+        <span className={`${styles.lbl} ${r.grow}`}>{editableLine}</span>
         {editing ? null : <button type="button" className={`btn ${styles.btn}`} disabled={busy} onClick={() => void askMore()}>{t("backToQuestions")}</button>}
         <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.nextBtn}`} disabled={busy || draft === "running"} aria-disabled={draft === "running"} onClick={() => void apply()}>{draft === "running" ? t("introDrafting") : t(editing ? "joinSave" : "applyNow")}</button>
       </div>
     </div>
   );
+  // 390（b2 regPersona）：卡片直接排在页面上，主按钮在屏幕底部固定区（整宽 48、深色），上面一行就绪提示，下面一行「编辑期限」。
+  // 就绪提示：100% = 带对勾的一句；没到 = 还差几项 +「补上」（问缺的那一项）。自我介绍还在写时按钮保持「正在生成…」禁用。
+  const firstMissing = missing[0];
+  const phoneReview = (
+    <div className={r.pPage} data-join-review="" data-join-phone="">
+      {reviewCards}
+      <div className={r.pFoot} data-join-foot="">
+        {profile ? (coverage >= 100 ? (
+          <div className={`${r.pReady} ${r.pReadyOk}`} role="status" data-join-ready="done"><Icon name="check" size={16} />{t("readyAll")}</div>
+        ) : (
+          <div className={r.pReady} role="status" data-join-ready="missing">
+            <span>{t("readyMissing", { n: missing.length })}</span>
+            {firstMissing ? <button type="button" className={`btn ${r.textLink}`} disabled={busy} onClick={() => void askMore(editing ? firstMissing.key : undefined)}>{t("fillIn")}</button> : null}
+          </div>
+        )) : null}
+        <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.pMain}`} disabled={busy || draft === "running"} aria-disabled={draft === "running"} onClick={() => void apply()}>{draft === "running" ? t("introDrafting") : t(editing ? "joinSave" : "applyNow")}</button>
+        {editableLine ? <div className={`${styles.lbl} ${r.pFootNote}`}>{editableLine}</div> : null}
+      </div>
+    </div>
+  );
 
   const contactLine = result?.status === "pending_review" ? contactReviewLine(result.hostContact, event?.priceYen, t) : null;
-  const done = result ? (
-    <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-done="">
+  const doneCards = result ? (
+    <>
       <div className={`${styles.card} ${r.inner} ${r.check}`}>
         <div className={r.popcheck}><Icon name="check" size={24} /></div>
         <div className={r.doneTitle}>{t(editing ? "joinUpdated" : "received")}</div>
@@ -527,19 +563,35 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
           </div>
         </div>
       ) : null}
+    </>
+  ) : null;
+  const done = result ? (
+    <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-done="">
+      {doneCards}
       <div className={`${styles.row} ${r.doneGo}`}>
         <a className={`btn ${styles.btn}`} href="/app/profile">{t("editProfile")}</a>
         <a className={`btn ${styles.btn} ${styles.primary}`} href={detailHref}>{t("toDetail")}</a>
       </div>
     </div>
   ) : null;
+  // 390：主操作「去活动详情」固定在底部整宽；「编辑资料」降为文字链。
+  const phoneDone = result ? (
+    <div className={r.pPage} data-join-done="" data-join-phone="">
+      {doneCards}
+      <div className={r.pFoot} data-join-foot="">
+        <a className={`btn ${styles.btn} ${styles.primary} ${r.pMain}`} href={detailHref}>{t("toDetail")}</a>
+        <a className={`${r.textLink} ${r.pFootLink}`} href="/app/profile">{t("editProfile")}</a>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <>
-      {phone && !reviewing && !result ? (
+      {/* 390：答题 / 确认 / 完成都全屏（不显示底部导航胶囊），主操作在页面自己的底部固定区。 */}
+      {phone ? (
         <>
           <ShellPage title={t("regTitle")} subtitle={event?.title ?? ""} left={closeButton(20)} rightRail={false} phoneBare phoneBack={phoneBack} phoneSubtitle={headRight ?? undefined} />
-          {loadError ?? phoneChat}
+          {loadError ?? (result ? phoneDone : reviewing ? phoneReview : phoneChat)}
         </>
       ) : <>
       <ShellPage
