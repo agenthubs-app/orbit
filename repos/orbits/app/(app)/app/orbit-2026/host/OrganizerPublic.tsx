@@ -152,13 +152,13 @@ export function OrganizerPublicView({ data, language, signedIn, following, busy 
   );
 }
 
-function LoginPrompt({ name, slug, t, google, narrow, onClose }: { name: string; slug: string; t: HostT; google: boolean; narrow: boolean; onClose: () => void }) {
+function LoginPrompt({ name, slug, t, google, narrow, onClose, language }: { name: string; slug: string; t: HostT; google: boolean; narrow: boolean; language: OrbitLanguage; onClose: () => void }) {
   const body = (
     <div className={p.sheet} data-organizer-login="">
       <b className={p.sheetTitle}>{t("pubLoginTitle")}</b>
       <div className={`${s.lbl} ${p.sheetSub}`}>{t("pubLoginSub", { name })}</div>
       {google ? <button type="button" className={`btn ${s.btn} ${s.primary} ${p.xl} ${p.block} ${p.flush}`} onClick={() => void signIn("google", { callbackUrl: organizerReturnPath(slug, true) })}>{t("pubGoogle")}</button> : null}
-      {google ? <GoogleConsent className={`${s.lbl} ${p.center} ${p.gap8}`} /> : null}
+      {google ? <GoogleConsent className={`${s.lbl} ${p.center} ${p.gap8}`} language={language} /> : null}
       <a className={`btn ${s.btn} ${google ? "" : s.primary} ${p.xl} ${p.block} ${google ? "" : p.flush}`} href={organizerAuthHref("login", slug)}>{t("pubEmail")}</a>
       <div className={`${s.lbl} ${p.center} ${p.gap8}`}>{t("pubLoginNote")}</div>
     </div>
@@ -213,7 +213,7 @@ function OrganizerPublicInner({ data, language, signedIn, googleEnabled, autoFol
     <>
       <OrganizerPublicView data={view} language={language} signedIn={signedIn} following={following} busy={busy} expanded={expanded}
         onFollow={follow} onShare={share} onExpand={() => setExpanded(true)} onReport={() => setReport(true)} />
-      {login ? <LoginPrompt name={data.profile.displayName} slug={data.profile.slug} t={t} google={googleEnabled} narrow={narrow} onClose={() => setLogin(false)} /> : null}
+      {login ? <LoginPrompt language={language} name={data.profile.displayName} slug={data.profile.slug} t={t} google={googleEnabled} narrow={narrow} onClose={() => setLogin(false)} /> : null}
       {report ? (
         <Modal open onClose={() => setReport(false)} title={t("pubReportTitle")} size={420}
           actions={<><button type="button" className={`btn ${s.btn}`} onClick={() => setReport(false)}>{t("cancel")}</button><button type="button" className={`btn ${s.btn} ${s.primary}`} onClick={() => void copy(window.location.href, t("pubCopied"))}>{t("pubCopyUrl")}</button></>}>

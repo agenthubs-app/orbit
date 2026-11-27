@@ -198,3 +198,11 @@ test("§43 レポート申込推移横轴截到开催日：Founders Lunch #11 = 
   assert.equal(hostReport(HOST_EVENT_IDS.founders11, "all")?.all?.trend.length, 21);
   assert.deepEqual(trendAxisLabels(null, 21), []);
 });
+
+test("organizer public login sheet: the Google consent line follows the page language outside the language provider", async () => {
+  const { GoogleConsent } = await import("../../app/(app)/app/orbit-2026/auth-public/auth-form");
+  const ja = renderToStaticMarkup(<GoogleConsent language="ja" />);
+  assert.match(ja, /続けると、/);
+  assert.doesNotMatch(ja, /继续即表示/);
+  assert.match(renderToStaticMarkup(<GoogleConsent language="en" />), /By continuing/);
+});

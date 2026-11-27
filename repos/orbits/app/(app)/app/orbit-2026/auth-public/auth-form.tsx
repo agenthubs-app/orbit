@@ -3,6 +3,7 @@
 /** 认证四态共用的邮箱、密码、错误提示和提交控件。 */
 import { useState, type ClipboardEvent, type FormEvent, type ReactNode } from "react";
 
+import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { emailVerificationCopy } from "../copy/email-verification";
 import { AUTH_BUTTON_LABELS, AUTH_PASSWORD_MIN_LENGTH, authRoutePath, trimPastedPassword, validateEmail, validatePassword, type AuthView } from "./auth-model";
@@ -181,8 +182,9 @@ export function AuthBackToLogin({ next = "" }: { next?: string }) {
 
 /** b1 #2 / #3 .gbtn: 48px pill, surface with a surface-3 rim, a round「G」mark; the label differs for sign-in and sign-up. */
 /** Under every Google button that can create an account: which texts continuing agrees to (their version is stored with the account). */
-export function GoogleConsent({ className = "au-gterms" }: { className?: string }) {
-  const { t } = useOrbitLanguage();
+export function GoogleConsent({ className = "au-gterms", language }: { className?: string; /** Pages outside the language provider (public organizer page) pass their own language. */ language?: OrbitLanguage }) {
+  const context = useOrbitLanguage();
+  const t = language ? (copy: { en: string; zh: string; ja?: string }) => (language === "ja" ? copy.ja ?? copy.en : copy[language]) : context.t;
   return <p className={className}>{t(emailVerificationCopy.googleTerms).split(/(\{terms\}|\{privacy\})/u).map((part, index) => part === "{terms}"
     ? <a className="au-terms-link" href="/terms" key={index} rel="noopener noreferrer" target="_blank">{t(emailVerificationCopy.terms)}</a>
     : part === "{privacy}" ? <a className="au-terms-link" href="/privacy" key={index} rel="noopener noreferrer" target="_blank">{t(emailVerificationCopy.privacy)}</a>
