@@ -103,3 +103,26 @@ test("rebuilt cards give real matches where the stored cards had none", () => {
   assert.equal(real([founder, investor]), 0);
   assert.equal(real([founder, investor].map((participant) => matchingParticipant(participant, {}))), 1);
 });
+
+test("a reason may name a profile fact in another language or a directly related concept, but not a concept neither person has", async () => {
+  const { unsupportedProfileTerms } = await import("../../features/events/event-operations/match-concepts");
+  assert.deepEqual(unsupportedProfileTerms("プロダクト・技術相談について話せます", ["产品与技术咨询"]), []);
+  assert.deepEqual(unsupportedProfileTerms("投資家・VCの紹介を受けられます", ["寻找投资"]), []);
+  assert.deepEqual(unsupportedProfileTerms("エンジニアの採用について", ["人才推荐"]), []);
+  assert.deepEqual(unsupportedProfileTerms("{TARGET}さんが関心を持つ海外展開（総合）", ["生成AI / LLMの活用", "投資家・VCの紹介"]), ["海外展開"]);
+});
+
+test("the matching card carries what the person does from the account profile", () => {
+  const rebuilt = matchingParticipant(card("c"), { account: { bio: "在东京经营中日贸易公司", headline: "贸易公司代表", seniority: "founder" }, answers: { industry: "贸易与物流" } });
+  assert.equal(rebuilt.about, "贸易公司代表 / 在东京经营中日贸易公司");
+  assert.equal(rebuilt.seniority, "founder");
+});
+
+test("candidates who answer the reader's own needs rank above people only the reader can help", () => {
+  const reader = card("reader", { needs: ["投资人"], offers: ["产品与技术咨询"] });
+  const investor = card("investor", { offers: ["投資家・VCの紹介"] });
+  const helpee = card("helpee", { needs: ["技術的なアドバイス"] });
+  const { candidates } = buildDeterministicCandidates({ generationId: "g", participants: [reader, investor, helpee], recommendationCount: 5 });
+  const order = candidates.filter((c) => c.sourceParticipantId === reader.participantId).sort((a, b) => a.retrievalRank - b.retrievalRank).map((c) => c.targetParticipantId);
+  assert.deepEqual(order.slice(0, 2), [investor.participantId, helpee.participantId]);
+});

@@ -216,10 +216,11 @@ export function buildDeterministicCandidates(input: {
     const realMatches = [...realIds].slice(0, candidatePoolLimit).map((targetParticipantId) => {
       metrics.pairComparisons += 1;
       const target = participantById.get(targetParticipantId)!;
-      const needOffer = source.needs.reduce((count, need) => count + target.offers.filter((offer) => offerAnswersNeed(need, offer)).length, 0)
-        + target.needs.reduce((count, need) => count + source.offers.filter((offer) => offerAnswersNeed(need, offer)).length, 0);
+      const answersSource = source.needs.reduce((count, need) => count + target.offers.filter((offer) => offerAnswersNeed(need, offer)).length, 0);
+      const answeredBySource = target.needs.reduce((count, need) => count + source.offers.filter((offer) => offerAnswersNeed(need, offer)).length, 0);
+      const needOffer = answersSource + answeredBySource;
       const sharedTopics = source.topics.reduce((count, topic) => count + target.topics.filter((other) => topicsShare(topic, other)).length, 0);
-      return { needOffer, sharedTopics, targetParticipantId };
+      return { answeredBySource, answersSource, needOffer, sharedTopics, targetParticipantId };
     }).filter((match) => match.needOffer > 0 || match.sharedTopics > 0);
     const realById = new Map(realMatches.map((match) => [match.targetParticipantId, match]));
 
@@ -304,8 +305,15 @@ export function buildDeterministicCandidates(input: {
             target.company.trim().toLocaleLowerCase("en"),
       );
       const real = realById.get(targetParticipantId);
-      // Real matches rank first: need/offer answers, then shared topics, then the original overlap score.
-      const realScore = real ? 1_000_000 + real.needOffer * 100_000 + real.sharedTopics * 1_000 : 0;
+      // Real matches rank first. Within them (2026-11-28): someone who answers the source's own needs, more so when the
+      // help runs both ways; then someone only the source can help; then shared topics; then the original overlap score.
+      const realScore = real
+        ? 1_000_000
+          + Math.min(real.answersSource, 3) * 100_000
+          + (real.answersSource > 0 && real.answeredBySource > 0 ? 150_000 : 0)
+          + Math.min(real.answeredBySource, 3) * 30_000
+          + Math.min(real.sharedTopics, 5) * 1_000
+        : 0;
       const retrievalScore =
         realScore +
         sourceNeedTargetOffer * 18 +

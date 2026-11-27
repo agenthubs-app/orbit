@@ -15,7 +15,11 @@ import type { EventOperationsParticipant } from "./contract";
 import { needConcept, offerConcept, topicConcept } from "./match-concepts";
 
 export interface MatchingAccountProfile {
+  bio?: string | null;
+  headline?: string | null;
   offering?: readonly string[] | null;
+  role?: string | null;
+  seniority?: string | null;
   seeking?: readonly string[] | null;
   topics?: readonly string[] | null;
 }
@@ -65,6 +69,8 @@ function terms(...values: ReadonlyArray<string | null | undefined | readonly str
  * offers = what they offer + experience highlight (as before) + account「能提供」;
  * topics = their industry + account topics. The event goal is no longer a topic: two people who both want funding
  * do not share a topic (the old card made 「寻找投资」 a topic for every investor-seeker).
+ * about = account headline + self-introduction (what they actually do), for the model to judge whether two people's
+ * work fits; role / seniority fall back to the account.
  */
 export function matchingParticipant(
   participant: EventOperationsParticipant,
@@ -82,5 +88,18 @@ export function matchingParticipant(
   const topics = answers
     ? terms(answers.industry, account?.topics ?? [])
     : terms(participant.topics, account?.topics ?? []);
-  return { ...participant, needs, offers, topics };
+  const about = [account?.headline, account?.bio]
+    .map((text) => text?.replace(/\s+/gu, " ").trim())
+    .filter((text, index, all): text is string => Boolean(text) && all.indexOf(text) === index)
+    .join(" / ")
+    .slice(0, 300);
+  return {
+    ...participant,
+    ...(about ? { about } : {}),
+    needs,
+    offers,
+    role: participant.role ?? account?.role?.trim() ?? null,
+    seniority: participant.seniority ?? account?.seniority ?? null,
+    topics,
+  };
 }

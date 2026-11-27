@@ -23,6 +23,7 @@ import {
   type EventOperationsTaskOutput,
 } from "./contract";
 import { buildDeterministicCandidates } from "./candidate-retrieval";
+import { offerAnswersNeed, topicsShare } from "./match-concepts";
 import { validateRecommendations } from "./recommendation-validation";
 import type {
   EventOperationsRepository,
@@ -431,6 +432,7 @@ function signalOverlap(
 function deterministicAssignments(input: {
   features: readonly EventOperationsGroupingFeature[];
   participants: readonly EventOperationsParticipant[];
+  recommendations?: readonly EventOperationsParticipantRecommendations[];
   tableSize: number;
 }): readonly {
   participantIds: readonly string[];
@@ -472,6 +474,29 @@ function deterministicAssignments(input: {
   );
   const companyLimit = (company: string): number =>
     Math.ceil((companyFrequency.get(company) ?? 1) / capacities.length);
+  // Seating signals (2026-11-28): the same concept table the recommendations use (a need answered by the other's
+  // offer, a shared topic), and the AI's own recommendations — a recommended pair is worth seating together.
+  const recommended = new Set(
+    (input.recommendations ?? []).flatMap((row) =>
+      row.recommendations.map((item) => `${row.sourceParticipantId}\u0000${item.targetParticipantId}`),
+    ),
+  );
+  const conceptCache = new Map<string, number>();
+  const conceptFit = (left: EventOperationsParticipant, right: EventOperationsParticipant): number => {
+    const key = left.participantId < right.participantId
+      ? `${left.participantId}\u0000${right.participantId}`
+      : `${right.participantId}\u0000${left.participantId}`;
+    const cached = conceptCache.get(key);
+    if (cached !== undefined) return cached;
+    const answered = (from: EventOperationsParticipant, to: EventOperationsParticipant) =>
+      Math.min(3, from.needs.reduce((count, need) => count + (to.offers.some((offer) => offerAnswersNeed(need, offer)) ? 1 : 0), 0));
+    const shared = Math.min(2, left.topics.filter((topic) => right.topics.some((other) => topicsShare(topic, other))).length);
+    const value = (answered(left, right) + answered(right, left)) * 8 + shared * 3
+      + (recommended.has(`${left.participantId}\u0000${right.participantId}`) ? 15 : 0)
+      + (recommended.has(`${right.participantId}\u0000${left.participantId}`) ? 15 : 0);
+    conceptCache.set(key, value);
+    return value;
+  };
   const pairScore = (
     left: EventOperationsParticipant,
     right: EventOperationsParticipant,
@@ -500,7 +525,8 @@ function deterministicAssignments(input: {
         right.company.trim().toLocaleLowerCase("en")
         ? 1
         : 0;
-    return affinity + complementarity * 8 - sameCompany * 30 - repeatedPairPenalty;
+    // Word overlap stays as a small tie-breaker for free-text values outside the concept table.
+    return affinity + conceptFit(left, right) + complementarity * 2 - sameCompany * 30 - repeatedPairPenalty;
   };
   const ordered = [...input.participants].sort((left, right) => {
     const leftCompany = left.company?.trim().toLocaleLowerCase("en") ?? "";
@@ -1071,6 +1097,7 @@ export function createEventOperationsEngine({
           deterministicAssignments({
             features: groupingFeatures,
             participants: input.generation.snapshot.participants,
+            recommendations,
             tableSize: input.configuration.tableSize,
           }),
         );

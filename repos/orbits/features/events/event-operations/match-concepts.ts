@@ -188,6 +188,22 @@ const GENERIC_PARTS = new Set(["壁打ち相手", "ブレスト仲間", "イベ�
 // another language, where it cannot be found (replay: the only false positives came from fragments).
 const PROFILE_TERM_PARTS = [...new Set([NEED_TAGS, OFFER_TAGS, TOPIC_TAGS].flatMap((table) => Object.values(table).flat())
   .map((tag) => tagKey(tag)).filter((part) => part.length >= 4 && !GENERIC_PARTS.has(part)))];
+/** Related-concept families: a need with the offers that answer it, an offer with the needs it answers, a topic alone. */
+function termFamilies(text: string): string[] {
+  const families: string[] = [];
+  const need = needConcept(text);
+  if (need) families.push(`need:${need}`, ...(ANSWERS[need] ?? []).map((offer) => `offer:${offer}`));
+  const offer = offerConcept(text);
+  if (offer) families.push(`offer:${offer}`, ...Object.entries(ANSWERS).filter(([, offers]) => offers.includes(offer)).map(([answered]) => `need:${answered}`));
+  const topic = topicConcept(text);
+  if (topic) families.push(`topic:${topic}`);
+  return families;
+}
+const TERM_FAMILIES = new Map<string, readonly string[]>();
+for (const tag of [NEED_TAGS, OFFER_TAGS, TOPIC_TAGS].flatMap((table) => Object.values(table).flat())) {
+  const key = tagKey(tag);
+  TERM_FAMILIES.set(key, [...new Set([...(TERM_FAMILIES.get(key) ?? []), ...termFamilies(tag)])]);
+}
 /**
  * Known profile terms a text mentions that appear nowhere in the given profile texts (both people's needs, offers,
  * topics, highlight, industry, role). A reason that names such a term attributes something neither person said
@@ -196,7 +212,17 @@ const PROFILE_TERM_PARTS = [...new Set([NEED_TAGS, OFFER_TAGS, TOPIC_TAGS].flatM
 export function unsupportedProfileTerms(text: string, profileTexts: readonly string[]): string[] {
   const normalized = tagKey(text);
   const own = profileTexts.map(tagKey).join("|");
-  return PROFILE_TERM_PARTS.filter((part) => normalized.includes(part) && !own.includes(part));
+  // 2026-11-28: a term is supported when either profile has it in any language or a directly related concept (the
+  // same need / offer / topic, or a need and an offer that answers it). The base draft is Japanese while profiles may
+  // be Chinese: 「プロダクト・技術相談」 for 「产品与技术咨询」 is the same fact, not a new claim (event 6 replay: 1 in 5
+  // shards failed on such terms). A concept neither person has anywhere is still refused.
+  const ownFamilies = new Set<string>();
+  for (const part of PROFILE_TERM_PARTS) if (own.includes(part)) for (const family of TERM_FAMILIES.get(part) ?? []) ownFamilies.add(family);
+  for (const profileText of profileTexts) for (const family of termFamilies(profileText)) ownFamilies.add(family);
+  const mentioned = PROFILE_TERM_PARTS.filter((part) => normalized.includes(part));
+  // A term inside a longer mentioned term (「エンジニア」 in 「エンジニアの採用」) is judged as that longer term.
+  return mentioned.filter((part) => !mentioned.some((other) => other !== part && other.includes(part))
+    && !own.includes(part) && !(TERM_FAMILIES.get(part) ?? []).some((family) => ownFamilies.has(family)));
 }
 
 /** The offer concepts that answer a need (empty for a value outside the table). */

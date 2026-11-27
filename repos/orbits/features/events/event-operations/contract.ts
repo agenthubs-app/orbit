@@ -30,6 +30,8 @@ export type EventOperationsTaskKind =
   | "table_content_shard";
 
 export interface EventOperationsParticipant {
+  /** What the person does, from their account headline and self-introduction (generation snapshot only, 2026-11-28). */
+  about?: string | null;
   actorId: string;
   company: string | null;
   displayName: string;

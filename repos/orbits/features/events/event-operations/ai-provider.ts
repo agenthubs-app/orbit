@@ -954,6 +954,9 @@ export function profileFacts(key: string, participant: import("./contract").Even
   for (const topic of participant.topics) add("topic", topic);
   add("context", participant.industry);
   add("context", participant.role);
+  // What the person does (account headline + self-introduction, 2026-11-28): context only — it can never be a match
+  // on its own, but it lets the model judge whether two people's work actually fits.
+  add("context", participant.about);
   return facts;
 }
 const factOwnerTag = (fact: { id: string }) => fact.id.slice(0, fact.id.lastIndexOf("."));
@@ -1131,6 +1134,7 @@ function compactParticipant(
   participant: import("./contract").EventOperationsParticipant,
 ) {
   return {
+    about: participant.about ?? null,
     company: participant.company,
     displayName: participant.displayName,
     energyStyle: participant.energyStyle,
@@ -1601,8 +1605,22 @@ export function createEventOperationsAiProvider({
     const promptPerson = (key: string) => ({ facts: factsByKey.get(key)!.map(({ id, kind, text }) => ({ id, kind, text })), hasCompany: registeredCompany(participantByKey.get(key)!) !== null });
     // Step 1a — choose (small output): exactly K distinct shortlist targets per source, best first, with the fact pairs it rests on.
     const chooseShape = Object.fromEntries(tokenizedSources.tokenSources.map((token) => [token.sourceKey, pickKeys(token.sourceKey).map(() => ({ basis: [[`${token.sourceKey}.n1`, `${token.sourceKey}C?.o1`]], score: 80, target: `${token.sourceKey}C?` }))]));
+    // Direction of each candidate's pairs (2026-11-28): whether the candidate answers the source's own needs, the
+    // source answers the candidate's, or they only share a topic — so the ranking can put the reader's benefit first.
+    const pairDirections = (sourceKey: string, key: string) => {
+      const kindOf = new Map([...factsByKey.get(sourceKey)!, ...factsByKey.get(key)!].map((fact) => [fact.id, fact.kind]));
+      let answersSourceNeeds = 0;
+      let sourceAnswersTheirNeeds = 0;
+      let sharedTopics = 0;
+      for (const [own, other] of legalPairsBetween(sourceKey, key)) {
+        if (kindOf.get(own) === "need") answersSourceNeeds += 1;
+        else if (kindOf.get(own) === "offer" && kindOf.get(other) === "need") sourceAnswersTheirNeeds += 1;
+        else sharedTopics += 1;
+      }
+      return { answersSourceNeeds, sharedTopics, sourceAnswersTheirNeeds };
+    };
     const chooseSources = tokenizedSources.tokenSources.map((token) => ({
-      candidates: matchable.get(token.sourceKey)!.map((key) => ({ candidateKey: key, ...promptPerson(key), matchPairs: legalPairsBetween(token.sourceKey, key) })),
+      candidates: matchable.get(token.sourceKey)!.map((key) => ({ candidateKey: key, ...promptPerson(key), matchPairs: legalPairsBetween(token.sourceKey, key), ...pairDirections(token.sourceKey, key) })),
       sourceKey: token.sourceKey,
       ...promptPerson(token.sourceKey),
     }));
@@ -1611,6 +1629,11 @@ export function createEventOperationsAiProvider({
       systemInstruction: `${systemInstruction}\nYou choose who should meet whom at a networking event, from the supplied facts only. Return exactly one JSON document.`,
       userText: `For each sourceKey, choose exactly the number of different people shown in the JSON shape (an empty list when the source has no candidates) from that source's own candidates, best first. score is an integer 0..100.
 Every candidate listed has at least one real match with the source; matchPairs lists all of them (a need answered by the other person's offer, or a topic both share), as decided by the server. For every pick, basis lists one or more pairs copied from that candidate's matchPairs — no other pair is accepted. Rank by how directly and how strongly those pairs connect the two people, not by list order.
+Choose the people the source would most want to talk to:
+1. First, candidates who answer the source's own needs (answersSourceNeeds > 0), best when the help also runs the other way (sourceAnswersTheirNeeds > 0 too).
+2. Judge real fit from each person's context facts (industry, role, and what they actually do): an investor for a founder who needs funding, a customer or channel in the source's market, a partner in an adjacent business, someone who knows the market the source is entering. A tag match between unrelated businesses is weak.
+3. Then candidates only the source can help (sourceAnswersTheirNeeds only), then a shared topic only.
+4. Rank low a candidate who offers the same thing the source offers and answers none of the source's needs.
 
 JSON shape (exact keys and list lengths):
 ${JSON.stringify(chooseShape)}

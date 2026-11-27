@@ -154,9 +154,13 @@ async function readMatchingAccountProfiles(
   if (table.rows[0]?.present !== true) return new Map();
   const rows = await executor.query<SqlRow>(
     `
-      select distinct on (account_id) account_id, offering, seeking, topics
+      select distinct on (account_id) account_id, offering, seeking, topics, headline, bio, role, seniority
       from (
         select coalesce(payload->>'accountId', user_id) as account_id,
+          payload->>'headline' as headline,
+          coalesce(payload #>> '{publicProfile,bio}', payload->>'bio') as bio,
+          payload->>'role' as role,
+          coalesce(payload #>> '{publicProfile,seniorityLevel}', payload->>'seniorityLevel') as seniority,
           coalesce(payload #> '{publicProfile,offering}', payload -> 'offering') as offering,
           coalesce(payload #> '{publicProfile,seeking}', payload -> 'seeking') as seeking,
           coalesce(payload #> '{publicProfile,topics}', payload -> 'topics') as topics,
@@ -170,8 +174,13 @@ async function readMatchingAccountProfiles(
     `,
     [workspaceId, [...actorIds]],
   );
+  const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
   return new Map(rows.rows.map((row) => [String(row.account_id), {
+    bio: text(row.bio),
+    headline: text(row.headline),
     offering: stringList(row.offering),
+    role: text(row.role),
+    seniority: text(row.seniority),
     seeking: stringList(row.seeking),
     topics: stringList(row.topics),
   }]));
