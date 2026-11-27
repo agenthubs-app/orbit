@@ -108,17 +108,18 @@ export function inviteCodeSize(code: string): "normal" | "long" | "xlong" {
 }
 
 function InviteCodeCard({ code, data, t }: { code: string; data: EventOverviewResponse; t: JourneyT }) {
-  const { ended, canRegister } = useDetailTiming(data);
+  const { ended, canRegister, full } = useDetailTiming(data);
   const next = encodeURIComponent(`/app/register/${encodeURIComponent(code)}`);
   return (
     <div className={`${styles.card} ${styles.span4} ${p.codeCard}`} data-public-invite={code}>
       <div className={styles.lbl}>{t("inviteCodeLbl")}</div>
       <div className={`${p.code} ${inviteCodeSize(code) === "long" ? p.codeLong : inviteCodeSize(code) === "xlong" ? p.codeXlong : ""}`} data-public-invite-code="">{code}</div>
       <div className={styles.lbl}>{t("inviteFrom", { date: monthDaySlash(data.registrationClosesAt), org: hostName(data, t) })}</div>
-      {canRegister ? <div className={p.codeActions}>
+      {/* 2026-11-27：满员且不排候补时不给登录 / 注册报名入口，只标「満席」（与登录后详情同一规则）。 */}
+      {canRegister && !full ? <div className={p.codeActions}>
         <a className={`btn ${styles.btn} ${styles.primary}`} href={`${LOGIN}?next=${next}`}>{t("loginRegister")}</a>
         <a className={`btn ${styles.btn}`} href={`/app/account/signup?next=${next}`}>{t("signupRegister")}</a>
-      </div> : <span className={styles.chip}>{t(ended ? "liveEnded" : "registrationClosed")}</span>}
+      </div> : <span className={styles.chip} data-public-invite-full={full && canRegister ? "" : undefined}>{t(ended ? "liveEnded" : full && canRegister ? "spFull" : "registrationClosed")}</span>}
       <div className={`${styles.lbl} ${p.codeNote}`}>{t("inviteNote")}</div>
     </div>
   );
@@ -128,7 +129,7 @@ function DetailInner({ eventId, language, inviteCode, frame = false }: { eventId
   const t = useMemo(() => journeyTranslator(language), [language]);
   const [data, setData] = useState<EventOverviewResponse | null>(null);
   const [missing, setMissing] = useState(false);
-  const { canRegister } = useDetailTiming(data);
+  const { canRegister, full, waitlist } = useDetailTiming(data);
   // < 768：和登录后一样用 App 式详情（b12 W-R27-20u-390）；桌面 12 栏网格在手机宽度会挤成窄列。
   const phone = usePhone();
   // 报名对没有账号的人就是注册：直接去注册页（里面有「已有账号？登录」，next 一起带过去）。
@@ -148,7 +149,8 @@ function DetailInner({ eventId, language, inviteCode, frame = false }: { eventId
           <div className={p.r}>
             <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void navigator.clipboard?.writeText(window.location.href).catch(() => undefined)}><Icon name="share" size={16} /></button>
             {/* 2026-11-21：公开页没有右栏，主按钮在页头（W2）；截止 / 已结束不在页头再说一次（封面 chip 已说）。 */}
-            {phone || !canRegister ? null : <a className={`btn ${styles.btn} ${x.accent}`} href={registerHref}>{t("signupRegister")}</a>}
+            {/* 满员（无候补）不出报名按钮——正文封面已标「満席」；有候补时写「キャンセル待ちに並ぶ」。 */}
+            {phone || !canRegister || full ? null : <a className={`btn ${styles.btn} ${x.accent}`} href={registerHref}>{t(waitlist ? "spWaitlist" : "signupRegister")}</a>}
           </div>
         </div>
         {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone

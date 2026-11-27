@@ -25,10 +25,10 @@ test("the public bar keeps the page the visitor came from", () => {
   assert.ok(invited.includes(`href="${signup("/app/register/7QKM-H4TR")}"`));
 });
 
-async function mountDetail(t: { after: (fn: () => void) => void; mock: { method: (target: object, name: string, impl: (...args: never[]) => unknown) => unknown } }, phone: boolean, inviteCode?: string) {
+async function mountDetail(t: { after: (fn: () => void) => void; mock: { method: (target: object, name: string, impl: (...args: never[]) => unknown) => unknown } }, phone: boolean, inviteCode?: string, extra: Record<string, unknown> = {}) {
   const assigned: string[] = [];
   const soon = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
-  const overview = { ...journeyOverview("many", "web"), endsAt: soon(8), registrationClosesAt: soon(5), startsAt: soon(7), registration: { href: "/app/events/ev-1/register", status: "none" } };
+  const overview = { ...journeyOverview("many", "web"), endsAt: soon(8), registrationClosesAt: soon(5), startsAt: soon(7), registration: { href: "/app/events/ev-1/register", status: "none" }, ...extra };
   t.mock.method(globalThis, "fetch", async () => Response.json({ success: true, data: overview }));
   const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
   // next/link 的预取在空闲时跑：这里不需要它。
@@ -69,4 +69,22 @@ test("invite code: both the head button and the card's free sign-up return to th
   const hrefs = root.root.findAll((node) => node.type === "a").map((node) => node.props.href);
   assert.ok(hrefs.filter((href) => href === signup("/app/register/7QKM-H4TR")).length >= 3);
   assert.ok(hrefs.includes(login("/app/register/7QKM-H4TR")));
+});
+
+type TextNode = { children: readonly (string | TextNode)[] };
+const textOf = (node: TextNode): string => node.children.map((child) => (typeof child === "string" ? child : textOf(child))).join("");
+
+test("full with no waitlist: no sign-up / sign-in entry on the head or the invite card, the card says 名额已满", async (t) => {
+  const { root } = await mountDetail(t, false, "7QKM-H4TR", { capacity: 60, remaining: 0, waitlistEnabled: false });
+  const labels = root.root.findAll((node) => node.type === "a").map(textOf);
+  assert.equal(labels.some((label) => label.includes("免费注册并报名") || label.includes("登录后报名")), false, labels.join("\n"));
+  const chip = root.root.findAll((node) => node.props?.["data-public-invite-full"] === "");
+  assert.equal(chip.length, 1);
+  assert.ok(textOf(chip[0]!).includes("名额已满"));
+});
+
+test("full with a waitlist: the head entry stays and reads 排队候补", async (t) => {
+  const { root } = await mountDetail(t, false, undefined, { capacity: 60, remaining: 0, waitlistEnabled: true });
+  const head = root.root.findAll((node) => node.type === "a" && node.props.href === signup("/app/events/ev-1/register"));
+  assert.ok(head.some((node) => textOf(node).includes("排队候补")));
 });
