@@ -11,10 +11,11 @@ import { eventJoinNextInputObject, eventJoinSubmitInputObject } from "../../shar
 
 const flow = readFileSync("app/(app)/app/orbit-2026/events/RegisterFlow.tsx", "utf8");
 
-test("review: the apply button is never disabled for missing items (only while busy / the intro is being written)", () => {
+test("review: the apply button is never disabled for missing items (only while busy / the intro is being written / the required WeChat question is unanswered)", () => {
   const applyButtons = flow.match(/<button[^>]*onClick=\{\(\) => void apply\(\)\}[^>]*>/g) ?? [];
   assert.equal(applyButtons.length, 2, "desktop + phone");
-  for (const button of applyButtons) assert.match(button, /disabled=\{busy \|\| draft === "running"\}/);
+  // 2026-11-27 用户新增：主办方开了「已加群自动通过」时，那道必答题没选也不能提交（join-wechat-auto-admit.test.ts）。
+  for (const button of applyButtons) assert.match(button, /disabled=\{busy \|\| draft === "running" \|\| wechatNeeded\}/);
   assert.doesNotMatch(flow, /backToQuestions/, "no 「質問に戻る」 (it would ask a 6th question)");
 });
 

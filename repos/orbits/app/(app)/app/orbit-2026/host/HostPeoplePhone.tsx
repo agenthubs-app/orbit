@@ -118,6 +118,7 @@ function PersonRow({ row, t, bucket, answer, issue, busy, selecting, selected, o
           <span className={p.meta}>
             <b>{row.name}</b>
             {line ? <span className={s.lbl}>{line}</span> : null}
+            {row.wechatAutoAdmitted ? <span className={s.lbl} data-host-wechat-auto="">{t("pplWechatAuto")}</span> : null}
             {answer ? <span className={p.ans}>{answer}</span> : null}
             {issue ? <span className={p.rnote} role="status">{issue === "conflict" ? t("pRowConflict") : t("pRowFailed")}</span> : null}
           </span>

@@ -259,13 +259,14 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     const caps = await require(actorId, eventId, "experience.configure");
     const facts = await factsOrThrow(actorId, eventId);
     const set = await reads.questionSet(eventId);
-    const draft = (set?.draft ?? {}) as { description?: string; questions?: HostSetupQuestion[]; capacity?: number | null; registrationClosesAt?: string | null; admissionMode?: "first_come" | "review" };
+    const draft = (set?.draft ?? {}) as { description?: string; questions?: HostSetupQuestion[]; capacity?: number | null; registrationClosesAt?: string | null; admissionMode?: "first_come" | "review"; wechatAutoAdmit?: boolean };
     const published = set?.published as typeof draft | null;
     const questions = draft.questions ?? published?.questions ?? [];
-    const diff = published ? ([JSON.stringify(published.questions ?? []) !== JSON.stringify(draft.questions ?? []), (published.description ?? "") !== (draft.description ?? ""), (published.capacity ?? null) !== (draft.capacity ?? null), (published.registrationClosesAt ?? null) !== (draft.registrationClosesAt ?? null), (published.admissionMode ?? "review") !== (draft.admissionMode ?? "review")].filter(Boolean).length) : 0;
+    const diff = published ? ([JSON.stringify(published.questions ?? []) !== JSON.stringify(draft.questions ?? []), (published.description ?? "") !== (draft.description ?? ""), (published.capacity ?? null) !== (draft.capacity ?? null), (published.registrationClosesAt ?? null) !== (draft.registrationClosesAt ?? null), (published.admissionMode ?? "review") !== (draft.admissionMode ?? "review"), (published.wechatAutoAdmit === true) !== (draft.wechatAutoAdmit === true)].filter(Boolean).length) : 0;
     const suggestions = questions.length === 0 ? suggestQuestions({ existing: [], library: HOST_QUESTION_LIBRARY, past: [] }) : [];
     return {
       admissionMode: draft.admissionMode ?? facts.admissionMode,
+      wechatAutoAdmit: draft.wechatAutoAdmit === true,
       applyPath: facts.publicSlug ? `/e/${facts.publicSlug}` : null,
       capacity: draft.capacity !== undefined ? draft.capacity : facts.capacity,
       description: draft.description ?? facts.description ?? "",
@@ -544,7 +545,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const page: HostPeopleRow[] = result.rows.map((item) => {
         const fromApplication = item.kind === "application" ? splitPositioning(item.positioning ?? undefined) : { org: item.org, role: item.role };
         const answer = item.hostAnswer ?? item.desired;
-        return { actorId: item.actorId, answer: answer?.trim() || null, applicationVersion: item.version, attendCount: item.attendCount, initial: item.name.trim().charAt(0), name: item.name, org: fromApplication.org, profileIncomplete: item.score < 100, profileScore: item.score, role: fromApplication.role, status: item.kind === "member" ? "approved" : bucketOf[statusOfBucket[query.bucket]] ?? "pending" };
+        return { actorId: item.actorId, answer: answer?.trim() || null, applicationVersion: item.version, attendCount: item.attendCount, initial: item.name.trim().charAt(0), name: item.name, org: fromApplication.org, profileIncomplete: item.score < 100, profileScore: item.score, role: fromApplication.role, status: item.kind === "member" ? "approved" : bucketOf[statusOfBucket[query.bucket]] ?? "pending", ...(item.wechatAutoAdmitted ? { wechatAutoAdmitted: true } : {}) };
       });
       const total = result.rows.length ? result.total : offset;
       // 题面原样给（题库题由页面按界面语言换）；没有对应的题 = null（页面用「申込回答」）。
@@ -721,7 +722,9 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
         const facts = await factsOrThrow(actorId, eventId);
         if (facts.startsAt && Date.parse(input.registrationClosesAt) > Date.parse(facts.startsAt)) throw new HostError("VALIDATION", "REGISTRATION_CLOSES_AFTER_START");
       }
-      const draft = { admissionMode: input.admissionMode, capacity: input.capacity, description: input.description, questions: input.questions, registrationClosesAt: input.registrationClosesAt };
+      // 2026-11-27 用户新增「已加群的报名自动通过」：旧客户端不带这个字段 = 保留草稿里现有的值。
+      const wechatAutoAdmit = input.wechatAutoAdmit ?? (((await reads.questionSet(eventId))?.draft ?? {}) as { wechatAutoAdmit?: boolean }).wechatAutoAdmit === true;
+      const draft = { admissionMode: input.admissionMode, capacity: input.capacity, description: input.description, questions: input.questions, registrationClosesAt: input.registrationClosesAt, wechatAutoAdmit };
       const result = await client.query(
         `insert into event_host_question_sets (workspace_id, event_id, draft, revision, saved_at, updated_by) values ($1, $2, $3::jsonb, 1, now(), $4)
          on conflict (workspace_id, event_id) do update set draft = excluded.draft, revision = event_host_question_sets.revision + 1, saved_at = now(), updated_by = excluded.updated_by

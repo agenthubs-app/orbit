@@ -334,6 +334,12 @@ export const eventsJourneyCopy = {
   visibilityTitle: { ja: "公開範囲", zh: "公开范围", en: "Who sees what", kind: "label" },
   visAll: { ja: "参加者全員", zh: "所有参会者", en: "All attendees", kind: "label" },
   visAllFields: { ja: "名前 · 会社 · 業界 · 自己紹介 · 参加目的 · 会いたい人 · 話題 · 提供できること · 交流スタイル · 会後の連絡方法", zh: "名字 · 公司 · 行业 · 自我介绍 · 参加目的 · 想见的人 · 话题 · 能提供的 · 交流方式 · 会后联系方式", en: "Name · company · industry · intro · why you're going · who to meet · topics · what you offer · networking style · follow-up", kind: "label" },
+  // 2026-11-27 用户新增：主办方开了「已加群的报名自动通过」时，确认页主按钮上方的必答题。
+  wechatQ: { ja: "主催者に連絡して WeChat グループに参加済みですか？", zh: "是否已联系主办方报名并加入微信群？", en: "Have you contacted the host and joined the WeChat group?", kind: "cardTitle" },
+  wechatJoined: { ja: "参加済み", zh: "已加群", en: "Joined", kind: "button" },
+  wechatNotYet: { ja: "まだ", zh: "还没有", en: "Not yet", kind: "button" },
+  wechatPickFirst: { ja: "先に WeChat グループの質問に答えてください", zh: "请先回答是否已加群", en: "Answer the WeChat group question first", kind: "label" },
+  wechatNotYetLine: { ja: "申込後、主催者の WeChat を追加して名前を添えてください。確認後に承認されます", zh: "报名后请添加主办方微信并备注姓名，确认后通过审核", en: "After applying, add the host on WeChat with your name. You'll be approved once they confirm", kind: "label" },
   applyNow: { ja: "この内容で申し込む", zh: "按这个内容报名", en: "Apply with this", kind: "fullButton" },
   editableUntil: { ja: "申込後も {date} まで編集できます", zh: "报名后{date}前仍可修改", en: "You can edit until {date}", kind: "label" },
   doneTitle: { ja: "申込完了", zh: "报名完成", en: "Applied", kind: "pageTitle" },

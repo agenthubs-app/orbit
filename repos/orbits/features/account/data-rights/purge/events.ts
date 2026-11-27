@@ -6,7 +6,7 @@ import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "
 
 // eventJoinIntros: the self-introduction confirmed at registration is shown to the event's other attendees, so it goes here too.
 const PERSONAL_COLLECTIONS = ["attendees", "eventParticipantIntents", "eventPreferences",
-  "eventAfterConfirmations", "eventHostAnswers", "organizerFollows", "eventJoinIntros"];
+  "eventAfterConfirmations", "eventHostAnswers", "organizerFollows", "eventJoinIntros", "eventWechatSelfReports"];
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const placeholder = (eventId: string, actorId: string) => `deleted-event:${hash(`${eventId}\0${actorId}`).slice(0, 24)}`;
 const emptyHash = hash("{}");

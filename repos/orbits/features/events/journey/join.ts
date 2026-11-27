@@ -9,7 +9,7 @@
  */
 import type { HostEventContact } from "../../../shared/contract/host-events";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
-import type { EventJoinAnswer, EventJoinCalendarRemoveResult, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
+import type { EventJoinAnswer, EventJoinWechatAnswer, EventJoinCalendarRemoveResult, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
 import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../../../shared/compute/profile-tag-options";
 import { JOIN_COVERAGE_ITEMS, JOIN_ITEM_OF_FIELD, joinCoverage } from "../../../shared/domain/join-coverage";
 import { PROFILE_ONBOARDING_GOALS } from "../../../shared/compute/profile-onboarding-goal";
@@ -269,6 +269,17 @@ export interface JoinPorts {
    * `from.derived`：访谈没问到的核心项（主办方题或资料标签提供），提交端签成固定题一起交。
    */
   submit(eventId: string, answers: readonly EventJoinAnswer[], from?: { actorId: string; language: JourneyLanguage; derived?: readonly JoinDerivedAnswer[] }): Promise<{ status: "registered" | "pending_review"; submittedAt: string }>;
+  /**
+   * 2026-11-27 用户新增「已加群的报名自动通过」：活动（已公开的报名设置）是否打开了这个开关。缺省 = 没有这个功能（照旧审核）。
+   */
+  wechatAutoAdmit?(eventId: string): Promise<boolean>;
+  /**
+   * 自报已加群的审核申请自动通过：走与主办方「承認」同一条状态迁移（同事务的受付番号 / 通知 / 名额）。
+   * 只动「審査中」的申请；满员时按现有规则（候补或不动），返回之后的状态（registered = 已确定参加）。
+   */
+  autoAdmit?(actorId: string, eventId: string): Promise<"registered" | "pending_review">;
+  /** 留痕：这次的自报回答与是否因此自动通过（主办方列表显示「自报已加群 · 自动通过」）。 */
+  saveWechatReport?(actorId: string, eventId: string, report: { answer: EventJoinWechatAnswer; autoAdmitted: boolean }): Promise<void>;
   /** 确认页上的自己紹介，跟这次报名一起留存（显示给这场活动的其他参会者）。 */
   saveIntro(actorId: string, eventId: string, text: string): Promise<void>;
   /** 清掉这场活动的自己紹介（取消报名、或这次报名没带介绍时；文字一并抹掉，不只是隐藏）。 */
@@ -385,6 +396,20 @@ export function createJoinService(deps: { ports: JoinPorts }) {
   const { ports } = deps;
   const profileTags = async (actorId: string, language: JourneyLanguage) => (await ports.profileTags?.(actorId, language).catch(() => null)) ?? null;
   type JoinEvent = NonNullable<Awaited<ReturnType<JoinPorts["event"]>>>;
+  /**
+   * 2026-11-27 用户新增：审核制 + 活动开关打开 + 本人自报「已加群」→ 服务端直接通过（不信客户端传来的状态）。
+   * 未回答（旧客户端）/「还没有」/ 开关关 = 照旧审核中。自动通过失败（满员、并发改判、库不可用）也照旧审核中，报名本身不受影响。
+   */
+  const wechatOutcome = async (actorId: string, eventId: string, review: boolean, status: "registered" | "pending_review", answer: EventJoinWechatAnswer | undefined): Promise<"registered" | "pending_review"> => {
+    if (!answer || !review || status !== "pending_review" || !ports.wechatAutoAdmit) return status;
+    if (!(await ports.wechatAutoAdmit(eventId).catch(() => false))) return status;
+    const next = answer === "joined" && ports.autoAdmit ? await ports.autoAdmit(actorId, eventId).catch((error: unknown) => {
+      console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_join_wechat_auto_admit_failed" }));
+      return "pending_review" as const;
+    }) : status;
+    await ports.saveWechatReport?.(actorId, eventId, { answer, autoAdmitted: next === "registered" }).catch(() => undefined);
+    return next;
+  };
   const calendarWindow = (event: JoinEvent) => ({ endsAt: event.endsAt ?? new Date(Date.parse(event.startsAt) + 2 * 3_600_000).toISOString(), startsAt: event.startsAt });
   const live = (record: JoinTentativeRecord | null): boolean => Boolean(record && !record.removed && record.scheduleItemId);
   const exists = async (actorId: string, record: JoinTentativeRecord) => (ports.scheduleExists ? ports.scheduleExists(actorId, record.scheduleItemId) : true);
@@ -556,9 +581,11 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const exhausted = edit || draft || answers.length >= JOIN_TOTAL;
       const tags = exhausted && CORE_ITEMS.some((item) => !filled.has(item)) ? await profileTags(actorId, language) : null;
       const profileItems = resolveCoreAnswers(answers, tags, language).derived.filter((item) => item.source === "profile").map((item) => (item.field === "targetAttendees" ? "target" : "offer") as EventJoinProfileItemKey);
-      return profileFromAnswers(answers, { editableUntil, profileItems, personaTopics: persona?.topics ?? [], review: event.review, reviewUntil: event.review ? event.registrationClosesAt : null, selfIntro: intro, selfIntroBasis: basis });
+      // 2026-11-27 用户新增：审核制活动开了「已加群自动通过」→ 确认页必答这道题；改资料不问。
+      const wechatCheck = !edit && event.review && ports.wechatAutoAdmit ? await ports.wechatAutoAdmit(eventId).catch(() => false) : false;
+      return { ...profileFromAnswers(answers, { editableUntil, profileItems, personaTopics: persona?.topics ?? [], review: event.review, reviewUntil: event.review ? event.registrationClosesAt : null, selfIntro: intro, selfIntroBasis: basis }), ...(wechatCheck ? { hostContact: event.hostContact ?? null, wechatCheck: true } : {}) };
     },
-    async submit(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, selfIntro?: string, edit = false): Promise<EventJoinResult | null> {
+    async submit(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, selfIntro?: string, edit = false, wechatJoined?: EventJoinWechatAnswer): Promise<EventJoinResult | null> {
       const event = await ports.event(eventId);
       if (!event) return null;
       // 截止后什么都不改（回答没变时报名接口会照常返回，介绍也不能借机改）。
@@ -576,7 +603,8 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const filled = filledItems(answers.filter((answer) => !isHostAnswer(answer)));
       const tags = CORE_ITEMS.some((item) => !filled.has(item)) ? await profileTags(actorId, language) : null;
       const { derived } = resolveCoreAnswers(answers, tags, language);
-      const outcome = await ports.submit(eventId, answers.filter((answer) => !isHostAnswer(answer)), { actorId, language, ...(derived.length ? { derived } : {}) });
+      const submitted = await ports.submit(eventId, answers.filter((answer) => !isHostAnswer(answer)), { actorId, language, ...(derived.length ? { derived } : {}) });
+      const outcome = edit ? submitted : { ...submitted, status: await wechatOutcome(actorId, eventId, event.review, submitted.status, wechatJoined) };
       const hostAnswers = validHostAnswers(hostQuestions, answers);
       if (ports.saveHostAnswers && Object.keys(hostAnswers).length > 0) await ports.saveHostAnswers(actorId, eventId, hostAnswers);
       // 这次报名的介绍覆盖上一次的；没带介绍就清掉旧的（取消后再报名时，旧介绍不能借着新报名重新显示给别人）。

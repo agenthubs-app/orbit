@@ -197,7 +197,7 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
     async peoplePage(input: {
       eventId: string; organizerActorId: string; status: string; includeMembers: boolean; q: string; incompleteOnly: boolean;
       limit: number; offset: number; answerKeys: readonly string[]; coverageWeights: unknown; hostQuestionId: string | null;
-    }): Promise<{ total: number; rows: Array<{ actorId: string; kind: "application" | "member"; version: number; name: string; positioning: string | null; org: string | null; role: string | null; desired: string | null; hostAnswer: string | null; score: number; attendCount: number }> }> {
+    }): Promise<{ total: number; rows: Array<{ actorId: string; kind: "application" | "member"; version: number; name: string; positioning: string | null; org: string | null; role: string | null; desired: string | null; hostAnswer: string | null; score: number; attendCount: number; wechatAutoAdmitted: boolean }> }> {
       const result = await client.query<Row>(
         `with apps as (
            select a.actor_id, a.application_version::int as version, a.submitted_at as sort_at, 'application' as kind,
@@ -237,7 +237,9 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
          select p.actor_id, p.kind, p.version, p.name, p.positioning, p.org, p.role, p.desired, p.score, p.total,
                 case when $10::text is null then null else (select r.payload -> 'answers' ->> $10 from orbit_records r where r.workspace_id = $1 and r.collection_name = 'eventHostAnswers' and r.user_id = p.actor_id and r.lifecycle_state <> 'deleted' and r.payload ->> 'eventId' = $2 limit 1) end as host_answer,
                 (select count(*) from event_ops_checkins c join event_ops_events oe on oe.workspace_id = c.workspace_id and oe.event_id = c.event_id
-                  where c.workspace_id = $1 and c.actor_id = p.actor_id and oe.organizer_actor_id = $12 and c.event_id <> $2) as attend_count
+                  where c.workspace_id = $1 and c.actor_id = p.actor_id and oe.organizer_actor_id = $12 and c.event_id <> $2) as attend_count,
+                exists (select 1 from orbit_records w where w.workspace_id = $1 and w.collection_name = 'eventWechatSelfReports' and w.user_id = p.actor_id and w.lifecycle_state <> 'deleted'
+                  and w.payload ->> 'eventId' = $2 and coalesce((w.payload ->> 'autoAdmitted')::boolean, false)) as wechat_auto
            from page p order by p.sort_at nulls last, p.actor_id`,
         [workspaceId, input.eventId, input.status, input.includeMembers, input.q, input.incompleteOnly, input.limit, [...input.answerKeys], JSON.stringify(input.coverageWeights), input.hostQuestionId, input.offset, input.organizerActorId],
       );
@@ -247,7 +249,7 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
         rows: result.rows.map((row) => ({
           actorId: String(row.actor_id), attendCount: num(row.attend_count), desired: text(row.desired), hostAnswer: text(row.host_answer),
           kind: row.kind === "member" ? "member" : "application", name: text(row.name) ?? "", org: text(row.org), positioning: text(row.positioning),
-          role: text(row.role), score: num(row.score), version: num(row.version),
+          role: text(row.role), score: num(row.score), version: num(row.version), wechatAutoAdmitted: row.wechat_auto === true,
         })),
       };
     },

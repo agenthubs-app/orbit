@@ -6,7 +6,7 @@
 import { introDraftOutcome, waitForIntroDraft } from "./intro-draft-wait";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { EventJoinAnswer, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep } from "../../../../../shared/contract/event-join";
+import type { EventJoinAnswer, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinWechatAnswer } from "../../../../../shared/contract/event-join";
 import type { EventOverviewResponse } from "../../../../../shared/contract/event-overview";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { ShellPage } from "../shell/slots";
@@ -34,7 +34,7 @@ export function joinApiFor(language: OrbitLanguage) {
     current: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/current`, { headers }, eventJoinCurrentSchema as ZodType<EventJoinCurrent>),
     next: (eventId: string, answers: readonly EventJoinAnswer[], more = false, focus?: EventJoinProfileItemKey) => eventsCall(`/api/events/${id(eventId)}/join/next`, { body: JSON.stringify({ answers, more, ...(focus ? { focus } : {}) }), headers, method: "POST" }, eventJoinStepSchema as ZodType<EventJoinStep>),
     profile: (eventId: string, answers: readonly EventJoinAnswer[], draft: boolean, edit = false) => eventsCall(`/api/events/${id(eventId)}/join/profile`, { body: JSON.stringify({ answers, draft, ...(edit ? { edit } : {}) }), headers, method: "POST" }, eventJoinProfileSchema as ZodType<EventJoinProfile>),
-    submit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string, edit = false) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey(), ...(edit ? { edit } : {}), ...(selfIntro ? { selfIntro } : {}) }), headers, method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
+    submit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string, edit = false, wechatJoined?: EventJoinWechatAnswer | null) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey(), ...(edit ? { edit } : {}), ...(selfIntro ? { selfIntro } : {}), ...(!edit && wechatJoined ? { wechatJoined } : {}) }), headers, method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
     cancel: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/cancel`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinCancelResultSchema),
     tentative: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/tentative`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinTentativeResultSchema),
     removeCalendar: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/tentative`, { headers, method: "DELETE" }, eventJoinCalendarRemoveResultSchema),
@@ -121,6 +121,8 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const [answers, setAnswers] = useState<EventJoinAnswer[]>([]);
   const [step, setStep] = useState<EventJoinStep | null>(null);
   const [profile, setProfile] = useState<EventJoinProfile | null>(null);
+  // 2026-11-27 用户新增：主办方开了「已加群自动通过」时确认页的必答题（改资料不问）。
+  const [wechat, setWechat] = useState<EventJoinWechatAnswer | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [free, setFree] = useState("");
   const [busy, setBusy] = useState(false);
@@ -154,6 +156,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const [asked, setAsked] = useState<Record<string, { item: EventJoinProfileItemKey | null; question: EventJoinQuestion }>>({});
   const [queue, setQueue] = useState<readonly EventJoinQuestion[]>([]);
   const editing = mode === "edit";
+  const wechatNeeded = Boolean(profile?.wechatCheck) && !editing && !wechat;
   // 用户自己点开的那一题可以返回确认页（不答 = 保留原回答）；补问的必答题没有返回。
   const [optional, setOptional] = useState(false);
   // 有没保存的修改：离开整页时浏览器确认（同 HostSetup）。
@@ -275,11 +278,11 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     if (list.length) { showEditQuestions(list, answers); setOptional(true); } else void askMore(key);
   };
   const apply = async () => {
-    if (!mode || draft === "running") return;
+    if (!mode || draft === "running" || wechatNeeded) return;
     setBusy(true);
     // 2026-11-26：确认页上的自我介绍（AI 草稿原样或改过的）都随报名留存——它会显示给这场活动的其他参会者。
     const confirmed = (intro ?? profile?.selfIntro?.text ?? "").trim().slice(0, 400);
-    const res = await joinApi.submit(eventId, answers, confirmed || undefined, editing);
+    const res = await joinApi.submit(eventId, answers, confirmed || undefined, editing, profile?.wechatCheck ? wechat : null);
     setBusy(false);
     if (res.ok) {
       setDirty(false);
@@ -486,14 +489,28 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         <div className={`${styles.lbl} ${r.scopeLbl}`}>{t("visibilityTitle")}</div>
         <div className={`${styles.row} ${r.scopeRow}`}><span className={`${styles.chip} ${styles.c_teal}`}>{t("visAll")}</span><span className={styles.sub}>{t("visAllFields")}</span></div>
       </div>
+      {profile?.wechatCheck && !editing ? (
+        <>
+          <div className={`${styles.card} ${r.inner} ${r.gap}`} data-join-wechat={wechat ?? "unanswered"}>
+            <div className={styles.cardH}><h3>{t("wechatQ")}</h3></div>
+            <div className={r.opts} role="radiogroup" aria-label={t("wechatQ")}>
+              {(["joined", "not_yet"] as const).map((value) => (
+                <button key={value} type="button" role="radio" aria-checked={wechat === value} className={`btn ${r.opt} ${phone ? r.pOpt : ""} ${wechat === value ? r.on : ""}`} data-join-wechat-option={value} onClick={() => setWechat(value)}>{t(value === "joined" ? "wechatJoined" : "wechatNotYet")}</button>
+              ))}
+            </div>
+            {wechat === "not_yet" ? <div className={styles.sub} data-join-wechat-note="">{t("wechatNotYetLine")}</div> : null}
+          </div>
+          {wechat === "not_yet" && profile.hostContact !== undefined ? <HostContactCard contact={profile.hostContact} t={t} className={r.gap} /> : null}
+        </>
+      ) : null}
     </>
   );
   const review = (
     <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-review="">
       {reviewCards}
       <div className={`${styles.row} ${r.go}`}>
-        <span className={`${styles.lbl} ${r.grow}`}>{editableLine}</span>
-        <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.nextBtn}`} disabled={busy || draft === "running"} aria-disabled={draft === "running"} onClick={() => void apply()}>{draft === "running" ? t("introDrafting") : t(editing ? "joinSave" : "applyNow")}</button>
+        <span className={`${styles.lbl} ${r.grow}`} {...(wechatNeeded ? { "data-join-wechat-hint": "", role: "status" } : {})}>{wechatNeeded ? t("wechatPickFirst") : editableLine}</span>
+        <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.nextBtn}`} disabled={busy || draft === "running" || wechatNeeded} aria-disabled={draft === "running"} onClick={() => void apply()}>{draft === "running" ? t("introDrafting") : t(editing ? "joinSave" : "applyNow")}</button>
       </div>
     </div>
   );
@@ -505,7 +522,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     <div className={r.pPage} data-join-review="" data-join-phone="">
       {reviewCards}
       <div className={r.pFoot} data-join-foot="">
-        {profile ? (coverage >= 100 ? (
+        {wechatNeeded ? <div className={r.pReady} role="status" data-join-wechat-hint="">{t("wechatPickFirst")}</div> : profile ? (coverage >= 100 ? (
           <div className={`${r.pReady} ${r.pReadyOk}`} role="status" data-join-ready="done"><Icon name="check" size={16} />{t("readyAll")}</div>
         ) : (
           <div className={r.pReady} role="status" data-join-ready="missing">
@@ -513,7 +530,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
             {firstMissing ? <button type="button" className={`btn ${r.textLink}`} disabled={busy} data-join-fill={firstMissing.key} onClick={() => void askMore(firstMissing.key)}>{t("fillIn")}</button> : null}
           </div>
         )) : null}
-        <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.pMain}`} disabled={busy || draft === "running"} aria-disabled={draft === "running"} onClick={() => void apply()}>{draft === "running" ? t("introDrafting") : t(editing ? "joinSave" : "applyNow")}</button>
+        <button type="button" className={`btn ${styles.btn} ${styles.primary} ${r.pMain}`} disabled={busy || draft === "running" || wechatNeeded} aria-disabled={draft === "running"} onClick={() => void apply()}>{draft === "running" ? t("introDrafting") : t(editing ? "joinSave" : "applyNow")}</button>
         {editableLine ? <div className={`${styles.lbl} ${r.pFootNote}`}>{editableLine}</div> : null}
       </div>
     </div>

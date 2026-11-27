@@ -168,6 +168,14 @@ function Settings({ data, draft, t, language, host, onChange }: { data: HostSetu
           {(["first_come", "review"] as const).map((mode) => <button key={mode} type="button" role="radio" aria-checked={draft.admissionMode === mode} className={`btn ${s.segBtn} ${draft.admissionMode === mode ? s.segOn : ""}`} onClick={() => onChange?.({ ...draft, admissionMode: mode })}>{t(mode === "review" ? "modeReview" : "modeFirstCome")}</button>)}
         </div>
       </div>
+      {draft.admissionMode === "review" ? (
+        <div className={m.setrow} data-host-setup-wechat-auto="">
+          <span className={`${s.lbl} ${u.setLbl}`}>{t("suWechatAuto")}</span>
+          <div className={s.seg} role="radiogroup" aria-label={t("suWechatAuto")}>
+            {([false, true] as const).map((on) => <button key={String(on)} type="button" role="radio" aria-checked={(draft.wechatAutoAdmit === true) === on} className={`btn ${s.segBtn} ${(draft.wechatAutoAdmit === true) === on ? s.segOn : ""}`} onClick={() => onChange?.({ ...draft, wechatAutoAdmit: on })}>{t(on ? "suWechatOn" : "suWechatOff")}</button>)}
+          </div>
+        </div>
+      ) : null}
       <div className={m.setrow}>
         <span className={`${s.lbl} ${u.setLbl}`}>{t("suPage")}</span>
         {link ? <b className={`${u.setVal} ${s.clamp1}`}>{link}</b> : <span className={s.lbl}>{t("suPageNone")}</span>}

@@ -181,6 +181,7 @@ export function HostPeopleView(props: HostPeopleViewProps) {
                       <div className={s.minw0}>
                         <b className={`${s.clamp1} ${m.whoName}`}>{row.name}</b>
                         <div className={`${s.lbl} ${s.clamp1}`}>{[row.org, row.role].filter(Boolean).join(" · ")}</div>
+                        {row.wechatAutoAdmitted ? <div className={`${s.lbl} ${s.clamp1}`} data-host-wechat-auto="">{t("pplWechatAuto")}</div> : null}
                         {answerOf(row) ? <div className={`${m.foldAns} ${s.clamp1}`} data-host-fold-answer="">{answerOf(row)}</div> : null}
                         {issue ? <span className={m.rowNote} role="status">{issue === "conflict" ? t("pRowConflict") : t("pRowFailed")}</span> : null}
                       </div>

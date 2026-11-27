@@ -144,6 +144,7 @@ export const hostPeopleRowObject = z.object({
   status: z.enum(BUCKETS),
   // 0 = a member who registered without an application (first-come / imported events): read-only row.
   applicationVersion: z.number().int().min(0),
+  wechatAutoAdmitted: z.boolean().optional().catch(undefined),
 });
 
 const hostPersonAnswerObject = z.object({ label: z.string().max(400), value: z.string().max(4000) });
@@ -306,6 +307,7 @@ export const hostSetupResponseObject = z.object({
   capacity: count.nullable(),
   registrationClosesAt: z.string().nullable(),
   admissionMode: tolerantEnum(["first_come", "review"], "review"),
+  wechatAutoAdmit: z.boolean().optional().catch(undefined),
   applyPath: z.string().nullable(),
   unpublishedChanges: count,
   savedAt: z.string().nullable(),
@@ -324,6 +326,7 @@ export const hostSetupDraftInputObject = z.object({
   capacity: z.number().int().min(1).max(10_000).nullable(),
   registrationClosesAt: z.string().datetime({ offset: true }).nullable(),
   admissionMode: z.enum(["first_come", "review"]),
+  wechatAutoAdmit: z.boolean().optional(),
 }).strict();
 export const hostSetupDraftInputSchema = hostSetupDraftInputObject as unknown as z.ZodType<HostSetupDraftInput>;
 

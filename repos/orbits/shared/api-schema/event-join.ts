@@ -35,6 +35,8 @@ export const eventJoinProfileObject = z.object({
   editableUntil: z.string().nullable().optional(),
   reviewUntil: z.string().nullable().optional(),
   review: z.boolean(),
+  wechatCheck: z.boolean().optional().catch(undefined),
+  hostContact: hostEventContactObject.nullable().optional().catch(null),
 });
 export const eventJoinProfileSchema = eventJoinProfileObject as unknown as z.ZodType<EventJoinProfile>;
 
@@ -77,6 +79,8 @@ export const eventJoinCurrentObject = z.object({
 export const eventJoinCurrentSchema = eventJoinCurrentObject as unknown as z.ZodType<EventJoinCurrent>;
 /** `selfIntro`: the self-introduction as edited on the review step (kept with this registration). */
 /** `edit`: changing an existing registration — a cancelled or rejected one is refused instead of being registered again. */
-export const eventJoinSubmitInputObject = z.object({ answers: answers.min(1), edit: z.boolean().default(false), idempotencyKey: z.string().min(1).max(200), selfIntro: z.string().trim().min(1).max(400).optional() }).strict();
+export const eventJoinSubmitInputObject = z.object({ answers: answers.min(1), edit: z.boolean().default(false), idempotencyKey: z.string().min(1).max(200), selfIntro: z.string().trim().min(1).max(400).optional(),
+  // 2026-11-27：确认页「是否已加群」的回答；旧客户端不带 = 未回答 = 照旧进审核。
+  wechatJoined: z.enum(["joined", "not_yet"]).optional() }).strict();
 export const eventJoinTentativeInputObject = z.object({ idempotencyKey: z.string().min(1).max(200) }).strict();
 export const eventJoinCancelInputObject = z.object({ idempotencyKey: z.string().min(1).max(200) }).strict();

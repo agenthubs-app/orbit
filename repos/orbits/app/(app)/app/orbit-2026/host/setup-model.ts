@@ -10,7 +10,7 @@ export const NOTE_MAX = 140;
 export const QUESTION_MAX = HOST_QUESTION_MAX;
 
 /** 申込設定の編集中の状態（説明文・質問・受付の設定）。 */
-export type SetupDraft = Pick<HostSetupDraftInput, "description" | "questions" | "capacity" | "registrationClosesAt" | "admissionMode">;
+export type SetupDraft = Pick<HostSetupDraftInput, "description" | "questions" | "capacity" | "registrationClosesAt" | "admissionMode" | "wechatAutoAdmit">;
 
 export const draftOf = (data: HostSetupResponse): SetupDraft => ({
   admissionMode: data.admissionMode,
@@ -18,6 +18,7 @@ export const draftOf = (data: HostSetupResponse): SetupDraft => ({
   description: data.description,
   questions: data.questions,
   registrationClosesAt: data.registrationClosesAt,
+  wechatAutoAdmit: data.wechatAutoAdmit === true,
 });
 
 /** 字数（サロゲートペアを 1 字に数える）。 */
@@ -89,6 +90,7 @@ export function draftInput(draft: SetupDraft, expectedRevision: number): HostSet
     expectedRevision,
     questions: draft.questions.slice(0, QUESTION_MAX).map((question) => ({ id: question.id, kind: question.kind, options: question.kind === "free" ? [] : question.options.map((option) => option.trim()).filter(Boolean), prompt: question.prompt.trim(), required: question.required })),
     registrationClosesAt: draft.registrationClosesAt,
+    wechatAutoAdmit: draft.wechatAutoAdmit === true,
   };
 }
 

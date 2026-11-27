@@ -8,11 +8,33 @@ import type { EventJoinAnswer, EventJoinQuestion } from "../../../shared/contrac
 import { AppError } from "../../../shared/errors/app-error";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import { createPostgresActorRecordStore } from "../actor-records/store";
+import type { EventAdmissionRepository } from "../admission/repository";
 import { JoinRefusedError, profileFactQuestions, type JoinDerivedAnswer, type JoinPorts, type JoinRefusal, type JoinTentativeRecord } from "./join";
 import type { EventParticipantProfileField } from "../registration/contract";
 import type { EventProfileResponseSnapshot } from "../registration/interview-response-contract";
 import type { JourneyLivePorts } from "./ports";
 import type { JourneyLanguage } from "./prep-core";
+
+/** 「已加群自动通过」时记在申请上的决定人（审计 / 主办方能区分是系统按自报通过的，不是哪位主办方点的）。 */
+export const WECHAT_AUTO_ADMIT_ACTOR = "system:wechat-self-report";
+
+/**
+ * 自报已加群的审核申请自动通过：调主办方「承認」用的同一个 decideApplication（同事务受付番号 + 承認通知 + 名额 / 候补规则 + 审计），
+ * 决定人记为 WECHAT_AUTO_ADMIT_ACTOR。只动「審査中」；满员且无候补 / 已被改判 = 不动（照旧审核中）。
+ */
+export async function autoAdmitApplication(repository: Pick<EventAdmissionRepository, "getApplication" | "decideApplication">, actorId: string, eventId: string): Promise<"registered" | "pending_review"> {
+  const current = await repository.getApplication(eventId, actorId);
+  if (current?.status === "admitted") return "registered";
+  if (current?.status !== "pending_review") return "pending_review";
+  try {
+    const next = await repository.decideApplication({ actorId, decision: "approve", decisionActorId: WECHAT_AUTO_ADMIT_ACTOR, eventId, expectedApplicationVersion: current.applicationVersion });
+    return next.status === "admitted" ? "registered" : "pending_review";
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "CAPACITY_FULL" || code === "INVALID_TRANSITION") return "pending_review";
+    throw error;
+  }
+}
 
 type Handler = (request: Request, context: { params: Promise<{ id: string }> }) => Promise<Response>;
 
@@ -96,6 +118,7 @@ export async function signStoredJoinAnswers(input: { actorId: string; eventId: s
 export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (sql: string, values?: readonly unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>; workspaceId: string }): JoinPorts {
   const store = createPostgresActorRecordStore({ query: input.query, workspaceId: input.workspaceId });
   const tentativeId = (actorId: string, eventId: string) => `ets:${createHash("sha256").update(`${actorId}\u0000${eventId}`).digest("hex").slice(0, 32)}`;
+  const wechatReportId = (actorId: string, eventId: string) => `ewr:${createHash("sha256").update(`${actorId}\u0000${eventId}`).digest("hex").slice(0, 32)}`;
   const hostAnswersId = (actorId: string, eventId: string) => `eha:${createHash("sha256").update(`${actorId}\u0000${eventId}`).digest("hex").slice(0, 32)}`;
   const tokenEventId = async (eventId: string, actorId: string) => {
     const { loadEventForRegistration } = await import("../registration/event-loader");
@@ -224,6 +247,22 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
       const raw = result.rows[0]?.questions;
       const list = (typeof raw === "string" ? JSON.parse(raw) : raw) as HostSetupQuestion[] | null | undefined;
       return Array.isArray(list) ? list.slice(0, 5) : [];
+    },
+    // 2026-11-27 用户新增「已加群的报名自动通过」：开关存在已公开的报名设置里（event_host_question_sets.published，不加迁移）。
+    async wechatAutoAdmit(eventId) {
+      const result = await input.query(`/* events:r27-join:wechat-auto-admit */ select coalesce((published ->> 'wechatAutoAdmit')::boolean, false) as enabled from event_host_question_sets where workspace_id = $1 and event_id = $2 and published is not null`, [input.workspaceId, eventId]);
+      return result.rows[0]?.enabled === true;
+    },
+    // 与主办方「承認」同一条迁移（decideApplication：同事务受付番号 + 承認通知 + 名额校验）；决定人记为系统标记，审计里看得出是自动通过。
+    async autoAdmit(actorId, eventId) {
+      const { createConfiguredEventOperationsPostgresRuntime } = await import("../event-operations/storage/postgres-client");
+      const { createPostgresEventAdmissionRepository } = await import("../admission/storage/postgres-repository");
+      const runtime = createConfiguredEventOperationsPostgresRuntime();
+      if (!runtime) return "pending_review";
+      return autoAdmitApplication(createPostgresEventAdmissionRepository(runtime), actorId, eventId);
+    },
+    async saveWechatReport(actorId, eventId, report) {
+      await store.put("eventWechatSelfReports", actorId, wechatReportId(actorId, eventId), { answer: report.answer, autoAdmitted: report.autoAdmitted, eventId }, new Date().toISOString());
     },
     async saveHostAnswers(actorId, eventId, answers) {
       await store.put("eventHostAnswers", actorId, hostAnswersId(actorId, eventId), { answers: { ...answers }, eventId }, new Date().toISOString());

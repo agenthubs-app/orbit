@@ -31,8 +31,8 @@ test("outcome: an AI draft is shown as is; the profile's intro, nothing, or a fa
 });
 
 test("while drafting: apply waits and says why, the intro cannot be edited, the state is announced; edits never draft", () => {
-  assert.match(flow, /disabled=\{busy \|\| draft === "running"\}[^\n]*aria-disabled=\{draft === "running"\}[^\n]*\{draft === "running" \? t\("introDrafting"\)/, "apply: disabled with the reason on the button");
-  assert.match(flow, /if \(!mode \|\| draft === "running"\) return;/, "apply refuses while drafting even if the button is reached");
+  assert.match(flow, /disabled=\{busy \|\| draft === "running"( \|\| wechatNeeded)?\}[^\n]*aria-disabled=\{draft === "running"\}[^\n]*\{draft === "running" \? t\("introDrafting"\)/, "apply: disabled with the reason on the button");
+  assert.match(flow, /if \(!mode \|\| draft === "running"( \|\| wechatNeeded)?\) return;/, "apply refuses while drafting even if the button is reached");
   assert.match(flow, /aria-label=\{t\("edit"\)\} disabled=\{draft === "running"\}/, "intro edit waits");
   assert.match(flow, /aria-busy=\{draft === "running"\}/);
   assert.match(flow, /role="status" aria-live="polite" data-join-intro-draft=\{draft\}/);

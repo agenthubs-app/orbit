@@ -5,7 +5,9 @@
  */
 export type ActorRecordCollection = "eventRecommendationFeedback" | "organizerFollows" | "eventPrepChecklists" | "eventAfterConfirmations" | "eventTentativeSchedules" | "eventJoinIntros" | "eventVenueMemos"
   // R17：参加登録时对主办方自定义申込質問的回答（host/DESIGN.md §2.7）。
-  | "eventHostAnswers";
+  | "eventHostAnswers"
+  // 2026-11-27：报名时自报「是否已加群」与是否因此自动通过（主办方核对付款名单用）。
+  | "eventWechatSelfReports";
 
 export interface ActorRecord<T> {
   recordId: string;

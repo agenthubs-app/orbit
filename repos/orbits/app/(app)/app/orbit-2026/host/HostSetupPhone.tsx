@@ -207,6 +207,14 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
               {(["first_come", "review"] as const).map((mode) => <button key={mode} type="button" role="radio" aria-checked={draft.admissionMode === mode} className={`btn ${s.segBtn} ${draft.admissionMode === mode ? s.segOn : ""}`} onClick={() => change({ ...draft, admissionMode: mode })}>{t(mode === "review" ? "modeReview" : "modeFirstCome")}</button>)}
             </div>
           </div>
+          {draft.admissionMode === "review" ? (
+            <div className={sp.srow} data-host-setup-wechat-auto="">
+              <span className={sp.k}>{t("suWechatAuto")}</span>
+              <div className={`${s.seg} ${sp.right}`} role="radiogroup" aria-label={t("suWechatAuto")} {...inertWhen(ended)}>
+                {([false, true] as const).map((on) => <button key={String(on)} type="button" role="radio" aria-checked={(draft.wechatAutoAdmit === true) === on} className={`btn ${s.segBtn} ${(draft.wechatAutoAdmit === true) === on ? s.segOn : ""}`} onClick={() => change({ ...draft, wechatAutoAdmit: on })}>{t(on ? "suWechatOn" : "suWechatOff")}</button>)}
+              </div>
+            </div>
+          ) : null}
           <div className={sp.srow}>
             <span className={sp.k}>{t("suCapacity")}</span>
             {ended ? <span className={sp.v}>{draft.capacity ? `${draft.capacity}${t("unitPeople")}` : t("suNoCap")}</span> : editCap ? (

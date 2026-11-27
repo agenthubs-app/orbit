@@ -398,6 +398,11 @@ export const hostCopy = {
   pSetupCheck: { ja: "申込設定を確認", zh: "查看报名设置", en: "Check sign-up settings", kind: "label" },
   pSetupSummary: { ja: "質問 {n}問 · {mode}", zh: "{n}个问题 · {mode}", en: "{n} questions · {mode}", kind: "label" },
   modeReview: { ja: "審査制", zh: "审核制", en: "reviewed", kind: "label" },
+  // 2026-11-27 用户新增：審査制のとき、申込で「WeChat グループ参加済み」と答えた人を自動で承認する（主催者が後で取り消し・却下できる）。
+  suWechatAuto: { ja: "WeChat 参加済みは自動承認", zh: "已加群的报名自动通过", en: "Auto-approve WeChat-joined", kind: "label" },
+  suWechatOff: { ja: "オフ", zh: "关", en: "Off", kind: "label" },
+  suWechatOn: { ja: "オン", zh: "开", en: "On", kind: "label" },
+  pplWechatAuto: { ja: "自己申告 WeChat 参加済み · 自動承認", zh: "自报已加群 · 自动通过", en: "Self-reported WeChat joined · auto-approved", kind: "chip" },
   modeFirstCome: { ja: "先着順", zh: "先到先得", en: "first come", kind: "label" },
   pImport: { ja: "招待者リストを取り込む", zh: "导入邀请名单", en: "Import an invite list", kind: "label" },
   pImportSub: { ja: "CSV から招待リンクと照合表", zh: "用 CSV 生成邀请链接与核对表", en: "Invite links and a check sheet from a CSV", kind: "label" },

@@ -211,7 +211,7 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       const service = await join();
       if (!service) return { context: { reason: "EVENT_JOIN_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Registration is unavailable.") };
       try {
-        return await service.submit(actorId!, eventId(params), parsed.value.answers, language, parsed.value.selfIntro, parsed.value.edit);
+        return await service.submit(actorId!, eventId(params), parsed.value.answers, language, parsed.value.selfIntro, parsed.value.edit, parsed.value.wechatJoined);
       } catch (error) {
         if (error instanceof JoinRefusedError) return { context: { reason: error.reason }, error };
         throw error;
