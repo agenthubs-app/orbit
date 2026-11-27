@@ -1,5 +1,5 @@
 {
- "_note": "R17 主催 Web（PLANNER 像素 SC P01–P33；b12 #396–#475 待用户过目 §38，不进本清单；例外：2026-11-26 主办方手机端按画板实现后，W-R17-01/60/61-390（#460/#462/#464 浅色）进清单；参加者 / マッチング / 申込設定 / レポート / 受付 的手机画面改用 b13-host-mobile.html（HM-*，2026-11-26 用户定：手机上也能办完））。mock 服务器 orbits-r17（:3017，distDir .next-r17，ORBIT_REDESIGN_MOCK 含 host-operations）。每张先切 host 变体（views 的 host 字段）：node features/events/design-fixtures/switch.mjs --origin http://localhost:3017 --storage ~/orbit-sprint-evidence/redesign/.auth/qa@orbit.test.json --host '<host 字段 JSON>'，再 --only <id>。变体是服务端全局状态，不同变体的画面不要并行跑。",
+ "_note": "R17 主催 Web（PLANNER 像素 SC P01–P33；b12 #396–#475 待用户过目 §38，不进本清单；例外：2026-11-26 主办方手机端按画板实现后，W-R17-01/60/61-390（#460/#462/#464 浅色）进清单；参加者 / マッチング / 申込設定 / レポート / 受付 的手机画面改用 b13-host-mobile.html（HM-*，2026-11-26 用户定：手机上也能办完））。mock 服务器 orbits-r17（:3017，distDir .next-r17，ORBIT_REDESIGN_MOCK 含 host-operations）。每张先切 host 变体（views 的 host 字段）：node features/events/design-fixtures/switch.mjs --origin http://localhost:3017 --storage ~/orbit-sprint-evidence/redesign/.auth/qa@orbit.test.json --host '<host 字段 JSON>'，再 --only <id>。变体是服务端全局状态，不同变体的画面不要并行跑。全套请用 node scripts/visual/run-r17.mjs --out <dir>（2026-11-28：每张前复位 mock 并固定示例时钟，前面的画面不会把后面的带脏；页面没加载出来时重试一次）。",
  "defaults": {
   "app-origin": "http://localhost:3017",
   "login": "qa@orbit.test",
