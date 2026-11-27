@@ -262,7 +262,8 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     const draft = (set?.draft ?? {}) as { description?: string; questions?: HostSetupQuestion[]; capacity?: number | null; registrationClosesAt?: string | null; admissionMode?: "first_come" | "review"; wechatAutoAdmit?: boolean };
     const published = set?.published as typeof draft | null;
     const questions = draft.questions ?? published?.questions ?? [];
-    const diff = published ? ([JSON.stringify(published.questions ?? []) !== JSON.stringify(draft.questions ?? []), (published.description ?? "") !== (draft.description ?? ""), (published.capacity ?? null) !== (draft.capacity ?? null), (published.registrationClosesAt ?? null) !== (draft.registrationClosesAt ?? null), (published.admissionMode ?? "review") !== (draft.admissionMode ?? "review"), (published.wechatAutoAdmit === true) !== (draft.wechatAutoAdmit === true)].filter(Boolean).length) : 0;
+    const diff = published ? ([JSON.stringify(published.questions ?? []) !== JSON.stringify(draft.questions ?? []), (published.description ?? "") !== (draft.description ?? ""), (published.capacity ?? null) !== (draft.capacity ?? null), (published.registrationClosesAt ?? null) !== (draft.registrationClosesAt ?? null), (published.admissionMode ?? "review") !== (draft.admissionMode ?? "review")].filter(Boolean).length) : 0;
+    // 「已加群自动通过」点了就生效（报名端读草稿），不算「未公开的修改」。
     const suggestions = questions.length === 0 ? suggestQuestions({ existing: [], library: HOST_QUESTION_LIBRARY, past: [] }) : [];
     return {
       admissionMode: draft.admissionMode ?? facts.admissionMode,

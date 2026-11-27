@@ -159,6 +159,11 @@ test("host setup: the switch round-trips; older clients that omit it keep the sa
   assert.equal(hostSetupResponseObject.shape.wechatAutoAdmit.safeParse(undefined).success, true);
   const live = readFileSync("features/events/host/live.ts", "utf8");
   assert.match(live, /const wechatAutoAdmit = input\.wechatAutoAdmit \?\? /, "omitted = keep the draft's current value");
+  // 用户 2026-11-27 定：点了就生效——报名端读草稿（自动保存），不算「未公开的修改」。
+  assert.doesNotMatch(live, /published\.wechatAutoAdmit/, "not counted as an unpublished change");
+  const joinLive = readFileSync("features/events/journey/join-live.ts", "utf8");
+  assert.match(joinLive, /coalesce\(\(draft ->> 'wechatAutoAdmit'\)::boolean, \(published ->> 'wechatAutoAdmit'\)::boolean, false\)/);
+  assert.doesNotMatch(joinLive, /wechat-auto-admit \*\/[^`]*published is not null/, "no need for a published form");
 });
 
 test("host list: the self-report marker row flag is optional and shown on desktop and phone", () => {

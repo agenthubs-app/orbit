@@ -399,6 +399,7 @@ export const hostCopy = {
   pSetupSummary: { ja: "質問 {n}問 · {mode}", zh: "{n}个问题 · {mode}", en: "{n} questions · {mode}", kind: "label" },
   modeReview: { ja: "審査制", zh: "审核制", en: "reviewed", kind: "label" },
   // 2026-11-27 用户新增：審査制のとき、申込で「WeChat グループ参加済み」と答えた人を自動で承認する（主催者が後で取り消し・却下できる）。
+  // 切り替えた時点で効く（自動保存されれば「変更を公開」は不要）。
   suWechatAuto: { ja: "WeChat 参加済みは自動承認", zh: "已加群的报名自动通过", en: "Auto-approve WeChat-joined", kind: "label" },
   suWechatOff: { ja: "オフ", zh: "关", en: "Off", kind: "label" },
   suWechatOn: { ja: "オン", zh: "开", en: "On", kind: "label" },

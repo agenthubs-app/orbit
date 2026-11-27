@@ -248,9 +248,10 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
       const list = (typeof raw === "string" ? JSON.parse(raw) : raw) as HostSetupQuestion[] | null | undefined;
       return Array.isArray(list) ? list.slice(0, 5) : [];
     },
-    // 2026-11-27 用户新增「已加群的报名自动通过」：开关存在已公开的报名设置里（event_host_question_sets.published，不加迁移）。
+    // 2026-11-27 用户新增「已加群的报名自动通过」：开关存在报名设置里（event_host_question_sets，不加迁移）。
+    // 用户同日定：主办方点了就生效，不用「公开修改」——所以读草稿（自动保存）里的值，草稿没有再看已公开的。
     async wechatAutoAdmit(eventId) {
-      const result = await input.query(`/* events:r27-join:wechat-auto-admit */ select coalesce((published ->> 'wechatAutoAdmit')::boolean, false) as enabled from event_host_question_sets where workspace_id = $1 and event_id = $2 and published is not null`, [input.workspaceId, eventId]);
+      const result = await input.query(`/* events:r27-join:wechat-auto-admit */ select coalesce((draft ->> 'wechatAutoAdmit')::boolean, (published ->> 'wechatAutoAdmit')::boolean, false) as enabled from event_host_question_sets where workspace_id = $1 and event_id = $2`, [input.workspaceId, eventId]);
       return result.rows[0]?.enabled === true;
     },
     // 与主办方「承認」同一条迁移（decideApplication：同事务受付番号 + 承認通知 + 名额校验）；决定人记为系统标记，审计里看得出是自动通过。
