@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { resolveAuthenticatedApiActor } from "../../_shared/authenticated-actor";
+import { aiMonthlyLimitResponse, configuredDraftAssistLedger, createDraftAssistRunner } from "../../../../features/ai-quota/draft-assist";
 import { createSeekSuggestionService } from "../../../../features/profile/seek-suggestion-service";
 
 export const dynamic = "force-dynamic";
@@ -22,12 +23,16 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     // 空 body 由服务返回 CANDIDATES_REQUIRED。
   }
-  const result = await createSeekSuggestionService().suggest({
+  // 2026-11-27 隐藏月上限：一次建议 = 一次 draft_assist 操作（账本不可用照常生成）。
+  const ledgered = createDraftAssistRunner({ actorId: actor.id, gate: configuredDraftAssistLedger(), kind: "seek" });
+  const result = await createSeekSuggestionService({ runModel: ledgered.run }).suggest({
     actorId: actor.id,
     candidates: body.candidates,
     goal: typeof body.goal === "string" ? body.goal : null,
     language: typeof body.language === "string" ? body.language : null,
   });
+  await ledgered.finish(result.success === true ? "succeeded" : "failed");
+  if (ledgered.refusal() === "quota") return aiMonthlyLimitResponse();
   const status = result.success === true
     ? 200
     : result.error.code === "CANDIDATES_REQUIRED"

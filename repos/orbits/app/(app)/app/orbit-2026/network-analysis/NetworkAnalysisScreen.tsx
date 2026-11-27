@@ -102,7 +102,7 @@ function AnalysisInner({ language, view, snapshot: initialSnapshot, evidenceName
       });
       const body = await response.json().catch(() => null) as { success?: boolean; data?: unknown; error?: { context?: { reason?: string } } } | null;
       if (response.ok && body?.success) setSnapshot(networkSnapshotViewSchema.parse(body.data) as NetworkSnapshotView);
-      else if (response.status === 429) toast.error(t("recomputeLimited"));
+      else if (response.status === 429) toast.error(t(body?.error?.context?.reason === "MONTHLY_LIMIT" ? "recomputeMonthlyLimited" : "recomputeLimited"));
       else if (body?.error?.context?.reason === "INSUFFICIENT_CONTACTS") toast.error(t("recomputeNeedsContacts"));
       else toast.error(t("recomputeFailed"));
     } catch {

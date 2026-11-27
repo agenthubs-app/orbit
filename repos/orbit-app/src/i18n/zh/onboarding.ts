@@ -143,6 +143,7 @@ export const onboarding = {
   "onboarding.v3.regenerateLeft": "还剩{count}次",
   "onboarding.v3.introFailed": "这次没写出来。可以重试，或直接在下面写几句。",
   "onboarding.v3.regenerateFailed": "这次没换成功，保留了上一版。",
+  "onboarding.v3.introMonthlyLimit": "这个月的次数已经用完，下个月 1 日恢复。已有的内容照常可以查看。",
   "onboarding.v3.introLimit": "生成次数已用完，请直接在下面写几句。",
   "onboarding.v3.introPrivate": "不会自动公开或发送",
   "onboarding.v3.saveFailed": "没保存成功，填写的内容都还在。",

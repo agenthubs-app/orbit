@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { resolveAuthenticatedApiActor } from "../../../_shared/authenticated-actor";
+import { aiMonthlyLimitResponse, configuredDraftAssistLedger, createDraftAssistRunner } from "../../../../../features/ai-quota/draft-assist";
 import { createAiEmailDraftService } from "../../../../../features/chat/ai-email-draft-service";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +39,9 @@ export async function POST(request: Request): Promise<Response> {
     // Invalid JSON is handled as an empty request and fails closed in the service.
   }
 
-  const result = await createAiEmailDraftService().createDraft({
+  // 2026-11-27 隐藏月上限：一次草稿 = 一次 draft_assist 操作（账本不可用照常生成）。
+  const ledgered = createDraftAssistRunner({ actorId: actor.id, gate: configuredDraftAssistLedger(), kind: "email" });
+  const result = await createAiEmailDraftService({ runModel: ledgered.run }).createDraft({
     actorId: actor.id,
     contactId: readString(body.contactId),
     language: readString(body.language),
@@ -46,6 +49,8 @@ export async function POST(request: Request): Promise<Response> {
     purpose: readString(body.purpose),
     recipientName: readString(body.recipientName),
   });
+  await ledgered.finish(result.success === true ? "succeeded" : "failed");
+  if (ledgered.refusal() === "quota") return aiMonthlyLimitResponse();
   const status =
     result.success === true
       ? 200

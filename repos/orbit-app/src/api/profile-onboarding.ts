@@ -77,9 +77,11 @@ export async function generateOnboardingIntro(
   client: OrbitApiClient,
   language: "zh" | "en" | "ja",
   idempotencyKey: string,
-): Promise<{ ok: true; bio: string; headline: string } | OnboardingFailure | { ok: false; kind: "limit" }> {
+): Promise<{ ok: true; bio: string; headline: string } | OnboardingFailure | { ok: false; kind: "limit" | "monthlyLimit" }> {
   const result = await client.post<unknown>(PROFILE_INTRO_DRAFT_PATH, { body: { language, idempotencyKey } });
   if (!result.success && result.error.code === "INTRO_LIMIT_REACHED") return { ok: false, kind: "limit" };
+  // 2026-11-27 隐藏月上限（草稿类合计）：这次没有调用模型。
+  if (!result.success && result.error.code === "AI_MONTHLY_LIMIT") return { ok: false, kind: "monthlyLimit" };
   if (!succeeded(result) || !result.success) return failure(result);
   const data = result.data as { bio?: unknown; headline?: unknown } | null;
   if (typeof data?.bio !== "string" || typeof data.headline !== "string") return { ok: false, kind: "failed" };

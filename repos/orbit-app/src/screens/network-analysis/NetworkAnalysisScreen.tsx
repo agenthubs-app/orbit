@@ -54,7 +54,7 @@ export function NetworkAnalysisScreen() {
     const outcome = await recomputeNetworkSnapshot(client, language);
     setRecomputing(false);
     if (outcome.kind === "ok") setRecomputed(outcome.snapshot);
-    else toast.error(t(outcome.kind === "limited" ? "networkAnalysis.recomputeLimited" : outcome.kind === "needsContacts" ? "networkAnalysis.recomputeNeedsContacts" : "networkAnalysis.recomputeFailed"));
+    else toast.error(t(outcome.kind === "limited" ? "networkAnalysis.recomputeLimited" : outcome.kind === "monthlyLimited" ? "networkAnalysis.recomputeMonthlyLimited" : outcome.kind === "needsContacts" ? "networkAnalysis.recomputeNeedsContacts" : "networkAnalysis.recomputeFailed"));
   }, [client, language, t, toast]);
 
   const subtitle = !data ? undefined

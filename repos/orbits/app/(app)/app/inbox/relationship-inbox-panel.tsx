@@ -36,6 +36,7 @@ import { ORBIT_Z } from "../orbit-z";
 import { invalidateInboxActorConfirmation, readContactMessageActor } from "./inbox-request";
 import { BoundedContactMessagesTab } from "./bounded-contact-messages-tab";
 import workspace from "./inbox-workspace.module.css";
+import { AI_MONTHLY_LIMIT_CODE, AI_MONTHLY_LIMIT_TEXT } from "../orbit-2026/copy/ai-monthly-limit";
 
 type InboxTab = "threads" | "alerts";
 
@@ -294,9 +295,10 @@ export async function requestMessageDraft(input: {
 // 这是环境未配置而非临时故障，表单要区分展示，避免让用户徒劳重试。
 export const AI_DRAFT_UNCONFIGURED_ERROR_CODE = "MODEL_API_KEY_MISSING" as const;
 
-export type NewThreadFormError = "ai_unconfigured" | "generic" | null;
+export type NewThreadFormError = "ai_unconfigured" | "monthly_limit" | "generic" | null;
 
 export function newThreadFormErrorForDraftFailure(code: string | undefined): NewThreadFormError {
+  if (code === AI_MONTHLY_LIMIT_CODE) return "monthly_limit";
   return code === AI_DRAFT_UNCONFIGURED_ERROR_CODE ? "ai_unconfigured" : "generic";
 }
 
@@ -744,6 +746,8 @@ function NewThreadForm({
             ja: "この環境では AI 下書きが設定されていません。件名と本文を手動で入力してください。",
           })}
         </div>
+      ) : error === "monthly_limit" ? (
+        <div className="ri-new-error">{t(AI_MONTHLY_LIMIT_TEXT)}</div>
       ) : error === "generic" ? (
         <div className="ri-new-error">{t({ ja: "うまくいきませんでした。もう一度お試しください。", en: "Something went wrong. Please try again.", zh: "出了点问题，请重试。" })}</div>
       ) : null}

@@ -310,7 +310,7 @@ export function SheetRow({ disabled = false, label, on, onPress }: { disabled?: 
   );
 }
 
-export type IntroStatus = "idle" | "generating" | "ready" | "error" | "limit";
+export type IntroStatus = "idle" | "generating" | "ready" | "error" | "limit" | "monthlyLimit";
 /** Same two as Web: the interface language's business tone, and English. */
 export type IntroTone = "native" | "en";
 
@@ -340,7 +340,7 @@ export function IntroStep({ bio, bioCount, disabled, editing, error, goals, inpu
   const { t } = useOrbitLocale();
   const [why, setWhy] = useState(false);
   const generating = status === "generating";
-  const failed = status === "error" || status === "limit";
+  const failed = status === "error" || status === "limit" || status === "monthlyLimit";
   const writing = editing || failed;
   const tones = [{ key: "native", label: t("onboarding.v3.toneNative") }, { key: "en", label: t("onboarding.v3.toneEnglish") }] as const;
   return (
@@ -355,7 +355,7 @@ export function IntroStep({ bio, bioCount, disabled, editing, error, goals, inpu
           </UiPressable>;
         })}
       </View>
-      {failed ? <UiText accessibilityRole="alert" style={[styles.errLine, { marginTop: 0, marginBottom: 12 }]}>{t(status === "limit" ? "onboarding.v3.introLimit" : "onboarding.v3.introFailed")}</UiText> : null}
+      {failed ? <UiText accessibilityRole="alert" style={[styles.errLine, { marginTop: 0, marginBottom: 12 }]}>{t(status === "limit" ? "onboarding.v3.introLimit" : status === "monthlyLimit" ? "onboarding.v3.introMonthlyLimit" : "onboarding.v3.introFailed")}</UiText> : null}
       {message ? <UiText accessibilityLiveRegion="polite" style={[styles.errLine, { marginTop: 0, marginBottom: 12 }]}>{message}</UiText> : null}
       <View onLayout={onCardLayout} style={[styles.card, error ? styles.boxError : null, error ? { borderWidth: 1, padding: 17 } : null]} testID="onboarding-intro-card">
         {generating ? <View accessibilityLabel={t("onboarding.v3.introGenerating")} accessible><View style={[styles.bone, { width: "92%" }]} /><View style={[styles.bone, { width: "86%" }]} /><View style={[styles.bone, { width: "64%" }]} /></View>
@@ -371,7 +371,7 @@ export function IntroStep({ bio, bioCount, disabled, editing, error, goals, inpu
         {why && !generating ? <View style={styles.whyBody}><UiText style={styles.whyBodyText}>{t("onboarding.v3.introWhy", { goals, offer, topics })}</UiText></View> : null}
       </View>
       {error ? <UiText accessibilityLiveRegion="polite" accessibilityRole="alert" style={styles.errLine}>{error}</UiText> : null}
-      {status === "limit" ? null : <View style={styles.regenerate}>
+      {status === "limit" || status === "monthlyLimit" ? null : <View style={styles.regenerate}>
         <KitButton badge={failed ? undefined : t("onboarding.v3.regenerateLeft", { count: regenerationsLeft })} block disabled={disabled || generating || (!failed && regenerationsLeft <= 0)} icon="refresh" label={t(failed ? "onboarding.v3.retry" : "onboarding.v3.regenerate")} onPress={onRegenerate} />
       </View>}
       <UiText style={styles.private}>{t("onboarding.v3.introPrivate")}</UiText>

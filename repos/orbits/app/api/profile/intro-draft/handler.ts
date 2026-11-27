@@ -7,6 +7,8 @@ import { resolveProfileOnboardingProgressService } from "../../../../features/pr
 import { isSampleWrite } from "../../../../features/guide/sample-write";
 import type { ProfileIntroQuotaService } from "../../../../features/profile/intro-onboarding-quota";
 import type { ProfileOnboardingProgressService } from "../../../../features/profile/onboarding-progress";
+import type { AiQuotaGate } from "../../../../features/ai-quota/gate";
+import { aiMonthlyLimitResponse, configuredDraftAssistLedger, createDraftAssistRunner } from "../../../../features/ai-quota/draft-assist";
 
 type Language = "zh" | "en" | "ja";
 const error = (status: number, code: string, message: string) => NextResponse.json({ success: false, error: { code, message } }, { status });
@@ -32,11 +34,26 @@ export function createProfileIntroDraftHandler(dependencies: {
   flowForActor?: (actorId: string) => ProfileOnboardingProgressService | null;
   quotaForActor?: (actorId: string) => ProfileIntroQuotaService | null;
   createDraftService?: (options: ProfileIntroDraftServiceOptions) => ReturnType<typeof createProfileIntroDraftService>;
+  /** 2026-11-27 隐藏月上限：草稿类共用的 AI 账本（draft_assist）；null = 不记账。 */
+  draftLedger?: () => AiQuotaGate | null;
 } = {}) {
   const resolveActor = dependencies.resolveActor ?? resolveAuthenticatedApiActor;
   const flowForActor = dependencies.flowForActor ?? resolveProfileOnboardingProgressService;
   const quotaForActor = dependencies.quotaForActor ?? resolveProfileIntroQuota;
   const createDraftService = dependencies.createDraftService ?? createProfileIntroDraftService;
+  const draftLedger = dependencies.draftLedger ?? configuredDraftAssistLedger;
+  /** One generation = one draft_assist operation; `limited` = the monthly fuse kept the model call off. */
+  async function generate(actorId: string, language: Language, options: ProfileIntroDraftServiceOptions = {}): Promise<{ result: ProfileIntroDraftResult; limited: boolean }> {
+    const ledgered = createDraftAssistRunner({ actorId, gate: draftLedger(), kind: "intro" });
+    try {
+      const result = await createDraftService({ ...options, runModel: ledgered.run }).createDraft({ actorId, language });
+      await ledgered.finish(result.success === true ? "succeeded" : "failed");
+      return { limited: ledgered.refusal() === "quota", result };
+    } catch (caught) {
+      await ledgered.finish("failed");
+      throw caught;
+    }
+  }
   return async function POST(request: Request): Promise<Response> {
     const actor = await resolveActor();
     if (!actor?.id) return error(401, "ACTOR_REQUIRED", "Sign in before generating an introduction.");
@@ -60,12 +77,12 @@ export function createProfileIntroDraftHandler(dependencies: {
       const flow = await flowService.get();
       if (!flow) {
         // Existing accounts without a first onboarding flow keep the settings draft path.
-        const direct = await createDraftService({}).createDraft({ actorId: actor.id, language });
-        return draftResponse(direct);
+        const direct = await generate(actor.id, language);
+        return direct.limited ? aiMonthlyLimitResponse() : draftResponse(direct.result);
       }
       if (typeof key !== "string" && flow.finishedAt) {
-        const direct = await createDraftService({}).createDraft({ actorId: actor.id, language });
-        return draftResponse(direct);
+        const direct = await generate(actor.id, language);
+        return direct.limited ? aiMonthlyLimitResponse() : draftResponse(direct.result);
       }
       if (typeof key !== "string") return error(400, "VALIDATION_ERROR", "An idempotency key is required during onboarding.");
       const quota = quotaForActor(actor.id);
@@ -76,14 +93,16 @@ export function createProfileIntroDraftHandler(dependencies: {
       if (reservation.kind === "success" || reservation.kind === "failure") {
         return draftResponse(reservation.result);
       }
-      let result;
+      let result: ProfileIntroDraftResult;
+      let limited = false;
       try {
-        result = await createDraftService({ beforeModelCall: () => quota.noteModelCall(key) }).createDraft({ actorId: actor.id, language });
+        ({ limited, result } = await generate(actor.id, language, { beforeModelCall: () => quota.noteModelCall(key) }));
       } catch {
         result = { success: false as const, error: { code: "MODEL_REQUEST_FAILED" as const, message: "The draft could not be generated. Start a new request to retry." } };
       }
       const persisted = await quota.complete(key, result);
-      return draftResponse(persisted);
+      // 隐藏月上限：这次没有调用模型；记下失败（不占引导的 3 次），回月上限的 429（客户端换新键再试）。
+      return limited ? aiMonthlyLimitResponse() : draftResponse(persisted);
     } catch (caught) {
       if (caught instanceof Error && caught.message === "MUTATION_CONFLICT") return error(409, "IDEMPOTENCY_CONFLICT", "This request key was already used for a different draft.");
       return error(503, "SERVICE_UNAVAILABLE", "The draft request could not be saved. Please retry later.");

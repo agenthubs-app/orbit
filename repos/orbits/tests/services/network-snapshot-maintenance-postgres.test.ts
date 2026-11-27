@@ -57,7 +57,7 @@ test("SC-04 maintenance: enrichment deferred by a full background pool runs the 
     const text = enricher();
     const today = runtimeAt(harness, NOW);
     for (let index = 0; index < BACKGROUND_POOL_DAILY_LIMIT; index += 1) {
-      await today.ledger.reserve({ actorId: ALICE, idempotencyKey: `bg:${index}`, now: NOW, pool: "background", purpose: "insight", trigger: "auto" });
+      await today.ledger.reserve({ actorId: ALICE, idempotencyKey: `bg:${index}`, now: NOW, pool: "background", purpose: "memo_extraction", trigger: "auto" });
     }
     const layersToday = createNewContactLayersDeps({ enricher: text, runtime: today, store });
     const result = await runNewContactLayers({ actorId: ALICE, contactIds: ["c0", "c1", "c2", "c3", "c4"], now: NOW, sourceKey: "import:1" }, layersToday);

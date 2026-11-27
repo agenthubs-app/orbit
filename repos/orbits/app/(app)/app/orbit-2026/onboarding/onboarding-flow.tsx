@@ -78,6 +78,7 @@ import {
 } from "./onboarding-steps";
 import { LEGACY_REPAIR_COPY, ONBOARDING_COPY } from "../copy/onboarding";
 import { PROFILE_CONTACT_METHODS, invalidProfileContactMethods, profileContactMethods, profileContactMethodsValid } from "../../../../../shared/compute/profile-contact-methods";
+import { AI_MONTHLY_LIMIT_TEXT } from "../copy/ai-monthly-limit";
 import styles from "./OnboardingFlow.module.css";
 
 export interface OnboardingFlowProps {
@@ -148,7 +149,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const [bio, setBio] = useState("");
   const [headline, setHeadline] = useState("");
   const [introStatus, setIntroStatus] = useState<IntroStatus>("idle");
-  const [introErrorCode, setIntroErrorCode] = useState<"INTRO_LIMIT_REACHED" | "SAMPLE_READ_ONLY" | null>(null);
+  const [introErrorCode, setIntroErrorCode] = useState<"INTRO_LIMIT_REACHED" | "SAMPLE_READ_ONLY" | "AI_MONTHLY_LIMIT" | null>(null);
   const [introRegenerations, setIntroRegenerations] = useState(0);
   const [introTone, setIntroTone] = useState<IntroTone>("native");
   const [editingIntro, setEditingIntro] = useState(false);
@@ -570,11 +571,11 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         // 新草稿失败：保留上一版，不扣次数。
         setIntroStatus(previous.status === "error" ? "ready" : previous.status);
         setIntroTone(previous.tone);
-        setError(t(ONBOARDING_COPY.flow021));
+        setError(code === "AI_MONTHLY_LIMIT" ? t(AI_MONTHLY_LIMIT_TEXT) : t(ONBOARDING_COPY.flow021));
         return;
       }
       setIntroStatus("error");
-      setIntroErrorCode(code === "INTRO_LIMIT_REACHED" || code === "SAMPLE_READ_ONLY" ? code : null);
+      setIntroErrorCode(code === "INTRO_LIMIT_REACHED" || code === "SAMPLE_READ_ONLY" || code === "AI_MONTHLY_LIMIT" ? code : null);
     }
   }
 

@@ -43,7 +43,7 @@ test("ledger v9: a round through the entry records one operation and its calls w
     await runNetworkAnalysisMigrations(pool);
     const applied = (await pool.query("select version, name from network_analysis_schema_migrations order by version")).rows;
     assert.equal(applied.length, NETWORK_ANALYSIS_MIGRATIONS.length);
-    assert.deepEqual(applied.at(-1), { name: "ai-usage-agent-chat", version: 9 });
+    assert.deepEqual(applied.at(-1), { name: "ai-usage-agent-chat-draft-assist", version: 9 });
 
     const client = createTransactionalPostgresClient({ connectionString: databaseUrl, pool: pool as never });
     const ledger = createPostgresAiUsageLedger({ client, workspaceId: WS });

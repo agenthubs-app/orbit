@@ -219,7 +219,9 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
   });
   if (reservation.ok !== true) {
     const refusal = reservation as Extract<typeof reservation, { ok: false }>;
-    await advance(refusal.reason === "daily_limit"
+    // 2026-11-27 隐藏月上限（笔记提取 300 次/月）：和日上限一样静默顺延到 retryOn（下月 1 日）。
+    if (refusal.reason === "monthly_limit") console.info(JSON.stringify({ actorId: input.actorId, event: "memo_extraction_monthly_limit", retryOn: refusal.retryOn ?? null }));
+    await advance(refusal.reason === "daily_limit" || refusal.reason === "monthly_limit"
       ? { status: "deferred", ...(refusal.retryOn ? { retryOn: refusal.retryOn } : {}) }
       : { status: "disabled" });
     await planManual();
@@ -322,7 +324,8 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
       if (reservation.ok !== true) {
         const refusal = reservation as Extract<typeof reservation, { ok: false }>;
         // 已成功的段保留；到期重跑只做剩下的段。
-        await advance(refusal.reason === "daily_limit"
+        if (refusal.reason === "monthly_limit") console.info(JSON.stringify({ actorId: input.actorId, event: "memo_extraction_monthly_limit", retryOn: refusal.retryOn ?? null }));
+        await advance(refusal.reason === "daily_limit" || refusal.reason === "monthly_limit"
           ? { status: "deferred", segments: state, segmentOutputs: outputs, ...(refusal.retryOn ? { retryOn: refusal.retryOn } : {}) }
           : { status: "disabled", segments: state, segmentOutputs: outputs });
         await planManual();

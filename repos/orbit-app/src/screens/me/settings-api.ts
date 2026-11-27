@@ -58,8 +58,10 @@ export function createAccountSettingsApi(client: OrbitApiClient) {
       return (await client.patch<unknown>("/api/agent/memory/settings", { body: patch, ...(signal ? { signal } : {}) })).success;
     },
     async removeMemory(id: string, signal?: AbortSignal, expectedRevision?: number): Promise<boolean> { return (await client.delete<unknown>(`/api/agent/memory/${encodeURIComponent(id)}${expectedRevision ? `?expectedRevision=${expectedRevision}` : ""}`, signal ? { signal } : {})).success; },
-    async introDraft(language: string, signal?: AbortSignal): Promise<string | null> {
+    /** The draft's bio; `{ monthlyLimit: true }` when this month's AI drafts are used up (2026-11-27); null when it failed. */
+    async introDraft(language: string, signal?: AbortSignal): Promise<string | { monthlyLimit: true } | null> {
       const result = await client.post<unknown>("/api/profile/intro-draft", { body: { language }, ...(signal ? { signal } : {}) });
+      if (!result.success && result.error.code === "AI_MONTHLY_LIMIT") return { monthlyLimit: true };
       const parsed = result.success ? z.object({ bio: z.string().refine(profileBioWithinLimit) }).safeParse(result.data) : null;
       return parsed?.success ? parsed.data.bio : null;
     },

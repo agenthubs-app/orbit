@@ -595,8 +595,8 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
       if (kind === "regenerate" && previous.hadDraft) {
         // The earlier draft and its tone stay, and the attempt is not counted.
         setIntroStatus(previous.status === "error" ? "ready" : previous.status); setTone(previous.tone);
-        setMessage(t("onboarding.v3.regenerateFailed"));
-      } else setIntroStatus(result.kind === "limit" ? "limit" : "error");
+        setMessage(t(result.kind === "monthlyLimit" ? "onboarding.v3.introMonthlyLimit" : "onboarding.v3.regenerateFailed"));
+      } else setIntroStatus(result.kind === "limit" ? "limit" : result.kind === "monthlyLimit" ? "monthlyLimit" : "error");
     } finally {
       generating.current = false;
     }

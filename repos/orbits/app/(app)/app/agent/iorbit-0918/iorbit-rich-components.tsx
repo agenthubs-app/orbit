@@ -13,6 +13,7 @@
  */
 "use client";
 
+import { AI_MONTHLY_LIMIT_CODE, AI_MONTHLY_LIMIT_TEXT } from "../../orbit-2026/copy/ai-monthly-limit";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
@@ -292,6 +293,14 @@ function AgentInlineDraftResult({
     // 实测最常见的失败是 provider 20s 超时（MODEL_REQUEST_FAILED），重试一次即可。
     // 错误必须自带出路：说清发生了什么、该怎么办，并把「怎么办」做成旁边的按钮。
     const timedOut = draft.errorCode === "MODEL_REQUEST_FAILED";
+    // 2026-11-27 隐藏月上限：这个月用完了——只说明，不给「再試行」。
+    if (draft.errorCode === AI_MONTHLY_LIMIT_CODE) {
+      return (
+        <div className="draft-error" data-agent-inline-draft-error data-agent-inline-draft-error-code={draft.errorCode} role="alert">
+          <span className="w"><span>{t(AI_MONTHLY_LIMIT_TEXT)}</span></span>
+        </div>
+      );
+    }
     return (
       <div className="draft-error" data-agent-inline-draft-error data-agent-inline-draft-error-code={draft.errorCode ?? undefined} role="alert">
         <span className="w">

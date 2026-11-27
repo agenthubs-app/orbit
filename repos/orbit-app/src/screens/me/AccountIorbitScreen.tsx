@@ -23,7 +23,7 @@ export function AccountIorbitScreen() {
   // D5: 「修改 ›」 of an answer's memory chip opens this screen with `?memory=<id>`.
   const params = useLocalSearchParams<{ memory?: string }>(); const openMemoryId = typeof params?.memory === "string" ? params.memory : null; const [goal, setGoal] = useState<Awaited<ReturnType<typeof api.goal>>>();
   const [semanticAvailable, setSemanticAvailable] = useState(false); const [semanticOn, setSemanticOn] = useState(true);
-  const [busy, setBusy] = useState(false); const [error, setError] = useState(false);
+  const [busy, setBusy] = useState(false); const [error, setError] = useState(false); const [monthlyLimit, setMonthlyLimit] = useState(false);
   const [readVersion, setReadVersion] = useState(0);
   const controller = useRef<AbortController | null>(null); const current = useRef(api); current.current = api;
   useEffect(() => {
@@ -48,9 +48,9 @@ export function AccountIorbitScreen() {
   }, [api, designMode, design?.fixtures, design?.variant, readVersion]);
   async function generate() {
     if (design) { state.patch({ bio: design.fixtures.bio }); return; }
-    if (busy || state.offline || language === "ja") return; setBusy(true); setError(false);
+    if (busy || state.offline || language === "ja") return; setBusy(true); setError(false); setMonthlyLimit(false);
     const bio = await api.introDraft(language, controller.current?.signal);
-    if (current.current === api && !controller.current?.signal.aborted) { if (bio !== null) state.patch({ bio }); else setError(true); setBusy(false); }
+    if (current.current === api && !controller.current?.signal.aborted) { if (typeof bio === "string") state.patch({ bio }); else if (bio) setMonthlyLimit(true); else setError(true); setBusy(false); }
   }
   // AG14: the user's own changes on this screen — no card, saved at once; the list is read again after each.
   async function reread() { const values = await api.memories(controller.current?.signal); if (values && current.current === api && !controller.current?.signal.aborted) { lastMemoryList.set(api, values); setMemories(values); } }
@@ -87,6 +87,7 @@ export function AccountIorbitScreen() {
       <Button label={t("me.retry")} onPress={state.refresh} /></Card> : null}
     {error ? <Card><UiText accessibilityRole="alert">{t("me.failed")}</UiText>
       <Button label={t("me.retry")} disabled={busy || state.saving} onPress={() => setReadVersion(value => value + 1)} /></Card> : null}
+    {monthlyLimit ? <Card><UiText accessibilityRole="alert">{t("me.aiMonthlyLimit")}</UiText></Card> : null}
     {state.feedback ? <UiText accessibilityRole="alert">{state.feedback}</UiText> : null}
     {state.session ?
       <AccountIorbitContent t={t} goal={goal?.goal ?? (goal === null ? null : undefined)} bio={state.session.draft.bio} memories={memories} semanticAvailable={semanticAvailable} semanticOn={semanticOn} busy={busy || state.saving} offline={state.offline} canSave={state.canSave} aiAvailable={(designMode || language !== "ja") && !state.offline}

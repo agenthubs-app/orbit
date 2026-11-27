@@ -288,9 +288,12 @@ export async function processClaimedInsightBatch(deps: ContactInsightWorkerDeps,
   });
   if (reservation.ok !== true) {
     const denial = reservation as Extract<typeof reservation, { ok: false }>;
-    const retryOn = denial.reason === "daily_limit" ? denial.retryOn ?? nextTokyoMidnight(now) : nextTokyoMidnight(now);
+    // 2026-11-27 隐藏月上限（后台洞察 40 批/月）：和日上限一样静默顺延，retryOn = 下月 1 日 00:00 东京。
+    const limited = denial.reason === "daily_limit" || denial.reason === "monthly_limit";
+    const retryOn = limited ? denial.retryOn ?? nextTokyoMidnight(now) : nextTokyoMidnight(now);
+    if (denial.reason === "monthly_limit") console.info(JSON.stringify({ actorId: batch.actorId, event: "contact_insight_monthly_limit", retryOn }));
     await deps.repository.defer({ actorId: batch.actorId, contactIds: ids, notBefore: retryOn, now, owner: batch.owner });
-    return { callsResponded: 0, contacts: ids.length, retryOn, status: denial.reason === "daily_limit" ? "deferred" : "unavailable" };
+    return { callsResponded: 0, contacts: ids.length, retryOn, status: limited ? "deferred" : "unavailable" };
   }
   if (!reservation.owner) {
     // 同一批内容的操作已结束：不再执行、不结算，这些行按失败等下一次待更新。

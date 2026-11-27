@@ -158,7 +158,7 @@ test("SC-03 background pool full: the entry defers enrichment to the next Tokyo 
     const enricher = mockEnricher();
     const { layerResults, runtime, service } = await setup(harness, enricher);
     for (let index = 0; index < BACKGROUND_POOL_DAILY_LIMIT; index += 1) {
-      await runtime.ledger.reserve({ actorId: ALICE, idempotencyKey: `bg:${index}`, now: NOW, pool: "background", purpose: "insight", trigger: "auto" });
+      await runtime.ledger.reserve({ actorId: ALICE, idempotencyKey: `bg:${index}`, now: NOW, pool: "background", purpose: "memo_extraction", trigger: "auto" });
     }
     const uploaded = await service.upload({ actorId: ALICE, bytes: new TextEncoder().encode(CSV), fileName: "team.csv", idempotencyKey: randomUUID(), kind: "csv" });
     await service.commit(ALICE, uploaded.batch.id, { confirmationIntentId: randomUUID(), mergeConfirmations: [] });

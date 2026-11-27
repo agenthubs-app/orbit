@@ -252,9 +252,10 @@ end;
 `,
   },
   {
-    // iOrbit 对话（agent v1）接进账本（用户 2026-11-27 定：先补计量和每人每日上限）。同 v8 写法：按定义找 purpose 约束再重建；
-    // 生产执行等授权。没执行前对话照常、不记账（entry/usage-gate.ts 的 fail-open）。
-    name: "ai-usage-agent-chat",
+    // 2026-11-27（用户定）：iOrbit 对话（agent_chat，计量 + 每人每日上限）与草稿类（draft_assist：个人简介草稿、「我在寻找」建议、
+    // 跟进邮件草稿，隐藏月上限）接进账本。同 v8 写法：按定义找 purpose 约束再重建；生产执行等授权。
+    // 没执行前两者都照常可用、不记账（fail-open：entry/usage-gate.ts、events/journey/ledgered-runner.ts）。
+    name: "ai-usage-agent-chat-draft-assist",
     version: 9,
     sql: `
 declare
@@ -270,7 +271,7 @@ begin
     check (purpose in ('plan', 'plan_refine', 'snapshot', 'memo_extraction', 'insight', 'enrichment',
       'plan_intake', 'plan_background', 'plan_draft', 'plan_revise', 'plan_review_mark', 'plan_review', 'event_assessment',
       'event_registration_interview', 'event_registration_question', 'event_post_summary', 'event_matching',
-      'plan_search', 'plan_prep', 'agent_chat'));
+      'plan_search', 'plan_prep', 'agent_chat', 'draft_assist'));
 end;
 `,
   },

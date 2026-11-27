@@ -2748,6 +2748,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["networkAnalysis.aiEvidence", "label"],
   ["networkAnalysis.recompute", "button"],
   ["networkAnalysis.recomputeLimited", "toast"],
+  ["networkAnalysis.recomputeMonthlyLimited", "toast"],
   ["networkAnalysis.recomputeFailed", "toast"],
   ["networkAnalysis.recomputeNeedsContacts", "toast"],
   ["networkAnalysis.stageBreakdown", "label"],
@@ -2799,6 +2800,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["publicInfo.*", "label"],
   ["me.offline", "sentence"],
   ["me.saveError", "sentence"],
+  ["me.aiMonthlyLimit", "sentence"],
   ["me.*", "label"],
   // R29 admin, public catalogue, and access entry.
   ["admin.login.title", "dialogTitle"],
@@ -2919,6 +2921,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["onboarding.v3.introWhy", "sentence"],
   ["onboarding.v3.introFailed", "sentence"],
   ["onboarding.v3.introLimit", "sentence"],
+  ["onboarding.v3.introMonthlyLimit", "sentence"],
   ["onboarding.v3.regenerateFailed", "sentence"],
   ["onboarding.v3.saveFailed", "sentence"],
   ["onboarding.v3.offline", "sentence"],

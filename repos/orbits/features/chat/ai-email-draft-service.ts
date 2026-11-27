@@ -61,6 +61,8 @@ export interface AiEmailDraftServiceOptions {
   contactDetailService?: ContactDetailTagStatusService;
   contactsService?: ContactsListSearchAndFilterService;
   modelConfig?: GeminiOrbitAgentProviderConfig;
+  /** 2026-11-27: the model call (the route passes the draft_assist ledgered runner); default `runOrbitAgentModelText`. */
+  runModel?: typeof runOrbitAgentModelText;
 }
 
 function normalizeIdentity(value: string): string {
@@ -317,7 +319,8 @@ export function createAiEmailDraftService(
         "The result is a draft only: do not claim that anything was sent, booked, attached, or completed.",
         'Return strict JSON only with exactly two string fields: {"subject":"...","body":"..."}.',
       ].join(" ");
-      let modelResult = await runOrbitAgentModelText({
+      const runModel = options.runModel ?? runOrbitAgentModelText;
+      let modelResult = await runModel({
         config: modelConfig,
         systemInstruction,
         userText: sourceBackedModelInput,
@@ -337,7 +340,7 @@ export function createAiEmailDraftService(
       let unsupportedClaims = draft ? unsupportedDraftClaims(draft) : [];
 
       if (draft && unsupportedClaims.length > 0) {
-        modelResult = await runOrbitAgentModelText({
+        modelResult = await runModel({
           config: modelConfig,
           systemInstruction: `${systemInstruction} A previous attempt was rejected by the safety validator. Regenerate from the supplied record without any rejected claim category.`,
           userText: JSON.stringify(

@@ -110,6 +110,10 @@ export function createNetworkSnapshotRouteHandlers(dependencies: NetworkSnapshot
           case "insufficient":
             return fail(new AppError("CONFLICT", "Add at least 3 contacts before analysing your network."), 409, { reason: "INSUFFICIENT_CONTACTS" });
           case "limited":
+            // 2026-11-27 隐藏月上限（手动重新分析 10 次/月）：reason MONTHLY_LIMIT，客户端显示「这个月用完了」的固定句。
+            if (outcome.limit === "monthly") {
+              return fail(new AppError("CONFLICT", "This month's analyses are used up. They come back on the 1st of next month."), 429, { reason: "MONTHLY_LIMIT", ...(outcome.retryOn ? { retryOn: outcome.retryOn } : {}) });
+            }
             return fail(
               new AppError("CONFLICT", "You have used today's analyses. Try again tomorrow."),
               429,

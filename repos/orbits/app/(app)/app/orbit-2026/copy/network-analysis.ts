@@ -84,6 +84,8 @@ export const networkAnalysisCopy = {
   aiEvidence: { ja: "根拠：{names}", zh: "依据：{names}", en: "Based on: {names}", kind: "label" },
   recompute: { ja: "見直す", zh: "重新分析", en: "Refresh", kind: "button" },
   recomputeLimited: { ja: "今日の見直しは使い切りました", zh: "今天的重新分析次数已用完", en: "No refreshes left today", kind: "toast" },
+  // 2026-11-27 隐藏月上限（同 copy/ai-monthly-limit.ts）。
+  recomputeMonthlyLimited: { ja: "今月の利用回数の上限に達しました。来月1日に戻ります。これまでの内容はいつもどおりご覧いただけます。", zh: "这个月的次数已经用完，下个月 1 日恢复。已有的内容照常可以查看。", en: "This month's uses are used up. They come back on the 1st of next month. Everything you already have can still be viewed as usual.", kind: "toast" },
   recomputeFailed: { ja: "見直せませんでした", zh: "没能重新分析", en: "Could not refresh", kind: "toast" },
   recomputeNeedsContacts: { ja: "確認済み3人から見直せます", zh: "已确认的人满3位后才能重新分析", en: "Needs 3 confirmed people", kind: "toast" },
   // 下钻名单（b5 #37 / #40 右栏）

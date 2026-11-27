@@ -39,6 +39,7 @@ export const me = {
   "me.semantic": "意味検索",
   "me.semanticNote": "言葉の意味が近い人・イベントも探します · この端末だけの設定です",
   "me.aiReview": "内容を確認してから保存してください。",
+  "me.aiMonthlyLimit": "今月の利用回数の上限に達しました。来月1日に戻ります。これまでの内容はいつもどおりご覧いただけます。",
   "me.failed": "読み込めませんでした。もう一度お試しください。",
   "me.integrations": "連携",
   "me.iorbit": "iOrbit が使う情報",

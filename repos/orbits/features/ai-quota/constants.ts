@@ -32,7 +32,9 @@ export type AiQuotaPurpose =
   | "plan_search"
   | "plan_prep"
   // iOrbit 对话（agent v1，用户 2026-11-27 定）：一轮对话 = 1 次操作，只作防滥用的每日上限，不是会员额度。
-  | "agent_chat";
+  | "agent_chat"
+  // 2026-11-27（用户定「加隐藏月上限」）：个人简介草稿、「我在寻找」建议、跟进邮件草稿——一次生成 = 1 次操作，只有月上限。
+  | "draft_assist";
 export type AiQuotaTrigger = "auto" | "manual" | "plan";
 
 export const AI_QUOTA_POOLS: readonly AiQuotaPool[] = ["user", "background", "system"];
@@ -41,7 +43,7 @@ export const AI_QUOTA_PURPOSES: readonly AiQuotaPurpose[] = [
   "plan_intake", "plan_background", "plan_draft", "plan_revise", "plan_review_mark", "plan_review", "event_assessment",
   "event_registration_interview", "event_registration_question", "event_post_summary", "event_matching",
   "plan_search", "plan_prep",
-  "agent_chat",
+  "agent_chat", "draft_assist",
 ];
 export const AI_QUOTA_TRIGGERS: readonly AiQuotaTrigger[] = ["auto", "manual", "plan"];
 
@@ -94,6 +96,8 @@ export const AI_QUOTA_MAX_CALLS: Readonly<Record<AiQuotaPurpose, number>> = {
   // 含 finder reformulate、extract-memo）+ judgment 每轮 3 次请求（agent-v1/judgment/ask.ts JUDGMENT_CALLS_PER_ROUND，
   // 超时/5xx 会立即重发一次，最多 2 次 HTTP）= 4 + 3×2 = 10。
   agent_chat: 10,
+  // 三处里重试最多的是个人简介草稿（profile/intro-draft-service.ts MAX_ATTEMPTS 3）；「我在寻找」建议、跟进邮件草稿各最多 2 次。
+  draft_assist: 3,
 };
 
 /**
@@ -130,7 +134,39 @@ export const AI_QUOTA_MONTHLY_LIMITS: Readonly<Partial<Record<AiQuotaPurpose, nu
   // LF4（主会话代定，2026-10-21）：报名 persona / 自己紹介每次提交都会重新生成，原来没有上限；每东京月 30 次
   // （LF13：旧的 /persona 接口也计在这里）。
   event_registration_interview: 30,
+  // 2026-11-27 隐藏月上限（防滥用保险丝，界面不展示数字；正常用户碰不到）。
+  memo_extraction: 300,
+  draft_assist: 60,
 };
+
+/**
+ * 2026-11-27 隐藏月上限（用户定「加隐藏月上限」）：同一用途按池 / 触发方式分开的月上限（`AI_QUOTA_MONTHLY_LIMITS` 只能按用途），
+ * 每人每东京自然月、不含 released。只为把恶意账号每月能花的钱压住，不是会员额度，界面上不展示数字。改数值只改这里。
+ */
+export const INSTANT_INSIGHT_MONTHLY_LIMIT = 60;
+export const BACKGROUND_INSIGHT_MONTHLY_LIMIT = 40;
+export const MANUAL_REANALYSIS_MONTHLY_LIMIT = 10;
+
+export interface AiQuotaMonthlyFuse {
+  pool: AiQuotaPool;
+  purpose: AiQuotaPurpose;
+  /** 不写 = 这个池里这个用途的全部触发方式。 */
+  trigger?: AiQuotaTrigger;
+  limit: number;
+}
+
+export const AI_QUOTA_MONTHLY_FUSES: readonly AiQuotaMonthlyFuse[] = [
+  // 当场联系人洞察（名片确认／重新分析后当场生成）：60 批/月；超出时照旧静默退回后台池。
+  { limit: INSTANT_INSIGHT_MONTHLY_LIMIT, pool: "user", purpose: "insight", trigger: "auto" },
+  // 后台联系人洞察：40 批/月；超出时整批顺延到下月 1 日。
+  { limit: BACKGROUND_INSIGHT_MONTHLY_LIMIT, pool: "background", purpose: "insight" },
+  // 手动重新分析：10 次/月。
+  { limit: MANUAL_REANALYSIS_MONTHLY_LIMIT, pool: "user", purpose: "snapshot", trigger: "manual" },
+];
+
+export function monthlyFuseFor(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose; trigger: AiQuotaTrigger }): AiQuotaMonthlyFuse | null {
+  return AI_QUOTA_MONTHLY_FUSES.find((fuse) => fuse.pool === input.pool && fuse.purpose === input.purpose && (fuse.trigger === undefined || fuse.trigger === input.trigger)) ?? null;
+}
 
 /**
  * R26（events DESIGN §3.1）：活动评估在用户主动池里单独计日数，**不占** `USER_POOL_DAILY_LIMIT`（照 `PLAN_FLOW_DAILY_LIMIT` 的写法）。
@@ -170,6 +206,7 @@ export const AI_QUOTA_PURPOSE_POOLS: Readonly<Partial<Record<AiQuotaPurpose, AiQ
   plan_search: "user",
   plan_prep: "user",
   agent_chat: "user",
+  draft_assist: "user",
 };
 
 /**
@@ -187,11 +224,11 @@ export function isPlanFlowOperation(input: { pool: AiQuotaPool; purpose: AiQuota
 
 /**
  * R33：不占任何日上限、只记账的用户池用途（`plan_search`；准备卡的初次生成 `plan_prep` / `plan`）。
- * 账本的 `user_used` / `plan_flow_used` 都不数它们。
+ * 账本的 `user_used` / `plan_flow_used` 都不数它们。2026-11-27：`draft_assist` 也不占日上限（只有月上限，月上限照常查）。
  */
 export function isRecordOnlyUserOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose; trigger: AiQuotaTrigger }): boolean {
   if (input.pool !== "user") return false;
-  if (input.purpose === "plan_search") return true;
+  if (input.purpose === "plan_search" || input.purpose === "draft_assist") return true;
   return input.purpose === "plan_prep" && input.trigger !== PLAN_PREP_REGENERATE_TRIGGER;
 }
 

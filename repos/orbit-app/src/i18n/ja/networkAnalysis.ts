@@ -69,6 +69,7 @@ export const networkAnalysis = {
   "networkAnalysis.aiStale": "人脈が増えたので、次の更新で見直します。",
   "networkAnalysis.aiEvidence": "根拠：{names}",
   "networkAnalysis.recompute": "見直す",
+  "networkAnalysis.recomputeMonthlyLimited": "今月の利用回数の上限に達しました。来月1日に戻ります。これまでの内容はいつもどおりご覧いただけます。",
   "networkAnalysis.recomputeLimited": "今日の見直しは使い切りました",
   "networkAnalysis.recomputeFailed": "見直せませんでした",
   "networkAnalysis.recomputeNeedsContacts": "確認済み3人から見直せます",

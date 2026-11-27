@@ -6,8 +6,12 @@
  * - 账本不可用（表未迁移 / CHECK 拒绝新用途 / 出错 / 不是所有者）：会後まとめ（E3）照 A5 照常调用、不记账并留日志；
  *   LF13（用户 2026-10-22 批准）报名的 AI（`refuseWithoutLedger`）改为不发请求（`refusal()` = "unavailable"），
  *   与其他 AI 用途的「始终拒绝」一致——生产上线前须先执行账本迁移。没有注入账本（`gate: null`，只有测试与无库的本地模式）时照常调用。
+ * - 2026-11-27：草稿类（`draft_assist`：个人简介草稿、「我在寻找」建议、跟进邮件草稿）也用这个 runner：从 user 池 / manual 预留
+ *   （`pool` / `trigger` 可选，默认仍是 system / auto），带 `failOpen`：账本不可用或登记子账出错都照常调用，只有明确超限
+ *   （额度用完、超过 max_calls）才不发请求。
  */
-import type { AiQuotaGate } from "../../ai-quota/gate";
+import type { AiQuotaGate, AiQuotaPool, AiQuotaTrigger } from "../../ai-quota/gate";
+import { AiQuotaCallRejectedError } from "../../ai-quota/ledger";
 import type { runOrbitAgentModelText } from "../../orbit-ai/gemini-provider";
 
 type Runner = typeof runOrbitAgentModelText;
@@ -24,8 +28,13 @@ export interface LedgeredRunner {
 export function createLedgeredRunner(input: {
   gate: AiQuotaGate | null;
   actorId: string;
-  purpose: "event_registration_interview" | "event_registration_question" | "event_post_summary";
+  purpose: "event_registration_interview" | "event_registration_question" | "event_post_summary" | "draft_assist";
   idempotencyKey: string;
+  /** Default `system` / `auto` (the event AI); `draft_assist` reserves from `user` / `manual`. */
+  pool?: AiQuotaPool;
+  trigger?: AiQuotaTrigger;
+  /** 2026-11-27: a ledger error while recording a call (not a refusal) lets the call go out unrecorded. */
+  failOpen?: boolean;
   now?: () => Date;
   runner: Runner;
   /** LF13: refuse (send nothing) when the ledger cannot be used, instead of running unledgered (A5). */
@@ -39,7 +48,7 @@ export function createLedgeredRunner(input: {
     if (operation !== undefined) return operation;
     if (!input.gate) return (operation = null);
     try {
-      const reservation = await input.gate.reserve({ actorId: input.actorId, idempotencyKey: input.idempotencyKey, now: now(), pool: "system", purpose: input.purpose, takeover: true, trigger: "auto" });
+      const reservation = await input.gate.reserve({ actorId: input.actorId, idempotencyKey: input.idempotencyKey, now: now(), pool: input.pool ?? "system", purpose: input.purpose, takeover: true, trigger: input.trigger ?? "auto" });
       operation = reservation.ok && reservation.owner ? reservation.operationId : null;
       if (!operation) {
         const quota = "reason" in reservation && (reservation.reason === "daily_limit" || reservation.reason === "monthly_limit");
@@ -71,6 +80,10 @@ export function createLedgeredRunner(input: {
         try {
           callId = (await input.gate.beginCall(op, { model: args.config?.model ?? "configured", provider: String(args.config?.provider ?? "configured") })).callId;
         } catch (error) {
+          if (input.failOpen && !(error instanceof AiQuotaCallRejectedError)) {
+            console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "ai_ledger_call_unmetered", purpose: input.purpose }));
+            return input.runner(args);
+          }
           // 超过 max_calls：账本拒绝即不发请求（与其他用途同一语义）。
           console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_ai_ledger_call_refused", purpose: input.purpose }));
           return { error: { code: "MODEL_REQUEST_FAILED", message: "AI call limit for this operation reached.", provider: "deepseek", source: "env" }, retryable: false, success: false } as unknown as Awaited<ReturnType<Runner>>;

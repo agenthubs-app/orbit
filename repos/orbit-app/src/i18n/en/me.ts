@@ -39,6 +39,7 @@ export const me = {
   "me.semantic": "Semantic search",
   "me.semanticNote": "Also finds people and events with similar meanings · Saved only on this device",
   "me.aiReview": "Review the draft before saving.",
+  "me.aiMonthlyLimit": "This month's uses are used up. They come back on the 1st of next month. Everything you already have can still be viewed as usual.",
   "me.failed": "Couldn't load this. Try again.",
   "me.integrations": "Integrations",
   "me.iorbit": "Information iOrbit uses",

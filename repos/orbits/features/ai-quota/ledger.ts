@@ -30,6 +30,7 @@ import {
   isInstantInsightOperation,
   isPlanFlowOperation,
   isRecordOnlyUserOperation,
+  monthlyFuseFor,
   PLAN_PREP_REGENERATE_TRIGGER,
   MANUAL_REANALYSIS_DAILY_LIMIT,
   nextTokyoMidnight,
@@ -102,7 +103,7 @@ function count(value: unknown): number {
 // R33：plan_search 与初次生成的 plan_prep 只记账、不计入任何日上限；重生成的 plan_prep（trigger = manual）计入 plan_flow_used。
 const PLAN_FLOW_SQL_LIST = PLAN_FLOW_PURPOSES.map((purpose) => `'${purpose}'`).join(", ");
 const PLAN_FLOW_SQL = `(purpose in (${PLAN_FLOW_SQL_LIST}) or (purpose = 'plan_prep' and trigger = '${PLAN_PREP_REGENERATE_TRIGGER}'))`;
-const RECORD_ONLY_SQL = `(purpose = 'plan_search' or (purpose = 'plan_prep' and trigger <> '${PLAN_PREP_REGENERATE_TRIGGER}'))`;
+const RECORD_ONLY_SQL = `(purpose in ('plan_search', 'draft_assist') or (purpose = 'plan_prep' and trigger <> '${PLAN_PREP_REGENERATE_TRIGGER}'))`;
 const USAGE_SQL = `/* ai-quota:usage-today */
   select
     count(*) filter (where pool = 'user' and not (purpose = 'insight' and trigger = 'auto') and not ${PLAN_FLOW_SQL} and not ${RECORD_ONLY_SQL} and purpose not in ('event_assessment', 'agent_chat'))::int as user_used,
@@ -143,6 +144,12 @@ const MONTHLY_SQL = `/* ai-quota:usage-month */
   select count(*)::int as used from ai_usage_ledger
   where workspace_id = $1 and actor_id = $2 and purpose = $3 and status <> 'released'
     and usage_day >= ($4 || '-01')::date and usage_day < (($4 || '-01')::date + interval '1 month')`;
+
+// 2026-11-27 隐藏月上限：按池 / 用途 / 触发方式（可空 = 不分触发方式）数本月未释放的操作。
+const MONTHLY_FUSE_SQL = `/* ai-quota:usage-month-fuse */
+  select count(*)::int as used from ai_usage_ledger
+  where workspace_id = $1 and actor_id = $2 and pool = $3 and purpose = $4 and ($5::text is null or trigger = $5) and status <> 'released'
+    and usage_day >= ($6 || '-01')::date and usage_day < (($6 || '-01')::date + interval '1 month')`;
 
 export function createPostgresAiUsageLedger(input: { client: TransactionalPostgresClient; workspaceId: string }): AiUsageLedger {
   const { client, workspaceId } = input;
@@ -208,6 +215,12 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
       // R22：有月上限的用途（只有计划 v2 的新用途），在同一把锁里数本月未释放的操作。
       const used = await countMonthlyWith(executor, actorId, request.purpose, request.now);
       if (used >= monthlyLimit) return { ok: false, reason: "monthly_limit", retryOn: nextTokyoMonthStart(request.now), limit: "monthly" };
+    }
+    const fuse = monthlyFuseFor(request);
+    if (fuse) {
+      // 2026-11-27 隐藏月上限：同一池的锁下数本月（保险丝只挂在单一池上，所以按池的锁已经够用）。
+      const row = (await executor.query<Row>(MONTHLY_FUSE_SQL, [workspaceId, actorId, fuse.pool, fuse.purpose, fuse.trigger ?? null, tokyoUsageMonth(request.now)])).rows[0];
+      if (count(row?.used) >= fuse.limit) return { ok: false, reason: "monthly_limit", retryOn: nextTokyoMonthStart(request.now), limit: "monthly" };
     }
     if (replay) {
       await executor.query(

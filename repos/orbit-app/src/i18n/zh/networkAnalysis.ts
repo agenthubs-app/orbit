@@ -69,6 +69,7 @@ export const networkAnalysis = {
   "networkAnalysis.aiStale": "人脉增加了，下次更新时会重新看",
   "networkAnalysis.aiEvidence": "依据：{names}",
   "networkAnalysis.recompute": "重新分析",
+  "networkAnalysis.recomputeMonthlyLimited": "这个月的次数已经用完，下个月 1 日恢复。已有的内容照常可以查看。",
   "networkAnalysis.recomputeLimited": "今天的重新分析次数已用完",
   "networkAnalysis.recomputeFailed": "没能重新分析",
   "networkAnalysis.recomputeNeedsContacts": "已确认的人满3位后才能重新分析",

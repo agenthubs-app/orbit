@@ -31,6 +31,7 @@ function ledgerOf(harness: NetworkHarness): AiUsageLedger {
   return createPostgresAiUsageLedger({ client: harness.client, workspaceId: WORKSPACE });
 }
 
+// 2026-11-27：后台洞察有 40 批/月的隐藏月上限（小于后台池日上限 60），所以填满后台池用 memo_extraction（月 300）。
 async function fill(ledger: AiUsageLedger, input: { actorId?: string; pool: "user" | "background" | "system"; purpose: "snapshot" | "memo_extraction" | "insight" | "plan"; trigger: "auto" | "manual" | "plan"; count: number; prefix: string; now?: Date }) {
   for (let index = 0; index < input.count; index += 1) {
     const reservation = await ledger.reserve({ actorId: input.actorId ?? ALICE, idempotencyKey: `${input.prefix}:${index}`, now: input.now ?? NOW, pool: input.pool, purpose: input.purpose, trigger: input.trigger });
@@ -111,12 +112,12 @@ test("SC-04 Tokyo day boundary: 23:59:59 JST counts for that day, 00:00 JST star
     const ledger = ledgerOf(harness);
     const lateNight = new Date("2026-10-02T14:59:59.000Z");
     assert.equal(tokyoUsageDay(lateNight), "2026-10-02");
-    await fill(ledger, { count: BACKGROUND_POOL_DAILY_LIMIT, now: lateNight, pool: "background", prefix: "late", purpose: "insight", trigger: "auto" });
-    const denied = await ledger.reserve({ actorId: ALICE, idempotencyKey: "late:x", now: lateNight, pool: "background", purpose: "insight", trigger: "auto" });
+    await fill(ledger, { count: BACKGROUND_POOL_DAILY_LIMIT, now: lateNight, pool: "background", prefix: "late", purpose: "memo_extraction", trigger: "auto" });
+    const denied = await ledger.reserve({ actorId: ALICE, idempotencyKey: "late:x", now: lateNight, pool: "background", purpose: "memo_extraction", trigger: "auto" });
     assert.deepEqual(denied, { limit: "background", ok: false, reason: "daily_limit", retryOn: "2026-10-02T15:00:00.000Z" });
     const midnight = new Date("2026-10-02T15:00:00.000Z");
     assert.equal(tokyoUsageDay(midnight), "2026-10-03");
-    const allowed = await ledger.reserve({ actorId: ALICE, idempotencyKey: "midnight", now: midnight, pool: "background", purpose: "insight", trigger: "auto" });
+    const allowed = await ledger.reserve({ actorId: ALICE, idempotencyKey: "midnight", now: midnight, pool: "background", purpose: "memo_extraction", trigger: "auto" });
     assert.equal(allowed.ok, true);
   });
 });
@@ -124,7 +125,7 @@ test("SC-04 Tokyo day boundary: 23:59:59 JST counts for that day, 00:00 JST star
 test("SC-04 user pool: manual 3/day, then the 10-operation fuse; pools never borrow from each other; system rows count for neither", databaseTest, async () => {
   await withNetworkDatabase(async (harness) => {
     const ledger = ledgerOf(harness);
-    await fill(ledger, { count: BACKGROUND_POOL_DAILY_LIMIT, pool: "background", prefix: "bg", purpose: "insight", trigger: "auto" });
+    await fill(ledger, { count: BACKGROUND_POOL_DAILY_LIMIT, pool: "background", prefix: "bg", purpose: "memo_extraction", trigger: "auto" });
     await fill(ledger, { count: 25, pool: "system", prefix: "sys", purpose: "insight", trigger: "auto" });
     // 后台池满时手动重新分析仍可用。
     await fill(ledger, { count: MANUAL_REANALYSIS_DAILY_LIMIT, pool: "user", prefix: "manual", purpose: "snapshot", trigger: "manual" });
@@ -156,14 +157,14 @@ test("SC-04 user pool fuse: with 10 user operations and fewer than 3 manual, a m
 test("SC-04 replaying a key returns the same operation; with one slot left two concurrent reservations grant exactly one", databaseTest, async () => {
   await withNetworkDatabase(async (harness) => {
     const ledger = ledgerOf(harness);
-    const first = await ledger.reserve({ actorId: ALICE, idempotencyKey: "same", now: NOW, pool: "background", purpose: "insight", trigger: "auto" });
-    const replay = await ledger.reserve({ actorId: ALICE, idempotencyKey: "same", now: NOW, pool: "background", purpose: "insight", trigger: "auto" });
+    const first = await ledger.reserve({ actorId: ALICE, idempotencyKey: "same", now: NOW, pool: "background", purpose: "memo_extraction", trigger: "auto" });
+    const replay = await ledger.reserve({ actorId: ALICE, idempotencyKey: "same", now: NOW, pool: "background", purpose: "memo_extraction", trigger: "auto" });
     assert.ok(first.ok && replay.ok);
     assert.equal(first.ok && first.operationId, replay.ok && replay.operationId);
     assert.equal((await ledgerRows(harness)).length, 1);
-    await fill(ledger, { count: BACKGROUND_POOL_DAILY_LIMIT - 2, pool: "background", prefix: "bg", purpose: "insight", trigger: "auto" });
+    await fill(ledger, { count: BACKGROUND_POOL_DAILY_LIMIT - 2, pool: "background", prefix: "bg", purpose: "memo_extraction", trigger: "auto" });
     const results = await Promise.all([0, 1, 2].map((index) =>
-      ledger.reserve({ actorId: ALICE, idempotencyKey: `race:${index}`, now: NOW, pool: "background", purpose: "insight", trigger: "auto" })));
+      ledger.reserve({ actorId: ALICE, idempotencyKey: `race:${index}`, now: NOW, pool: "background", purpose: "memo_extraction", trigger: "auto" })));
     assert.equal(results.filter((result) => result.ok).length, 1);
     assert.equal((await ledger.readUsageToday(ALICE, NOW)).background, BACKGROUND_POOL_DAILY_LIMIT);
   });
@@ -238,7 +239,7 @@ test("SC-04 the W0046 gate replaced by the ledger opens memo extraction (backgro
     const calls = (await harness.pool.query(`select status, input_tokens, output_tokens from ai_usage_calls where workspace_id = $1`, [WORKSPACE])).rows;
     assert.deepEqual(calls, [{ input_tokens: 210, output_tokens: 30, status: "responded" }]);
 
-    await fill(ledger, { count: BACKGROUND_POOL_DAILY_LIMIT - 1, pool: "background", prefix: "bg", purpose: "insight", trigger: "auto" });
+    await fill(ledger, { count: BACKGROUND_POOL_DAILY_LIMIT - 1, pool: "background", prefix: "bg", purpose: "memo_extraction", trigger: "auto" });
     const second = await runMemoExtraction({ ...job, noteId: "note:live-contact-detail-update:n2" }, { applyValues: async () => [], gate: ledger, now: () => NOW, provider, store });
     assert.equal(second.status, "deferred");
     assert.equal(second.retryOn, nextTokyoMidnight(NOW));
