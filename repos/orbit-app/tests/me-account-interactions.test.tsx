@@ -61,7 +61,7 @@ test("R18a editor controls update the public preview and visibility without expo
   await page.getByRole("switch").first().click();
   await preview.getByText(/新しい会社/).waitFor();
   assert.equal(await preview.getByText(/@/).count(), 0);
-  await preview.getByText(/名刺交換した相手のみ/).waitFor();
+  await preview.getByText(/人脈の相手と、申し込んだイベントの主催者だけに表示されます。/).waitFor();
 });
 
 test("R18a settings controls select language/appearance and retain exact destinations", { timeout: 15000 }, async t => {

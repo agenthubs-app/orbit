@@ -12,7 +12,7 @@ test("R18a preview filters all public groups and never reveals exchange-only han
   const profile = { ...demoAccountProfiles.complete.profile!, publicFields: { companyRole: false, offeringSeeking: false, intro: false }, handles: { email: "PRIVATE@example.com", phone: "PRIVATE123" } } as ManualProfileContract;
   const html = renderToHtml(createElement(module.AccountPreviewContent, { profile, t: createTranslator("ja") }));
   for (const secret of [profile.organization, profile.role, profile.bio!, ...profile.offering!, ...profile.seeking!, "PRIVATE"]) assert.ok(!html.includes(secret), secret);
-  assert.ok(html.includes("名刺交換した相手のみ"));
+  assert.ok(html.includes("人脈の相手と、申し込んだイベントの主催者だけに表示されます。"), "2026-11-27: who can see contact methods");
 });
 test("R18a editor renders company, role, industry, location, bio limit, tags and visibility controls", async () => {
   const module = await import("../src/screens/me/AccountEditorContent").catch(() => null);

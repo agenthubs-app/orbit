@@ -16,7 +16,7 @@ export function AccountPreviewContent({ profile, preview, t }: { profile: Manual
     {view.bio ? <UiText style={styles.body}>{view.bio}</UiText> : null}
     {view.offering?.length ? <View><UiText style={styles.heading}>{t("me.offering")}</UiText><View style={styles.row}>{view.offering.map(value => <Chip label={value} key={value} tone="lav" />)}</View></View> : null}
     {view.seeking?.length ? <View><UiText style={styles.heading}>{t("me.seeking")}</UiText><View style={styles.row}>{view.seeking.map(value => <Chip label={value} key={value} tone="pink" />)}</View></View> : null}
-    <View style={styles.row}><Icon name="lock" size={16} /><UiText style={styles.secondary}>{t("me.contact")} · {t("me.exchangeOnly")}</UiText></View>
+    <View style={styles.row}><Icon name="lock" size={16} /><UiText style={styles.secondary}>{t("me.contactTitle")} · {t("onboarding.v3.contactSee")}</UiText></View>
   </Card></View>;
 }
 const useStyles = createThemedStyles(colors => StyleSheet.create({ stack: { gap: spacing.lg }, row: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm }, name: { color: colors.ink, fontSize: typography.titleSm, fontWeight: "800" }, heading: { color: colors.ink, fontSize: typography.label, fontWeight: "700", marginBottom: spacing.sm }, body: { color: colors.ink2, fontSize: typography.body, lineHeight: typography.body * 1.6 }, secondary: { color: colors.ink3, fontSize: typography.label } }));
