@@ -35,7 +35,7 @@ import { venueRecordView } from "./venue-core";
 import { createJourneyService, JourneyRefusedError, type JourneyService } from "./service";
 import { createJoinService, JoinRefusedError, type JoinService } from "./join";
 import { createJoinMockPorts } from "./join-mock";
-import { eventJoinCancelInputObject, eventJoinCancelResultSchema, eventJoinCurrentSchema, eventJoinNextInputObject, eventJoinProfileInputObject, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinSubmitInputObject, eventJoinTentativeInputObject, eventJoinTentativeResultSchema } from "../../../shared/api-schema/event-join";
+import { eventJoinCalendarRemoveResultSchema, eventJoinCancelInputObject, eventJoinCancelResultSchema, eventJoinCurrentSchema, eventJoinNextInputObject, eventJoinProfileInputObject, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinSubmitInputObject, eventJoinTentativeInputObject, eventJoinTentativeResultSchema } from "../../../shared/api-schema/event-join";
 
 type Params = Record<string, string>;
 type RouteContext = { params?: Promise<Params> };
@@ -63,7 +63,8 @@ export async function configuredJourneyLiveService(): Promise<JourneyService | n
   return createJourneyService({ ports, records: { checklist: createPrepChecklistService({ store }), feedback: createEventFeedbackService({ store }), follows: createOrganizerFollowService({ store }), memos: createVenueMemoService({ store }) } });
 }
 
-async function configuredJoinService(): Promise<JoinService | null> {
+/** The configured live 参加登録 facade (null = no database). Exported for the host routes, which keep attendees' calendar entries in step. */
+export async function configuredJoinService(): Promise<JoinService | null> {
   const runtime = createConfiguredTransactionalPostgresRuntime();
   if (!runtime) return null;
   const { createJourneyLivePorts } = await import("./live");
@@ -222,6 +223,12 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       const service = await join();
       if (!service) return { context: { reason: "EVENT_JOIN_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Registration is unavailable.") };
       return service.tentative(actorId!, eventId(params), parsed.value.idempotencyKey, language);
+    }, deps),
+    // 2026-11-27 完成页「移除」：删掉自动加入的日程并记下不要。
+    joinCalendarRemove: journeyRoute({ auth: "required", schema: eventJoinCalendarRemoveResultSchema, write: true }, async ({ actorId, join, params }) => {
+      const service = await join();
+      if (!service) return { context: { reason: "EVENT_JOIN_UNCONFIGURED" }, error: new AppError("SERVICE_UNAVAILABLE", "Registration is unavailable.") };
+      return service.removeCalendar(actorId!, eventId(params));
     }, deps),
     joinCancel: journeyRoute({ auth: "required", schema: eventJoinCancelResultSchema, write: true }, async ({ actorId, join, language, params, request }) => {
       const parsed = await body(request, eventJoinCancelInputObject);

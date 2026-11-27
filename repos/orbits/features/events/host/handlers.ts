@@ -5,7 +5,7 @@
  * - 主办侧全部要登录；公开主办方页与邀请预览可未登录读。
  * - 每个响应都过契约 schema。
  */
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { resolveRequestOrbitLanguage } from "../../../app/(app)/app/orbit-language-core";
 import { requestCookie } from "../../signup-funnel/context";
 import type { ZodType } from "zod";
@@ -84,6 +84,36 @@ export interface HostRouteDeps {
   liveService?: () => Promise<HostService | null>;
   /** Tests: where processed covers go (null = unconfigured). */
   coverStore?: () => EventCoverStore | null;
+  /** Tests: the attendees' calendar sync (null = unconfigured). */
+  joinCalendar?: () => Promise<HostJoinCalendar | null>;
+}
+
+/** 参加者日历的联动（features/events/journey/join.ts）：审批后按那个人对齐，中止 / 改活动后按整场对齐。 */
+export interface HostJoinCalendar {
+  syncTentative(actorId: string, eventId: string, language: "ja" | "zh" | "en"): Promise<void>;
+  syncEvent(eventId: string, change: "cancelled" | "updated"): Promise<number>;
+}
+
+async function configuredJoinCalendar(): Promise<HostJoinCalendar | null> {
+  const { configuredJoinService } = await import("../journey/handlers");
+  return configuredJoinService();
+}
+
+/**
+ * 2026-11-27 报名后自动加入的日历跟着主办方的操作走：只在审批 / 中止 / 改活动成功之后调用，不改这些操作本身；
+ * 示例世界不写。响应发出后再做（after），失败只记日志。
+ */
+function syncJoinCalendar(deps: HostRouteDeps, sample: boolean, run: (calendar: HostJoinCalendar) => Promise<unknown>): void {
+  if (sample) return;
+  const task = async () => {
+    try {
+      const calendar = await (deps.joinCalendar ?? configuredJoinCalendar)();
+      if (calendar) await run(calendar);
+    } catch (error) {
+      console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "host_join_calendar_sync_failed" }));
+    }
+  };
+  try { after(task); } catch { void task(); }
 }
 
 export const HOST_SAMPLE_HEADER = "x-orbit-sample";
@@ -237,9 +267,18 @@ export function createHostRoutes(deps: HostRouteDeps = {}) {
       if (editable !== true) return editable;
       return service.setCover!(actorId!, eventId, null);
     }),
-    updateEvent: r({ ...writes, schema: hostEventWriteResultSchema }, async ({ actorId, params, request, service }) => service.updateEvent(actorId!, id(params), await body(request, hostEventUpdateInputSchema))),
+    updateEvent: r({ ...writes, schema: hostEventWriteResultSchema }, async ({ actorId, params, request, sample, service }) => {
+      const result = await service.updateEvent(actorId!, id(params), await body(request, hostEventUpdateInputSchema));
+      // 改期 / 改名：参加者日历里的这一条跟着改（只写真的变了的）。
+      syncJoinCalendar(deps, sample, (calendar) => calendar.syncEvent(id(params), "updated"));
+      return result;
+    }),
     publishEvent: r({ ...writes, schema: hostEventWriteResultSchema }, async ({ actorId, params, request, service }) => service.publishEvent(actorId!, id(params), await body(request, hostEventPublishInputSchema))),
-    cancelEvent: r({ ...writes, schema: hostEventWriteResultSchema }, async ({ actorId, params, request, service }) => service.cancelEvent(actorId!, id(params), await body(request, hostEventCancelInputSchema))),
+    cancelEvent: r({ ...writes, schema: hostEventWriteResultSchema }, async ({ actorId, params, request, sample, service }) => {
+      const result = await service.cancelEvent(actorId!, id(params), await body(request, hostEventCancelInputSchema));
+      syncJoinCalendar(deps, sample, (calendar) => calendar.syncEvent(id(params), "cancelled"));
+      return result;
+    }),
     archiveEvent: r({ ...writes, schema: hostEventWriteResultSchema }, async ({ actorId, params, request, service }) => service.archiveEvent(actorId!, id(params), await body(request, hostEventArchiveInputSchema))),
     reissueCode: r({ ...writes, schema: hostEventWriteResultSchema }, async ({ actorId, params, request, service }) => service.reissueCode(actorId!, id(params), await body(request, hostEventCodeReissueInputSchema))),
 
@@ -255,7 +294,12 @@ export function createHostRoutes(deps: HostRouteDeps = {}) {
       return service.people(actorId!, id(params), { bucket, cursor: url.searchParams.get("cursor"), incomplete: url.searchParams.get("incomplete") === "1", q: (url.searchParams.get("q") ?? "").trim().slice(0, 80) });
     }),
     person: r({ ...required, schema: hostPersonResponseSchema }, async ({ actorId, params, service }) => service.person(actorId!, id(params), id(params, "actorId"))),
-    decide: r({ ...writes, schema: hostPeopleDecisionResultSchema }, async ({ actorId, params, request, service }) => service.decide(actorId!, id(params), id(params, "actorId"), await body(request, hostPeopleDecisionInputSchema))),
+    decide: r({ ...writes, schema: hostPeopleDecisionResultSchema }, async ({ actorId, params, request, sample, service }) => {
+      const result = await service.decide(actorId!, id(params), id(params, "actorId"), await body(request, hostPeopleDecisionInputSchema));
+      // 通过 → 去掉「暂定」；被拒 → 删除（标题按那个人写入时的语言）。
+      syncJoinCalendar(deps, sample, (calendar) => calendar.syncTentative(id(params, "actorId"), id(params), "ja"));
+      return result;
+    }),
 
     rosterMatch: r({ ...required, schema: hostRosterMatchResponseSchema }, async ({ actorId, params, request, service }) => service.rosterMatch(actorId!, id(params), await body(request, hostRosterMatchInputSchema))),
     kiosk: r({ ...required, schema: hostKioskResponseSchema }, async ({ actorId, params, request, service }) => service.kiosk(actorId!, id(params), (new URL(request.url).searchParams.get("q") ?? "").trim().slice(0, 40))),

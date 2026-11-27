@@ -9917,6 +9917,11 @@
           "kind": "text",
           "type": "{ startsAt: string; endsAt: string; title: string; } | null"
         },
+        "calendar": {
+          "optional": true,
+          "kind": "text",
+          "type": "{ scheduleItemId: string; title: string; final: boolean; } | null"
+        },
         "hostContact": {
           "optional": true,
           "kind": "text",
@@ -9936,6 +9941,21 @@
           "optional": false,
           "kind": "text",
           "type": "'cancelled'"
+        }
+      }
+    },
+    "event-join.ts::EventJoinCalendarRemoveResult": {
+      "kind": "object",
+      "members": {
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "removed": {
+          "optional": false,
+          "kind": "text",
+          "type": "true"
         }
       }
     },

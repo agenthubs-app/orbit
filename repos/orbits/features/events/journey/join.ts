@@ -3,11 +3,13 @@
  * - 问题 = 现有 AI 自适应访谈（≤5 问，带签名 token）；多选 / 上限按字段定（会いたい人 多选，話したいテーマ ≤2）。
  * - 资料：カバー率 / 各项 / 話題 是规则；只有 `draft` 时才调用现有 persona（E4 的自己紹介下書き）。
  * - 提交：先走普通报名；活动开了审核（409 admission）就走审核申请。公開範囲按字段由服务端定（registrationFieldVisibility）。
- * - 仮予定：用户确认后才写进日历；审核结果出来后（下次读详情时）改名为正式 / 被拒时删除（syncTentative）。
+ * - 日历（2026-11-27 用户定「报名成功后自动加入日历」）：报名成功（审核中 = 暂定 / 已确定 = 正式标题）时服务端自动写一条个人日程，
+ *   幂等键按账号 + 活动（+ 第几次写入）固定；用户点「移除」= 删掉并记下不要（之后的同步不再自动重建，除非他再点添加）。
+ *   之后跟真实状态走：审核通过去掉「暂定」、被拒 / 取消删除（syncTentative）；主办方中止删除全部、改期更新时间（syncEvent）。
  */
 import type { HostEventContact } from "../../../shared/contract/host-events";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
-import type { EventJoinAnswer, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
+import type { EventJoinAnswer, EventJoinCalendarRemoveResult, EventJoinCancelResult, EventJoinCurrent, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
 import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../../../shared/compute/profile-tag-options";
 import { JOIN_COVERAGE_ITEMS, JOIN_ITEM_OF_FIELD, joinCoverage } from "../../../shared/domain/join-coverage";
 import { PROFILE_ONBOARDING_GOALS } from "../../../shared/compute/profile-onboarding-goal";
@@ -271,10 +273,17 @@ export interface JoinPorts {
   /** 取消报名（现有取消路由）；之后由 syncTentative 删掉仮予定。 */
   cancel(eventId: string): Promise<void>;
   createSchedule(actorId: string, input: { title: string; startsAt: string; endsAt: string; idempotencyKey: string }): Promise<string>;
-  readTentative(actorId: string, eventId: string): Promise<{ scheduleItemId: string; final: boolean; removed?: boolean } | null>;
-  saveTentative(actorId: string, eventId: string, record: { scheduleItemId: string; final: boolean; removed?: boolean }): Promise<void>;
-  renameSchedule(actorId: string, scheduleItemId: string, title: string): Promise<void>;
+  readTentative(actorId: string, eventId: string): Promise<JoinTentativeRecord | null>;
+  saveTentative(actorId: string, eventId: string, record: JoinTentativeRecord): Promise<void>;
+  /** `false` = 那条日程已经不在了（用户自己删了）。 */
+  renameSchedule(actorId: string, scheduleItemId: string, title: string): Promise<void | boolean>;
   removeSchedule(actorId: string, scheduleItemId: string): Promise<void>;
+  /** 日程还在不在（用户可能在日历里自己删了）；没有这个端口 = 当作还在。 */
+  scheduleExists?(actorId: string, scheduleItemId: string): Promise<boolean>;
+  /** 改期：同时改开始 / 结束时间与标题；`false` = 日程已经不在了。 */
+  updateSchedule?(actorId: string, scheduleItemId: string, patch: { title: string; startsAt: string; endsAt: string }): Promise<void | boolean>;
+  /** 这场活动所有人的日历记录（主办方中止 / 改期时一次读出，不逐人查）。 */
+  eventTentatives?(eventId: string): Promise<readonly { actorId: string; record: JoinTentativeRecord }[]>;
   now?(): number;
   /** 这个人这场活动现在的报名（没有 = null）；`answers` 是重新签过名的访谈回答，`fixed` = 固定题（主办方题 / 资料补的，或 AI 用不了时问的）。 */
   current?(actorId: string, eventId: string, language: JourneyLanguage): Promise<JoinCurrentRegistration | null>;
@@ -286,6 +295,26 @@ export interface JoinPorts {
   /** R17：报名成功后留存对申込質問的回答（问题 id → 回答；多选用「 · 」连接）。 */
   saveHostAnswers?(actorId: string, eventId: string, answers: Readonly<Record<string, string>>): Promise<void>;
 }
+
+/**
+ * 每人每场一条（actor record `eventTentativeSchedules`）。`removed` = 那条日程已删（取消 / 被拒 / 中止 / 用户移除）；
+ * `optedOut` = 用户自己不要（点了移除，或在日历里删了）——自动写入与同步都不再重建，直到他再点「添加」。
+ * `generation` = 第几次写入（幂等键的一部分：删了再写要换新键）；`language` / `title` / `startsAt` / `endsAt` = 写进去的内容（同步时比较，没变就不写）。
+ */
+export interface JoinTentativeRecord {
+  scheduleItemId: string;
+  final: boolean;
+  removed?: boolean;
+  optedOut?: boolean;
+  generation?: number;
+  language?: JourneyLanguage;
+  title?: string;
+  startsAt?: string;
+  endsAt?: string;
+}
+
+/** 报名成功后自动写日历的幂等键：按账号（日程服务按账号存回执）+ 活动 + 第几次写入固定，并发两次提交只会有一条。 */
+export const joinCalendarKey = (eventId: string, generation: number) => `event-join-calendar:${eventId}:${generation}`;
 
 export interface JoinInterviewPlan { skipFields?: readonly string[]; focusFields?: readonly string[]; knownOptions?: Readonly<Record<string, readonly string[]>> }
 
@@ -352,6 +381,55 @@ function personaAnswers(answers: readonly EventJoinAnswer[]): EventJoinAnswer[] 
 export function createJoinService(deps: { ports: JoinPorts }) {
   const { ports } = deps;
   const profileTags = async (actorId: string, language: JourneyLanguage) => (await ports.profileTags?.(actorId, language).catch(() => null)) ?? null;
+  type JoinEvent = NonNullable<Awaited<ReturnType<JoinPorts["event"]>>>;
+  const calendarWindow = (event: JoinEvent) => ({ endsAt: event.endsAt ?? new Date(Date.parse(event.startsAt) + 2 * 3_600_000).toISOString(), startsAt: event.startsAt });
+  const live = (record: JoinTentativeRecord | null): boolean => Boolean(record && !record.removed && record.scheduleItemId);
+  const exists = async (actorId: string, record: JoinTentativeRecord) => (ports.scheduleExists ? ports.scheduleExists(actorId, record.scheduleItemId) : true);
+  /** 写一条新日程（上一条已删 / 没有过）：换下一个 generation 的幂等键。 */
+  const writeCalendar = async (actorId: string, eventId: string, event: JoinEvent, final: boolean, language: JourneyLanguage, previous: JoinTentativeRecord | null): Promise<JoinTentativeRecord> => {
+    const generation = previous ? (previous.generation ?? 0) + 1 : 0;
+    const window = calendarWindow(event);
+    const title = tentativeTitle(event.title, language, final);
+    const scheduleItemId = await ports.createSchedule(actorId, { ...window, idempotencyKey: joinCalendarKey(eventId, generation), title });
+    if (!scheduleItemId) throw new Error("schedule id missing");
+    const record: JoinTentativeRecord = { ...window, final, generation, language, scheduleItemId, title };
+    await ports.saveTentative(actorId, eventId, record);
+    return record;
+  };
+  const dropCalendar = async (actorId: string, eventId: string, record: JoinTentativeRecord, optedOut = false) => {
+    await ports.removeSchedule(actorId, record.scheduleItemId);
+    await ports.saveTentative(actorId, eventId, { ...record, removed: true, ...(optedOut || record.optedOut ? { optedOut: true } : {}) });
+  };
+  /**
+   * 让一条日程跟活动现状一致：`status` 给了就按报名状态（通过 → 正式标题；被拒 / 取消 → 删除），null = 只看活动（改期 / 改名）。
+   * `force`：旧记录没存时间（改期功能之前写的），主办方改过活动时照样写一次。日程已被用户删掉 → 记成不要，不重建。
+   */
+  const reconcile = async (actorId: string, eventId: string, record: JoinTentativeRecord, event: JoinEvent | null, status: Awaited<ReturnType<JoinPorts["registrationStatus"]>> | null, fallback: JourneyLanguage, force = false): Promise<JoinTentativeRecord | null> => {
+    if (status === "rejected" || status === "cancelled") { await dropCalendar(actorId, eventId, record); return null; }
+    if (!event) return record;
+    const final = status === "registered" ? true : record.final;
+    const language = record.language ?? fallback;
+    const title = tentativeTitle(event.title, language, final);
+    const window = calendarWindow(event);
+    const moved = Boolean(ports.updateSchedule) && (record.startsAt === undefined ? force : record.startsAt !== window.startsAt || record.endsAt !== window.endsAt);
+    const renamed = record.title === undefined ? final !== record.final : record.title !== title;
+    if (!moved && !renamed) return record;
+    const done = moved ? await ports.updateSchedule!(actorId, record.scheduleItemId, { ...window, title }) : await ports.renameSchedule(actorId, record.scheduleItemId, title);
+    if (done === false) { await ports.saveTentative(actorId, eventId, { ...record, optedOut: true, removed: true }); return null; }
+    const next: JoinTentativeRecord = { ...record, final, language, title, ...(moved ? window : {}) };
+    await ports.saveTentative(actorId, eventId, next);
+    return next;
+  };
+  /** 报名成功后自动写日历（编辑资料不走这里）。已有一条就沿用；用户移除过 / 在日历里删过就不写。失败不影响报名。 */
+  const autoCalendar = async (actorId: string, eventId: string, event: JoinEvent, status: "registered" | "pending_review", language: JourneyLanguage): Promise<JoinTentativeRecord | null> => {
+    const existing = await ports.readTentative(actorId, eventId);
+    if (existing?.optedOut) return null;
+    if (existing && live(existing)) {
+      if (!(await exists(actorId, existing))) { await ports.saveTentative(actorId, eventId, { ...existing, optedOut: true, removed: true }); return null; }
+      return reconcile(actorId, eventId, existing, event, status, language);
+    }
+    return writeCalendar(actorId, eventId, event, status === "registered", language, existing);
+  };
   const service = {
     async next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more = false, actorId: string | null = null, focus: EventJoinProfileItemKey | null = null): Promise<EventJoinStep | null> {
       if (!(await ports.event(eventId))) return null;
@@ -476,8 +554,14 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       if (selfIntro?.trim()) await ports.saveIntro(actorId, eventId, selfIntro);
       // 改资料时清空了介绍才清掉；旧版 App 不带 edit、没改过的介绍也不发，已报名的人再次提交不能把上次确认的介绍弄没。
       else if (edit || !["registered", "pending_review"].includes(before ?? "none")) await ports.removeIntro?.(actorId, eventId);
-      const endsAt = event.endsAt ?? new Date(Date.parse(event.startsAt) + 2 * 3_600_000).toISOString();
+      const { endsAt } = calendarWindow(event);
+      // 2026-11-27：报名成功（不是改资料）就自动加入日历；日历写不进去不影响报名（完成页给「添加」）。
+      const calendar = edit ? null : await autoCalendar(actorId, eventId, event, outcome.status, language).catch((error: unknown) => {
+        console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_join_calendar_auto_failed" }));
+        return null;
+      });
       return {
+        ...(edit ? {} : { calendar: calendar ? { final: calendar.final, scheduleItemId: calendar.scheduleItemId, title: calendar.title ?? tentativeTitle(event.title, language, calendar.final) } : null }),
         endsAt: event.endsAt,
         eventId,
         reviewUntil: outcome.status === "pending_review" ? event.registrationClosesAt : null,
@@ -489,19 +573,29 @@ export function createJoinService(deps: { ports: JoinPorts }) {
         hostContact: event.hostContact ?? null,
       };
     },
-    async tentative(actorId: string, eventId: string, idempotencyKey: string, language: JourneyLanguage): Promise<EventJoinTentativeResult | null> {
+    /**
+     * 用户主动「添加」（完成页 / 详情页 ⋯ / 旧客户端的确认卡）。已有一条且还在 → 原样返回（旧客户端报名后再调用不会多建）；
+     * 用户移除过、或在日历里删了 → 这是他再次主动添加，写一条新的（幂等键换下一个 generation，并发点两次也只有一条）。
+     * `_idempotencyKey`：旧客户端照发；键由服务端按账号 + 活动定。
+     */
+    async tentative(actorId: string, eventId: string, _idempotencyKey: string, language: JourneyLanguage): Promise<EventJoinTentativeResult | null> {
       const event = await ports.event(eventId);
       if (!event) return null;
       const existing = await ports.readTentative(actorId, eventId);
       const status = await ports.registrationStatus(actorId, eventId);
       const final = status === "registered";
-      const title = tentativeTitle(event.title, language, final);
       // A record saved with an empty id (before the schedule id fix) is treated as missing, so a retry can succeed.
-      if (existing && !existing.removed && existing.scheduleItemId) return { eventId, scheduleItemId: existing.scheduleItemId, title };
-      const endsAt = event.endsAt ?? new Date(Date.parse(event.startsAt) + 2 * 3_600_000).toISOString();
-      const scheduleItemId = await ports.createSchedule(actorId, { endsAt, idempotencyKey, startsAt: event.startsAt, title });
-      await ports.saveTentative(actorId, eventId, { final, scheduleItemId });
-      return { eventId, scheduleItemId, title };
+      if (existing && live(existing) && (await exists(actorId, existing))) return { eventId, scheduleItemId: existing.scheduleItemId, title: existing.title ?? tentativeTitle(event.title, existing.language ?? language, final) };
+      const record = await writeCalendar(actorId, eventId, event, final, language, existing);
+      return { eventId, scheduleItemId: record.scheduleItemId, title: record.title ?? "" };
+    },
+    /** 完成页「移除」：删掉这条日程，记下不要（之后的自动写入 / 同步都不再重建，除非再点添加）。不看活动还在不在。 */
+    async removeCalendar(actorId: string, eventId: string): Promise<EventJoinCalendarRemoveResult> {
+      const existing = await ports.readTentative(actorId, eventId);
+      const record: JoinTentativeRecord = existing ?? { final: false, scheduleItemId: "" };
+      if (live(record)) await dropCalendar(actorId, eventId, record, true);
+      else await ports.saveTentative(actorId, eventId, { ...record, optedOut: true, removed: true });
+      return { eventId, removed: true };
     },
     async cancel(actorId: string, eventId: string, language: JourneyLanguage): Promise<EventJoinCancelResult | null> {
       if (!(await ports.event(eventId))) return null;
@@ -512,20 +606,38 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       await service.syncTentative(actorId, eventId, language).catch(() => undefined);
       return { eventId, status: "cancelled" };
     },
-    /** 审核结果出来后：通过 → 去掉「仮：」（final = 已改名）；被拒 / 取消 → 删掉这条日程（removed，确定参加后再取消也删）。读详情时顺带调用，失败不影响页面。 */
+    /**
+     * 一个人的这条日程跟报名状态对齐：通过 → 去掉「仮：」（final）；被拒 / 取消 → 删除（removed，确定参加后再取消也删）；活动改期 → 改时间。
+     * 读详情时、用户取消后、主办方审批后调用，失败不影响页面 / 审批。
+     */
     async syncTentative(actorId: string, eventId: string, language: JourneyLanguage): Promise<void> {
       const record = await ports.readTentative(actorId, eventId);
-      if (!record || record.removed) return;
+      if (!record || !live(record)) return;
       const status = await ports.registrationStatus(actorId, eventId);
-      const event = await ports.event(eventId);
-      if (!event) return;
-      if (status === "registered" && !record.final) {
-        await ports.renameSchedule(actorId, record.scheduleItemId, tentativeTitle(event.title, language, true));
-        await ports.saveTentative(actorId, eventId, { ...record, final: true });
-      } else if (status === "rejected" || status === "cancelled") {
-        await ports.removeSchedule(actorId, record.scheduleItemId);
-        await ports.saveTentative(actorId, eventId, { ...record, removed: true });
+      const event = status === "rejected" || status === "cancelled" ? null : await ports.event(eventId);
+      await reconcile(actorId, eventId, record, event, status, language);
+    },
+    /**
+     * 主办方中止 / 改了活动之后：这场活动所有人的日程一次读出（一条查询），中止 → 全部删除（不需要还能读到活动）；
+     * 改动 → 读一次活动，时间 / 标题变了的才写。不逐人查报名状态。返回改动了几条。
+     */
+    async syncEvent(eventId: string, change: "cancelled" | "updated"): Promise<number> {
+      if (!ports.eventTentatives) return 0;
+      const rows = (await ports.eventTentatives(eventId)).filter((row) => live(row.record));
+      if (!rows.length) return 0;
+      const event = change === "updated" ? await ports.event(eventId) : null;
+      if (change === "updated" && !event) return 0;
+      let changed = 0;
+      for (const { actorId, record } of rows) {
+        try {
+          if (change === "cancelled") { await dropCalendar(actorId, eventId, record); changed += 1; continue; }
+          const next = await reconcile(actorId, eventId, record, event, null, record.language ?? "ja", true);
+          if (next !== record) changed += 1;
+        } catch (error) {
+          console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_join_calendar_event_sync_failed" }));
+        }
       }
+      return changed;
     },
   };
   return service;

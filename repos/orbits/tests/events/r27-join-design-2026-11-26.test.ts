@@ -175,8 +175,10 @@ test("AI questions do not say 今天 / 今日 / today: registration happens befo
   for (const kept of ["你怎么看今天的市场？", "今日の市場をどう見ますか？", "这次活动上，你最想认识哪类人？"]) assert.equal(withoutToday(kept), kept);
 });
 
-test("confirmed registration asks about the calendar without 「tentative」 wording (three languages)", () => {
+test("confirmed registration tells about the calendar without 「tentative」 wording (three languages)", () => {
   for (const language of ["ja", "zh", "en"] as const) {
-    assert.doesNotMatch(eventsJourneyCopy.calAskFinal[language] + eventsJourneyCopy.calendarAdded[language], /仮|暂定|tentative/i);
+    assert.doesNotMatch(eventsJourneyCopy.calAdded[language] + eventsJourneyCopy.calendarAdded[language], /仮|暂定|tentative/i);
+    // 2026-11-27: written automatically — no question, no 「updates when the result is in」 promise.
+    assert.doesNotMatch(eventsJourneyCopy.calAdded[language] + eventsJourneyCopy.calAddedTentative[language] + eventsJourneyCopy.calendarLineFinal[language], /？|\?|结果|結果|result/i);
   }
 });

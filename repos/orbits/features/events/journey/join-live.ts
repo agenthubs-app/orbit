@@ -1,6 +1,6 @@
 /**
  * R27 参加登録 facade 的 live 端口：在同一个请求里调用现有路由处理器（访谈 / persona / 报名 / 审核申请），
- * 不另写一套报名逻辑；日历走个人日程服务；仮予定记录存 `eventTentativeSchedules`。Owner: 甲 (R27).
+ * 不另写一套报名逻辑；日历走个人日程服务；日历记录存 `eventTentativeSchedules`（payload 带 eventId，主办方中止 / 改期时按活动一次读出）。Owner: 甲 (R27).
  */
 import { createHash } from "node:crypto";
 
@@ -8,7 +8,7 @@ import type { EventJoinAnswer, EventJoinQuestion } from "../../../shared/contrac
 import { AppError } from "../../../shared/errors/app-error";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import { createPostgresActorRecordStore } from "../actor-records/store";
-import { JoinRefusedError, profileFactQuestions, type JoinDerivedAnswer, type JoinPorts, type JoinRefusal } from "./join";
+import { JoinRefusedError, profileFactQuestions, type JoinDerivedAnswer, type JoinPorts, type JoinRefusal, type JoinTentativeRecord } from "./join";
 import type { EventParticipantProfileField } from "../registration/contract";
 import type { EventProfileResponseSnapshot } from "../registration/interview-response-contract";
 import type { JourneyLivePorts } from "./ports";
@@ -106,6 +106,19 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     const service = createConfiguredPersonalScheduleService();
     if (!service) throw new Error("personal schedule storage is not configured");
     return service;
+  };
+  const digest = (parts: readonly unknown[]) => createHash("sha256").update(JSON.stringify(parts)).digest("hex").slice(0, 16);
+  /** 那条日程（已删 / 不存在 / 被取消 = null）。 */
+  const scheduleItem = async (actorId: string, scheduleItemId: string): Promise<{ updatedAt: string } | null> => {
+    if (!scheduleItemId) return null;
+    const service = await schedule();
+    try {
+      const item = (await service.get({ actorId, id: scheduleItemId })) as { updatedAt?: string; state?: string } | null;
+      return item?.updatedAt && item.state !== "cancelled" ? { updatedAt: item.updatedAt } : null;
+    } catch (error) {
+      if (error instanceof AppError && error.code === "NOT_FOUND") return null;
+      throw error;
+    }
   };
   const selfProfile = async (actorId: string, language: JourneyLanguage) => {
     const { getSelfProfileForRegistration } = await import("../../profile/self-profile-reader");
@@ -282,22 +295,43 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
       return String(reply.scheduleItem?.id ?? reply.id ?? "");
     },
     async readTentative(actorId, eventId) {
-      const row = await store.get<{ scheduleItemId: string; final: boolean; removed?: boolean }>("eventTentativeSchedules", actorId, tentativeId(actorId, eventId));
+      const row = await store.get<JoinTentativeRecord>("eventTentativeSchedules", actorId, tentativeId(actorId, eventId));
       return row && !row.deleted ? row.payload : null;
     },
     async saveTentative(actorId, eventId, record) {
       await store.put("eventTentativeSchedules", actorId, tentativeId(actorId, eventId), { eventId, ...record }, new Date().toISOString());
     },
+    async eventTentatives(eventId) {
+      // 主办方中止 / 改期：这场活动所有人的记录一次读出（已删的不要）。
+      const result = await input.query(`/* events:r27-join:event-tentatives */ select user_id, payload from orbit_records where workspace_id = $1 and collection_name = 'eventTentativeSchedules' and lifecycle_state <> 'deleted' and payload ->> 'eventId' = $2 and coalesce((payload ->> 'removed')::boolean, false) = false limit 5000`, [input.workspaceId, eventId]);
+      return result.rows.flatMap((row) => {
+        const payload = (typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload) as (JoinTentativeRecord & { eventId?: string }) | null;
+        if (!payload || typeof row.user_id !== "string" || typeof payload.scheduleItemId !== "string") return [];
+        const { eventId: _eventId, ...record } = payload;
+        return [{ actorId: row.user_id, record }];
+      });
+    },
+    async scheduleExists(actorId, scheduleItemId) {
+      return (await scheduleItem(actorId, scheduleItemId)) !== null;
+    },
     async renameSchedule(actorId, scheduleItemId, title) {
       const service = await schedule();
-      const item = (await service.get({ actorId, id: scheduleItemId })) as { updatedAt?: string } | null;
-      if (!item?.updatedAt) return;
-      await service.update(actorId, scheduleItemId, { expectedUpdatedAt: item.updatedAt, idempotencyKey: `tentative-final:${scheduleItemId}`, patch: { title } });
+      const item = await scheduleItem(actorId, scheduleItemId);
+      if (!item) return false;
+      await service.update(actorId, scheduleItemId, { expectedUpdatedAt: item.updatedAt, idempotencyKey: `tentative-final:${scheduleItemId}:${digest([item.updatedAt, title])}`, patch: { title } });
+      return true;
+    },
+    async updateSchedule(actorId, scheduleItemId, patch) {
+      const service = await schedule();
+      const item = await scheduleItem(actorId, scheduleItemId);
+      if (!item) return false;
+      await service.update(actorId, scheduleItemId, { expectedUpdatedAt: item.updatedAt, idempotencyKey: `tentative-move:${scheduleItemId}:${digest([item.updatedAt, patch.title, patch.startsAt, patch.endsAt])}`, patch: { endsAt: patch.endsAt, startsAt: patch.startsAt, title: patch.title } });
+      return true;
     },
     async removeSchedule(actorId, scheduleItemId) {
       const service = await schedule();
-      const item = (await service.get({ actorId, id: scheduleItemId })) as { updatedAt?: string } | null;
-      if (!item?.updatedAt) return;
+      const item = await scheduleItem(actorId, scheduleItemId);
+      if (!item) return;
       await service.remove(actorId, scheduleItemId, { expectedUpdatedAt: item.updatedAt, idempotencyKey: `tentative-remove:${scheduleItemId}` });
     },
     async registrationStatus(actorId, eventId) {

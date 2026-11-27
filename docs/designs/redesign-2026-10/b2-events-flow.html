@@ -456,8 +456,8 @@ function regDone() {
   <div class="card p-status"><div class="row between"><b style="font-size:14.5px">いまの状況</b><span class="chip lav">⏳ 審査中</span></div>
     <div class="steps4" style="margin-top:12px"><div class="d">申込<br>9/20</div><div class="n">審査<br>〜10/3</div><div>結果通知</div><div>当日<br>10/7</div></div>
     <div class="sub" style="margin-top:12px">主催者が申込内容を確認しています。結果はアプリの通知とメールで届きます。</div></div>
-  <div class="card confirm-card p-confirm"><div class="row" style="gap:8px"><span class="emo sm lav">📅</span><b style="font-size:13px">カレンダーに仮で入れますか？</b></div>
-    <div class="sub" style="margin:6px 0 10px">10/7（水）19:00–21:30「仮：CFO Night」· 結果が出たら自動で更新</div><div class="row" style="gap:8px"><button class="btn sm primary">追加する</button><button class="btn sm">不要</button></div></div>
+  <div class="card confirm-card p-confirm"><div class="row" style="gap:8px"><span class="emo sm lav">📅</span><b style="font-size:13px">カレンダーに仮で入れました</b></div>
+    <div class="sub" style="margin:6px 0 10px">10/7（水）19:00–21:30「仮：CFO Night」</div><div class="row" style="gap:8px"><button class="btn sm">カレンダーを見る</button><button class="btn sm">外す</button></div></div>
   <button class="btn ghost block">プロフィールを編集</button>`;
 }
 const STS = [
@@ -758,7 +758,7 @@ h += sec('④ 参加登録（AI 面談式）→ 審査', '逐题问答 + 选项 
 h += boards([
   ['① 質問に答える', '', phone({ body: regInterview(), tab: -1, overlay: regComposer, pins: pin(1, '.p-prog') + pin(2, '.p-prefill') + pin(3, '.p-opts') }), ['顶部「質問 3 / 5」+ 细进度条，回答后进度条滑动前进', '已知信息不再问：会社·役职从资料带入（对标 LinkedIn Easy Apply）', 'chip 多选，选中灰紫描边；也可在底部输入框自由回答或语音；「次へ」→ 下一题，第 5 题后 → ②']],
   ['② 参加用プロフィール', '', phone({ body: regPersona(), tab: -1, pins: pin(1, '.p-cover') + pin(2, '.p-intro') + pin(3, '.p-scope') }), ['情報カバー率环 count-up；缺项「追加」→ 回到对应一题', '自己紹介为 AI 草稿，铅笔可改；「?」看依据（不含数字）', '公开范围分两层写清；「申し込む」→ ③']],
-  ['③ 申込完了 · 審査中', '', phone({ body: regDone(), tab: -1, pins: pin(1, '.p-check') + pin(2, '.p-status') + pin(3, '.p-confirm') }), ['对勾弹入动效（0.7s 回弹）', '4 段状态条：申込 → 審査 → 結果 → 当日，当前段加深', '写日历是 AI 写入动作 → 虚线确认卡，点「追加する」才写入']],
+  ['③ 申込完了 · 審査中', '', phone({ body: regDone(), tab: -1, pins: pin(1, '.p-check') + pin(2, '.p-status') + pin(3, '.p-confirm') }), ['对勾弹入动效（0.7s 回弹）', '4 段状态条：申込 → 審査 → 結果 → 当日，当前段加深', '2026-11-27 用户决定：报名成功后自动加入日历（审核中 = 「仮：」标题，通过后自动改正式；被拒 / 取消 / 中止删除，改期跟着改），这张卡只告知；「外す」= 删除且以后不再自动加，外した後は「追加する」で戻せる（原「写日历要先确认」作废）']],
 ]);
 h += `<div class="board" style="margin-top:8px"><div class="board-label">录取状态 4 种（状态卡组件，出现在 ③ 与活动详情顶部）</div>${statusStrip()}<p class="strip-note">審査中=灰紫；キャンセル待ち=杏色 + 排位 + 递补可能性细条；参加確定=薄荷 + 下一步「会う準備」；今回は見送り=灰（礼貌的否定结论：不用珊瑚，因为不是错误；也不用分类粉）+ 推荐相似活动。状态变化时推送通知，并同步更新日历里的「仮」日程（用户在③确认过才会有）。</p></div>`;
 h += wb('Web 参加登録', '', webFrame({ nav: 3, head: '', body: wReg(), rail: wRegRail(), pins: pin(1, '.p-wchat') + pin(2, '.p-wpersona') + pin(3, '.p-wflow') }), ['左：问答流（与 App 同一组题），回车 = 次へ', '右：人设实时预览，每答一题カバー率环增长、話題 chip 落入，自己紹介骨架闪光直到生成', '右栏：流程 4 步 + 自动带入项说明']);

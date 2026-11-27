@@ -18,7 +18,7 @@ import { eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
 import { contactReviewLine, HostContactCard, HostContactModal } from "./HostContact";
 import { hostContactHasId } from "../../../../../shared/compute/host-contact";
-import { eventJoinCancelResultSchema, eventJoinCurrentSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
+import { eventJoinCalendarRemoveResultSchema, eventJoinCancelResultSchema, eventJoinCurrentSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
 import type { ZodType } from "zod";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
@@ -37,6 +37,7 @@ export function joinApiFor(language: OrbitLanguage) {
     submit: (eventId: string, answers: readonly EventJoinAnswer[], selfIntro?: string, edit = false) => eventsCall(`/api/events/${id(eventId)}/join/submit`, { body: JSON.stringify({ answers, idempotencyKey: newIdempotencyKey(), ...(edit ? { edit } : {}), ...(selfIntro ? { selfIntro } : {}) }), headers, method: "POST" }, eventJoinResultSchema as ZodType<EventJoinResult>),
     cancel: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/cancel`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinCancelResultSchema),
     tentative: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/tentative`, { body: JSON.stringify({ idempotencyKey: newIdempotencyKey() }), headers, method: "POST" }, eventJoinTentativeResultSchema),
+    removeCalendar: (eventId: string) => eventsCall(`/api/events/${id(eventId)}/join/tentative`, { headers, method: "DELETE" }, eventJoinCalendarRemoveResultSchema),
   };
 }
 
@@ -124,7 +125,8 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const [free, setFree] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<EventJoinResult | null>(null);
-  const [calendar, setCalendar] = useState<"asked" | "added" | "declined">("asked");
+  // 2026-11-27 报名成功后服务端已自动加入日历（result.calendar）；完成页只告知，可移除 / 再加。
+  const [calendar, setCalendar] = useState<{ state: "added" | "removed" | "none"; title: string; final: boolean } | null>(null);
   const [intro, setIntro] = useState<string | null>(null);
   const introRef = useRef<string | null>(null);
   introRef.current = intro;
@@ -279,14 +281,27 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     const confirmed = (intro ?? profile?.selfIntro?.text ?? "").trim().slice(0, 400);
     const res = await joinApi.submit(eventId, answers, confirmed || undefined, editing);
     setBusy(false);
-    if (res.ok) { setDirty(false); setResult(res.data); setContactOpen(!editing && hostContactHasId(res.data.hostContact)); } else toast.error(t(refusalKey("code" in res ? res.code : undefined) ?? "submitFailed"));
+    if (res.ok) {
+      setDirty(false);
+      setResult(res.data);
+      const written = res.data.calendar;
+      setCalendar(written ? { final: written.final, state: "added", title: written.title } : { final: res.data.status === "registered", state: "none", title: res.data.tentative?.title ?? "" });
+      setContactOpen(!editing && hostContactHasId(res.data.hostContact));
+    } else toast.error(t(refusalKey("code" in res ? res.code : undefined) ?? "submitFailed"));
   };
   const addTentative = async () => {
     if (busy) return;
     setBusy(true);
     const res = await joinApi.tentative(eventId);
     setBusy(false);
-    if (res.ok) { setCalendar("added"); toast.success(t(result?.status === "registered" ? "calendarAdded" : "tentativeAdded")); } else toast.error(at("genericError"));
+    if (res.ok) setCalendar((current) => ({ final: current?.final ?? result?.status === "registered", state: "added", title: res.data.title || current?.title || "" })); else toast.error(at("genericError"));
+  };
+  const removeCalendar = async () => {
+    if (busy) return;
+    setBusy(true);
+    const res = await joinApi.removeCalendar(eventId);
+    setBusy(false);
+    if (res.ok) setCalendar((current) => (current ? { ...current, state: "removed" } : current)); else toast.error(at("genericError"));
   };
   const dictate = () => {
     if (!Speech) return;
@@ -497,13 +512,18 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         {result.status === "pending_review" ? <div className={`${styles.sub} ${r.doneSub}`}>{contactLine ?? t("reviewWait")}</div> : null}
       </div>
       {result.hostContact !== undefined ? <HostContactCard contact={result.hostContact} t={t} className={r.gap} /> : null}
-      {result.tentative && calendar === "asked" && !editing ? (
-        <div className={`${styles.card} ${r.confirm}`} data-join-calendar="">
-          <div className={styles.row} style={{ gap: 8 }}><span className={`${styles.emo} ${styles.t_lav} ${r.emoSm}`}>📅</span><b className={r.confirmTitle}>{t(result.status === "registered" ? "calAskFinal" : "calAsk")}</b></div>
-          <div className={`${styles.sub} ${r.confirmSub}`}>{t(result.status === "registered" ? "calendarLineFinal" : "calendarLine", { range: eventRange(result.tentative.startsAt, result.tentative.endsAt, language), title: result.tentative.title })}</div>
+      {calendar && result.tentative && !editing ? (
+        // 写日历：报名成功时已写入（2026-11-27 用户定），这里只告知；「外す」= 删除并且以后不再自动加；外した後は「追加する」で戻せる。
+        <div className={`${styles.card} ${r.confirm}`} data-join-calendar={calendar.state}>
+          <div className={styles.row} style={{ gap: 8 }}><span className={`${styles.emo} ${styles.t_lav} ${r.emoSm}`}>📅</span><b className={r.confirmTitle} role="status">{t(calendar.state === "removed" ? "calRemoved" : calendar.state === "none" ? "calNotAdded" : calendar.final ? "calAdded" : "calAddedTentative")}</b></div>
+          <div className={`${styles.sub} ${r.confirmSub}`}>{t("calendarLineFinal", { range: eventRange(result.tentative.startsAt, result.tentative.endsAt, language), title: calendar.title || result.tentative.title })}</div>
           <div className={styles.row} style={{ gap: 8 }}>
-            <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} onClick={() => void addTentative()}>{t("addIt")}</button>
-            <button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => setCalendar("declined")}>{t("noNeed")}</button>
+            {calendar.state === "added" ? (
+              <>
+                <a className={`btn ${styles.btn} ${styles.sm}`} href="/app/home" data-join-calendar-view="">{t("viewCalendar")}</a>
+                <button type="button" className={`btn ${styles.btn} ${styles.sm}`} disabled={busy} onClick={() => void removeCalendar()} data-join-calendar-remove="">{t("removeIt")}</button>
+              </>
+            ) : <button type="button" className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} disabled={busy} onClick={() => void addTentative()}>{t("addIt")}</button>}
           </div>
         </div>
       ) : null}

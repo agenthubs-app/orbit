@@ -53,7 +53,7 @@ test("profile coverage is a rule (company 44 + 14 each) and the AI persona only 
   assert.equal(draft.selfIntro?.source, "ai_draft");
 });
 
-test("submit: a screened event (409) becomes a review application; the tentative entry is written only on confirm and renamed / removed when the result arrives", async () => {
+test("submit: a screened event (409) becomes a review application; the tentative entry is written on submit (2026-11-27) and renamed when the result arrives", async () => {
   const calls: string[] = [];
   const intros: string[] = [];
   let status: "pending_review" | "registered" | "rejected" = "pending_review";
@@ -72,10 +72,11 @@ test("submit: a screened event (409) becomes a review application; the tentative
   assert.deepEqual(intros, ["actor:a:ev:編集した自己紹介"], "the edited self-introduction is kept with the registration");
   assert.equal(result?.status, "pending_review");
   assert.equal(result?.tentative?.title, "仮：CFO Night");
-  assert.deepEqual(calls, [], "nothing is written to the calendar before the user confirms");
+  assert.deepEqual(calls, ["create:仮：CFO Night"], "2026-11-27: written automatically on a successful registration");
+  assert.deepEqual(result?.calendar, { final: false, scheduleItemId: "sch1", title: "仮：CFO Night" });
   await service.tentative("actor:a", "ev", "k1", "ja");
   await service.tentative("actor:a", "ev", "k2", "ja");
-  assert.deepEqual(calls, ["create:仮：CFO Night"], "one tentative entry, idempotent");
+  assert.deepEqual(calls, ["create:仮：CFO Night"], "one tentative entry, idempotent (an older client's 「追加する」 returns it)");
   status = "registered";
   await service.syncTentative("actor:a", "ev", "ja");
   await service.syncTentative("actor:a", "ev", "ja");
