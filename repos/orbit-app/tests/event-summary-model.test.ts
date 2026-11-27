@@ -35,7 +35,7 @@ test("first frame (summary not in yet): list facts drawn, intro / attendees / se
   assert.equal(s.facts[2]!.sub, "pending");
   assert.equal(s.intro, "pending");
   assert.deepEqual(s.people, { pending: true, title: "attendees" });
-  assert.deepEqual(s.relevance.map((line) => [line.chip, line.text]), [["认识的人2位", "王 伟、田中 美咲 已报名"], ["主题相近", "与计划里的「渠道伙伴」主题相近"]], "relevance is a list field: first frame");
+  assert.deepEqual(s.relevance.map((line) => [line.chip, line.text]), [["认识的人2位", "王 伟、田中 美咲 已报名"], ["主题相近", "与你目标里的「渠道伙伴」主题相近"]], "relevance is a list field: first frame");
   assert.deepEqual(s.action, { kind: "pending" });
   const e = summary(ended);
   assert.deepEqual(e.marks.map((mark) => mark.key), ["ended"], "ended is known from the list");

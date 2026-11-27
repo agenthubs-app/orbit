@@ -224,7 +224,7 @@ export const eventsV2 = {
   "eventsV2.relBasisExhibitors": "出展企業より",
   "eventsV2.relKnownLine": "知り合い {n}名が参加予定",
   "eventsV2.relNamesSep": "・",
-  "eventsV2.relTopicLine": "プランの{list}に近いテーマ",
+  "eventsV2.relTopicLine": "目標の{list}に近いテーマ",
   "eventsV2.relTopicItem": "「{label}」",
   "eventsV2.relTopicItemNext": "「{label}」",
   "eventsV2.relBasisDescription": "イベント説明より",

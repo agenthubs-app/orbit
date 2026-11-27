@@ -224,7 +224,7 @@ export const eventsV2 = {
   "eventsV2.relBasisExhibitors": "From exhibitors",
   "eventsV2.relKnownLine": "{n} people you know are going",
   "eventsV2.relNamesSep": ", ",
-  "eventsV2.relTopicLine": "Close to {list} in your plan",
+  "eventsV2.relTopicLine": "Close to {list} in your goals",
   "eventsV2.relTopicItem": "“{label}”",
   "eventsV2.relTopicItemNext": ", “{label}”",
   "eventsV2.relBasisDescription": "From the event description",

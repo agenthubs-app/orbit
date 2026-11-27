@@ -61,11 +61,11 @@ test("card: a new event with 0 registrants shows only the topic row", () => {
   const rel: EventRelevance = { ...empty, group: "topic", topic: { labels: ["VC パートナー", "起業家"] } };
   const text = renderedText(<RelevanceCard relevance={rel} t={tJa} />);
   assert.match(text, /あなたに関係すること/u);
-  assert.match(text, /プランの「VC パートナー」「起業家」に近いテーマ/u);
+  assert.match(text, /目標の「VC パートナー」「起業家」に近いテーマ/u);
   assert.match(text, /イベント説明より/u);
   assert.doesNotMatch(text, /会いたい人|知り合い|予算/u);
-  assert.match(renderedText(<RelevanceCard relevance={rel} t={tEn} />), /Close to “VC パートナー”, “起業家” in your plan/u);
-  assert.match(renderedText(<RelevanceCard relevance={rel} t={tZh} />), /与计划里的「VC パートナー」「起業家」主题相近/u);
+  assert.match(renderedText(<RelevanceCard relevance={rel} t={tEn} />), /Close to “VC パートナー”, “起業家” in your goals/u);
+  assert.match(renderedText(<RelevanceCard relevance={rel} t={tZh} />), /与你目标里的「VC パートナー」「起業家」主题相近/u);
 });
 
 test("card: people + known + budget, one row each with its basis", () => {

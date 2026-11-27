@@ -224,7 +224,7 @@ export const eventsV2 = {
   "eventsV2.relBasisExhibitors": "来自展商",
   "eventsV2.relKnownLine": "认识的人有{n}位参加",
   "eventsV2.relNamesSep": "、",
-  "eventsV2.relTopicLine": "与计划里的{list}主题相近",
+  "eventsV2.relTopicLine": "与你目标里的{list}主题相近",
   "eventsV2.relTopicItem": "「{label}」",
   "eventsV2.relTopicItemNext": "「{label}」",
   "eventsV2.relBasisDescription": "来自活动说明",
