@@ -7,6 +7,7 @@ import {
   type EventOperationsParticipant,
 } from "../contract";
 import type { EventParticipantProfile } from "../../registration/contract";
+import { matchingParticipant, type MatchingAccountProfile } from "../matching-profile";
 import { normalizeEventParticipantAnswers } from "../participant";
 import type { EventOperationsRepository } from "../repository";
 import type {
@@ -136,6 +137,46 @@ function profilePayload(value: unknown): ProfilePayload {
   return payload;
 }
 
+const stringList = (value: unknown): string[] | null =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : null;
+
+/**
+ * The account profile's seeking / offering / topics for the matching card (2026-11-28, see matching-profile.ts).
+ * Read in the capture transaction; a database without the shared record table (event-ops-only tests) has none.
+ */
+async function readMatchingAccountProfiles(
+  executor: EventOperationsSqlExecutor,
+  workspaceId: string,
+  actorIds: readonly string[],
+): Promise<ReadonlyMap<string, MatchingAccountProfile>> {
+  if (actorIds.length === 0) return new Map();
+  const table = await executor.query<SqlRow>("select to_regclass('orbit_records') is not null as present");
+  if (table.rows[0]?.present !== true) return new Map();
+  const rows = await executor.query<SqlRow>(
+    `
+      select distinct on (account_id) account_id, offering, seeking, topics
+      from (
+        select coalesce(payload->>'accountId', user_id) as account_id,
+          coalesce(payload #> '{publicProfile,offering}', payload -> 'offering') as offering,
+          coalesce(payload #> '{publicProfile,seeking}', payload -> 'seeking') as seeking,
+          coalesce(payload #> '{publicProfile,topics}', payload -> 'topics') as topics,
+          updated_at
+        from orbit_records
+        where workspace_id = $1 and collection_name = 'profiles' and lifecycle_state <> 'deleted'
+          and (payload->>'accountId' = any($2::text[]) or user_id = any($2::text[]))
+      ) profile
+      where account_id is not null
+      order by account_id, updated_at desc
+    `,
+    [workspaceId, [...actorIds]],
+  );
+  return new Map(rows.rows.map((row) => [String(row.account_id), {
+    offering: stringList(row.offering),
+    seeking: stringList(row.seeking),
+    topics: stringList(row.topics),
+  }]));
+}
+
 export async function readFrozenGenerationSnapshot(input: {
   configurationVersion?: number;
   eventId: string;
@@ -246,6 +287,7 @@ export async function readFrozenGenerationSnapshot(input: {
   );
 
   const participants: EventOperationsParticipant[] = [];
+  const frozen: { payload: ProfilePayload; row: SqlRow }[] = [];
   const sourceVersions: EventOperationsCapturedSnapshot["sourceVersions"][number][] = [];
   const actorIds = new Set<string>();
   const participantIds = new Set<string>();
@@ -272,6 +314,7 @@ export async function readFrozenGenerationSnapshot(input: {
     }
     actorIds.add(actorId);
     participantIds.add(participantId);
+    frozen.push({ payload, row });
     participants.push({
       ...payload.participant,
       lateRegistration: row.late_registration === true,
@@ -292,6 +335,15 @@ export async function readFrozenGenerationSnapshot(input: {
         : {}),
     });
   }
+  // Matching card (2026-11-28): rebuilt from the registration answers and the account profile; identity and the
+  // other stored fields are unchanged.
+  const accounts = await readMatchingAccountProfiles(input.executor, input.workspaceId, [...actorIds]);
+  participants.forEach((participant, index) => {
+    participants[index] = matchingParticipant(participant, {
+      account: accounts.get(participant.actorId) ?? null,
+      answers: frozen[index]!.payload.registrationProfile?.answers ?? null,
+    });
+  });
   return {
     configuration: frozenConfiguration,
     configurationHash: stableHash(frozenConfiguration),
