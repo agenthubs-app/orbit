@@ -20,7 +20,7 @@ try {
  *   node scripts/run-node-tests.mjs --audit         审计档（= npm run test:audit）：审计 / 手机布局扫描 / 整项目类型检查
  *   node scripts/run-node-tests.mjs <file|glob>...  只跑指定的（逐文件隔离，同以前）
  *
- * 共享进程组（--test-isolation=none）：这些目录在同一个进程里跑完，省掉每个文件各起一个进程、各编译一遍的开销
+ * 共享进程组（--test-isolation=none）：每个目录在一个进程里跑完（各目录各一个进程，最多 3 个同时），省掉每个文件各起一个进程、各编译一遍的开销
  * （agent-v1 从累计 2045 秒降到 14 秒）。2026-11-27 逐目录核对过：共享与隔离两种跑法的通过 / 失败 / 跳过名单逐项一致
  * （按去重后的用例名；隔离跑时被别的测试文件 import 进来的用例会重复执行一次）。
  * api / capabilities / pages / services / ui 在共享进程下会互相污染或挂住，保持逐文件隔离；新目录默认也走隔离。
@@ -66,7 +66,9 @@ function groups() {
   const dirOf = (file) => (file.split("/").length > 2 ? file.split("/")[1] : "");
   const shared = all.filter((file) => SHARED_DIRS.includes(dirOf(file)));
   const isolated = all.filter((file) => !isAudit(file) && !SHARED_DIRS.includes(dirOf(file)) && (mode === "full" || FAST_ISOLATED_DIRS.includes(dirOf(file))));
-  return [{ name: "shared", shared: true, files: shared }, { name: "isolated", shared: false, files: isolated }];
+  // 每个共享目录各一个进程（与核对时的跑法一致；24 个目录合进一个进程会互相污染、而且更慢）。
+  const sharedGroups = SHARED_DIRS.map((dir) => ({ name: dir, shared: true, files: shared.filter((file) => dirOf(file) === dir) }));
+  return [{ name: "isolated", shared: false, files: isolated }, ...sharedGroups];
 }
 
 function run(group) {
@@ -99,15 +101,28 @@ function run(group) {
 
 const plan = groups().filter((group) => group.files.length);
 const single = plan.length === 1;
-const results = await Promise.all(plan.map(run));
-for (const result of results) {
-  if (!single) {
+/** 隔离组自己按 CPU 数并发；共享目录同时最多跑 SHARED_PARALLEL 个，跟隔离组一起跑。 */
+const SHARED_PARALLEL = 3;
+async function runAll() {
+  const [first, ...rest] = plan;
+  const queue = [...rest];
+  const sharedResults = [];
+  const lane = async () => { while (queue.length) sharedResults.push(await run(queue.shift())); };
+  const [isolated] = await Promise.all([run(first), ...Array.from({ length: SHARED_PARALLEL }, lane)]);
+  return [isolated, ...sharedResults];
+}
+const results = single ? [await run(plan[0])] : await runAll();
+if (!single) {
+  const count = (output, key) => Number((output.match(new RegExp(`ℹ ${key} (\\d+)`)) ?? [])[1] ?? 0);
+  // 通过的组只打一行；失败的组整段打印。
+  for (const result of results) {
+    if (result.status === 0) continue;
     console.log(`\n━━ ${result.group.name}（${result.group.files.length} files${result.group.shared ? ", one process" : ""}）━━`);
     process.stdout.write(result.output);
   }
-}
-if (!single) {
-  for (const result of results) console.log(`[${result.group.name}] exit ${result.status} · ${Math.round(result.ms / 1000)}s`);
+  console.log("");
+  for (const result of results) console.log(`[${result.group.name}] ${result.status === 0 ? "ok" : "FAILED"} · ${count(result.output, "tests")} tests · ${count(result.output, "fail")} fail · ${Math.round(result.ms / 1000)}s`);
+  console.log(`total tests ${results.reduce((sum, r) => sum + count(r.output, "tests"), 0)} · fail ${results.reduce((sum, r) => sum + count(r.output, "fail"), 0)}`);
 }
 
 let blocked = [];
