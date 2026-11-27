@@ -89,6 +89,13 @@
   /* b13 HM-R1 受付率リング（52）：中央 13 / 「%」9（token 最接近 9.5）。 */
   .rateC { font-size: var(--fs-body-sm); }
   .rateC small { font-size: var(--fs-micro); }
+  /* b13 HM-R2 .hbar / .tno.sm / .note-c：列 28 / 1fr / 30、数字 14、桌号灰底黑字 12.5、每行上 8（行距 36）、桌号 28；粉色备注 10/12、圆角 14、行高 1.6。 */
+  .hbar { grid-template-columns: 28px 1fr 30px; font-size: var(--fs-body); }
+  .hbar + .hbar { margin-top: 8px; }
+  .tno { width: 28px; height: 28px; border-radius: var(--r-input-sm); background: var(--surface-2); color: var(--ink); font-size: var(--fs-control); }
+  .note { padding: 10px 12px; border-radius: var(--r-md); line-height: var(--lh-prose); }
+  /* b13 HM-R2 参加者の立場：条下到下一行 10（条下 4 + 6）。 */
+  .standGap { margin-top: 6px; }
 }
 /* < 768 自分の視点（b13 HM-R3 .imp3）：3 个数并排 */
 .imp3 { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
