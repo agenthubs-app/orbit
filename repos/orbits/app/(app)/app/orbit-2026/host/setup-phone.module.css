@@ -124,7 +124,21 @@
 .pick input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; margin: 0; padding: 0; opacity: 0; cursor: pointer; }
 .mi.mi { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 4px; width: 100%; font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--ink); cursor: pointer; border-top: 1px solid var(--line); }
 .pvSheet.pvSheet { top: 58px; display: flex; flex-direction: column; max-height: none; overflow: hidden; padding-bottom: 14px; }
-.pvBody { flex: 1 1 0%; min-height: 0; overflow: hidden auto; margin: 0 -18px 10px; padding: 0 18px; }
+/* b13 HM-S10 .k-pvsheet：头部（17 / 800 标题 + スマホ/PC）固定在上、离正文 12；正文 .sb 左右 18 下 8 可滚；底部 .sf 上 12 + 分隔线、閉じる 46。 */
+.pvHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; margin-bottom: 12px; }
+.pvHead b { font-size: var(--fs-title-xxs); font-weight: var(--fw-heavy); line-height: 1.5; }
+.pvBody { flex: 1 1 0%; min-height: 0; overflow: hidden auto; margin: 0 -18px; padding: 0 18px 8px; }
+.pvFoot { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--line); }
+.pvFoot .block.block { height: 46px; }
+/* スマホ：正文就是报名页（.sb .pvq .o .ghost-row）——不套灰框、每题不成卡、选项整行 40 高灰底。 */
+.pvBare > div { padding: 0; border-radius: var(--r-none); background: transparent; }
+.pvBare > div > div { margin-top: 0; }
+.pvBare [data-pv="title"] { font-size: var(--fs-title-xxs); line-height: 1.5; }
+.pvBare [data-pv="desc"] { font-size: var(--fs-control); line-height: 1.7; }
+.pvBare [data-pv="q"] { margin-top: 12px; padding: 0; border-radius: var(--r-none); background: transparent; font-size: var(--fs-body-sm); }
+.pvBare [data-pv="q"] > b { display: block; font-size: var(--fs-body-sm); line-height: 1.5; }
+.pvBare [data-pv="o"] { display: flex; align-items: center; gap: 8px; height: 40px; margin-top: 6px; padding: 0 12px; border-radius: var(--r-row); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); }
+.pvBare [data-pv="ghost"] { height: 46px; margin-top: 6px; }
 
 /* お知らせの文面（b13 HM-S8 .ntr / .fld / .nprev / .nn） */
 .ntList.ntList { display: block; padding: 4px 16px; }

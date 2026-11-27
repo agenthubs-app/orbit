@@ -103,36 +103,41 @@ export const fromLocalInput = (value: string) => {
   return new Date(Date.UTC(y, mo - 1, d, h - 9, mi)).toISOString();
 };
 
-export function Preview({ data, draft, t, language, mode, onMode }: { data: HostSetupResponse; draft: SetupDraft; t: HostT; language: OrbitLanguage; mode: "phone" | "pc"; onMode?: (mode: "phone" | "pc") => void }) {
+export function Preview({ data, draft, t, language, mode, onMode, bare = false }: { data: HostSetupResponse; draft: SetupDraft; t: HostT; language: OrbitLanguage; mode: "phone" | "pc"; onMode?: (mode: "phone" | "pc") => void; /** < 768 预览 sheet（b13 HM-S10）：头部与「閉じる」由 sheet 画，这里不画标题/切换/申し込む。 */ bare?: boolean }) {
   const event = data.event;
   const questions = mode === "phone" ? draft.questions.slice(0, 3) : draft.questions;
   const meta = [hostDateLong(event.startsAt, language, t), event.venueName].filter(Boolean).join(" · ");
   return (
     <div className={u.pv} data-host-setup-preview={mode}>
-      <div className={`${s.row} ${s.between} ${u.pvHead}`}>
+      {bare ? null : <div className={`${s.row} ${s.between} ${u.pvHead}`}>
         <b>{t("suPreview")}</b>
-        <Segmented<"phone" | "pc"> variant="seg" label={t("suPreview")} value={mode} onChange={(key) => onMode?.(key)} segments={(["phone", "pc"] as const).map((key) => ({ key, label: t(key === "phone" ? "pvPhone" : "pvPc") }))} />
-      </div>
+        <PreviewModeSeg mode={mode} t={t} onMode={onMode} />
+      </div>}
       <div className={`${u.pvBody} ${mode === "pc" ? u.pvPc : ""}`}>
         <span className={`${s.emo} ${s[`e_${eventTone(event.emoji, event.eventId)}`]}`}>{event.emoji ?? "📅"}</span>
-        <b className={u.pvTitle}>{event.title}</b>
+        <b className={u.pvTitle} data-pv="title">{event.title}</b>
         <div className={s.lbl}>{meta}</div>
-        <div className={`${s.sub} ${u.pvDesc}`}>{draft.description.trim() || t("pvDescPh")}</div>
+        <div className={`${s.sub} ${u.pvDesc}`} data-pv="desc">{draft.description.trim() || t("pvDescPh")}</div>
         {questions.map((question, k) => {
           const options = question.kind === "free" ? [] : question.options.filter((option) => option.trim());
           return (
-            <div key={question.id} className={u.pq}>
+            <div key={question.id} className={u.pq} data-pv="q">
               <b>{question.prompt || t("suPromptPh")}{question.required ? <> <span className={u.pqStar}>*</span></> : null}</b>
               {options.length
-                ? (mode === "phone" ? options.slice(0, 3) : options).map((option, j) => <div key={`${option}-${j}`} className={u.pqO}><span className={question.kind === "multiple" ? u.box : `${u.rad} ${j === 0 && k === 0 ? u.radOn : ""}`} />{option}</div>)
-                : <div className={u.ghostRow}>{t("pvFree")}</div>}
+                ? (mode === "phone" ? options.slice(0, 3) : options).map((option, j) => <div key={`${option}-${j}`} className={u.pqO} data-pv="o"><span className={question.kind === "multiple" ? u.box : `${u.rad} ${j === 0 && k === 0 ? u.radOn : ""}`} />{option}</div>)
+                : <div className={u.ghostRow} data-pv="ghost">{t("pvFree")}</div>}
             </div>
           );
         })}
-        <button type="button" tabIndex={-1} aria-hidden className={`btn ${s.btn} ${s.primary} ${u.applyBtn}`}>{t("pvApply")}</button>
+        {bare ? null : <button type="button" tabIndex={-1} aria-hidden className={`btn ${s.btn} ${s.primary} ${u.applyBtn}`}>{t("pvApply")}</button>}
       </div>
     </div>
   );
+}
+
+/** スマホ / PC 切换（电脑版预览头部与 < 768 预览 sheet 头部共用）。 */
+export function PreviewModeSeg({ mode, t, onMode }: { mode: "phone" | "pc"; t: HostT; onMode?: (mode: "phone" | "pc") => void }) {
+  return <Segmented<"phone" | "pc"> variant="seg" label={t("suPreview")} value={mode} onChange={(key) => onMode?.(key)} segments={(["phone", "pc"] as const).map((key) => ({ key, label: t(key === "phone" ? "pvPhone" : "pvPc") }))} />;
 }
 
 function Settings({ data, draft, t, language, host, onChange }: { data: HostSetupResponse; draft: SetupDraft; t: HostT; language: OrbitLanguage; host: string; onChange?: (draft: SetupDraft) => void }) {

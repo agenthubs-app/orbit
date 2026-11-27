@@ -9,7 +9,7 @@ import { useState } from "react";
 import type { HostNoticeTemplateKind, HostQuestionKind, HostSetupQuestion } from "../../../../../shared/contract/host-console";
 import { BottomSheet, Icon } from "../ui";
 import {
-  KIND_LABEL, KINDS, NOTICE_LABEL, NOTICE_TITLE, Preview, QuestionLine, SetupAgendaCard, SetupContactCard, TEMPLATES,
+  KIND_LABEL, KINDS, NOTICE_LABEL, NOTICE_TITLE, Preview, PreviewModeSeg, QuestionLine, SetupAgendaCard, SetupContactCard, TEMPLATES,
   closeBeforeStart, fromLocalInput, toLocalInput, type HostSetupViewProps,
 } from "./HostSetup";
 import { ReorderList } from "./ReorderList";
@@ -126,6 +126,7 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
   const [closeSheet, setCloseSheet] = useState(false);
   const [addSheet, setAddSheet] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [pvMode, setPvMode] = useState<"phone" | "pc">("phone");
   const change = (next: typeof draft) => props.onChange?.(next);
   const questions = draft.questions;
   const setQuestions = (next: HostSetupQuestion[]) => change({ ...draft, questions: next });
@@ -345,8 +346,9 @@ export function HostSetupPhone(props: HostSetupViewProps & { ended: boolean; eve
       </BottomSheet>
 
       <BottomSheet open={preview} onClose={() => setPreview(false)} label={t("suPreview")} className={sp.pvSheet}>
-        <div className={sp.pvBody}><Preview data={data} draft={draft} t={t} language={language} mode="phone" /></div>
-        <button type="button" className={`btn ${s.btn} ${sp.block}`} onClick={() => setPreview(false)}>{t("close")}</button>
+        <div className={sp.pvHead}><b>{t("suPreview")}</b><PreviewModeSeg mode={pvMode} t={t} onMode={setPvMode} /></div>
+        <div className={`${sp.pvBody} ${pvMode === "phone" ? sp.pvBare : ""}`}><Preview data={data} draft={draft} t={t} language={language} mode={pvMode} bare /></div>
+        <div className={sp.pvFoot}><button type="button" className={`btn ${s.btn} ${sp.block}`} onClick={() => setPreview(false)}>{t("close")}</button></div>
       </BottomSheet>
     </div>
   );
