@@ -23,3 +23,10 @@
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 /* 2026-11-21 手机：隔天标注的最后一个与「最后一天」相邻时会挤成「11/411/5」，手机上去掉相邻的那个。 */
 @media (max-width: 767px) { .nearLast { visibility: hidden; } }
+/* b13 HM-R1 .bars-m / .axis（< 768 レポート，compact）：上留 18 给柱顶标签、柱间 4、圆角 4/4/2/2、无底线；标签 9.5 / 800 / plum-700；轴 10.5 两端对齐。 */
+.compact { gap: 0; }
+.compact .plot { gap: 4px; padding-top: 18px; border-bottom: 0; box-sizing: border-box; }
+.compact .bar { max-width: none; border-radius: var(--r-dot) var(--r-dot) var(--r-hair) var(--r-hair); }
+.mk { margin-bottom: 4px; white-space: nowrap; font-size: var(--fs-micro); font-weight: var(--fw-heavy); color: var(--plum-700); line-height: 1; }
+.axisM { display: flex; justify-content: space-between; margin-top: 6px; font-size: var(--fs-tiny); color: var(--ink-3); font-family: var(--font-num); }
+

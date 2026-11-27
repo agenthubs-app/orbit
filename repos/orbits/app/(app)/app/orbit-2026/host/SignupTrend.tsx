@@ -34,19 +34,22 @@ export function SignupTrend({ values, startDate, t, height = 120, marks, compact
   const axisStep = compact ? Math.max(1, Math.ceil((values.length - 1) / 3)) : step;
   const markOf = new Map((marks ?? []).map((mark) => [mark.index, mark.label]));
   const shown = active ?? peak;
+  // b13 HM-R1（< 768 レポート）：事件日的柱加深、名称直接贴在柱顶（不另起标注行、不画虚线）；横轴两端对齐 4 个日期。
+  const markedHi = compact && markOf.size > 0;
+  const axisIdx = compact ? [...new Set([...Array.from({ length: Math.ceil((labels.length - 1) / axisStep) }, (_, k) => k * axisStep), labels.length - 1])].filter((index) => index >= 0) : [];
   return (
-    <div className={st.wrap}>
+    <div className={`${st.wrap} ${compact ? st.compact : ""}`}>
       {compact ? null : <div className={st.summary}>
         <span><b className={st.total}>{total}</b>{t("unitPeople")}</span>
         {peak >= 0 ? <span className={st.peak}>{t("trendPeak", { d: labels[peak] || "", n: max })}</span> : <span className={st.peak}>{t("trendNone")}</span>}
       </div>}
-      {markOf.size ? (
+      {markOf.size && !compact ? (
         <div className={st.marks} style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
           {values.map((_, index) => <span key={index} data-trend-mark={markOf.has(index) ? "" : undefined}>{markOf.get(index) ?? ""}</span>)}
         </div>
       ) : null}
       <div className={st.plot} style={{ height, gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }} onMouseLeave={() => setActive(null)}>
-        <span className={st.grid} aria-hidden />
+        {compact ? null : <span className={st.grid} aria-hidden />}
         {values.map((value, index) => {
           const h = max > 0 ? Math.round((value / max) * (height - 22)) : 0;
           const tip = t("trendTip", { d: labels[index]!, n: value });
@@ -61,15 +64,15 @@ export function SignupTrend({ values, startDate, t, height = 120, marks, compact
               onFocus={() => setActive(index)}
               onBlur={() => setActive(null)}
             >
-              {index === shown && value > 0 && (!compact || index === active) ? <span className={st.value}>{index === active ? tip : value}</span> : null}
-              <i className={`${st.bar} ${value === 0 ? st.zero : ""} ${index === peak ? st.hi : ""} ${index === active ? st.on : ""}`} style={value > 0 ? { height: Math.max(4, h) } : undefined} />
+              {index === shown && value > 0 && (!compact || index === active) ? <span className={st.value}>{index === active ? tip : value}</span> : compact && markOf.has(index) ? <span className={st.mk} data-trend-mark="">{markOf.get(index)}</span> : null}
+              <i className={`${st.bar} ${value === 0 ? st.zero : ""} ${(markedHi ? markOf.has(index) : index === peak) ? st.hi : ""} ${index === active ? st.on : ""}`} style={value > 0 ? { height: Math.max(4, h) } : undefined} />
             </button>
           );
         })}
       </div>
-      <div className={st.axis} style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }} aria-hidden>
+      {compact ? <div className={st.axisM} aria-hidden>{axisIdx.map((index) => <span key={index}>{axisLabels[index]}</span>)}</div> : <div className={st.axis} style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }} aria-hidden>
         {axisLabels.map((label, index) => <span key={index} className={index % axisStep === 0 && index < labels.length - 1 && labels.length - 1 - index < axisStep ? st.nearLast : undefined}>{index % axisStep === 0 || index === labels.length - 1 ? label : ""}</span>)}
-      </div>
+      </div>}
       <table className={st.srOnly}>
         <caption>{t("trendTitle")}</caption>
         <tbody>{labels.map((label, index) => <tr key={index}><th scope="row">{label}</th><td>{values[index]}</td></tr>)}</tbody>
