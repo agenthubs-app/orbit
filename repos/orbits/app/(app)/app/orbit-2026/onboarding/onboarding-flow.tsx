@@ -8,7 +8,8 @@
  */
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useContext, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { SessionContext } from "next-auth/react";
 
 import type { ProfilePayload } from "../../../../../features/profile/contract";
 import type { ContactHandlesContract, ProfileOnboardingProgressCommandContract, ProfileOnboardingProgressContract } from "../../../../../shared/contract/profile";
@@ -122,6 +123,8 @@ type Origins = Partial<Record<BasicField, FieldOrigin>>;
 
 export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: OnboardingFlowProps) {
   const { language, t: siteText } = useOrbitLanguage();
+  // 引导页可能不在会话 Provider 下：拿不到就不刷新（显示名在下次登录时读到）。
+  const sessionContext = useContext(SessionContext);
   const t: T = (copy: Copy) => siteText(copy as { ja: string; zh: string; en: string });
   // Which step it is comes with the first read: until then the page draws its skeleton, never a step it may have to leave.
   const [view, setView] = useState<OnboardingView>("basics");
@@ -332,6 +335,9 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       if (Object.keys(fields).length && savedFieldsRef.current !== fingerprint) {
         const payload = await saveProfileFields(fields, expectedUpdatedAt);
         setExpectedUpdatedAt(payload.profile?.updatedAt ?? null);
+        // 头像菜单等处的显示名来自会话：存了姓名就刷新会话里的资料姓名（auth.ts jwt 的 update）。
+        const savedName = payload.profile?.displayName?.trim();
+        if (savedName && "displayName" in fields) void sessionContext?.update?.({ profileName: savedName });
         handlesRef.current = { ...(payload.profile?.handles ?? {}) };
         savedFieldsRef.current = fingerprint;
       }

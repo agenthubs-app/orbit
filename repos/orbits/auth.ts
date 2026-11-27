@@ -1,6 +1,7 @@
 // NextAuth v5 配置(参考 seiki-world 的结构:配置放项目根,route 只 re-export)。
 // 会话用 JWT 策略,不引数据库 adapter——用户记录走 features/auth 的
 // live-record-store,和全仓库其余数据同一存储模式。
+import { readProfileDisplayName } from "./features/profile/session-display-name";
 import NextAuth from "next-auth";
 import { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
@@ -93,7 +94,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user, account, profile, trigger, session: update }) {
       if (user) token.authenticatedAt = "authenticatedAt" in user && typeof user.authenticatedAt === "number" ? user.authenticatedAt : Date.now();
       if (!user && token.email && token.sub) {
         const authenticatedAt = typeof token.authenticatedAt === "number"
@@ -144,12 +145,21 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.sub = user.id;
       }
 
+      // 显示名用资料姓名（2026-11-27）：每个令牌只读一次；资料改名后页面 session.update({ profileName }) 刷新。
+      // token.name（账号名）不动；读不到就保持账号名，不影响登录。
+      if (trigger === "update" && update && typeof (update as { profileName?: unknown }).profileName === "string") {
+        token.profileName = ((update as { profileName: string }).profileName).trim() || null;
+      } else if (token.sub && token.profileName === undefined) {
+        token.profileName = await readProfileDisplayName(token.sub).catch(() => null);
+      }
+
       return token;
     },
     async session({ session, token }) {
       if (token.sub) {
         session.user.id = token.sub;
         session.user.emailVerification = (token.emailVerification as EmailVerificationFlags | null | undefined) ?? null;
+        if (typeof token.profileName === "string" && token.profileName) session.user.name = token.profileName;
       }
 
       return session;
