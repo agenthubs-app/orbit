@@ -114,6 +114,129 @@
         }
       }
     },
+    "account-usage.ts::AccountTierContract": {
+      "kind": "enum",
+      "values": [
+        "'free'",
+        "'pro'"
+      ]
+    },
+    "account-usage.ts::AccountUsageFeatureContract": {
+      "kind": "enum",
+      "values": [
+        "'agent_chat'",
+        "'card_scan'",
+        "'plan_new_goal'"
+      ]
+    },
+    "account-usage.ts::AccountUsageUnitContract": {
+      "kind": "enum",
+      "values": [
+        "'batch'",
+        "'image'",
+        "'operation'",
+        "'plan'",
+        "'round'"
+      ]
+    },
+    "account-usage.ts::AccountUsageItemContract": {
+      "kind": "object",
+      "members": {
+        "feature": {
+          "optional": false,
+          "kind": "text",
+          "type": "AccountUsageFeatureContract"
+        },
+        "period": {
+          "optional": false,
+          "kind": "text",
+          "type": "'month'"
+        },
+        "unit": {
+          "optional": false,
+          "kind": "text",
+          "type": "AccountUsageUnitContract"
+        },
+        "used": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "limit": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "upgradeLimit": {
+          "optional": false,
+          "kind": "text",
+          "type": "number | null"
+        },
+        "retryOn": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "account-usage.ts::AccountUsageTierLimitContract": {
+      "kind": "object",
+      "members": {
+        "day": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "month": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "account-usage.ts::AccountUsageContract": {
+      "kind": "object",
+      "members": {
+        "tier": {
+          "optional": false,
+          "kind": "text",
+          "type": "AccountTierContract"
+        },
+        "items": {
+          "optional": false,
+          "kind": "text",
+          "type": "AccountUsageItemContract[]"
+        },
+        "tiers": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "free": {
+              "optional": false,
+              "kind": "object",
+              "members": {
+                "[string]": {
+                  "optional": false,
+                  "kind": "text",
+                  "type": "AccountUsageTierLimitContract"
+                }
+              }
+            },
+            "pro": {
+              "optional": false,
+              "kind": "object",
+              "members": {
+                "[string]": {
+                  "optional": false,
+                  "kind": "text",
+                  "type": "AccountUsageTierLimitContract"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "account.ts::AccountExportScope": {
       "kind": "enum",
       "values": [
@@ -2776,7 +2899,7 @@
         "window": {
           "optional": true,
           "kind": "text",
-          "type": "'weekend' | 'week' | 'month' | 'upcoming' | undefined"
+          "type": "'month' | 'weekend' | 'week' | 'upcoming' | undefined"
         },
         "scopeText": {
           "optional": true,
@@ -8993,6 +9116,11 @@
           "kind": "text",
           "type": "number | null"
         },
+        "dailyLimit": {
+          "optional": true,
+          "kind": "text",
+          "type": "number | null"
+        },
         "aiReadAvailable": {
           "optional": false,
           "kind": "text",
@@ -9846,8 +9974,25 @@
           "optional": false,
           "kind": "text",
           "type": "boolean"
+        },
+        "wechatCheck": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "hostContact": {
+          "optional": true,
+          "kind": "text",
+          "type": "HostEventContact | null"
         }
       }
+    },
+    "event-join.ts::EventJoinWechatAnswer": {
+      "kind": "enum",
+      "values": [
+        "'joined'",
+        "'not_yet'"
+      ]
     },
     "event-join.ts::EventJoinCurrent": {
       "kind": "object",
@@ -14114,6 +14259,11 @@
           "optional": false,
           "kind": "text",
           "type": "number"
+        },
+        "wechatAutoAdmitted": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -14973,6 +15123,11 @@
           "kind": "text",
           "type": "'first_come' | 'review'"
         },
+        "wechatAutoAdmit": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
         "applyPath": {
           "optional": false,
           "kind": "text",
@@ -15047,6 +15202,11 @@
           "optional": false,
           "kind": "text",
           "type": "'first_come' | 'review'"
+        },
+        "wechatAutoAdmit": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -16792,7 +16952,7 @@
         "kind": {
           "optional": false,
           "kind": "text",
-          "type": "'event' | 'schedule' | 'conversation' | 'automation' | 'card' | 'task' | 'appointment' | 'batch' | 'source'"
+          "type": "'event' | 'batch' | 'schedule' | 'conversation' | 'automation' | 'card' | 'task' | 'appointment' | 'source'"
         },
         "id": {
           "optional": false,
@@ -17141,6 +17301,12 @@
         "AccountRegisterConsent",
         "AccountRegisterEmailVerification",
         "AccountRegisterRequest",
+        "AccountTierContract",
+        "AccountUsageContract",
+        "AccountUsageFeatureContract",
+        "AccountUsageItemContract",
+        "AccountUsageTierLimitContract",
+        "AccountUsageUnitContract",
         "AgentAnswerContract",
         "AgentCancelResultContract",
         "AgentPartResult",
