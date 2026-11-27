@@ -7,6 +7,7 @@
  * - 站内通知只写给已有账号的被邀请人；不给陌生地址发邮件。
  * - 接受：服务端以邀请为凭证，代 owner 授予角色（不要求接受者有 `roles.manage`）。
  */
+import { displayNameSql } from "../../event-operations/storage/canonical-registration-repository";
 import { createHash, randomBytes } from "node:crypto";
 
 import { normalizeAuthEmail } from "../../../auth/contract";
@@ -34,8 +35,9 @@ export function maskInvitee(target: string): string {
 export async function actorNames(executor: EventOperationsSqlExecutor, workspaceId: string, actorIds: readonly string[]): Promise<Map<string, string>> {
   if (actorIds.length === 0) return new Map();
   const result = await executor.query<{ id: string; name: string }>(
-    `select payload ->> 'id' as id, payload ->> 'displayName' as name from orbit_records
-      where workspace_id = $1 and collection_name = 'auth_users' and payload ->> 'id' = any($2::text[])`,
+    // 名字用资料姓名，没有才用账号名（displayNameSql，与名单、通知同一规则）。
+    `select u.payload ->> 'id' as id, ${displayNameSql("$1", "(u.payload ->> 'id')", "(u.payload ->> 'displayName')")} as name from orbit_records u
+      where u.workspace_id = $1 and u.collection_name = 'auth_users' and u.payload ->> 'id' = any($2::text[])`,
     [workspaceId, [...new Set(actorIds)]],
   );
   return new Map(result.rows.map((row) => [row.id, row.name]));

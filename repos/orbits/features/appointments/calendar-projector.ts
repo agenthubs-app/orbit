@@ -1,4 +1,5 @@
 import type { AppointmentOutboxEvent } from "./contract";
+import { displayNameSql } from "../events/event-operations/storage/canonical-registration-repository";
 import type { EventOperationsPostgresRuntime } from "../events/event-operations/storage/postgres-client";
 import { createConfiguredOrbitIntegrationService } from "../integrations/service-factory";
 import type { OrbitIntegrationService } from "../integrations/service";
@@ -150,14 +151,15 @@ export function createConfiguredAppointmentCalendarProjector(
           display_name: string;
           email: string;
         }>(`
-          select user_id as actor_id,
-                 payload #>> '{displayName}' as display_name,
-                 payload #>> '{email}' as email
-            from orbit_records
-           where workspace_id = $1
-             and collection_name = 'auth_users'
-             and user_id = any($2::text[])
-             and deleted_at is null
+          select u.user_id as actor_id,
+                 -- 资料姓名优先，没有才用账号名（与名单、通知同一规则）。
+                 ${displayNameSql("$1", "u.user_id", "(u.payload #>> '{displayName}')")} as display_name,
+                 u.payload #>> '{email}' as email
+            from orbit_records u
+           where u.workspace_id = $1
+             and u.collection_name = 'auth_users'
+             and u.user_id = any($2::text[])
+             and u.deleted_at is null
         `, [runtime.workspaceId, [...actorIds]]);
         return result.rows.map((row) => ({
           actorId: requiredText(row.actor_id, "an account actor id"),
