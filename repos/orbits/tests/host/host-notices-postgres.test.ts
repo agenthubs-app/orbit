@@ -90,12 +90,14 @@ test("worker (R17 复核): a failed mail is retried, a claimed row is not taken 
 test("worker mail (2026-11-27): addressed by profile name in the recipient's language, not the account name in Japanese", hostDatabaseTest, async () => {
   await withHostDatabase(async ({ client, pool, workspaceId }) => {
     await lockedFixtureQuery(pool, `insert into event_ops_events (workspace_id, event_id, organizer_actor_id, created_at, updated_at, lifecycle_state_v2, title, created_by) values ($1, 'evt_l', 'host', now(), now(), 'published', '第六期 中日创业交流会', 'host')`, [workspaceId]);
-    const people = [["actor:zh", "cherlytae@example.com", "小雨", { mode: "manual", language: "zh" }], ["actor:none", "none@example.com", null, null], ["actor:last", "last@example.com", "Ken", { mode: "system", language: null, lastUiLanguage: "en" }]] as const;
+    const people = [["actor:zh", "cherlytae@example.com", "小雨", { mode: "manual", language: "zh" }], ["actor:none", "none@example.com", null, null], ["actor:last", "last@example.com", "Ken", { mode: "system", language: null }]] as const;
     for (const [id, email, profileName, pref] of people) {
       await lockedFixtureQuery(pool, `insert into orbit_records (workspace_id, collection_name, record_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'auth_users', $2, 'auth', $3, $4::jsonb, now(), now())`, [workspaceId, `auth_user:${email}`, id, JSON.stringify({ displayName: email.split("@")[0], email, id })]);
       if (profileName) await lockedFixtureQuery(pool, `insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'profiles', $2, $3, 'manual', $2, $4::jsonb, now(), now())`, [workspaceId, `profile:${id}`, id, JSON.stringify({ accountId: id, displayName: profileName })]);
       if (pref) await lockedFixtureQuery(pool, `insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'account_language_preferences', $2, $3, 'manual', $2, $4::jsonb, now(), now())`, [workspaceId, `lang:${id}`, id, JSON.stringify({ actorId: id, ...pref })]);
     }
+    // 跟随系统的 Ken：最近一次使用的界面语言是英文（accountUiLanguageSeen）。
+    await lockedFixtureQuery(pool, `insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'accountUiLanguageSeen', 'seen:last', 'actor:last', 'manual', 'seen:last', '{"actorId":"actor:last","language":"en"}'::jsonb, now(), now())`, [workspaceId]);
     await client.transaction(async (executor) => {
       for (const [id] of people) await enqueueHostNotice(executor, { actorId: id, eventId: "evt_l", kind: "admission_approved", workspaceId });
     });

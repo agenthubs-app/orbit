@@ -15,6 +15,7 @@ import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import type { EventOperationsPostgresClient } from "../../event-operations/storage/postgres-client";
 import { hostNoticeMailLanguage, renderHostNotice, renderHostNoticeMail } from "./templates";
 import { displayNameSql } from "../../event-operations/storage/canonical-registration-repository";
+import { lastUiLanguageSql, uiLanguageValue } from "../../../account-language/last-ui-language";
 
 export const HOST_NOTICE_MAX_ATTEMPTS = 5;
 export const HOST_NOTICE_CLAIM_LEASE_SECONDS = 300;
@@ -98,10 +99,14 @@ export async function deliverHostNotices(deps: HostNoticeWorkerDeps, limit = 50)
       const allowed = deps.emailAllowed ? await deps.emailAllowed(row.actor_id).catch(() => true) : true;
       if (account.email && allowed && deps.mailer && row.kind !== "desktop_link") {
         const origin = deps.appOrigin ?? "https://orbitailink.com";
-        // 语言只看收件人：手动设置 → 最近使用的界面语言（lastUiLanguage）→ 日文；主办方用什么语言操作不影响。
-        const pref = await client.query<{ mode: string | null; language: string | null; last: string | null }>(`select payload ->> 'mode' as mode, payload ->> 'language' as language, payload ->> 'lastUiLanguage' as last from orbit_records where workspace_id = $1 and collection_name = 'account_language_preferences' and payload ->> 'actorId' = $2 and lifecycle_state <> 'deleted' order by updated_at desc limit 1`, [workspaceId, row.actor_id]);
+        // 语言只看收件人：手动设置 → 最近一次使用的界面语言 → 最近一次报名时的语言（只读已有快照）→ 日文；主办方用什么语言操作不影响。
+        const pref = await client.query<{ mode: string | null; language: string | null; last: string | null; joined: string | null }>(`select
+            (select p.payload ->> 'mode' from orbit_records p where p.workspace_id = $1 and p.collection_name = 'account_language_preferences' and p.payload ->> 'actorId' = $2 and p.lifecycle_state <> 'deleted' order by p.updated_at desc limit 1) as mode,
+            (select p.payload ->> 'language' from orbit_records p where p.workspace_id = $1 and p.collection_name = 'account_language_preferences' and p.payload ->> 'actorId' = $2 and p.lifecycle_state <> 'deleted' order by p.updated_at desc limit 1) as language,
+            ${lastUiLanguageSql("$1", "$2")} as last,
+            (select jsonb_path_query_first(v.profile_payload, 'strict $.**.language') #>> '{}' from event_ops_profile_versions v where v.workspace_id = $1 and v.actor_id = $2 order by v.created_at desc limit 1) as joined`, [workspaceId, row.actor_id]);
         const p = pref.rows[0];
-        const lang = hostNoticeMailLanguage(p?.mode === "manual" && p.language ? p.language : p?.last);
+        const lang = hostNoticeMailLanguage(p?.mode === "manual" && p.language ? p.language : uiLanguageValue(p?.last) ?? uiLanguageValue(p?.joined));
         const mail = renderHostNoticeMail(lang, { name: account.name, eventTitle: facts.title ?? "", title: copy[lang].title, body: copy[lang].body, url: `${origin}${href}`, organizerName: facts.display_name });
         const mailed = await deps.mailer.send({ ...(mail.fromName ? { fromName: mail.fromName } : {}), idempotencyKey: row.idempotency_key, subject: mail.subject, text: mail.text, to: account.email });
         // 发送失败 / 被拒要重试（不能标 sent）；未配置、无重定向目标只是不发邮件，收件箱已写好。

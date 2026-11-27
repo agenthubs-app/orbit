@@ -1,6 +1,8 @@
 // NextAuth v5 配置(参考 seiki-world 的结构:配置放项目根,route 只 re-export)。
 // 会话用 JWT 策略,不引数据库 adapter——用户记录走 features/auth 的
 // live-record-store,和全仓库其余数据同一存储模式。
+import { recordLastUiLanguage } from "./features/account-language/last-ui-language";
+import { resolveRequestOrbitLanguage } from "./app/(app)/app/orbit-language-core";
 import { readProfileDisplayName } from "./features/profile/session-display-name";
 import NextAuth from "next-auth";
 import { CredentialsSignin } from "next-auth";
@@ -32,6 +34,17 @@ function authUserService() {
 // through, so every request still reads the row itself (D31).
 const checkSessionForRequest = cacheForRequest((email: string, userId: string, authenticatedAt: number) =>
   readAuthSessionState({ email, userId, authenticatedAt }));
+
+// 这次请求实际生效的界面语言（x-orbit-lang → cookie orbit-lang → Accept-Language）；不在请求里（构建、脚本）返回 null。
+async function currentUiLanguage() {
+  try {
+    const { cookies, headers } = await import("next/headers");
+    const [store, h] = await Promise.all([cookies(), headers()]);
+    return resolveRequestOrbitLanguage({ header: h.get("x-orbit-lang"), cookie: store.get("orbit-lang")?.value ?? null, acceptLanguage: h.get("accept-language") });
+  } catch {
+    return null;
+  }
+}
 
 // The sign-up cookie of this Google callback (visitor, source, web or the App's broker page); outside a request: none.
 async function takeSignupContext() {
@@ -151,6 +164,14 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.profileName = ((update as { profileName: string }).profileName).trim() || null;
       } else if (token.sub && token.profileName === undefined) {
         token.profileName = await readProfileDisplayName(token.sub).catch(() => null);
+      }
+      // 最近一次使用的界面语言（通知邮件按收件人语言发）：只在实际生效的语言变了时写一次，令牌里记着上次写的值。
+      if (token.sub) {
+        const uiLanguage = await currentUiLanguage();
+        if (uiLanguage && token.uiLanguage !== uiLanguage) {
+          await recordLastUiLanguage(token.sub, uiLanguage).catch(() => undefined);
+          token.uiLanguage = uiLanguage;
+        }
       }
 
       return token;
