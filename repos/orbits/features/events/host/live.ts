@@ -944,7 +944,7 @@ export async function createConfiguredHostLiveService(): Promise<HostService | n
               for (const { entry, seat } of mine) {
                 const id = entry.participant.participantId;
                 const member = seat.members.find((item) => item.participantId === id);
-                members.push({ participantId: id, seat: member?.seat ?? `${table.tableNumber}-${members.length + 1}` });
+                members.push({ participantId: id, seat: member?.seat ?? String(members.length + 1) });
                 if (seat.memberPrompts[id]) memberPrompts[id] = seat.memberPrompts[id]!;
                 if (seat.memberRationales[id]) memberRationales[id] = seat.memberRationales[id]!;
               }

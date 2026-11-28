@@ -56,7 +56,9 @@ export interface VenueInput {
 
 const ROUND_MINUTES = 30;
 const letter = (n: number) => String.fromCharCode(64 + Math.max(1, Math.min(26, n)));
-const tableLabel = (table: VenueTable, seat?: string) => `${letter(table.tableNumber)}${seat ? `-${seat}` : ""}`;
+/** A seat as people read it: the seat number only (「R1-T2-S6」 from a model or an older late-joiner record reads 「6」). */
+const seatNumber = (seat: string) => /S?(\d+)$/u.exec(seat.trim())?.[1] ?? seat.trim();
+const tableLabel = (table: VenueTable, seat?: string) => `${letter(table.tableNumber)}${seat ? `-${seatNumber(seat)}` : ""}`;
 const normalize = (value: string) => value.normalize("NFKC").replace(/\s+/g, "");
 
 function otherTables(round: readonly VenueTable[] | undefined, mine: VenueTable, others: readonly VenueParticipant[]) {

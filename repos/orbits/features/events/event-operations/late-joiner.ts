@@ -91,7 +91,8 @@ function pickTable(
 function seated(table: EventOperationsTable, me: EventOperationsParticipant, roundNumber: 1 | 2): EventOperationsTable {
   return {
     ...table,
-    members: [...table.members, { participantId: me.participantId, seat: `R${roundNumber}-T${table.tableNumber}-S${table.members.length + 1}` }],
+    // Same seat format as a published table (composeGrouping numbers seats "1", "2", …), so it shows as 「B-6」.
+    members: [...table.members, { participantId: me.participantId, seat: String(table.members.length + 1) }],
   };
 }
 
