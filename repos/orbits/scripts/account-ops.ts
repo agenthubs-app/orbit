@@ -17,6 +17,9 @@
  *   merge --from <旧账号邮箱或id> --to <新账号邮箱或id> [--apply]
  *                                                              把迁移来的旧账号并到新注册的账号（不带 --apply = 整套合并后回滚）；
  *                                                              旧账号存档停用，留 account_merges 记录，可重跑
+ *   name-preview --name <姓名片段>                              只读：账号名或资料名含该片段的账号（不输出邮箱）
+ *   rename --user-id <账号id> --from <现在的资料名> --to <新名字> [--apply]
+ *                                                              改资料名（走产品的资料保存）；账号名与旧名相同时一起改
  *
  * 输出只有 id、类别和数量，邮箱一律打码。构建里用完就 `exit 1`，不产生新版本。
  */
@@ -27,6 +30,7 @@ import { previewControlledAccountPurge, runControlledAccountPurge } from "../fea
 import { previewControlledEmailChange, runControlledEmailChange } from "../features/account/controlled-ops/email-change";
 import { runControlledTierChange } from "../features/account/controlled-ops/account-tier";
 import { runControlledAccountMerge } from "../features/account/controlled-ops/account-merge";
+import { previewControlledNameChange, runControlledNameChange } from "../features/account/controlled-ops/display-name";
 import { maskEmail } from "../features/account/controlled-ops/target";
 import { assertControlledAccountOpsProcess } from "../features/account/data-rights/purge/local-gate";
 import { resolveLiveDatabaseConnectionConfig } from "../shared/storage/live-database-config";
@@ -74,6 +78,12 @@ async function main() {
         break;
       case "merge":
         print("merge", await runControlledAccountMerge({ db, workspaceId, from: required("from"), to: required("to"), apply }));
+        break;
+      case "name-preview":
+        print("name-preview", await previewControlledNameChange({ db, workspaceId, name: required("name") }));
+        break;
+      case "rename":
+        print("rename", await runControlledNameChange({ db, workspaceId, userId: required("user-id"), from: required("from"), to: required("to"), apply }));
         break;
       case "set-tier":
         print("set-tier", await runControlledTierChange({ db, workspaceId, email: required("email"), userId: required("user-id"), tier: required("tier"), apply }));
