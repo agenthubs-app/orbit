@@ -139,7 +139,8 @@ export function localAttendeeWorkspace(day: LocalEventDay, input: { now: number;
     directory: result ? result.directory : [me],
     checkIn: null,
     checkInAvailable: input.now >= Date.parse(windows.checkInOpensAt) && input.now <= Date.parse(windows.eventEndsAt),
-    profileEditable: input.now < Date.parse(windows.profileEditDeadlineAt),
+    // 2026-11-28（与服务端同一规则）：资料一直改到活动结束。
+    profileEditable: input.now < Date.parse(windows.eventEndsAt),
     resultsState: result ? "ready" as const : input.now < Date.parse(windows.resultsAvailableAt) ? "locked" as const : "not_generated" as const,
     recommendations: result?.recommendations ?? null,
     roundOneTable: result?.roundOneTable ?? null,
