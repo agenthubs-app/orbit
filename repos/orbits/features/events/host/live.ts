@@ -39,6 +39,8 @@ export interface HostOperationsPort {
   checkInParticipant(input: { actorId: string; eventId: string; participantId: string }): Promise<unknown>;
   startGeneration(input: { actorId: string; eventId: string; idempotencyKey: string }): Promise<{ generationId: string }>;
   publishGeneration(input: { actorId: string; eventId: string; generationId: string; composeGrouping: Parameters<typeof composeGrouping>[0] extends infer G ? (grouping: G & object) => G : never }): Promise<unknown>;
+  /** Published seats (round → participantId → table number and seat), late joiners included; null before publication. */
+  publishedSeats?(eventId: string): Promise<ReadonlyMap<string, { tableNumber: number; seat: string }> | null>;
   latestGeneration(eventId: string): Promise<{ generationId: string; organizerActorId?: string; status: string; participants: readonly EventOperationsParticipant[]; grouping: { roundOne: readonly unknown[]; roundTwo: readonly unknown[] } | null; tableSize: number } | null>;
 }
 
@@ -926,12 +928,16 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const conditions = await matching.conditions(eventId, latest.tableSize);
       const { draft } = await draftFor(eventId, latest, conditions, latest.organizerActorId);
       const original = latest.grouping as unknown as { roundOne: readonly EventOperationsTable[]; roundTwo: readonly EventOperationsTable[] };
+      const published = deps.operations?.publishedSeats ? await deps.operations.publishedSeats(eventId) : null;
+      const seatNumber = (seat: string) => Number(/(\d+)$/u.exec(seat)?.[1] ?? 0);
       const build = (round: 1 | 2, tables: readonly EventOperationsTable[]): EventOperationsTable[] => tables.map((table) => {
         const letter = String.fromCharCode(64 + table.tableNumber);
         const host = draft.tables.find((item) => item.round === round && item.table === letter);
         if (!host) return table;
-        const seatOf = new Map(table.members.map((member) => [member.participantId, member.seat]));
-        let next = Math.max(0, ...table.members.map((member) => Number(/(\d+)$/u.exec(member.seat)?.[1] ?? 0)));
+        // Seats as published (late joiners: as placed); a member still at that table keeps it.
+        const publishedHere = [...(published?.entries() ?? [])].filter(([key, value]) => key.startsWith(`${round}:`) && value.tableNumber === table.tableNumber);
+        const seatOf = new Map(publishedHere.map(([key, value]) => [key.slice(2), String(seatNumber(value.seat) || value.seat)]));
+        let next = Math.max(0, ...publishedHere.map(([, value]) => seatNumber(value.seat)));
         const memberPrompts: Record<string, readonly [string, string]> = {};
         const memberRationales: Record<string, string> = {};
         const members = host.members.map((member) => {
@@ -962,6 +968,21 @@ export async function createConfiguredHostLiveService(): Promise<HostService | n
     client: runtime.client,
     operations: operationsService && repository ? {
       checkInParticipant: (input) => operationsService.checkInParticipant(input),
+      async publishedSeats(eventId) {
+        const published = await repository.getPublishedResult(eventId);
+        if (!published) return null;
+        const seats = new Map<string, { tableNumber: number; seat: string }>();
+        for (const [round, tables] of [[1, published.grouping.roundOne], [2, published.grouping.roundTwo]] as const) {
+          for (const table of tables) for (const member of table.members) seats.set(`${round}:${member.participantId}`, { seat: member.seat, tableNumber: table.tableNumber });
+        }
+        for (const entry of await operationsService.lateJoinerPlacements(eventId).catch(() => [])) {
+          for (const [round, table] of [[1, entry.roundOneTable], [2, entry.roundTwoTable]] as const) {
+            const member = table?.members.find((item) => item.participantId === entry.participant.participantId);
+            if (table && member) seats.set(`${round}:${member.participantId}`, { seat: member.seat, tableNumber: table.tableNumber });
+          }
+        }
+        return seats;
+      },
       async latestGeneration(eventId) {
         const generations = await repository.listGenerations(eventId);
         const latest = [...generations].filter((generation) => generation.status !== "superseded").sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
