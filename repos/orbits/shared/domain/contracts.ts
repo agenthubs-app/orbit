@@ -71,6 +71,8 @@ export interface PublicProfileDTO extends IndustrySelectionContract {
   seeking?: readonly string[];
   topics?: readonly string[];
   conversationPrompts?: readonly string[];
+  /** 2026-11-28 matching fields (identity, business, customers); private to the owner and the matching program. */
+  matchFields?: import("../contract/profile").ProfileMatchFieldsContract;
 }
 
 export type NetworkPersonKind = "platform_user" | "external_contact";

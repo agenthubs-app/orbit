@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { readMatchFields } from "../../../profile/match-fields";
 import {
   EventOperationsError,
   type EventOperationsCapturedSnapshot,
@@ -154,7 +155,7 @@ async function readMatchingAccountProfiles(
   if (table.rows[0]?.present !== true) return new Map();
   const rows = await executor.query<SqlRow>(
     `
-      select distinct on (account_id) account_id, offering, seeking, topics, headline, bio, role, seniority
+      select distinct on (account_id) account_id, offering, seeking, topics, headline, bio, role, seniority, match_fields
       from (
         select coalesce(payload->>'accountId', user_id) as account_id,
           payload->>'headline' as headline,
@@ -164,6 +165,7 @@ async function readMatchingAccountProfiles(
           coalesce(payload #> '{publicProfile,offering}', payload -> 'offering') as offering,
           coalesce(payload #> '{publicProfile,seeking}', payload -> 'seeking') as seeking,
           coalesce(payload #> '{publicProfile,topics}', payload -> 'topics') as topics,
+          payload #> '{publicProfile,matchFields}' as match_fields,
           updated_at
         from orbit_records
         where workspace_id = $1 and collection_name = 'profiles' and lifecycle_state <> 'deleted'
@@ -178,6 +180,7 @@ async function readMatchingAccountProfiles(
   return new Map(rows.rows.map((row) => [String(row.account_id), {
     bio: text(row.bio),
     headline: text(row.headline),
+    matchFields: readMatchFields(row.match_fields) ?? null,
     offering: stringList(row.offering),
     role: text(row.role),
     seniority: text(row.seniority),

@@ -9,6 +9,7 @@ import {
   type ProfileScenario,
   type ProfileSuccess,
 } from "./contract";
+import { mergeMatchFieldsUpdate, readMatchFields, validateMatchFieldsUpdate } from "./match-fields";
 import { scoreProfileCompleteness } from "./completeness";
 import type { ProfileService } from "./service";
 import type {
@@ -141,6 +142,7 @@ function manualProfileFor(input: {
     offering: publicProfile?.offering,
     seeking: publicProfile?.seeking,
     topics: publicProfile?.topics,
+    ...(readMatchFields(publicProfile?.matchFields) ? { matchFields: readMatchFields(publicProfile?.matchFields) } : {}),
     spokenLanguages: input.profile.spokenLanguages,
     homeMarket: input.profile.homeMarket ?? "",
     relationshipGoal: input.profile.relationshipGoal ?? "",
@@ -273,6 +275,12 @@ function profileInkSignalFieldsAreValid(update: ManualProfileUpdateInput): boole
     && normalizeProfileTags(update.seeking, []).length <= 5;
 }
 
+/** 2026-11-28: the stored matching fields, with the person's save applied (each saved field becomes confirmed). */
+function matchFieldsEntry(current: ManualProfile["matchFields"], update: ManualProfileUpdateInput["matchFields"]) {
+  const merged = mergeMatchFieldsUpdate(current, update);
+  return merged ? { matchFields: merged } : {};
+}
+
 function mergeProfile(input: {
   actorId: string;
   base: LiveProfileRecord | null;
@@ -364,6 +372,7 @@ function mergeProfile(input: {
         input.update.topics,
         baseManual?.topics ?? [],
       ),
+      ...matchFieldsEntry(baseManual?.matchFields, input.update.matchFields),
     },
     evidenceIds: input.base?.evidenceIds ?? [`evidence:profile:${profileId}`],
     createdAt: input.base?.createdAt ?? input.updatedAt,
@@ -468,6 +477,13 @@ export function createLiveProfileService({
 
       if (!validateProfileMutation(input)) {
         return failure("PROFILE_MUTATION_INVALID", { collectedAt, provider });
+      }
+      if (input.matchFields) {
+        try {
+          validateMatchFieldsUpdate(input.matchFields);
+        } catch {
+          return failure("PROFILE_MUTATION_INVALID", { collectedAt, provider });
+        }
       }
 
       if (input.birthDate !== undefined && input.birthDate !== null && !isValidProfileBirthDate(input.birthDate, collectedAt.slice(0, 10))) {

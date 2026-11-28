@@ -14,6 +14,36 @@ export type SeniorityLevelCode =
   | "c_level"
   | "founder";
 
+// 2026-11-28 匹配字段：身份 / 业务细类 / 卖给谁 / 客户行业 / 投资阶段。每项记来源：
+// "inferred" = 系统（名片或 AI）推断，等本人确认；"confirmed" = 本人确认或填写过。未知值留空，不猜。
+export type ProfileIdentityCode =
+  | "founder"
+  | "investor"
+  | "finance_advisor"
+  | "corporate"
+  | "channel"
+  | "professional"
+  | "student"
+  | "other";
+export type ProfileSellsToCode = "business" | "consumer" | "both";
+export type ProfileInvestStageCode = "seed" | "angel" | "series_a" | "series_b_plus" | "growth";
+export type ProfileMatchFieldCode = "identity" | "businessCategoryIds" | "sellsTo" | "customerIndustryIds" | "investStages";
+export type ProfileMatchFieldSourceCode = "inferred" | "confirmed";
+export interface ProfileMatchFieldsContract {
+  identity?: ProfileIdentityCode | null;
+  /** shared/domain/business-categories.ts ids, main business first, at most 2. */
+  businessCategoryIds?: readonly string[];
+  sellsTo?: ProfileSellsToCode | null;
+  /** Industry ids (top-level or secondary) of their customers, at most 3; only when sellsTo is business or both. */
+  customerIndustryIds?: readonly string[];
+  /** Only for investors. */
+  investStages?: readonly ProfileInvestStageCode[];
+  sources?: Partial<Record<ProfileMatchFieldCode, ProfileMatchFieldSourceCode>>;
+  /** Why an inferred value was chosen (short, from the person's own profile text); never shown publicly. */
+  evidence?: Partial<Record<ProfileMatchFieldCode, string>>;
+  inferredAt?: string;
+}
+
 export type ProfileViewStateCode = "success" | "empty" | "pending";
 
 export type ProfileCompletenessStatusCode =
@@ -115,6 +145,7 @@ export interface ManualProfileContract extends IndustrySelectionContract {
   seeking?: readonly string[];
   topics?: readonly string[];
   spokenLanguages?: readonly string[];
+  matchFields?: ProfileMatchFieldsContract;
   updatedAt: string;
 }
 

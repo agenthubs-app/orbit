@@ -28,7 +28,14 @@ export const accountProfileObject = z.object({
   handles: z.object({ email: z.string().optional(), phone: z.string().optional(), wechatId: z.string().optional(), lineId: z.string().optional(), website: z.string().optional(), linkedinUrl: z.string().optional(), xHandle: z.string().optional() }).optional(),
   industry: z.string().optional(), seniorityLevel: z.string().optional(), bio: z.string().optional(),
   offering: z.array(z.string()).optional(), seeking: z.array(z.string()).optional(), topics: z.array(z.string()).optional(),
-  spokenLanguages: z.array(z.string()).optional(), updatedAt: z.string(),
+  spokenLanguages: z.array(z.string()).optional(),
+  // 2026-11-28 matching fields: values stay strings here (tolerant); the server validates codes on save.
+  matchFields: z.object({
+    identity: z.string().nullable().optional(), businessCategoryIds: z.array(z.string()).optional(), sellsTo: z.string().nullable().optional(),
+    customerIndustryIds: z.array(z.string()).optional(), investStages: z.array(z.string()).optional(),
+    sources: z.record(z.string(), z.enum(["inferred", "confirmed"])).optional(), evidence: z.record(z.string(), z.string()).optional(), inferredAt: z.string().optional(),
+  }).optional(),
+  updatedAt: z.string(),
 });
 export const profileAccountObject = z.object({
   state: tolerantEnum(["success", "empty", "pending"], "pending"),

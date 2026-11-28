@@ -17,6 +17,8 @@ import { needConcept, offerConcept, topicConcept } from "./match-concepts";
 export interface MatchingAccountProfile {
   bio?: string | null;
   headline?: string | null;
+  /** Profile matching fields (confirmed or inferred), 2026-11-28. */
+  matchFields?: import("../../../shared/contract/profile").ProfileMatchFieldsContract | null;
   offering?: readonly string[] | null;
   role?: string | null;
   seniority?: string | null;
@@ -95,9 +97,20 @@ export function matchingParticipant(
     .slice(0, 300);
   const goals = answers ? terms(answers.desiredOutcome) : [];
   const wants = answers ? terms(answers.targetAttendees) : [];
+  const fields = account?.matchFields;
+  const matchFields = fields && (fields.identity || fields.businessCategoryIds?.length || fields.sellsTo)
+    ? {
+      businessCategoryIds: fields.businessCategoryIds ?? [],
+      customerIndustryIds: fields.customerIndustryIds ?? [],
+      identity: fields.identity ?? null,
+      investStages: fields.investStages ?? [],
+      sellsTo: fields.sellsTo ?? null,
+    }
+    : null;
   return {
     ...participant,
     ...(about ? { about } : {}),
+    ...(matchFields ? { matchFields } : {}),
     ...(goals.length ? { goals } : {}),
     ...(wants.length ? { wants } : {}),
     needs,

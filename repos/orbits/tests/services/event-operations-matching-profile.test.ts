@@ -182,3 +182,14 @@ test("rules: one broadly useful person is recommended to at most about a third o
   const exposure = [...picks.values()].flat().filter((pick) => pick.target.participantId === investor.participantId).length;
   assert.ok(exposure <= 4, `investor recommended ${exposure} times`);
 });
+
+test("rules: profile matching fields beat the free text, and a seller's own customers replace the category defaults", async () => {
+  const { matchAttributes, ruleOwnValue } = await import("../../features/events/event-operations/match-rules");
+  const ceo = card("ceo2", { about: "投資・資金調達の相談に応じます", matchFields: { identity: "investor", businessCategoryIds: ["vc_fund"] }, offers: ["投資・資金調達"], role: "社長" });
+  assert.equal(matchAttributes(ceo).identity, "investor");
+  const maker = card("maker", { about: "做厨柜", matchFields: { businessCategoryIds: ["kitchen_bath"], customerIndustryIds: ["food_hospitality.hotels_tourism"], identity: "corporate", sellsTo: "business" } });
+  const hotel = card("hotel", { about: "经营酒店", matchFields: { businessCategoryIds: ["hotel"], identity: "founder" } });
+  const developer = card("developer2", { about: "从事房地产开发", matchFields: { businessCategoryIds: ["property_developer"], identity: "corporate" } });
+  assert.ok(ruleOwnValue(maker, hotel).findings.some((entry) => entry.finding.kind === "buyer"), "the maker named hotels as customers");
+  assert.ok(!ruleOwnValue(maker, developer).findings.some((entry) => entry.finding.kind === "buyer"), "their own customer list replaces the category default");
+});

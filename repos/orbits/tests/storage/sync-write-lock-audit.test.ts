@@ -73,6 +73,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "scripts/diagnostics/notification-source-read-cost.ts": { policy: "non-sync", statements: 2, collections: "reminderPlans and notification fixtures" },
   "scripts/diagnostics/schedule-exception-window-cost.ts": { policy: "non-sync", statements: 1, collections: "personal_schedule_occurrence_exceptions (the series rows go through the store)" },
   "scripts/quarantine-legacy-notifications.ts": { policy: "non-sync", statements: 1, collections: "notifications" },
+  "scripts/backfill-profile-match-fields.ts": { policy: "non-sync", statements: 1, collections: "profiles (publicProfile.matchFields only)" },
   "scripts/measure-plan-read-traffic.ts": { policy: "locked", statements: 2, how: "W0017/W0021 traffic measurement in a temporary schema: lockedWrite takes acquireSyncCommitOrderLock in the same transaction (contacts)" },
   "scripts/seed-demo-workspace.ts": { policy: "locked", statements: 2, how: "the demo event owner reset (events, 0117) runs in a transaction that takes acquireSyncCommitOrderLock first; the other statement updates event_organizer_owner_migrations" },
   "scripts/seed-plan-v2.ts": { policy: "locked", statements: 1, how: "R22 local seed: the two sample contacts (contacts, 0116) are inserted in one transaction that takes acquireSyncCommitOrderLock first" },

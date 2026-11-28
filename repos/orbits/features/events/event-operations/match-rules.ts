@@ -116,8 +116,13 @@ export interface MatchAttributes {
   identity: Identity;
   industryId: string | null;
   wants: readonly { want: Want; weight: number }[];
+  /** The person's own customer industries from their profile (overrides the category defaults); null = use defaults. */
+  customers: readonly string[] | null;
+  /** They sell only to individuals: no business buyer relations. */
+  consumerOnly: boolean;
 }
 
+const IDENTITIES = new Set<string>(["founder", "investor", "finance_advisor", "corporate", "channel", "professional", "student", "other"]);
 const fold = (text: string) => text.normalize("NFKC").toLocaleLowerCase("en-US");
 const INDUSTRY_BY_LABEL = new Map(INDUSTRY_CATALOG.flatMap((industry) => Object.values(industry.labels).map((label) => [fold(label), industry.id] as const)));
 const OWNER_ROLE = /社長|代表|ceo|founder|创始|創業|董事长|会长|会長|総経理|总经理|経営者|经营者|役員|执行役员|執行役員|owner|本部长|理事长|理事長|オーナー/iu;
@@ -161,8 +166,15 @@ export function matchAttributes(participant: EventOperationsParticipant): MatchA
   // Two keywords from the same place: the longer one says what it is (「古玩城招商」 is property leasing, not antiques).
   const hits = rawHits.filter((hit) => !rawHits.some((other) => other !== hit && other.at <= hit.at && other.at + other.keyword.length >= hit.at + hit.keyword.length && other.keyword.length > hit.keyword.length));
   hits.sort((a, b) => (a.at - b.at) || (Number(categoryIndustry(b.category) === industryId) - Number(categoryIndustry(a.category) === industryId)));
+  // Profile fields first (confirmed or inferred, 2026-11-28), then what the free text says.
+  const fields = participant.matchFields;
   const categories: BusinessCategory[] = [];
+  for (const id of fields?.businessCategoryIds ?? []) {
+    const category = businessCategory(id);
+    if (category && !categories.includes(category)) categories.push(category);
+  }
   for (const hit of hits) if (!categories.includes(hit.category) && categories.length < 4) categories.push(hit.category);
+  const fieldIdentity = IDENTITIES.has(fields?.identity ?? "") ? (fields!.identity as Identity) : null;
 
   // Goals: the event goal (desiredOutcome) in its order, then the remaining needs.
   const goalTerms = participant.goals?.length ? participant.goals : [];
@@ -173,9 +185,9 @@ export function matchAttributes(participant: EventOperationsParticipant): MatchA
     else goals.push({ goal, weight });
   };
   const offersText = participant.offers.join(" / ");
-  const isInvestor = ANGEL_OFFER.test(offersText) || (INVESTOR_TEXT.test(about + role) && participant.offers.some((offer) => offerConcept(offer) === "investor_intro"))
+  const isInvestor = fieldIdentity ? fieldIdentity === "investor" : ANGEL_OFFER.test(offersText) || (INVESTOR_TEXT.test(about + role) && participant.offers.some((offer) => offerConcept(offer) === "investor_intro"))
     || categories.some((category) => ["angel_investing", "vc_fund", "cvc"].includes(category.id));
-  const isFinanceAdvisor = !isInvestor && (categories.some((category) => ["ma_advisory", "fundraising_advisory"].includes(category.id))
+  const isFinanceAdvisor = fieldIdentity ? fieldIdentity === "finance_advisor" : !isInvestor && (categories.some((category) => ["ma_advisory", "fundraising_advisory"].includes(category.id))
     || !OWNER_ROLE.test(role) && participant.offers.some((offer) => /VCの紹介|投資家の紹介|投融资资源|investor intro|M&A・事業売却支援/iu.test(offer)));
   const dealSide = isInvestor || isFinanceAdvisor;
   if (isInvestor && !categories.some((category) => ["angel_investing", "vc_fund", "cvc", "pe_buyout"].includes(category.id))) {
@@ -210,7 +222,7 @@ export function matchAttributes(participant: EventOperationsParticipant): MatchA
 
   const seniorityOwner = Boolean(participant.seniority && /founder|c_level|owner/iu.test(participant.seniority));
   const hasGoal = (goal: Goal) => goals.some((entry) => entry.goal === goal);
-  const identity: Identity = isInvestor ? "investor"
+  const identity: Identity = fieldIdentity ?? (isInvestor ? "investor"
     : STUDENT.test(role) || (!role && STUDENT.test(about.slice(0, 20))) ? "student"
       : OWNER_ROLE.test(role) || seniorityOwner ? "founder"
         : categories.some((category) => ["ma_advisory", "fundraising_advisory"].includes(category.id))
@@ -218,7 +230,7 @@ export function matchAttributes(participant: EventOperationsParticipant): MatchA
           : PROFESSIONAL.test(role + about.slice(0, 60)) ? "professional"
             : goals.some((entry) => (entry.goal === "find_investment" || entry.goal === "co_founder") && entry.weight >= 0.6) ? "founder"
               : categories[0] && ["trade_logistics"].includes(categoryIndustry(categories[0])) || categories.some((category) => ["wholesale_distribution", "building_materials_trade", "import_export", "ec_seller"].includes(category.id)) ? "channel"
-                : categories.length || role ? "corporate" : "other";
+                : categories.length || role ? "corporate" : "other");
 
   // Wants: who they ticked; many ticks each count for less (4 or fewer count fully).
   const wantSet = new Map<Want, number>();
@@ -227,7 +239,9 @@ export function matchAttributes(participant: EventOperationsParticipant): MatchA
   const wantWeight = Math.min(1, 4 / Math.max(1, wantSet.size));
   const wants = [...wantSet.keys()].map((want) => ({ want, weight: wantWeight }));
 
-  const result: MatchAttributes = { categories, goals, identity, industryId, wants };
+  const consumerOnly = fields?.sellsTo === "consumer";
+  const customers = fields?.customerIndustryIds?.length && !consumerOnly ? fields.customerIndustryIds : null;
+  const result: MatchAttributes = { categories, consumerOnly, customers, goals, identity, industryId, wants };
   cache.set(participant, result);
   return result;
 }
@@ -272,10 +286,19 @@ const SALES_OFFERS = new Set(["channel", "enterprise_intro", "overseas_market", 
 const sameCompany = (a: EventOperationsParticipant, b: EventOperationsParticipant) =>
   Boolean(a.company && b.company && a.company.trim().toLocaleLowerCase("en") === b.company.trim().toLocaleLowerCase("en"));
 
-/** The first seller → buyer relation between two people's categories; primary when both are among their two main lines of business. */
-function firstPair(sellers: readonly BusinessCategory[], buyers: readonly BusinessCategory[]) {
-  for (const [i, seller] of sellers.entries()) for (const [j, buyer] of buyers.entries()) {
-    if (seller.id !== buyer.id && sellsTo(seller, buyer)) return { buyer, primary: i <= 1 && j <= 1, seller };
+/**
+ * The first seller → buyer relation between two people's categories; primary when both are among their two main lines
+ * of business. The seller's own customer industries (profile) replace the category defaults; consumer-only sellers have
+ * no business buyers.
+ */
+function firstPair(seller: MatchAttributes, buyer: MatchAttributes) {
+  if (seller.consumerOnly) return null;
+  for (const [i, mine] of seller.categories.entries()) for (const [j, theirs] of buyer.categories.entries()) {
+    if (mine.id === theirs.id) continue;
+    const ok = seller.customers
+      ? seller.customers.some((customer) => customer === theirs.id || customer === theirs.parent || customer === categoryIndustry(theirs))
+      : sellsTo(mine, theirs);
+    if (ok) return { buyer: theirs, primary: i <= 1 && j <= 1, seller: mine };
   }
   return null;
 }
@@ -305,8 +328,8 @@ export function ruleOwnValue(reader: EventOperationsParticipant, other: EventOpe
   const me = matchAttributes(reader);
   const them = matchAttributes(other);
   const findings: { finding: Finding; value: number }[] = [];
-  const theyBuy = firstPair(me.categories, them.categories); // they may buy from me
-  const iBuy = firstPair(them.categories, me.categories); // I may buy from them
+  const theyBuy = firstPair(me, them); // they may buy from me
+  const iBuy = firstPair(them, me); // I may buy from them
   const theirGoal = (goal: Goal, min = 0) => them.goals.some((entry) => entry.goal === goal && entry.weight >= min);
 
   // 1. What they came for.

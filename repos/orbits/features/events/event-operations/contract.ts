@@ -43,6 +43,17 @@ export interface EventOperationsParticipant {
   industry: string | null;
   languages: readonly string[];
   lateRegistration: boolean;
+  /**
+   * The account's matching fields (identity, business, customers), confirmed or inferred; generation snapshot only
+   * (2026-11-28). Rules prefer these over reading the free text.
+   */
+  matchFields?: {
+    identity?: string | null;
+    businessCategoryIds?: readonly string[];
+    sellsTo?: string | null;
+    customerIndustryIds?: readonly string[];
+    investStages?: readonly string[];
+  };
   needs: readonly string[];
   offers: readonly string[];
   participantId: string;

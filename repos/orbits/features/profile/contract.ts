@@ -155,7 +155,17 @@ export interface ManualProfileUpdateInput extends IndustrySelectionContract, Pro
   seeking?: readonly string[];
   topics?: readonly string[];
   spokenLanguages?: readonly string[];
+  /**
+   * Matching fields the person saves. Each field present here becomes "confirmed"; omitted fields keep their value
+   * and source; null clears the field.
+   */
+  matchFields?: ProfileMatchFieldsUpdate | null;
 }
+
+export type ProfileMatchFieldsUpdate = {
+  [K in keyof Omit<import("../../shared/contract/profile").ProfileMatchFieldsContract, "sources" | "evidence" | "inferredAt">]?:
+    import("../../shared/contract/profile").ProfileMatchFieldsContract[K] | null;
+};
 
 // ProfilePayload 是资料页成功响应的完整读模型。
 // state/profile/completeness/editor 的形状在 shared/contract/profile.ts，
