@@ -183,9 +183,8 @@ export function buildVenue(input: VenueInput): EventVenueResponse {
   }
   const ws = input.workspace;
   const now = input.now.getTime();
-  if (!ws.checkIn && !ended) {
-    return { ...base, ...empty, checkedIn: false, checkIn: { available: ws.checkInAvailable, displayName: ws.me.displayName, qrPayload: input.checkInPass?.qrPayload ?? null, receptionNumber: input.checkInPass?.receptionNumber ?? null }, readOnly: false, state: "before_check_in" };
-  }
+  // 2026-11-28 (user: 「不用签到就能进入会场模式」): a registered attendee in the published results enters venue mode
+  // without checking in; checkedIn below still says whether they did.
 
   const meId = ws.me.participantId;
   const tableOf = (participantId: string, round: VenueTable | null) => {
