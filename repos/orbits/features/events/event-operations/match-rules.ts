@@ -145,14 +145,24 @@ export function matchAttributes(participant: EventOperationsParticipant): MatchA
   // A field they are only interested in (「生成AIに関心」「关注中国市场」) is not their business.
   const interestOnly = (at: number, keyword: string) =>
     /^.{0,3}(に関心|に興味|への関心|の情報交換|感兴趣|的兴趣|interest)/u.test(folded.slice(at + keyword.length)) || /(关注|关心|興味|関心|交流|希望|interested in)[^/／。、，,]{0,4}$/u.test(folded.slice(Math.max(0, at - 8), at));
+  // A word inside a clause about who they want to meet, or about experience they have, is not their business
+  // (「メディア関係者とつながりたい」「具备游戏玩法与系统策划经验」).
+  const clauseOf = (at: number) => {
+    const start = Math.max(...["。", "，", ",", "、", "/", "／", "！", "!", "；", ";", "\n"].map((mark) => folded.lastIndexOf(mark, at)));
+    const ends = ["。", "，", ",", "/", "／", "！", "!", "；", ";", "\n"].map((mark) => folded.indexOf(mark, at)).filter((end) => end >= 0);
+    return folded.slice(start + 1, ends.length ? Math.min(...ends) : folded.length);
+  };
+  const notTheirBusiness = (at: number) => /想认识|希望认识|想结识|つながりたい|知り合いたい|出会いたい|want to meet|具备|经验|経験|スキル|experience in|个人网站|個人サイト|趣味|副业|副業|hobby|side project/u.test(clauseOf(at));
   // Per category, its earliest mention that is not an interest-only mention.
-  const hits = categoriesInText(text).flatMap(({ category }) => {
-    const first = keywordPositions(folded, category).filter((hit) => !interestOnly(hit.at, hit.keyword)).sort((a, b) => a.at - b.at)[0];
+  const rawHits = categoriesInText(text).flatMap(({ category }) => {
+    const first = keywordPositions(folded, category).filter((hit) => !interestOnly(hit.at, hit.keyword) && !notTheirBusiness(hit.at)).sort((a, b) => a.at - b.at)[0];
     return first ? [{ at: first.at, category, keyword: first.keyword }] : [];
   });
+  // Two keywords from the same place: the longer one says what it is (「古玩城招商」 is property leasing, not antiques).
+  const hits = rawHits.filter((hit) => !rawHits.some((other) => other !== hit && other.at <= hit.at && other.at + other.keyword.length >= hit.at + hit.keyword.length && other.keyword.length > hit.keyword.length));
   hits.sort((a, b) => (a.at - b.at) || (Number(categoryIndustry(b.category) === industryId) - Number(categoryIndustry(a.category) === industryId)));
   const categories: BusinessCategory[] = [];
-  for (const hit of hits) if (!categories.includes(hit.category) && categories.length < 3) categories.push(hit.category);
+  for (const hit of hits) if (!categories.includes(hit.category) && categories.length < 4) categories.push(hit.category);
 
   // Goals: the event goal (desiredOutcome) in its order, then the remaining needs.
   const goalTerms = participant.goals?.length ? participant.goals : [];
@@ -171,7 +181,7 @@ export function matchAttributes(participant: EventOperationsParticipant): MatchA
   if (isInvestor && !categories.some((category) => ["angel_investing", "vc_fund", "cvc", "pe_buyout"].includes(category.id))) {
     const angel = businessCategory(ANGEL_OFFER.test(offersText) ? "angel_investing" : "vc_fund");
     if (angel) categories.unshift(angel);
-    if (categories.length > 3) categories.length = 3;
+    if (categories.length > 4) categories.length = 4;
   }
   goalTerms.forEach((term, index) => {
     for (const [goal, pattern] of GOAL_PATTERNS) {

@@ -142,7 +142,7 @@ const ROWS: readonly Row[] = [
   ["renovation", RE_BUILD, "装修与翻新", "リフォーム・内装工事", "Renovation & fit-out", "装修|翻新|リフォーム|リノベーション|内装|renovation|fit-out", `${C}|${RE_OPS}|${B}`],
   ["architecture_interior", RE_DESIGN, "建筑与室内设计", "建築・インテリア設計", "Architecture & interior design", "建筑设计|室内设计|設計事務所|インテリアデザイン|architect|interior design", `${RE_DEV}|${B}|${C}`],
   ["property_management", RE_OPS, "物业管理与租赁运营", "不動産管理・賃貸運営", "Property management & leasing", "物业|租赁|賃貸|不動産管理|物件管理|property manag|leasing", C],
-  ["commercial_real_estate", RE_OPS, "商业地产与招商运营", "商業施設・テナント誘致", "Commercial real estate & leasing", "商业地产|招商|商铺|商业店铺|商業施設|テナント|commercial real estate", `${RETAIL}|${RESTAURANTS}|${B}`],
+  ["commercial_real_estate", RE_OPS, "商业地产与招商运营", "商業施設・テナント誘致", "Commercial real estate & leasing", "商业地产|招商|古玩城|商城招商|商场招商|商铺|商业店铺|商業施設|テナント|commercial real estate", `${RETAIL}|${RESTAURANTS}|${B}`],
   ["coworking", RE_OPS, "共享办公与空间运营", "コワーキング・シェアオフィス", "Coworking & flexible space", "共享办公|联合办公|コワーキング|シェアオフィス|coworking", `${STARTUPS}|${B}`],
   ["real_estate_brokerage", "real_estate_construction.real_estate_services", "房产中介与买卖", "不動産仲介・売買", "Real estate brokerage", "房产中介|中介|买房|不動産仲介|不動産売買|broker", C],
 
