@@ -115,6 +115,13 @@ const splitPositioning = (value: string | undefined) => {
   return { org: org?.trim() || null, role: role?.trim() || null };
 };
 
+/**
+ * Sign-ups needed before the host can generate matching (2026-11-28, user: "生成匹配的不要求20人"). The engine itself
+ * needs no more than this: 6–10-person events generate and publish both rounds (event-operations-engine tests); with
+ * fewer people a table would have under two members.
+ */
+export const MIN_APPLIED_TO_GENERATE = 6;
+
 export function createHostLiveService(deps: HostLiveDeps): HostService {
   const { client, workspaceId } = deps;
   const now = deps.now ?? (() => new Date());
@@ -325,7 +332,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     const profileComplete = facts.matched === null && !latest ? Math.max(0, facts.applied - (await incompleteProfiles(eventId, facts.organizerActorId)).length) : facts.admitted;
     const base: HostMatchingResponse = {
       applied: facts.applied, conditions, event: await view(actorId, facts, caps), generationId: latest?.generationId ?? null, generationsLimit: GENERATIONS_PER_EVENT, generationsUsed: facts.generations,
-      minimumApplied: 20, overridesVersion: 0, participantCount: 0, profileComplete, round: 1, rounds: [], state: facts.matched !== null ? "published" : latest ? (latest.status === "completed" ? "draft" : "generating") : "none",
+      minimumApplied: MIN_APPLIED_TO_GENERATE, overridesVersion: 0, participantCount: 0, profileComplete, round: 1, rounds: [], state: facts.matched !== null ? "published" : latest ? (latest.status === "completed" ? "draft" : "generating") : "none",
       tableCount: 0, tableSizeMax: conditions.tableSize, tableSizeMin: conditions.tableSize, tables: [], unplaced: [], unsatisfiedTables: 0,
     };
     if (!latest?.grouping) return base;
