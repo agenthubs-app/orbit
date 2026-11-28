@@ -1,5 +1,6 @@
 import type { ManualProfileContract, ProfileOnboardingContract, ProfileOnboardingFieldCode } from "../../shared/contract/profile";
 import { isIndustryIdCode, validateIndustrySelection } from "../../shared/domain/industries";
+import { matchFieldsNeedingConfirmation } from "./match-fields";
 
 // Dates remain calendar strings. Validation never converts them to a local instant.
 export function isValidProfileBirthDate(value: unknown, today = new Date().toISOString().slice(0, 10)): value is string {
@@ -12,7 +13,7 @@ export function isValidProfileBirthDate(value: unknown, today = new Date().toISO
 }
 
 export function calculateProfileOnboarding(
-  profile: Pick<ManualProfileContract, "displayName" | "primaryIndustryId" | "secondaryIndustryId" | "birthDate"> | null,
+  profile: (Pick<ManualProfileContract, "displayName" | "primaryIndustryId" | "secondaryIndustryId" | "birthDate"> & Pick<Partial<ManualProfileContract>, "matchFields">) | null,
   today?: string,
 ): ProfileOnboardingContract {
   const missingFields: ProfileOnboardingFieldCode[] = [];
@@ -22,5 +23,11 @@ export function calculateProfileOnboarding(
   // R28 policy v2: an omitted birthday is optional; a supplied invalid date
   // still cannot certify completion (including legacy stored values).
   if (profile?.birthDate != null && !isValidProfileBirthDate(profile.birthDate, today)) missingFields.push("birthDate");
-  return { policyVersion: 2, status: missingFields.length ? "incomplete" : "complete", missingFields };
+  const matchMissing = profile ? matchFieldsNeedingConfirmation(profile.matchFields) : [];
+  return {
+    policyVersion: 2,
+    status: missingFields.length ? "incomplete" : "complete",
+    missingFields,
+    ...(profile ? { matchFields: { missingFields: matchMissing, status: matchMissing.length ? "pending" as const : "complete" as const } } : {}),
+  };
 }

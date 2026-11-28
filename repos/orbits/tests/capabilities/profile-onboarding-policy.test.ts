@@ -6,6 +6,12 @@ import type { ManualProfileUpdateInput } from "../../features/profile/contract";
 import { createStorageProfileProvider } from "../../features/profile/storage/profile-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
+/** The gate itself; the 2026-11-28 matching-fields confirmation travels beside it and never changes `status`. */
+const gateOnly = (onboarding: unknown) => {
+  const { matchFields: _matchFields, ...gate } = onboarding as Record<string, unknown>;
+  return gate;
+};
+
 const required = {
   displayName: "  资料本人  ",
   primaryIndustryId: "technology_internet",
@@ -36,7 +42,7 @@ for (const mode of ["live", "mock"] as const) {
     const saved = await service.updateProfile({ ...required, birthDate: null }, { actorId: "actor-no-birthday" });
     assert.equal(saved.success, true);
     if (!saved.success) return;
-    assert.deepEqual(saved.data.onboarding, { policyVersion: 2, status: "complete", missingFields: [] });
+    assert.deepEqual(gateOnly(saved.data.onboarding), { policyVersion: 2, status: "complete", missingFields: [] });
     assert.equal(saved.data.profile?.birthDate, null);
     const invalid = await service.updateProfile({ ...required, birthDate: "2026-02-30" }, { actorId: "actor-no-birthday" });
     assert.equal(invalid.success, false);
@@ -83,7 +89,7 @@ for (const mode of ["live", "mock"] as const) {
     if (!result.success) throw new Error("Profile save failed");
     assert.equal(result.data.completeness.score, 17);
     assert.equal(result.data.completeness.status, "action-needed");
-    assert.deepEqual(Reflect.get(result.data, "onboarding"), { policyVersion: 2, status: "complete", missingFields: [] });
+    assert.deepEqual(gateOnly(Reflect.get(result.data, "onboarding")), { policyVersion: 2, status: "complete", missingFields: [] });
     assert.equal(Reflect.get(result.data.profile!, "birthDate"), "2000-02-29");
 
     const rich = await service.updateProfile({
@@ -94,7 +100,7 @@ for (const mode of ["live", "mock"] as const) {
     assert.equal(rich.success, true);
     if (!rich.success) throw new Error("Rich profile save failed");
     assert.equal(rich.data.completeness.score, 100);
-    assert.deepEqual(Reflect.get(rich.data, "onboarding"), {
+    assert.deepEqual(gateOnly(Reflect.get(rich.data, "onboarding")), {
       policyVersion: 2, status: "incomplete", missingFields: ["primaryIndustryId", "secondaryIndustryId"],
     });
   });
@@ -109,7 +115,7 @@ for (const mode of ["live", "mock"] as const) {
     } as ManualProfileUpdateInput, { actorId: "actor-onboarding" });
     assert.equal(result.success, true);
     if (!result.success) throw new Error("Profile save failed");
-    assert.deepEqual(Reflect.get(result.data, "onboarding"), {
+    assert.deepEqual(gateOnly(Reflect.get(result.data, "onboarding")), {
       policyVersion: 2, status: "incomplete", missingFields: ["primaryIndustryId", "secondaryIndustryId"],
     });
   });

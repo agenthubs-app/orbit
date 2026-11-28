@@ -184,20 +184,23 @@ export function mergeInferredMatchFields(
   return readMatchFields({ ...next, inferredAt, ...(Object.keys(sources).length ? { sources } : {}), ...(Object.keys(evidence).length ? { evidence } : {}) });
 }
 
-/** Fields the person still has to look at: empty, or inferred and not yet confirmed. Customers / stages only when they apply. */
+/**
+ * Fields the person still has to look at: empty, or inferred and not yet confirmed. Investors confirm the industries
+ * they invest in (stored in customerIndustryIds) and their stages instead of what they sell; students only confirm
+ * their identity; customers only apply when they sell to businesses.
+ */
 export function matchFieldsNeedingConfirmation(fields: ProfileMatchFieldsContract | undefined): ProfileMatchFieldCode[] {
   const out: ProfileMatchFieldCode[] = [];
   const confirmed = (field: ProfileMatchFieldCode) => fields?.sources?.[field] === "confirmed";
   if (!fields?.identity || !confirmed("identity")) out.push("identity");
-  const investor = fields?.identity === "investor";
-  const student = fields?.identity === "student";
-  if (!student) {
-    if (!fields?.businessCategoryIds?.length || !confirmed("businessCategoryIds")) if (!investor) out.push("businessCategoryIds");
-    if (!investor) {
-      if (!fields?.sellsTo || !confirmed("sellsTo")) out.push("sellsTo");
-      if (fields?.sellsTo !== "consumer" && !confirmed("customerIndustryIds")) out.push("customerIndustryIds");
-    }
+  if (fields?.identity === "student") return out;
+  if (fields?.identity === "investor") {
+    if (!confirmed("customerIndustryIds")) out.push("customerIndustryIds");
+    if (!confirmed("investStages")) out.push("investStages");
+    return out;
   }
-  if (investor && !confirmed("investStages")) out.push("investStages");
+  if (!fields?.businessCategoryIds?.length || !confirmed("businessCategoryIds")) out.push("businessCategoryIds");
+  if (!fields?.sellsTo || !confirmed("sellsTo")) out.push("sellsTo");
+  if (fields?.sellsTo !== "consumer" && !confirmed("customerIndustryIds")) out.push("customerIndustryIds");
   return out;
 }

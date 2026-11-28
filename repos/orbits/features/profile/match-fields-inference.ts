@@ -63,6 +63,7 @@ export function matchFieldsSystemInstruction(): string {
 - businessCategoryIds：他（或他所在公司）卖的是什么、做的是什么生意，最多 2 个，主业在前；按公司的生意判断，不按他个人的职能（在化妆品公司做营销的人 = 美妆品牌，不是营销代理）；一句话介绍（headline）最能代表主业，优先按它判断，只能用下面「业务细类」里的 id。只是关注、感兴趣、想认识的领域，或过去的经验，不算。
 - sellsTo：business（卖给企业）| consumer（卖给个人）| both。学生、投资人返回 null。
 - customerIndustryIds：买他东西的客户在哪些行业（不是他自己所在的行业；房地产开发商的客户是个人购房者，应为 sellsTo=consumer），最多 3 个，只能用下面「行业」里的 id；客户是各行各业企业就返回 []；sellsTo 为 consumer 时返回 []。
+- identity=investor 时：customerIndustryIds 表示他投资关注的行业（最多 3 个，资料没写就 []），businessCategoryIds 可为 []。
 - investStages：只有 identity=investor 时填，从 ${PROFILE_INVEST_STAGE_CODES.join(" | ")} 里选；资料没写阶段就返回 []。
 - evidence：每个非空字段写一句依据，引用他资料里的原话（不超过 30 字）。
 只输出一个 JSON 对象：{"identity":…,"businessCategoryIds":[…],"sellsTo":…,"customerIndustryIds":[…],"investStages":[…],"evidence":{"identity":"…",…}}

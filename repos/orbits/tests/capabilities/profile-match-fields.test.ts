@@ -23,7 +23,7 @@ test("an inference never overwrites what the person confirmed, and an empty infe
   const next = mergeInferredMatchFields(confirmed, { businessCategoryIds: [], identity: "founder", sellsTo: null }, "2026-11-28T00:00:00Z");
   assert.equal(next?.identity, "investor");
   assert.equal(next?.businessCategoryIds, undefined);
-  assert.deepEqual(matchFieldsNeedingConfirmation(next), ["investStages"]);
+  assert.deepEqual(matchFieldsNeedingConfirmation(next), ["customerIndustryIds", "investStages"], "an investor confirms the industries they invest in and their stages");
 });
 
 test("saves outside the catalogs are refused; stored junk is dropped on read", () => {
@@ -40,4 +40,13 @@ test("inference output is checked against the catalogs; angel investors are inve
   assert.deepEqual(parsed?.businessCategoryIds, ["angel_investing", "ma_advisory"]);
   assert.equal(parseMatchFieldsInference("not json"), null);
   assert.equal(normalizeInference({ identity: "founder", sellsTo: "consumer", customerIndustryIds: ["retail_consumer"] }).customerIndustryIds?.length, 0);
+});
+
+test("the onboarding gate does not depend on the matching fields; their confirmation is reported beside it", async () => {
+  const { calculateProfileOnboarding } = await import("../../features/profile/onboarding");
+  const complete = calculateProfileOnboarding({ displayName: "A", primaryIndustryId: "manufacturing_supply_chain", secondaryIndustryId: "manufacturing_supply_chain.other" });
+  assert.equal(complete.status, "complete");
+  assert.equal(complete.matchFields?.status, "pending");
+  const student = calculateProfileOnboarding({ displayName: "A", primaryIndustryId: "manufacturing_supply_chain", secondaryIndustryId: "manufacturing_supply_chain.other", matchFields: mergeMatchFieldsUpdate(undefined, { identity: "student" }) });
+  assert.deepEqual(student.matchFields, { missingFields: [], status: "complete" });
 });

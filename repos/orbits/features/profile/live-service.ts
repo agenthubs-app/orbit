@@ -9,6 +9,8 @@ import {
   type ProfileScenario,
   type ProfileSuccess,
 } from "./contract";
+import type { IndustrySelectionContract } from "../../shared/contract/industries";
+import { businessCategory } from "../../shared/domain/business-categories";
 import { mergeMatchFieldsUpdate, readMatchFields, validateMatchFieldsUpdate } from "./match-fields";
 import { scoreProfileCompleteness } from "./completeness";
 import type { ProfileService } from "./service";
@@ -275,6 +277,22 @@ function profileInkSignalFieldsAreValid(update: ManualProfileUpdateInput): boole
     && normalizeProfileTags(update.seeking, []).length <= 5;
 }
 
+/**
+ * 2026-11-28 (user decision): the business category replaces the separate "industry detail" question, so a save that
+ * sets business categories without an industry takes the industry from the main category.
+ */
+function industryFromBusinessCategory(update: ManualProfileUpdateInput): IndustrySelectionContract {
+  if (update.primaryIndustryId !== undefined || update.secondaryIndustryId !== undefined) return {};
+  const main = update.matchFields?.businessCategoryIds?.[0];
+  const category = main ? businessCategory(main) : undefined;
+  if (!category) return {};
+  return { primaryIndustryId: category.parent.split(".")[0] as IndustrySelectionContract["primaryIndustryId"], secondaryIndustryId: category.parent as IndustrySelectionContract["secondaryIndustryId"] };
+}
+const pickIndustry = (update: ManualProfileUpdateInput) => ({
+  ...(update.primaryIndustryId !== undefined ? { primaryIndustryId: update.primaryIndustryId } : {}),
+  ...(update.secondaryIndustryId !== undefined ? { secondaryIndustryId: update.secondaryIndustryId } : {}),
+});
+
 /** 2026-11-28: the stored matching fields, with the person's save applied (each saved field becomes confirmed). */
 function matchFieldsEntry(current: ManualProfile["matchFields"], update: ManualProfileUpdateInput["matchFields"]) {
   const merged = mergeMatchFieldsUpdate(current, update);
@@ -355,7 +373,7 @@ function mergeProfile(input: {
       baseManual?.spokenLanguages ?? [],
     ),
     publicProfile: {
-      ...mergeIndustrySelection(baseManual ?? {}, input.update),
+      ...mergeIndustrySelection(baseManual ?? {}, { ...industryFromBusinessCategory(input.update), ...pickIndustry(input.update) }),
       bio: normalizeText(input.update.bio, baseManual?.bio ?? ""),
       industry: normalizeText(input.update.industry, baseManual?.industry ?? ""),
       offering: normalizeProfileTags(

@@ -61,6 +61,11 @@ export interface ProfileOnboardingContract {
   policyVersion: 1 | 2;
   status: "incomplete" | "complete";
   missingFields: readonly ProfileOnboardingFieldCode[];
+  /**
+   * 2026-11-28 matching fields still to confirm (empty, or inferred and not yet confirmed). Separate from `status` so
+   * clients that do not know these fields are never gated by them; clients that do show the confirmation once.
+   */
+  matchFields?: { status: "pending" | "complete"; missingFields: readonly ProfileMatchFieldCode[] };
 }
 
 // GET/POST /api/profile/onboarding-progress. The server owns the actor and all
