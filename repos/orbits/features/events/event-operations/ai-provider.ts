@@ -818,7 +818,8 @@ export function collectTrilingualOutputViolations(
     // 你 breaks the 您 convention and is repaired. 贵公司 is the right translation of 御社, so it is not failed (the
     // prompt forbids turning a person into a company). Calques (课题 …) are steered by the glossary, not failed.
     if (/你(?!们)/u.test(rest)) return true;
-    const policy = collectChineseOutputPolicyViolations([rest], []);
+    // Participants' own names, companies and job titles may stay as written (2026-11-28: 「作为AI Engineer」).
+    const policy = collectChineseOutputPolicyViolations([rest], participants);
     return policy.disallowedTokens.length > 0 || policy.untranslatedValues.length > 0;
   });
   const names = [...values.ja, ...values.zh, ...values.en].filter(writesName);
