@@ -210,6 +210,9 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
     try { await navigator.clipboard.writeText(t("meetDraft", { name: surname(selected.name), slots })); toast.success(t("draftCopied")); } catch { toast.error(at("genericError")); }
   };
 
+  // Round two's tablemates who were not at my round-one table (names only; the seat label already says the round).
+  const roundOneMates = new Set((data?.rounds?.find((item) => item.round === 1)?.tablemates ?? []).map((mate) => mate.attendeeId));
+  const newTablemates = (data?.mySeat?.tablemates ?? []).filter((mate) => !roundOneMates.has(mate.attendeeId)).map((mate) => mate.name);
   const detailHref = `/app/events/${id(eventId)}`;
   const exit = <Link className={`btn ${styles.btn} ${styles.sm}`} href={detailHref}><Icon name="x" size={16} />{t("liveExit")}</Link>;
 
@@ -319,6 +322,8 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
                 <div className={v.rdots}>
                   {(data.seats ?? []).map((seat) => <div key={seat.round} className={round && seat.round < round.index ? v.rdPast : round && seat.round === round.index ? v.rdNow : undefined}><b>{seat.table}</b>{t("roundN", { n: seat.round })}</div>)}
                 </div>
+                {/* 2026-11-28 (user: 「第2轮卡片也标上换桌了」): from round two, who is new at the table compared with round one. */}
+                {round && round.index >= 2 && newTablemates.length ? <div className={`${styles.sub} ${v.seatChanged}`} data-venue-seat-changed="">{t("seatChanged", { names: newTablemates.join(t("listSep")) })}</div> : null}
                 {data.mySeat.why ? (
                   <>
                     <div className={`${styles.row} ${v.seatWhy}`}><span className={`${styles.sub} ${v.grow}`}>{t("seatWhy", { why: data.mySeat.why })}</span>{data.mySeat.whyDetail ? <button type="button" className={`btn ${d.why}`} aria-expanded={seatWhy} aria-label={t("whyLabel")} onClick={() => setSeatWhy((value) => !value)}>?</button> : null}</div>

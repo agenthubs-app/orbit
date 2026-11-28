@@ -61,3 +61,6 @@
 .nameCol { min-width: 0; }
 .req[aria-disabled="true"] { cursor: default; }
 .slotsLbl + .slot { margin-top: 0; }
+
+/* 2026-11-28: 「已换桌 · 新同桌：…」 under the seat in round two. */
+.seatChanged { margin-top: 10px; font-weight: 700; color: var(--accent); }

@@ -418,6 +418,7 @@ export const eventsJourneyCopy = {
   segMap: { ja: "マップ", zh: "关系图", en: "Map", kind: "tab" },
   seatLbl: { ja: "あなたの席 · Round {n}", zh: "你的座位 · Round {n}", en: "Your seat · Round {n}", kind: "label" },
   seatWhy: { ja: "なぜこの席？ {why}", zh: "为什么是这个座位？{why}", en: "Why here? {why}", kind: "label" },
+  seatChanged: { ja: "テーブル替え · 新しく同席：{names}", zh: "已换桌 · 新同桌：{names}", en: "New table · now with {names}", kind: "label" },
   whyLabel: { ja: "理由", zh: "原因", en: "Why", kind: "label" },
   nowLbl: { ja: "いま", zh: "现在", en: "Now", kind: "label" },
   remainingMin: { ja: "残り {m}分", zh: "还剩{m}分钟", en: "{m} min left", kind: "chip" },
