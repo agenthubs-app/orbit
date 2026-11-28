@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { ruleOwnValue } from "./match-rules";
 import { createHash, randomUUID } from "node:crypto";
 
 import {
@@ -24,7 +25,6 @@ import {
 } from "./contract";
 import { buildDeterministicCandidates } from "./candidate-retrieval";
 import { offerAnswersNeed, topicsShare } from "./match-concepts";
-import { matchBenefit } from "./match-benefit";
 import { validateRecommendations } from "./recommendation-validation";
 import type {
   EventOperationsRepository,
@@ -538,7 +538,7 @@ function deterministicAssignments(input: {
     const key = `${member.participantId}\u0000${mate.participantId}`;
     let value = gainCache.get(key);
     if (value === undefined) {
-      value = matchBenefit(member, mate).value
+      value = 0.5 * ruleOwnValue(member, mate).own
         + (recommended.has(key) ? 0.8 : 0)
         + (affinityByParticipant.get(member.participantId)?.has(mate.participantId) ? 0.3 : 0);
       gainCache.set(key, value);
@@ -753,6 +753,36 @@ function deterministicAssignments(input: {
     originCounts(members).reduce((sum, count) => sum + (count * (count - 1)) / 2, 0);
   // With no headroom anywhere (e.g. 2 tables of 4: every round-two table must be exactly 2 + 2), keep the remix: any
   // reshuffle there can turn a later host move into a publish refusal.
+  // Make room first (2026-11-28): swap members between round-two tables until every table sits one seat below the
+  // publish limit where the sizes allow it, never adding repeated pairs, so a host's round-one move cannot break publish.
+  const slackLimit = (members: readonly EventOperationsParticipant[]) => Math.ceil(members.length / 2) - 1;
+  const excess = (members: readonly EventOperationsParticipant[]) => Math.max(0, Math.max(0, ...originCounts(members)) - slackLimit(members));
+  for (let pass = 0; pass < 64 && roundTwoParticipants.some((members) => excess(members) > 0); pass += 1) {
+    let best: { i: number; j: number; a: number; b: number; gain: number } | null = null;
+    for (let i = 0; i < roundTwoParticipants.length; i += 1) {
+      if (excess(roundTwoParticipants[i]!) === 0) continue;
+      for (let j = 0; j < roundTwoParticipants.length; j += 1) {
+        if (i === j) continue;
+        for (let a = 0; a < roundTwoParticipants[i]!.length; a += 1) {
+          for (let b = 0; b < roundTwoParticipants[j]!.length; b += 1) {
+            const left = [...roundTwoParticipants[i]!];
+            const right = [...roundTwoParticipants[j]!];
+            [left[a], right[b]] = [right[b]!, left[a]!];
+            if (!companyAllowed(left) || !companyAllowed(right)) continue;
+            const gain = excess(roundTwoParticipants[i]!) + excess(roundTwoParticipants[j]!) - excess(left) - excess(right);
+            const pairsBefore = repeatedPairs(roundTwoParticipants[i]!) + repeatedPairs(roundTwoParticipants[j]!);
+            if (gain > 0 && repeatedPairs(left) + repeatedPairs(right) <= pairsBefore && (!best || gain > best.gain)) best = { a, b, gain, i, j };
+          }
+        }
+      }
+    }
+    if (!best) break;
+    const left = [...roundTwoParticipants[best.i]!];
+    const right = [...roundTwoParticipants[best.j]!];
+    [left[best.a], right[best.b]] = [right[best.b]!, left[best.a]!];
+    roundTwoParticipants[best.i] = left;
+    roundTwoParticipants[best.j] = right;
+  }
   const headroom = roundTwoParticipants.every((members) => Math.max(0, ...originCounts(members)) <= Math.ceil(members.length / 2) - 1);
   if (headroom) {
     refine(
@@ -776,6 +806,74 @@ function deterministicAssignments(input: {
     ...assignments(roundOneParticipants, 1),
     ...assignments(roundTwoParticipants, 2),
   ];
+}
+
+/**
+ * After a host's round-one moves (2026-11-28): if round two now seats more than half of a table from one round-one
+ * table, swap the fewest people between round-two tables to bring every table back within the limit. Seats stay;
+ * each person's own prompts and rationale (all languages) move with them. A grouping already within limits is unchanged.
+ */
+function rebalanceRoundTwo(grouping: EventOperationsGroupingResult): EventOperationsGroupingResult {
+  const origin = new Map(grouping.roundOne.flatMap((table) => table.members.map((member) => [member.participantId, table.tableNumber] as const)));
+  const ids = grouping.roundTwo.map((table) => table.members.map((member) => member.participantId));
+  const excess = (members: readonly string[]) => {
+    const counts = new Map<number, number>();
+    for (const id of members) counts.set(origin.get(id) ?? -1, (counts.get(origin.get(id) ?? -1) ?? 0) + 1);
+    return Math.max(0, Math.max(0, ...counts.values()) - Math.ceil(members.length / 2));
+  };
+  if (ids.every((members) => excess(members) === 0)) return grouping;
+  const moves: { from: number; to: number; id: string }[] = [];
+  for (let pass = 0; pass < 64 && ids.some((members) => excess(members) > 0); pass += 1) {
+    let best: { i: number; j: number; a: number; b: number; gain: number } | null = null;
+    for (let i = 0; i < ids.length; i += 1) {
+      if (excess(ids[i]!) === 0) continue;
+      for (let j = 0; j < ids.length; j += 1) {
+        if (i === j) continue;
+        for (let a = 0; a < ids[i]!.length; a += 1) {
+          for (let b = 0; b < ids[j]!.length; b += 1) {
+            const left = [...ids[i]!];
+            const right = [...ids[j]!];
+            [left[a], right[b]] = [right[b]!, left[a]!];
+            const gain = excess(ids[i]!) + excess(ids[j]!) - excess(left) - excess(right);
+            if (gain > 0 && (!best || gain > best.gain)) best = { a, b, gain, i, j };
+          }
+        }
+      }
+    }
+    if (!best) break;
+    const x = ids[best.i]![best.a]!;
+    const y = ids[best.j]![best.b]!;
+    ids[best.i]![best.a] = y;
+    ids[best.j]![best.b] = x;
+    moves.push({ from: best.i, id: x, to: best.j }, { from: best.j, id: y, to: best.i });
+  }
+  if (!moves.length) return grouping;
+  const tables = grouping.roundTwo.map((table) => ({
+    ...table,
+    i18n: table.i18n ? Object.fromEntries(Object.entries(table.i18n).map(([lang, text]) => [lang, { ...text, memberPrompts: { ...text.memberPrompts }, memberRationales: { ...text.memberRationales } }])) as typeof table.i18n : undefined,
+    memberPrompts: { ...table.memberPrompts },
+    memberRationales: { ...table.memberRationales },
+  }));
+  for (const { from, to, id } of moves) {
+    const source = tables[from]!;
+    const target = tables[to]!;
+    if (source.memberPrompts[id]) { (target.memberPrompts as Record<string, readonly [string, string]>)[id] = source.memberPrompts[id]!; delete (source.memberPrompts as Record<string, unknown>)[id]; }
+    if (source.memberRationales[id]) { (target.memberRationales as Record<string, string>)[id] = source.memberRationales[id]!; delete (source.memberRationales as Record<string, unknown>)[id]; }
+    for (const lang of Object.keys(source.i18n ?? {}) as (keyof NonNullable<typeof source.i18n>)[]) {
+      const from18 = source.i18n![lang] as { memberPrompts: Record<string, unknown>; memberRationales: Record<string, unknown> };
+      const to18 = target.i18n?.[lang] as { memberPrompts: Record<string, unknown>; memberRationales: Record<string, unknown> } | undefined;
+      if (!to18) continue;
+      if (id in from18.memberPrompts) { to18.memberPrompts[id] = from18.memberPrompts[id]; delete from18.memberPrompts[id]; }
+      if (id in from18.memberRationales) { to18.memberRationales[id] = from18.memberRationales[id]; delete from18.memberRationales[id]; }
+    }
+  }
+  return {
+    ...grouping,
+    roundTwo: tables.map((table, index) => {
+      const { i18n, ...rest } = table;
+      return { ...rest, ...(i18n ? { i18n } : {}), members: table.members.map((member, seatIndex) => ({ ...member, participantId: ids[index]![seatIndex]! })) };
+    }),
+  };
 }
 
 function graphFor(input: {
@@ -1704,7 +1802,7 @@ export function createEventOperationsEngine({
       const grouping = validateGrouping({
         participants: generation.snapshot.participants,
         tableSize: configuration.tableSize,
-        value: composeGrouping ? composeGrouping(generatedGrouping) : generatedGrouping,
+        value: composeGrouping ? rebalanceRoundTwo(composeGrouping(generatedGrouping)) : generatedGrouping,
       });
       const publishedAt = now();
       const result: EventOperationsPublishedResult = {

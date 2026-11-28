@@ -1,4 +1,5 @@
 import { introductionScore } from "./match-benefit";
+import { withRuleMatching } from "./rule-provider";
 import { offerAnswersNeed, topicsShare, unsupportedProfileTerms } from "./match-concepts";
 import {
   DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL,
@@ -2207,7 +2208,8 @@ export function createConfiguredEventOperationsAiProvider({
   onTrilingualFailureText?: EventOperationsAiProviderOptions["onTrilingualFailureText"];
   requestTimeoutMs?: number;
 } = {}): EventOperationsAiProvider {
-  return createEventOperationsAiProvider({
+  // 2026-11-28: who meets whom (and why) is decided by rules; the model writes only the table text.
+  return withRuleMatching(createEventOperationsAiProvider({
     ...(onTrilingualFailureText ? { onTrilingualFailureText } : {}),
     config: {
       deepseekThinking: false,
@@ -2222,7 +2224,7 @@ export function createConfiguredEventOperationsAiProvider({
     retryableJsonFailureShapes: ["empty", "parse_syntax", "unterminated_envelope"],
     // 2026-11-22: participant-facing text is generated once in ja/zh/en.
     trilingual: true,
-  });
+  }));
 }
 
 export const __eventOperationsAiProviderTestExports = {

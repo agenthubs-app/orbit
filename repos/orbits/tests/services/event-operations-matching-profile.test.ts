@@ -149,3 +149,36 @@ test("seating gives every table someone who answers what its members came for", 
     assert.equal(table.participantIds.filter((id) => id.startsWith("participant_investor")).length, 1, "the two investors sit at different tables");
   }
 });
+
+test("rules: an investor is someone who puts money in; a founder who can talk funding is not an investor", async () => {
+  const { matchAttributes } = await import("../../features/events/event-operations/match-rules");
+  const angel = card("angel", { about: "寻找刚起步、缺资金的企业进行投资；也做企业并购", goals: ["寻找需要资金支持的创业者"], industry: "金融与投资", offers: ["エンジェル投資", "M&A・事業売却支援"], role: "本部长" });
+  const ceo = card("ceo", { about: "生成AIを活用した事業。投資・資金調達や起業の相談に応じます", industry: "テクノロジー・インターネット", offers: ["投資・資金調達", "販路"], role: "社長" });
+  assert.equal(matchAttributes(angel).identity, "investor");
+  assert.ok(matchAttributes(angel).goals.some((goal) => goal.goal === "find_deals"), "an investor's funding answer means deals, not raising");
+  assert.equal(matchAttributes(ceo).identity, "founder");
+});
+
+test("rules: a supplier and its buyers find each other through what their businesses are", async () => {
+  const { chooseRecommendations, recommendationText } = await import("../../features/events/event-operations/match-rules");
+  const cabinets = card("cabinets", { about: "厨柜品牌的海外市场负责人，希望认识渠道伙伴", goals: ["寻找合作伙伴"], industry: "制造与供应链", offers: ["供应链资源"] });
+  const wholesale = card("wholesale", { about: "住宅設備機器の卸売、建築関連の案件紹介に携わっています", goals: ["提携先探し"], industry: "小売・消費財", offers: ["人脈の紹介"] });
+  const developer = card("developer", { about: "从事房地产开发", goals: ["寻找合作伙伴"], industry: "房地产与建设" });
+  const student = card("student", { about: "学生，关注社群运营", goals: ["学习行业趋势"], role: "学生" });
+  const picks = chooseRecommendations([cabinets, wholesale, developer, student], 2);
+  assert.deepEqual(new Set(picks.get(cabinets.participantId)!.map((pick) => pick.target.participantId)), new Set([wholesale.participantId, developer.participantId]));
+  const first = picks.get(cabinets.participantId)!.find((pick) => pick.target.participantId === developer.participantId)!;
+  const text = recommendationText(cabinets, developer, first.match);
+  assert.match(text.zh.reasons.join(""), /房地产开发/u);
+  assert.match(text.ja.reasons[0]!, /developerさん/u);
+  assert.ok(text.en.reasons.every((reason) => !/[぀-ヿ]/u.test(reason)), "English reasons carry no kana");
+});
+
+test("rules: one broadly useful person is recommended to at most about a third of the room", async () => {
+  const { chooseRecommendations } = await import("../../features/events/event-operations/match-rules");
+  const investor = card("investor", { about: "天使投资人", goals: ["寻找需要资金支持的创业者"], offers: ["エンジェル投資"] });
+  const founders = Array.from({ length: 11 }, (_, index) => card(`f${index}`, { about: "正在寻找投资", goals: ["寻找投资"], role: "CEO", wants: ["投资人", "创业者"] }));
+  const picks = chooseRecommendations([investor, ...founders], 3);
+  const exposure = [...picks.values()].flat().filter((pick) => pick.target.participantId === investor.participantId).length;
+  assert.ok(exposure <= 4, `investor recommended ${exposure} times`);
+});

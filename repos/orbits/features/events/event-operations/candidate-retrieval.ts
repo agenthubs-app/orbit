@@ -12,6 +12,7 @@ import {
   topicsShare,
 } from "./match-concepts";
 import { introductionScore } from "./match-benefit";
+import { chooseRecommendations, ruleMatch } from "./match-rules";
 
 const MAX_CANDIDATES_PER_SOURCE = 32;
 const MAX_FACETS_PER_KIND = 8;
@@ -353,5 +354,45 @@ export function buildDeterministicCandidates(input: {
     candidates.push(...shortlist);
   }
 
-  return { candidates, metrics };
+  return { candidates: input.participants.length <= RULE_RANKING_MAX_PARTICIPANTS ? ruleRanked(candidates, input) : candidates, metrics };
+}
+
+/** Rooms up to this size are ranked by the match rules with a room-wide cap (all pairs: 400² = 160k, fast). */
+const RULE_RANKING_MAX_PARTICIPANTS = 400;
+
+/**
+ * Rule ranking (2026-11-28): each person's picks (match-rules.ts chooseRecommendations, room-wide cap) come first,
+ * in order; the rest of their shortlist follows by rule value. The shortlist is every positive rule match plus the
+ * facet candidates found above, capped at the usual limit.
+ */
+function ruleRanked(
+  facetCandidates: readonly EventOperationsCandidate[],
+  input: { generationId: string; participants: readonly EventOperationsParticipant[]; recommendationCount: number },
+): EventOperationsCandidate[] {
+  const picks = chooseRecommendations(input.participants, input.recommendationCount);
+  const limit = Math.min(Math.max(0, input.participants.length - 1), eventOperationsCandidateLimit(input.recommendationCount));
+  const out: EventOperationsCandidate[] = [];
+  for (const source of [...input.participants].sort((a, b) => a.participantId.localeCompare(b.participantId))) {
+    const chosen = picks.get(source.participantId) ?? [];
+    const chosenIds = new Set(chosen.map((pick) => pick.target.participantId));
+    const facet = new Map(facetCandidates.filter((candidate) => candidate.sourceParticipantId === source.participantId).map((candidate) => [candidate.targetParticipantId, candidate]));
+    const rest = input.participants
+      .filter((target) => target.participantId !== source.participantId && !chosenIds.has(target.participantId))
+      .map((target) => ({ target, value: ruleMatch(source, target).value }))
+      .filter((entry) => entry.value > 0 || facet.has(entry.target.participantId))
+      .sort((a, b) => b.value - a.value || a.target.participantId.localeCompare(b.target.participantId));
+    const ordered = [...chosen.map((pick) => ({ target: pick.target, value: pick.match.value })), ...rest].slice(0, Math.max(limit, chosen.length));
+    ordered.forEach(({ target, value }, index) => {
+      const existing = facet.get(target.participantId);
+      out.push({
+        featurePayload: { ...(existing?.featurePayload ?? {}), rulePick: chosenIds.has(target.participantId), ruleValue: Math.round(value * 100) / 100 },
+        generationId: input.generationId,
+        retrievalRank: index + 1,
+        retrievalScore: Math.round(value * 1000) + (chosenIds.has(target.participantId) ? 1_000_000 : 0),
+        sourceParticipantId: source.participantId,
+        targetParticipantId: target.participantId,
+      });
+    });
+  }
+  return out;
 }

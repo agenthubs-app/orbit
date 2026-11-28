@@ -235,3 +235,43 @@ export function needConceptsAnsweredBy(offer: string): readonly string[] {
   const concept = offerConcept(offer);
   return concept ? Object.entries(ANSWERS).filter(([, offers]) => offers.includes(concept)).map(([need]) => need) : [];
 }
+
+type Tri = readonly [zh: string, ja: string, en: string];
+/** Reader-language labels of need concepts (2026-11-28). */
+const NEED_LABELS: Readonly<Record<string, Tri>> = {
+  accounting: ["会计税务建议", "会計・税務の相談", "accounting and tax advice"], ai_dx: ["AI 与数字化推进", "AI・DX推進の相談", "AI and digital transformation"],
+  brand: ["品牌与媒体曝光", "ブランド・メディア露出", "brand and media exposure"], channel: ["销售渠道", "販路・代理店", "sales channels"],
+  china_entry: ["进入中国市场", "中国進出", "entering China"], community: ["社群与活动", "コミュニティ・イベント", "community and events"],
+  customers: ["客户", "顧客", "customers"], data: ["数据活用", "データ活用", "data"], design: ["设计", "デザイン", "design"],
+  enterprise: ["企业客户与决策者", "事業会社・意思決定者", "people at established companies"], funding: ["投资与融资", "資金調達・投資家", "funding and investors"],
+  hiring_biz: ["业务人才", "ビジネス人材", "business talent"], hiring_eng: ["技术人才", "技術人材", "engineering talent"], legal: ["法务与合同", "法務・契約", "legal advice"],
+  local: ["本地向导", "現地のつながり", "local guides"], ma: ["并购与事业承继", "M&A・事業承継", "M&A and succession"], mentor: ["导师与前辈", "メンター・相談相手", "mentors"],
+  north_america: ["进入北美", "北米進出", "entering North America"], overseas: ["出海与海外合作", "海外展開パートナー", "overseas partners"],
+  partner: ["合作伙伴", "提携先・パートナー", "business partners"], professional: ["专业人士", "専門家（士業・コンサル）", "professional advisers"],
+  research: ["研究人员", "研究者", "researchers"], social: ["SNS 运营", "SNS運用", "social media"], southeast_asia: ["进入东南亚", "東南アジア進出", "entering Southeast Asia"],
+  subsidy: ["补助金信息", "補助金・助成金", "subsidies and grants"], supplier: ["供应商", "仕入れ先・サプライヤー", "suppliers"], tech: ["技术与开发支持", "技術・開発パートナー", "technical help"],
+};
+/** Reader-language labels of offer concepts (2026-11-28). */
+const OFFER_LABELS: Readonly<Record<string, Tri>> = {
+  ai: ["AI 落地经验", "AI活用の実践支援", "hands-on AI adoption"], alliance: ["人脉介绍", "人脈・提携先の紹介", "introductions"], brand_pr: ["品牌与媒体曝光", "ブランディング・PR", "branding and PR"],
+  channel: ["销售渠道", "販路・代理店開拓", "sales channels"], china_market: ["中国市场资源", "中国市場のネットワーク", "China market access"], cross_culture: ["翻译与跨文化沟通", "翻訳・異文化コミュニケーション", "translation and cross-cultural help"],
+  data: ["数据分析", "データ分析", "data analytics"], enterprise_intro: ["客户与企业引荐", "顧客・大企業の紹介", "customer introductions"], events: ["活动与社群资源", "イベント・コミュニティ", "events and community"],
+  finance: ["法务财税咨询", "財務・法務・税務の相談", "legal, tax and finance advice"], funding_advice: ["融资建议", "資金調達アドバイス", "fundraising advice"], government: ["政府与政策资源", "行政・政策ネットワーク", "government contacts"],
+  hiring: ["人才推荐", "人材紹介", "talent referrals"], investor_intro: ["投资与投资人介绍", "投資・投資家の紹介", "investment and investor introductions"], japan_market: ["日本市场资源", "日本市場のネットワーク", "Japan market access"],
+  legal: ["法务与知识产权", "法務・契約・知財", "legal and IP"], ma_support: ["并购与出售支持", "M&A・事業売却支援", "M&A support"], marketing: ["营销策略", "マーケティング戦略", "marketing strategy"],
+  mentoring: ["行业经验与经营建议", "業界経験・経営の相談", "industry experience and advice"], new_business: ["创业辅导", "起業・新規事業支援", "startup mentoring"], north_america: ["北美市场经验", "北米市場の知見", "North America know-how"],
+  office: ["办公场地与孵化", "オフィス・インキュベーション", "office space"], overseas_market: ["出海落地支持", "海外展開支援", "overseas expansion support"], research: ["高校与研究机构合作", "大学・研究機関との連携", "university and research links"],
+  social: ["SNS 营销", "SNSマーケティング", "social media marketing"], southeast_asia: ["东南亚市场经验", "東南アジア市場の知見", "Southeast Asia know-how"], supply_chain: ["供应链资源", "サプライチェーン", "supply chain resources"],
+  tech_advice: ["产品与技术咨询", "プロダクト・技術相談", "product and tech advice"], tech_build: ["技术开发", "プロダクト・システム開発", "engineering capacity"], tech_team: ["技术团队搭建", "技術チーム構築", "building tech teams"],
+  work: ["工作机会", "仕事の依頼", "work to hand out"],
+};
+
+/**
+ * A need / offer as the reader's language says it (2026-11-28): the concept's label in that language, so a Chinese
+ * reason quotes 「投资与投资人介绍」 rather than the Japanese option the other person ticked. Unknown terms stay as written.
+ */
+export function tagInLanguage(kind: "need" | "offer", text: string, lang: "ja" | "zh" | "en"): string {
+  const concept = kind === "need" ? needConcept(text) : offerConcept(text);
+  const labels = concept ? (kind === "need" ? NEED_LABELS : OFFER_LABELS)[concept] : undefined;
+  return labels ? labels[lang === "zh" ? 0 : lang === "ja" ? 1 : 2] : text;
+}
