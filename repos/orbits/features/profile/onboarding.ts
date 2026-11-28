@@ -18,8 +18,12 @@ export function calculateProfileOnboarding(
 ): ProfileOnboardingContract {
   const missingFields: ProfileOnboardingFieldCode[] = [];
   if (typeof profile?.displayName !== "string" || !profile.displayName.trim()) missingFields.push("displayName");
-  if (!isIndustryIdCode(profile?.primaryIndustryId)) missingFields.push("primaryIndustryId");
-  if (!profile?.secondaryIndustryId || !validateIndustrySelection(profile).valid) missingFields.push("secondaryIndustryId");
+  // 2026-11-28: investors, students and "other" have no line of business, so no industry is asked of them.
+  const noBusiness = ["investor", "student", "other"].includes(profile?.matchFields?.identity ?? "");
+  if (!noBusiness) {
+    if (!isIndustryIdCode(profile?.primaryIndustryId)) missingFields.push("primaryIndustryId");
+    if (!profile?.secondaryIndustryId || !validateIndustrySelection(profile).valid) missingFields.push("secondaryIndustryId");
+  }
   // R28 policy v2: an omitted birthday is optional; a supplied invalid date
   // still cannot certify completion (including legacy stored values).
   if (profile?.birthDate != null && !isValidProfileBirthDate(profile.birthDate, today)) missingFields.push("birthDate");

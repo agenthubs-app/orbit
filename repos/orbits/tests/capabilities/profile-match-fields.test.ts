@@ -50,3 +50,26 @@ test("the onboarding gate does not depend on the matching fields; their confirma
   const student = calculateProfileOnboarding({ displayName: "A", primaryIndustryId: "manufacturing_supply_chain", secondaryIndustryId: "manufacturing_supply_chain.other", matchFields: mergeMatchFieldsUpdate(undefined, { identity: "student" }) });
   assert.deepEqual(student.matchFields, { missingFields: [], status: "complete" });
 });
+
+test("investors, students and others finish onboarding without an industry", async () => {
+  const { calculateProfileOnboarding } = await import("../../features/profile/onboarding");
+  for (const identity of ["investor", "student", "other"] as const) {
+    const result = calculateProfileOnboarding({ displayName: "A", matchFields: mergeMatchFieldsUpdate(undefined, { identity }) });
+    assert.equal(result.status, "complete", identity);
+  }
+  assert.deepEqual(calculateProfileOnboarding({ displayName: "A", matchFields: mergeMatchFieldsUpdate(undefined, { identity: "founder" }) }).missingFields, ["primaryIndustryId", "secondaryIndustryId"]);
+});
+
+test("match-fields inference endpoint: sign-in required, input checked, nothing stored, usage not exposed", async () => {
+  const { createMatchFieldsInferenceHandler } = await import("../../app/api/profile/match-fields-inference/handler");
+  const post = (body: unknown, actor: { id: string } | null = { id: "user_a" }) => createMatchFieldsInferenceHandler({
+    resolveActor: async () => actor as never,
+    service: { infer: async () => ({ fields: { identity: "founder" }, status: "inferred", usage: { inputTokens: 1 } }) },
+    withinLimit: async () => true,
+  })(new Request("https://x.test/api/profile/match-fields-inference", { body: JSON.stringify(body), method: "POST" }));
+  assert.equal((await post({ role: "CEO" }, null)).status, 401);
+  assert.equal((await post({ nickname: "x" })).status, 400);
+  assert.equal((await post({ bio: "" })).status, 400);
+  const ok = await (await post({ organization: "木森厨柜家居", role: "社長" })).json();
+  assert.deepEqual(ok, { data: { fields: { identity: "founder" }, status: "inferred" }, success: true });
+});
