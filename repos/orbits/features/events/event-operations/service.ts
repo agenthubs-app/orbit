@@ -15,7 +15,7 @@ import {
 } from "./contract";
 import type { EventOperationsEngine } from "./engine";
 import { eventOperationsParticipantFromRegistration } from "./participant";
-import { lateJoinerRecommendations, lateJoinerTables } from "./late-joiner";
+import { lateJoinerRecommendations, lateJoinerTables, placeLateJoiners } from "./late-joiner";
 import { matchingParticipant } from "./matching-profile";
 import type { EventOperationsRepository } from "./repository";
 import type { EventOperationsLimitedCheckInRoster } from "./check-in-roster";
@@ -379,6 +379,20 @@ export function createEventOperationsService({
     return { configuration, late: true, participant: late, participants: [...participants, late] };
   }
 
+  /** Everyone who registered after the published snapshot, seated one after another in registration order. */
+  async function placementsFor(eventId: string, published: EventOperationsPublishedResult, configuration: EventOperationsConfiguration) {
+    const seatedActors = new Set(published.directory.map((participant) => participant.actorId));
+    const lateRegistrations = (await repository.listCanonicalRegistrations(eventId))
+      .filter((registration) => registration.status === "rsvped" && !seatedActors.has(registration.userId))
+      .sort((a, b) => a.registeredAt.localeCompare(b.registeredAt) || a.userId.localeCompare(b.userId));
+    const people: EventOperationsParticipant[] = [];
+    for (const registration of lateRegistrations) {
+      const participant = await currentMatchingParticipant(eventId, registration.userId, configuration).catch(() => null);
+      if (participant) people.push(participant);
+    }
+    return placeLateJoiners(people, published);
+  }
+
   /** The person's current matching card, built the way the generation snapshot builds it (registration answers + account). */
   async function currentMatchingParticipant(
     eventId: string,
@@ -477,7 +491,10 @@ export function createEventOperationsService({
       // 2026-11-28 迟到者（late-joiner.ts）：只给本人现算推荐和入桌（复制一张已有的桌加上本人），别人的结果不变。
       if (visiblePublished && late) {
         recommendations = lateJoinerRecommendations(participant, visiblePublished.directory, configuration.recommendationCount);
-        ({ roundOneTable, roundTwoTable } = lateJoinerTables(participant, visiblePublished));
+        // Same placement the host sees: all late joiners seated in registration order (placeLateJoiners).
+        const placed = (await placementsFor(eventId, visiblePublished, configuration).catch(() => []))
+          .find((entry) => entry.participant.actorId === participant.actorId);
+        ({ roundOneTable, roundTwoTable } = placed ?? lateJoinerTables(participant, visiblePublished));
       } else if (visiblePublished && recommendations && recommendations.recommendations.length === 0) {
         // 匹配时资料还空着、之后才填完的人：按现在的资料给本人补推荐（桌次照旧）。
         const current = await currentMatchingParticipant(eventId, actorId, configuration).catch(() => null);
@@ -777,16 +794,7 @@ export function createEventOperationsService({
       if (!published) return [];
       const configuration = requireConfiguration(await repository.getConfiguration(eventId));
       const seatedActors = new Set(published.directory.map((participant) => participant.actorId));
-      const lateActors = (await repository.listCanonicalRegistrations(eventId))
-        .filter((registration) => registration.status === "rsvped" && !seatedActors.has(registration.userId))
-        .map((registration) => registration.userId);
-      const placements = [];
-      for (const actorId of lateActors) {
-        const participant = await currentMatchingParticipant(eventId, actorId, configuration).catch(() => null);
-        if (!participant) continue;
-        placements.push({ participant, ...lateJoinerTables(participant, published) });
-      }
-      return placements;
+      return placementsFor(eventId, published, configuration);
     },
 
     async retryGeneration({ actorId, eventId, generationId }) {

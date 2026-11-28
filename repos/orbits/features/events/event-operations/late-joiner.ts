@@ -108,3 +108,27 @@ export function lateJoinerTables(
     roundTwoTable: two ? seated(two, me, 2) : null,
   };
 }
+
+/**
+ * Seats several late joiners one after another (registration order), each seeing the ones already placed, so they
+ * spread over the smallest tables instead of all choosing the same one (2026-11-28: three landed on one table).
+ * Everyone — the host and each late joiner — reads the same placement. The published result is not modified.
+ */
+export function placeLateJoiners(
+  people: readonly EventOperationsParticipant[],
+  published: Pick<EventOperationsPublishedResult, "directory" | "grouping">,
+): { participant: EventOperationsParticipant; roundOneTable: EventOperationsTable | null; roundTwoTable: EventOperationsTable | null }[] {
+  let current = { directory: [...published.directory], grouping: { roundOne: [...published.grouping.roundOne], roundTwo: [...published.grouping.roundTwo] } };
+  const out: { participant: EventOperationsParticipant; roundOneTable: EventOperationsTable | null; roundTwoTable: EventOperationsTable | null }[] = [];
+  for (const participant of people) {
+    const placed = lateJoinerTables(participant, current);
+    out.push({ participant, ...placed });
+    const replace = (tables: readonly EventOperationsTable[], seated: EventOperationsTable | null) =>
+      seated ? tables.map((table) => (table.tableNumber === seated.tableNumber ? seated : table)) : [...tables];
+    current = {
+      directory: [...current.directory, participant],
+      grouping: { roundOne: replace(current.grouping.roundOne, placed.roundOneTable), roundTwo: replace(current.grouping.roundTwo, placed.roundTwoTable) },
+    };
+  }
+  return out;
+}
