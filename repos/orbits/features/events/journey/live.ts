@@ -5,6 +5,14 @@
  * - 可选读取（政策、人数、互动、计划、产物…）失败时记 `console.warn` JSON 并降级为空，从不静默吞掉。
  * - 只读别人的公开资料；关系只用我自己的联系人；主办方 actor id 只换成 `organizerKey`，从不外传。
  */
+import type { EventOperationsTable } from "../event-operations/contract";
+
+/** The host's attendee-facing tables (host/live.ts attendeeGrouping); null when not configured or not published. */
+async function hostAttendeeGrouping(eventId: string) {
+  const { createConfiguredHostLiveService } = await import("../host/live");
+  const host = await createConfiguredHostLiveService();
+  return host?.attendeeGrouping ? host.attendeeGrouping(eventId) : null;
+}
 import { issueCheckInToken } from "../host/checkin-token-server";
 import { assignReceptionNumber, receptionNumberOf } from "../host/storage/admission-hooks";
 import { AppError } from "../../../shared/errors/app-error";
@@ -460,6 +468,23 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       const published = workspace.resultsState === "ready"
         ? await publishedResult(eventId).catch(warned("r27_journey_published_result_failed", null, { eventId }))
         : null;
+      // 2026-11-28 (user: 「后台挪人也要同步」): after publication attendees see the host's working tables (published +
+      // late joiners + host moves), the same tables the host matching page shows. Read-only.
+      if (published) {
+        const host = await hostAttendeeGrouping(eventId).catch(warned("r27_journey_host_grouping_failed", null, { eventId }));
+        if (host) {
+          const me = workspace.me.participantId;
+          const mine = (tables: readonly EventOperationsTable[]) => tables.find((table) => table.members.some((member) => member.participantId === me)) ?? null;
+          const directory = new Map(workspace.directory.map((person) => [person.participantId, person]));
+          // Late joiners are not in the published directory; their names come from the host's list.
+          for (const person of host.participants) if (!directory.has(person.participantId)) directory.set(person.participantId, person);
+          return venueWorkspaceFrom(
+            { ...workspace, directory: [...directory.values()], roundOneTable: mine(host.roundOne) ?? workspace.roundOneTable, roundTwoTable: mine(host.roundTwo) ?? workspace.roundTwoTable },
+            { ...published, grouping: { roundOne: host.roundOne, roundTwo: host.roundTwo } },
+            language,
+          );
+        }
+      }
       return venueWorkspaceFrom(workspace, published, language);
     },
 

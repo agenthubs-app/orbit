@@ -94,6 +94,8 @@ export interface HostPeopleQuery {
 }
 
 export interface HostService {
+  /** Tables attendees see after publication (published + late joiners + host moves); null before publication. */
+  attendeeGrouping?(eventId: string): Promise<{ participants: readonly import("../event-operations/contract").EventOperationsParticipant[]; roundOne: readonly import("../event-operations/contract").EventOperationsTable[]; roundTwo: readonly import("../event-operations/contract").EventOperationsTable[] } | null>;
   center(actorId: string, query: HostCenterQuery): Promise<HostCenterResponse>;
   centerSummary(actorId: string): Promise<HostCenterSummary>;
   event(actorId: string, eventId: string): Promise<HostEventView | null>;

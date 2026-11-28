@@ -4,6 +4,8 @@
  * - 数字：来自参加者私人记录的（会後フォロー、名刺交換、立場分布）按 §2.9 做 <5 抑制与差分保护。
  * - 不调付费 AI（编组生成走现有 event-ops worker，与之前相同）；不发自由文本通知。
  */
+import type { EventOperationsTable } from "../event-operations/contract";
+import type { HostMatchingConditions } from "../../../shared/contract/host-console";
 import { JOIN_COVERAGE_ITEMS, joinCoverage, joinCoverageSqlParams, joinFilledItems, type JoinCoverageItem } from "../../../shared/domain/join-coverage";
 import { randomUUID } from "node:crypto";
 
@@ -37,7 +39,7 @@ export interface HostOperationsPort {
   checkInParticipant(input: { actorId: string; eventId: string; participantId: string }): Promise<unknown>;
   startGeneration(input: { actorId: string; eventId: string; idempotencyKey: string }): Promise<{ generationId: string }>;
   publishGeneration(input: { actorId: string; eventId: string; generationId: string; composeGrouping: Parameters<typeof composeGrouping>[0] extends infer G ? (grouping: G & object) => G : never }): Promise<unknown>;
-  latestGeneration(eventId: string): Promise<{ generationId: string; status: string; participants: readonly EventOperationsParticipant[]; grouping: { roundOne: readonly unknown[]; roundTwo: readonly unknown[] } | null; tableSize: number } | null>;
+  latestGeneration(eventId: string): Promise<{ generationId: string; organizerActorId?: string; status: string; participants: readonly EventOperationsParticipant[]; grouping: { roundOne: readonly unknown[]; roundTwo: readonly unknown[] } | null; tableSize: number } | null>;
 }
 
 export interface HostLiveDeps {
@@ -323,6 +325,20 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     return (await reads.applicants(eventId, organizerActorId, ["admitted", "pending_review", "waitlisted"])).filter((item) => profileScore(item.payload as never, item.hostAnswers) < 100);
   }
 
+  /** The host's working tables: the generated grouping (with late joiners) under the conditions and every host move. */
+  async function draftFor(eventId: string, latest: NonNullable<Awaited<ReturnType<NonNullable<HostLiveDeps["operations"]>["latestGeneration"]>>>, conditions: HostMatchingConditions, organizerActorId: string) {
+    // 显示用名字：当前的资料姓名（一次查询）；生成用的快照本身不改（分桌、推荐按 participantId，不按名字）。
+    const names = await reads.profileNames(latest.participants.map((participant) => participant.actorId));
+    const directory = new Map(latest.participants.map((participant) => [participant.participantId, { ...participant, displayName: names.get(participant.actorId) ?? participant.displayName }]));
+    const { moves, version } = await matching.overrides(eventId, latest.generationId);
+    const snapshotActors = new Set(latest.participants.map((participant) => participant.actorId));
+    const roster = await reads.kioskRoster(eventId);
+    // 生成之后才承认的人：首字与名字取自同一行（原来用过滤后的下标取未过滤的 roster，首字会对错人）。
+    const extraUnplaced = roster.filter((row) => row.participantId && !snapshotActors.has(row.actorId)).map((row) => ({ ...memberFor(undefined, row.participantId!), initial: (row.name ?? "").trim().charAt(0), name: row.name ?? "" }));
+    const draft = draftTables({ actorOf: (id) => directory.get(id)?.actorId ?? id, conditions, directory, extraUnplaced, grouping: latest.grouping as never, moves, previousPairs: conditions.avoidPreviousTablemates ? await matching.previousPairs(eventId, organizerActorId) : new Set() });
+    return { draft, version };
+  }
+
   async function matchingView(actorId: string, eventId: string, round: number): Promise<HostMatchingResponse> {
     const caps = await require(actorId, eventId, "operations.read_sensitive");
     const facts = await factsOrThrow(actorId, eventId);
@@ -336,15 +352,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       tableCount: 0, tableSizeMax: conditions.tableSize, tableSizeMin: conditions.tableSize, tables: [], unplaced: [], unsatisfiedTables: 0,
     };
     if (!latest?.grouping) return base;
-    // 显示用名字：当前的资料姓名（一次查询）；生成用的快照本身不改（分桌、推荐按 participantId，不按名字）。
-    const names = await reads.profileNames(latest.participants.map((participant) => participant.actorId));
-    const directory = new Map(latest.participants.map((participant) => [participant.participantId, { ...participant, displayName: names.get(participant.actorId) ?? participant.displayName }]));
-    const { moves, version } = await matching.overrides(eventId, latest.generationId);
-    const snapshotActors = new Set(latest.participants.map((participant) => participant.actorId));
-    const roster = await reads.kioskRoster(eventId);
-    // 生成之后才承认的人：首字与名字取自同一行（原来用过滤后的下标取未过滤的 roster，首字会对错人）。
-    const extraUnplaced = roster.filter((row) => row.participantId && !snapshotActors.has(row.actorId)).map((row) => ({ ...memberFor(undefined, row.participantId!), initial: (row.name ?? "").trim().charAt(0), name: row.name ?? "" }));
-    const draft = draftTables({ actorOf: (id) => directory.get(id)?.actorId ?? id, conditions, directory, extraUnplaced, grouping: latest.grouping as never, moves, previousPairs: conditions.avoidPreviousTablemates ? await matching.previousPairs(eventId, facts.organizerActorId) : new Set() });
+    const { draft, version } = await draftFor(eventId, latest, conditions, facts.organizerActorId);
     const selected = Math.min(Math.max(round, 1), conditions.roundCount);
     const tables = draft.tables.filter((table) => table.round === selected);
     const sizes = tables.map((table) => table.members.length);
@@ -906,6 +914,38 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     async eventIdForSlug(slug) {
       return profiles.eventIdForSlug(slug);
     },
+    /**
+     * 2026-11-28 (user: 「后台挪人也要同步」): the tables attendees see after publication are the host's working tables —
+     * published grouping, late joiners and every host move — so the host page and each phone agree. Read-only; the
+     * published result is not rewritten. Seats: a member still at the table they were published at keeps their seat;
+     * anyone moved in (or late) gets the next number at that table.
+     */
+    async attendeeGrouping(eventId) {
+      const latest = deps.operations ? await deps.operations.latestGeneration(eventId) : null;
+      if (!latest?.grouping || latest.status !== "published" || !latest.organizerActorId) return null;
+      const conditions = await matching.conditions(eventId, latest.tableSize);
+      const { draft } = await draftFor(eventId, latest, conditions, latest.organizerActorId);
+      const original = latest.grouping as unknown as { roundOne: readonly EventOperationsTable[]; roundTwo: readonly EventOperationsTable[] };
+      const build = (round: 1 | 2, tables: readonly EventOperationsTable[]): EventOperationsTable[] => tables.map((table) => {
+        const letter = String.fromCharCode(64 + table.tableNumber);
+        const host = draft.tables.find((item) => item.round === round && item.table === letter);
+        if (!host) return table;
+        const seatOf = new Map(table.members.map((member) => [member.participantId, member.seat]));
+        let next = Math.max(0, ...table.members.map((member) => Number(/(\d+)$/u.exec(member.seat)?.[1] ?? 0)));
+        const memberPrompts: Record<string, readonly [string, string]> = {};
+        const memberRationales: Record<string, string> = {};
+        const members = host.members.map((member) => {
+          const id = member.participantId;
+          const home = tables.find((item) => item.members.some((entry) => entry.participantId === id));
+          if (home?.memberPrompts[id]) memberPrompts[id] = home.memberPrompts[id]!;
+          if (home?.memberRationales[id]) memberRationales[id] = home.memberRationales[id]!;
+          const seat = seatOf.get(id) ?? String((next += 1));
+          return { participantId: id, seat };
+        });
+        return { ...table, memberPrompts, memberRationales, members, ...(table.i18n ? { i18n: table.i18n } : {}) };
+      });
+      return { participants: latest.participants, roundOne: build(1, original.roundOne), roundTwo: build(2, original.roundTwo) };
+    },
   };
 }
 
@@ -953,13 +993,14 @@ export async function createConfiguredHostLiveService(): Promise<HostService | n
             return {
               generationId: latest.generationId,
               grouping: { roundOne: add(grouping.roundOne, (entry) => entry.roundOneTable), roundTwo: add(grouping.roundTwo, (entry) => entry.roundTwoTable) },
+              organizerActorId: latest.organizerActorId,
               participants: [...latest.snapshot.participants, ...late.map((entry) => entry.participant)],
               status: latest.status,
               tableSize: configuration?.tableSize ?? 5,
             };
           }
         }
-        return { generationId: latest.generationId, grouping, participants: latest.snapshot.participants, status: latest.status, tableSize: configuration?.tableSize ?? 5 };
+        return { generationId: latest.generationId, grouping, organizerActorId: latest.organizerActorId, participants: latest.snapshot.participants, status: latest.status, tableSize: configuration?.tableSize ?? 5 };
       },
       publishGeneration: (input) => operationsService.publishGeneration(input as never),
       startGeneration: async (input) => operationsService.startGeneration(input),
