@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useContext, useEffect, useRef, useState, type CSSProperties } from "react";
+import { SessionContext } from "next-auth/react";
 
 import type { ManualProfileUpdateInput, ProfilePayload } from "../../../../../features/profile/contract";
 import { profileBioWithinLimit } from "../../../../../shared/api-schema/profile-bio";
@@ -51,7 +52,7 @@ const defaultVisibility: ProfilePublicFieldsContract = { companyRole: true, offe
 
 function draftOf(profile: ManualProfileContract): Draft {
   return {
-    organization: profile.organization, role: profile.role,
+    displayName: profile.displayName, organization: profile.organization, role: profile.role,
     offering: [...(profile.offering ?? [])], seeking: [...(profile.seeking ?? [])],
     bio: profile.bio ?? "", publicFields: { ...defaultVisibility, ...profile.publicFields },
     contacts: { lineId: profile.handles?.lineId ?? "", wechatId: profile.handles?.wechatId ?? "", email: profile.handles?.email ?? "", phone: profile.handles?.phone ?? "" },
@@ -77,7 +78,7 @@ function lines(values: readonly string[]): string[] {
 
 function editOf(draft: Draft): ManualProfileUpdateInput {
   return {
-    organization: draft.organization.trim(), role: draft.role.trim(),
+    displayName: draft.displayName.trim(), organization: draft.organization.trim(), role: draft.role.trim(),
     offering: lines(draft.offering), seeking: lines(draft.seeking), bio: draft.bio.trim(),
     publicFields: draft.publicFields,
   };
@@ -115,6 +116,8 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
   const [payload, setPayload] = useState<ProfilePayload | null>(cached ?? null);
   const [readError, setReadError] = useState<"unauthorized" | "failed" | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
+  // 改了名字就刷新会话里的资料姓名（头像菜单等读会话；与引导同一做法）。设计稿模式与无 Provider 时不刷新。
+  const sessionContext = useContext(SessionContext);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   // 保存成功的次数：每次 +1，触发站内统一的提示条（UR-P14 / UR-P3：「保存しました」2 秒）。
@@ -226,6 +229,8 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
       const { contactMethodsConfirmed: _confirmed, ...patch } = edit;
       if (!response.ok || !envelope.success || !validSaveReceipt(envelope.data, profile, patch, pendingSave.current.id)) throw new Error("save failed");
       setPayload(envelope.data);
+      const savedName = envelope.data?.profile?.displayName?.trim();
+      if (!design && savedName && "displayName" in edit && savedName !== profile.displayName.trim()) void sessionContext?.update?.({ profileName: savedName });
       if (!design) rememberAnswer(PROFILE_ANSWER_KEY, envelope.data);
       pendingSave.current = null;
       setSaved(count => count + 1);

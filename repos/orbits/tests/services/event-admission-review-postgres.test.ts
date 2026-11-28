@@ -17,6 +17,7 @@ import { EventAdmissionError } from "../../features/events/admission/contract";
 import { createEventAdmissionService } from "../../features/events/admission/service";
 import { createPostgresEventAdmissionRepository } from "../../features/events/admission/storage/postgres-repository";
 import { runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
+import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createEventOperationsPostgresClient } from "../../features/events/event-operations/storage/postgres-client";
 import type { EventParticipantProfileAnswers, EventParticipantProfileField } from "../../features/events/registration/contract";
 import { loadLocalEnv } from "../../scripts/load-local-env";
@@ -147,6 +148,8 @@ test(
     try {
       await admin.query(`create schema ${schema}`);
       await runEventOperationsMigrations(client);
+      // 2026-11-28: the review list shows each person's current profile name (orbit_records profiles), as the host lists do.
+      await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
       // Sprint 0113: the event head tables carry sync_revision under the strict trigger, as in production.
       await runEventSyncRevisionMigration(client);
       const plan = buildEventCoreBackfillPlan(
@@ -250,6 +253,16 @@ test(
       });
       assert.equal(secondPage.items.length, 1);
       assert.equal(new Set([...firstPage.items, ...secondPage.items].map((item) => item.actorId)).size, 3);
+      // Without a profile the name submitted with the application shows; after the person renames, the new name does.
+      const renamed = "actor:founder:climate";
+      assert.equal([...firstPage.items, ...secondPage.items].find((item) => item.actorId === renamed)?.displayName, `${renamed} · 跨境产品负责人`);
+      await pool.query(
+        `insert into orbit_records (workspace_id, collection_name, record_id, user_id, lifecycle_state, payload, source_type, source_id, evidence_ids, created_at, updated_at)
+         values ($1, 'profiles', $2, $3, 'active', $4::jsonb, 'manual', 'test', '{}'::text[], now(), now())`,
+        [workspaceId, `profile:${renamed}`, renamed, JSON.stringify({ id: renamed, displayName: "格格" })],
+      );
+      const afterRename = await admission.listApplications(reviewerA, { bucket: "pending", cursor: null, eventId: eventA, limit: 10 });
+      assert.equal(afterRename.items.find((item) => item.actorId === renamed)?.displayName, "格格");
 
       const detail = await admission.getApplicationForReview(
         reviewerA,

@@ -1,4 +1,5 @@
 import { effectiveRegistrationCloseAt, profileEditCloseAt } from "../registration-close";
+import { profileNameSql } from "../../event-operations/storage/canonical-registration-repository";
 import { afterAdmissionTransition } from "../../host/storage/admission-hooks";
 import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import { randomUUID } from "node:crypto";
@@ -302,15 +303,17 @@ function reviewBucket(value: EventAdmissionReviewBucket): EventAdmissionReviewBu
   return value;
 }
 
+/** `currentName`: the person's profile name now (2026-11-28: a rename shows here too, same rule as the host lists). */
 function reviewListItem(
   application: EventAdmissionApplication,
+  currentName: string | null = null,
 ): EventAdmissionReviewListItem {
   return {
     actorId: application.actorId,
     applicationVersion: application.applicationVersion,
     decidedAt: application.decidedAt,
     decisionActorId: application.decisionActorId,
-    displayName: application.profilePayload.displayName?.trim() || null,
+    displayName: currentName?.trim() || application.profilePayload.displayName?.trim() || null,
     status: application.status,
     submittedAt: application.submittedAt,
     updatedAt: application.updatedAt,
@@ -1175,7 +1178,8 @@ export function createPostgresEventAdmissionRepository(input: {
             invalid("Admission review total is invalid.");
           }
           const result = await executor.query<SqlRow>(
-            `select * from event_ops_admission_application_heads
+            `select heads.*, ${profileNameSql("heads.workspace_id", "heads.actor_id")} as current_display_name
+             from event_ops_admission_application_heads heads
              where workspace_id = $1 and event_id = $2 and ${predicate}
                and ($3::timestamptz is null or (${sortColumn}, actor_id) ${comparison} ($3::timestamptz, $4::text))
              order by ${sortColumn} ${direction}, actor_id ${direction}
@@ -1199,7 +1203,7 @@ export function createPostgresEventAdmissionRepository(input: {
               }
             : null;
           return {
-            items: applications.map(reviewListItem),
+            items: applications.map((application, index) => reviewListItem(application, typeof pageRows[index]?.current_display_name === "string" ? pageRows[index]!.current_display_name as string : null)),
             nextCursor,
             total,
           } satisfies EventAdmissionReviewPage;

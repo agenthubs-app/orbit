@@ -287,3 +287,22 @@ test("a malformed email stops the save and marks only that field", async t => {
   assert.equal(root.root.findByProps({ id: "pe-lineId" }).props["aria-invalid"], undefined);
   assert.ok(root.root.findAllByProps({ "data-profile-miss": "" }).length === 1);
 });
+
+// 2026-11-28「能改用户名等个人信息」：编辑面板最上面的「名前」改了就保存新名字；清空时不能保存。
+test("the edit panel renames the person and saves the new name", async t => {
+  const { root, writes } = await contactHarness(t);
+  await act(async () => { root.root.findByProps({ "data-profile-name": "" }).props.onChange({ target: { value: "  格格 " } }); });
+  await act(async () => { await root.root.findByProps({ "data-profile-save": true }).props.onClick(); });
+  assert.equal(writes.length, 1);
+  assert.equal((writes[0] as { displayName: string }).displayName, "格格");
+  assert.ok(root.root.findAll(node => node.type === "strong" && node.children.join("") === "格格").length > 0, "the card shows the new name");
+});
+
+test("an empty name cannot be saved", async t => {
+  const { root, writes } = await contactHarness(t);
+  await act(async () => { root.root.findByProps({ "data-profile-name": "" }).props.onChange({ target: { value: "   " } }); });
+  const save = root.root.findByProps({ "data-profile-save": true });
+  assert.equal(save.props.disabled, true);
+  assert.equal(root.root.findByProps({ "data-profile-name": "" }).props["aria-invalid"], true);
+  assert.equal(writes.length, 0);
+});

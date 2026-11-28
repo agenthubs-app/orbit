@@ -7,6 +7,7 @@
  * UR-P9–P15（2026-11-27）：自己紹介 之后加「連絡先」——与引导第①步同一份数据、文案、占位与格式校验（copy/contact-methods）；
  * 选填、不写「1つ以上」；LINE / WeChat 直接给出，メール・電話收在「＋」里（有值时展开）；点保存时格式不对只标那一栏，
  * 按钮旁一句，改对前不提交。「公開する項目」里原来那行固定说明去掉（谁能看写在分组里）。
+ * 2026-11-28 用户要求「能改用户名等个人信息」：最上面加「名前」一栏（与 App 编辑页一致；名字是必填，空着不能保存）。
  */
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 
@@ -19,12 +20,14 @@ import { ConfirmDialog, Icon, Toggle } from "../ui";
 import p from "./ProfileEditPanel.module.css";
 
 export type ProfileEditContacts = { lineId: string; wechatId: string; email: string; phone: string };
-export type ProfileEditDraft = { organization: string; role: string; offering: string[]; seeking: string[]; bio: string; contacts: ProfileEditContacts; publicFields: ProfilePublicFieldsContract };
+export type ProfileEditDraft = { displayName: string; organization: string; role: string; offering: string[]; seeking: string[]; bio: string; contacts: ProfileEditContacts; publicFields: ProfilePublicFieldsContract };
 type Lang = "ja" | "zh" | "en";
 type Text = Record<Lang, string>;
 const TAG_LIMIT = 5;
 const C = {
   title: { ja: "プロフィールを編集", zh: "编辑资料", en: "Edit profile" },
+  name: { ja: "名前", zh: "姓名", en: "Name" },
+  nameRequired: { ja: "名前を入力してください", zh: "请填写姓名", en: "Enter your name" },
   companyRole: { ja: "会社・役職", zh: "公司和职位", en: "Company and role" },
   company: { ja: "会社", zh: "公司", en: "Company" },
   role: { ja: "役職", zh: "职位", en: "Role" },
@@ -98,6 +101,7 @@ export function ProfileEditPanel({ draft, initial, language, saving, saveError, 
   const bioLimit = profileBioLimit(draft.bio);
   const bioOver = !profileBioWithinLimit(draft.bio);
   const dim = saving ? p.dim : "";
+  const nameMissing = !draft.displayName.trim();
   const vis = draft.publicFields;
   // 連絡先：点过保存后才标格式错误（UR-P13），改对一栏那一栏的提示就消失。
   const [attempted, setAttempted] = useState(false);
@@ -137,6 +141,14 @@ export function ProfileEditPanel({ draft, initial, language, saving, saveError, 
           <span className={p.headEnd} aria-hidden />
         </header>
         <div className={p.body}>
+          <div className={p.card} data-profile-card="name">
+            <label className={`${p.fld} ${nameMissing ? p.err : ""} ${dim}`}>
+              <span>{t(C.name)}</span>
+              <input className={p.in} value={draft.displayName} maxLength={80} disabled={saving} autoComplete="name" aria-invalid={nameMissing || undefined}
+                onChange={event => onChange({ ...draft, displayName: event.target.value })} data-profile-name="" />
+              {nameMissing ? <span className={p.msg} role="alert">{t(C.nameRequired)}</span> : null}
+            </label>
+          </div>
           <div className={p.card}>
             <div className={p.gh}>{t(C.companyRole)}</div>
             <div className={`${p.grid2} ${dim}`}>
@@ -185,7 +197,7 @@ export function ProfileEditPanel({ draft, initial, language, saving, saveError, 
           {missLine ? <span className={p.miss} data-profile-miss=""><Icon name="flag" size={16} />{missLine}</span> : null}
           <span className={p.spacer} />
           <button type="button" className={`btn ${p.btn} ${p.cancel}`} disabled={saving} onClick={onCancel}>{t(C.cancel)}</button>
-          <button type="button" className={`btn ${p.btn} ${p.primary} ${saving ? p.saving : ""}`} disabled={saving || bioOver} onClick={save} data-profile-save>{saving ? t(C.saving) : t(C.save)}</button>
+          <button type="button" className={`btn ${p.btn} ${p.primary} ${saving ? p.saving : ""}`} disabled={saving || bioOver || nameMissing} onClick={save} data-profile-save>{saving ? t(C.saving) : t(C.save)}</button>
         </footer>
       </section>
       <ConfirmDialog open={confirm} title={t(C.discardTitle)} confirmLabel={t(C.discard)} cancelLabel={t(C.keep)} destructive onConfirm={() => { setConfirm(false); onCancel(); }} onCancel={() => setConfirm(false)} />
