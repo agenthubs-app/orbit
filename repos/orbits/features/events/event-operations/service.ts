@@ -123,6 +123,15 @@ export interface EventOperationsService {
     eventId: string;
     requestId: string;
   }): Promise<EventContactRequest>;
+  /**
+   * People who registered after the published snapshot, with the seats they see in venue mode (late-joiner.ts,
+   * computed on read; nothing is written). Empty before publication. For the host's matching view (2026-11-28).
+   */
+  lateJoinerPlacements(eventId: string): Promise<readonly {
+    participant: EventOperationsParticipant;
+    roundOneTable: EventOperationsTable | null;
+    roundTwoTable: EventOperationsTable | null;
+  }[]>;
   retryGeneration(input: {
     actorId: string;
     eventId: string;
@@ -761,6 +770,23 @@ export function createEventOperationsService({
         requestId,
         requesterActorId: actorId,
       });
+    },
+
+    async lateJoinerPlacements(eventId) {
+      const published = await repository.getPublishedResult(eventId);
+      if (!published) return [];
+      const configuration = requireConfiguration(await repository.getConfiguration(eventId));
+      const seatedActors = new Set(published.directory.map((participant) => participant.actorId));
+      const lateActors = (await repository.listCanonicalRegistrations(eventId))
+        .filter((registration) => registration.status === "rsvped" && !seatedActors.has(registration.userId))
+        .map((registration) => registration.userId);
+      const placements = [];
+      for (const actorId of lateActors) {
+        const participant = await currentMatchingParticipant(eventId, actorId, configuration).catch(() => null);
+        if (!participant) continue;
+        placements.push({ participant, ...lateJoinerTables(participant, published) });
+      }
+      return placements;
     },
 
     async retryGeneration({ actorId, eventId, generationId }) {

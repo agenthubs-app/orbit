@@ -930,6 +930,35 @@ export async function createConfiguredHostLiveService(): Promise<HostService | n
         const tasks = latest.status === "completed" || latest.status === "published" ? await repository.listTasks(latest.generationId) : [];
         const outputs = tasks.flatMap((task) => (task.output?.kind === "table_content_shard" ? [task.output] : []));
         const grouping = outputs.length ? { roundOne: outputs.filter((output) => output.roundNumber === 1).map((output) => output.table).sort((a, b) => a.tableNumber - b.tableNumber), roundTwo: outputs.filter((output) => output.roundNumber === 2).map((output) => output.table).sort((a, b) => a.tableNumber - b.tableNumber) } : null;
+        // 2026-11-28: people who registered after publication sit where their venue mode puts them (late-joiner.ts);
+        // the host sees them at those tables. Read-only: the published result is not changed.
+        if (latest.status === "published" && grouping) {
+          const late = await operationsService.lateJoinerPlacements(eventId).catch(() => []);
+          if (late.length) {
+            const add = (tables: typeof grouping.roundOne, placed: (entry: (typeof late)[number]) => (typeof grouping.roundOne)[number] | null) => tables.map((table) => {
+              const mine = late.flatMap((entry) => { const seat = placed(entry); return seat && seat.tableNumber === table.tableNumber ? [{ entry, seat }] : []; });
+              if (!mine.length) return table;
+              const members = [...table.members];
+              const memberPrompts = { ...table.memberPrompts };
+              const memberRationales = { ...table.memberRationales };
+              for (const { entry, seat } of mine) {
+                const id = entry.participant.participantId;
+                const member = seat.members.find((item) => item.participantId === id);
+                members.push({ participantId: id, seat: member?.seat ?? `${table.tableNumber}-${members.length + 1}` });
+                if (seat.memberPrompts[id]) memberPrompts[id] = seat.memberPrompts[id]!;
+                if (seat.memberRationales[id]) memberRationales[id] = seat.memberRationales[id]!;
+              }
+              return { ...table, memberPrompts, memberRationales, members };
+            });
+            return {
+              generationId: latest.generationId,
+              grouping: { roundOne: add(grouping.roundOne, (entry) => entry.roundOneTable), roundTwo: add(grouping.roundTwo, (entry) => entry.roundTwoTable) },
+              participants: [...latest.snapshot.participants, ...late.map((entry) => entry.participant)],
+              status: latest.status,
+              tableSize: configuration?.tableSize ?? 5,
+            };
+          }
+        }
         return { generationId: latest.generationId, grouping, participants: latest.snapshot.participants, status: latest.status, tableSize: configuration?.tableSize ?? 5 };
       },
       publishGeneration: (input) => operationsService.publishGeneration(input as never),
