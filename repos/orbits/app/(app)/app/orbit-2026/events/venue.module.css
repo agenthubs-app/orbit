@@ -25,8 +25,9 @@
 .mapcard.mapcard { display: flex; flex-direction: column; }
 .legend.legend { gap: 14px; flex-wrap: wrap; font-size: var(--fs-label); color: var(--ink-2); }
 .legend > span { gap: 5px; }
-.mapWrap { display: grid; place-items: center; }
-.map { display: block; }
+.mapWrap { display: grid; place-items: center; min-width: 0; }
+/* 2026-11-28: the map never widens the page on a phone (a 460px map pushed a 430px page to 498 and the browser zoomed out). */
+.map { display: block; max-width: 100%; height: auto; }
 .past b { color: var(--ink-3); }
 .dotPast.dotPast { background: var(--plum-300); }
 .dotNow.dotNow { background: var(--coral); box-shadow: 0 0 0 4px var(--coral-soft); }

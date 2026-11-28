@@ -145,20 +145,11 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
   const [personWhy, setPersonWhy] = useState(false);
   const [memo, setMemo] = useState("");
   const [openerPage, setOpenerPage] = useState(0);
-  const [phone, setPhone] = useState(false);
-  const [webAnyway, setWebAnyway] = useState(false);
   // 1024：右栏收起（b12 #362 没有右栏），点人在抽屉里看参加者の詳細。
   const wide = useWide();
   const [drawer, setDrawer] = useState(false);
 
   const load = answer.reload;
-  useEffect(() => {
-    const query = window.matchMedia("(max-width: 767px)");
-    const update = () => setPhone(query.matches);
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
 
   const people = useMemo(() => {
     if (!data) return [] as EventVenuePerson[];
@@ -225,21 +216,7 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
   // 2026-11-20 会場の記録：结束后的只读回看（手机也直接在 Web 看，不出「App で」引导）。
   if (data && data.state === "ended" && data.readOnly) return <VenueRecordView data={data} eventId={eventId} language={language} t={t} />;
 
-  // 「会場モードは App で」只在读到数据、确认不是结束后的回看之后才出（2026-11-23：回看入口先闪这一页）。
-  if (phone && !webAnyway && data) {
-    return (
-      <>
-        <ShellPage title={t("liveTitle")} subtitle={data?.title ?? ""} left={<Link className={`btn ${x.rbtn}`} href={detailHref} aria-label={t("back")}><Icon name="left" size={16} /></Link>} rightRail={false} phoneBare phoneBack={detailHref} />
-        <div className={`${styles.card} ${v.appOnly}`} data-venue-app-only="">
-          <div className={v.appEmoji}>📱</div>
-          <b className={v.appTitle}>{t("appOnlyTitle")}</b>
-          <div className={`${styles.sub} ${v.appSub}`}>{t("appOnlySub")}</div>
-          <a className={`btn ${styles.btn} ${styles.primary} ${v.xl}`} href={`orbit://events/${id(eventId)}/live`}>{t("openApp")}</a>
-          <button type="button" className={`btn ${styles.btn} ${v.ghost}`} onClick={() => setWebAnyway(true)}>{t("continueWeb")}</button>
-        </div>
-      </>
-    );
-  }
+  // 2026-11-28 (user): the phone web goes straight into venue mode; no 「会場モードは App で」 step.
 
   if (missing || (data && data.state !== "checked_in")) {
     const message = missing ? t("notFound") : data?.state === "not_registered" ? t("liveNotRegistered") : data?.state === "before_check_in" ? t("liveBeforeCheckIn", { n: data.checkIn?.receptionNumber ?? "—" }) : t("liveEnded");
