@@ -107,7 +107,7 @@ function journeyRoute<T>(options: { auth: "required" | "optional"; write?: boole
       return reply(normalized.status ?? 200, success(data));
     } catch (error) {
       if (error instanceof AppError) return fail(error);
-      console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_journey_route_failed" }));
+      console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_journey_route_failed", message: error instanceof Error ? error.message.slice(0, 200) : null }));
       return fail(new AppError("INTERNAL_ERROR", SAFE_INTERNAL_ERROR_MESSAGE));
     }
   };

@@ -65,6 +65,19 @@ const hrefFor = (eventId: string) => `/events/${eventId}`;
 const eventEnded = (event: Pick<JourneyEvent, "startsAt" | "endsAt">, at: Date) => at.getTime() >= Date.parse(event.endsAt || event.startsAt);
 const DEADLINE_SOON_MS = 72 * 3_600_000;
 
+/**
+ * 详情页的非必需读取（联系人、计划评估、计划类型、关注、主办方历史、锁定名单计数）：失败就回退为空，整页照常显示。
+ * 记下 error.name + message 前 200 字（不含账号或内容），以后能按 `read` 定位是哪一项。活动本体与我的报名状态不走这里。
+ */
+async function optional<T>(read: string, eventId: string, promise: Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await promise;
+  } catch (error) {
+    console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_overview_read_degraded", eventId, message: error instanceof Error ? error.message.slice(0, 200) : String(error).slice(0, 200), read }));
+    return fallback;
+  }
+}
+
 function historyText(contact: JourneyContact | undefined, now: Date, language: JourneyLanguage): string | null {
   if (!contact || contact.history.length === 0) return null;
   const label = (kind: JourneyContact["history"][number]["kind"]) => ({
@@ -193,7 +206,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       // Do not fetch portraits and answers merely to remove them from the response later.
       const [roster, stats] = await Promise.all([
         rosterVisible ? ports.publicAttendees(eventId) : Promise.resolve({ total: event.registrationCount, attendees: [] }),
-        event.organizerKey && !peopleOnly ? ports.organizerStats(event.organizerKey, eventId) : Promise.resolve(null),
+        event.organizerKey && !peopleOnly ? optional("organizer_stats", eventId, ports.organizerStats(event.organizerKey, eventId), null) : Promise.resolve(null),
       ]);
       const base: EventOverviewResponse = {
         agenda: event.agenda,
@@ -223,17 +236,17 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       // 会場の記録入口：只在已结束 + 我是报名者时读工作区（其余情况不多读）。
       const recordEligible = !peopleOnly && (status === "registered" || status === "attended") && eventEnded(event, at);
       const [contacts, judged, types, followed, hosting, recordWorkspace] = await Promise.all([
-        ports.contacts(actorId),
-        peopleOnly ? Promise.resolve(null) : ports.judge(actorId, [eventId], language),
-        rosterVisible ? ports.planTypesFor(actorId, roster.attendees) : Promise.resolve({}),
-        event.organizerKey && !peopleOnly ? records.follows.followed(actorId) : Promise.resolve(new Set<string>()),
+        optional("contacts", eventId, ports.contacts(actorId), [] as JourneyContact[]),
+        peopleOnly ? Promise.resolve(null) : optional("judge", eventId, ports.judge(actorId, [eventId], language), null),
+        rosterVisible ? optional("plan_types", eventId, ports.planTypesFor(actorId, roster.attendees), {} as Awaited<ReturnType<typeof ports.planTypesFor>>) : Promise.resolve({}),
+        event.organizerKey && !peopleOnly ? optional("follows", eventId, records.follows.followed(actorId), new Set<string>()) : Promise.resolve(new Set<string>()),
         ports.hosting ? ports.hosting(actorId, eventId).catch(() => false) : Promise.resolve(false),
         recordEligible ? ports.venueWorkspace(actorId, eventId, language).catch(() => null) : Promise.resolve(null),
       ]);
       const venueRecord = recordWorkspace ? venueRecordFrom(recordWorkspace) : null;
       const contactNames = new Set(contacts.map((contact) => contact.name.replace(/\s+/g, "")));
       const lockedCounts = !rosterVisible && ports.publicRosterCounts
-        ? await ports.publicRosterCounts(actorId, eventId, [...contactNames])
+        ? await optional("locked_roster_counts", eventId, ports.publicRosterCounts(actorId, eventId, [...contactNames]), null)
         : null;
       const attendees = roster.attendees.map((item) => {
         const known = contactNames.has(item.name.replace(/\s+/g, ""));

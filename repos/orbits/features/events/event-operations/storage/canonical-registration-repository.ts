@@ -362,6 +362,9 @@ function registrationFromRow(row: SqlRow): EventRegistration {
   };
 }
 
+// 2026-11-28：账号删除（features/account/data-rights/purge/events.ts）把这个人在每场活动的报名改成占位 actor、
+// profile_payload='{}'、source_registration_id='deleted'。这些行刻意没有资料，不是坏数据：名单 / 盘点 / 名册读取一律跳过，
+// 否则一场活动里有人删号，所有能看名单的人打开详情都会 500（第六期 11-27 22:01 起即如此）。
 const REGISTRATION_FROM = `
     from event_ops_membership_heads membership_head
     join event_ops_membership_versions membership_version
@@ -374,6 +377,7 @@ const REGISTRATION_FROM = `
       and profile_version.event_id = membership_head.event_id
       and profile_version.participant_id = membership_head.participant_id
       and profile_version.profile_version = membership_head.profile_version
+      and profile_version.source_registration_id <> 'deleted'
   `;
 
 // `registrationFromRow` throws for any of these; the status read keeps the

@@ -24,7 +24,7 @@ test("canonical event participant is anonymized while another account stays read
       await pool.query(`insert into event_ops_profile_versions(workspace_id,event_id,participant_id,profile_version,actor_id,
         profile_payload,profile_hash,source_registration_id,created_at,effective_at)
         values('space','event-1',$1,1,$2,$3::jsonb,'hash',$4,now(),now())`,
-      [participant, actor, JSON.stringify({ displayName: actor === "actor" ? "Private Person" : "Counterparty" }), `registration:${actor}`]);
+      [participant, actor, JSON.stringify({ registrationProfile: { displayName: actor === "actor" ? "Private Person" : "Counterparty" } }), `registration:${actor}`]);
       await pool.query(`insert into event_ops_profile_heads(workspace_id,event_id,participant_id,actor_id,profile_version,updated_at)
         values('space','event-1',$1,$2,1,now())`, [participant, actor]);
       await pool.query(`insert into event_ops_membership_versions(workspace_id,event_id,actor_id,membership_version,participant_id,
@@ -113,6 +113,12 @@ test("canonical event participant is anonymized while another account stays read
     assert.equal((await pool.query(`select count(*)::int as n from event_ops_membership_versions where workspace_id='space' and actor_id='actor'`)).rows[0]?.n, 0);
     assert.equal((await pool.query(`select count(*)::int as n from event_reception_numbers where workspace_id='space' and actor_id='actor'`)).rows[0]?.n, 0);
     assert.equal((await pool.query(`select count(*)::int as n from event_reception_numbers where workspace_id='space' and actor_id='other'`)).rows[0]?.n, 1);
+    // 2026-11-28 第六期详情页 500：删号留下的占位报名（profile_payload='{}'）让名单 / 盘点 / 名册读取整体抛错。现在跳过它们。
+    const { createPostgresCanonicalRegistrationMethods } = await import("../../features/events/event-operations/storage/canonical-registration-repository");
+    const registrations = createPostgresCanonicalRegistrationMethods({ client: { query: (sql: string, values?: readonly unknown[]) => pool.query(sql, values as unknown[]) }, workspaceId: "space" } as never);
+    assert.deepEqual((await registrations.listCanonicalRegistrations("event-1")).map((item) => item.userId), ["other"]);
+    assert.deepEqual((await registrations.listCanonicalRegistrationsForDisplay!("event-1")).map((item) => item.userId), ["other"]);
+    assert.equal((await registrations.listCanonicalRosterEntries("event-1", {} as never)).length, 1);
     assert.equal((await purgeAccountEvents(db, "space", "actor")).deleted, 0);
     await pool.query(`insert into event_ops_events(workspace_id,event_id,organizer_actor_id,created_at,updated_at)
       values('space','host-empty','actor',now(),now())`);
