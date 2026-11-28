@@ -78,7 +78,7 @@ export async function runControlledNameChange(input: {
 
   const service = createLiveProfileService({ provider: createConfiguredStorageProfileProvider() });
   const saved = await service.updateProfile({ displayName: to }, { actorId: checked.actorId });
-  if (!saved.success) throw new Error(`PROFILE_SAVE_FAILED:${saved.error.code}`);
+  if (saved.success === false) throw new Error(`PROFILE_SAVE_FAILED:${saved.error.code}`);
   let accountNameChanged = false;
   if (checked.accountNameMatches) {
     const updated = await input.db.transaction((sql) => sql.query(`update orbit_records
