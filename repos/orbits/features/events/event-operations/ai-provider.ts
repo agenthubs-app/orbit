@@ -485,7 +485,8 @@ function allowedChineseOutputLatinTokens(
 ): ReadonlySet<string> {
   const allowed = new Set(CHINESE_OUTPUT_TECHNICAL_TOKENS);
   for (const participant of participants) {
-    for (const properName of [participant.displayName, participant.company]) {
+    // A person's own job title is a proper noun too (2026-11-28: 「AI Engineer」「junior manager」 kept event 6 tables failing).
+    for (const properName of [participant.displayName, participant.company, participant.role]) {
       if (typeof properName !== "string") continue;
       for (const token of latinTokens(properName)) {
         allowed.add(token.toLocaleLowerCase("en-US"));
