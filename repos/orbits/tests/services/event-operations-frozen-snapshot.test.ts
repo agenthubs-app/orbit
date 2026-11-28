@@ -120,28 +120,8 @@ test("frozen snapshot cutoff uses the database boundary and allows equality", as
     table_size: config.tableSize,
     updated_at: config.updatedAt,
   };
-  let beforeCalls = 0;
-  await assert.rejects(
-    readFrozenGenerationSnapshot({
-      eventId: config.eventId,
-      executor: {
-        async query<TRow>() {
-          beforeCalls += 1;
-          return {
-            rowCount: 1,
-            rows: [{
-              ...row,
-              captured_at: config.registrationCutoffAt,
-              cutoff_reached: false,
-            }] as TRow[],
-          };
-        },
-      },
-      workspaceId: "workspace-boundary",
-    }),
-    /database registration cutoff must pass/i,
-  );
-  assert.equal(beforeCalls, 1);
+  // 2026-11-28: a snapshot no longer waits for the registration cutoff (the host may generate any time; later
+  // registrations are late joiners), so there is no "before cutoff" refusal to test.
 
   let exactCalls = 0;
   const exact = await readFrozenGenerationSnapshot({

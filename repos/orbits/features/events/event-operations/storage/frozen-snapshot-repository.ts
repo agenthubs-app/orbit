@@ -238,12 +238,8 @@ export async function readFrozenGenerationSnapshot(input: {
     configurationRow.configuration_version,
     "configuration_version",
   );
-  if (configurationRow.cutoff_reached !== true) {
-    throw new EventOperationsError(
-      "EVENT_OPERATIONS_GENERATION_NOT_READY",
-      "The database registration cutoff must pass before snapshot capture.",
-    );
-  }
+  // 2026-11-28 (user: 「截止时间不要设定」): the host may generate before registration closes. People who register
+  // after the snapshot are handled as late joiners (late-joiner.ts); the snapshot stays immutable.
   const frozenConfiguration = configurationFromRow(configurationRow);
 
   const rows = await input.executor.query<SqlRow>(

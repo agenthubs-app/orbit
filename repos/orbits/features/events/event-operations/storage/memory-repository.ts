@@ -399,14 +399,7 @@ export function createMemoryEventOperationsRepository(
         );
       }
       const capturedAt = options.now?.() ?? new Date().toISOString();
-      if (
-        Date.parse(capturedAt) < Date.parse(configuration.registrationCutoffAt)
-      ) {
-        throw new EventOperationsError(
-          "EVENT_OPERATIONS_GENERATION_NOT_READY",
-          "The registration cutoff must pass before snapshot capture.",
-        );
-      }
+      // 2026-11-28: generation no longer waits for the registration cutoff (same as the Postgres snapshot).
       const registrations = (
         await canonicalRegistrationService.list({ eventId })
       ).filter(
