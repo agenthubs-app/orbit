@@ -411,9 +411,12 @@ test(
       await service.decideApplication(manager, { actorId: "a:no", decision: "reject", eventId: review, expectedApplicationVersion: refused.applicationVersion });
       await assert.rejects(apply("a:no", review, " (again)"), code("APPLICATION_REJECTED"));
 
-      // Closed: nothing changes.
+      // 2026-11-28: past the registration close but before the event ends, answers can still change...
       await pool.query(`update event_ops_admission_policy_versions set registration_opens_at = '2000-01-01', registration_closes_at = '2001-01-01', profile_edit_deadline_at = '2001-01-01' where workspace_id = $1 and event_id = $2`, [workspaceId, instant]);
-      await assert.rejects(apply("a:in", instant, " (late)"), code("PROFILE_EDIT_CLOSED"));
+      assert.equal((await apply("a:in", instant, " (late)")).status, "admitted");
+      // ...once the event has ended nothing changes.
+      await pool.query(`update event_ops_configurations set check_in_opens_at = '2000-11-01', event_starts_at = '2000-11-10', event_ends_at = '2000-12-31', profile_edit_deadline_at = '2000-10-01', registration_cutoff_at = '2000-10-02', results_available_at = '2000-11-10', round_one_starts_at = '2000-11-11', round_two_starts_at = '2000-11-12' where workspace_id = $1 and event_id = $2`, [workspaceId, instant]);
+      await assert.rejects(apply("a:in", instant, " (after the end)"), code("PROFILE_EDIT_CLOSED"));
     } finally {
       await client.close();
       await adminPool.query(`drop schema if exists ${schema} cascade`);

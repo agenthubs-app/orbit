@@ -477,15 +477,7 @@ export function createEventRegistrationRouteHandlers(input: {
         409,
       );
     }
-    const startsAtMs = Date.parse(event.startsAt);
-    const nowMs = (input.now?.() ?? new Date()).getTime();
-    if (!Number.isFinite(startsAtMs) || nowMs >= startsAtMs) {
-      return errorResponse(
-        new AppError("CONFLICT", "Registration closes when the event starts."),
-        409,
-      );
-    }
-
+    // 2026-11-28：报名制活动的时间窗由报名申请那边判定（默认开到活动结束），所以先分流，再对旧路径卡开场。
     const admissionControl = input.resolveAdmissionControl
       ? await input.resolveAdmissionControl(actor.id, event.id)
       : "legacy";
@@ -495,6 +487,14 @@ export function createEventRegistrationRouteHandlers(input: {
           "CONFLICT",
           "This event uses the admission application flow; direct registration is disabled.",
         ),
+        409,
+      );
+    }
+    const startsAtMs = Date.parse(event.startsAt);
+    const nowMs = (input.now?.() ?? new Date()).getTime();
+    if (!Number.isFinite(startsAtMs) || nowMs >= startsAtMs) {
+      return errorResponse(
+        new AppError("CONFLICT", "Registration closes when the event starts."),
         409,
       );
     }

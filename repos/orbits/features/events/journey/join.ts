@@ -7,6 +7,7 @@
  *   幂等键按账号 + 活动（+ 第几次写入）固定；用户点「移除」= 删掉并记下不要（之后的同步不再自动重建，除非他再点添加）。
  *   之后跟真实状态走：审核通过去掉「暂定」、被拒 / 取消删除（syncTentative）；主办方中止删除全部、改期更新时间（syncEvent）。
  */
+import { profileEditCloseAt } from "../admission/registration-close";
 import type { HostEventContact } from "../../../shared/contract/host-events";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import type { EventJoinAnswer, EventJoinWechatAnswer, EventJoinCalendarRemoveResult, EventJoinCancelResult, EventJoinCurrent, EventJoinPrefilledField, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
@@ -537,13 +538,17 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       if (!event) return null;
       const mine = (await ports.current?.(actorId, eventId, language)) ?? null;
       const fresh = { answers: [], ask: [], blocked: null, selfIntro: null } as const;
+      const nowMs = ports.now?.() ?? Date.now();
       const closesAt = Date.parse(event.registrationClosesAt ?? event.startsAt);
-      const closed = Number.isFinite(closesAt) && (ports.now?.() ?? Date.now()) >= closesAt;
+      const closed = Number.isFinite(closesAt) && nowMs >= closesAt;
+      // 2026-11-28：已报名的人改资料一直开到活动结束（registration-close.ts）。
+      const editCloseAt = Date.parse(profileEditCloseAt(event.endsAt, event.startsAt, event.registrationClosesAt) ?? "");
+      const editClosed = Number.isFinite(editCloseAt) && nowMs >= editCloseAt;
       // 没报名 / 已取消：截止了就直接说（不问第一题、不调 AI）；否则新报名。
       if (!mine || mine.status === "none" || mine.status === "cancelled") return { ...fresh, blocked: closed ? "JOIN_CLOSED" : null, status: mine?.status ?? "none" };
       if (mine.status === "rejected") return { ...fresh, blocked: "JOIN_REJECTED", status: mine.status };
       // 已截止 / 主办方已决定：不能改，但照样带回上次的内容，页面只读显示。
-      const blocked = closed ? "JOIN_CLOSED" as const : mine.status !== "pending_review" && (mine.decided || event.review) ? "JOIN_LOCKED" as const : null;
+      const blocked = editClosed ? "JOIN_CLOSED" as const : mine.status !== "pending_review" && (mine.decided || event.review) ? "JOIN_LOCKED" as const : null;
       const hostQuestions = ports.hostQuestions ? await ports.hostQuestions(eventId).catch(() => []) : [];
       const tags = await profileTags(actorId, language);
       // 主办方题：删掉的丢弃；选项改得对不上的、新增的必答题要补问；其余按当前语言带回。
@@ -581,7 +586,7 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const basis = intro?.source === "ai_draft" ? tri(language, "回答（目的・テーマ・会いたい人）とプロフィールから作成。売上などの数値は入れていません。", "根据回答（目的、话题、想见的人）和个人资料写成，没有放入营收等数字。", "Written from your answers (goal, topics, who to meet) and your profile. No revenue or other figures.") : null;
       // Answers stay editable until registration closes (the policy's profile-edit deadline is the close); a day before the
       // start was often already past (「报名后10/25前仍可修改」 on a 10/26 event). Nothing is promised once that time has passed.
-      const editableUntilAt = event.registrationClosesAt ?? event.startsAt;
+      const editableUntilAt = profileEditCloseAt(event.endsAt, event.startsAt, event.registrationClosesAt) ?? event.startsAt;
       const editableUntil = Date.parse(editableUntilAt) > Date.now() ? new Date(Date.parse(editableUntilAt)).toISOString() : null;
       // 资料标签兜底的核心项只在问完（满 5 题）后才算有值：答题中预填的项要用户确认那一题才算（否则一开始就 72 %）。
       const filled = filledItems(answers);
@@ -601,7 +606,8 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const event = await ports.event(eventId);
       if (!event) return null;
       // 截止后什么都不改（回答没变时报名接口会照常返回，介绍也不能借机改）。
-      const closesAt = Date.parse(event.registrationClosesAt ?? event.startsAt);
+      // 改资料开到活动结束；新报名按（放宽后的）报名截止。
+      const closesAt = Date.parse((edit ? profileEditCloseAt(event.endsAt, event.startsAt, event.registrationClosesAt) : event.registrationClosesAt) ?? event.startsAt);
       if (Number.isFinite(closesAt) && (ports.now?.() ?? Date.now()) >= closesAt) throw new JoinRefusedError("JOIN_CLOSED", "Registration has closed.");
       // 改资料时报名已经取消 / 被拒：不当成重新报名。
       let editStatus: Awaited<ReturnType<JoinPorts["registrationStatus"]>> | null = null;

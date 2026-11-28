@@ -284,6 +284,13 @@ export interface EventOperationsRepository {
     eventId: string,
   ): Promise<readonly EventRegistration[]>;
   /**
+   * The account profiles' matching facts (see matching-profile.ts) for a few people, read the way the generation snapshot
+   * reads them. Optional (2026-11-28, late joiners): repositories without the account store leave it out.
+   */
+  readMatchingAccountProfiles?(
+    actorIds: readonly string[],
+  ): Promise<ReadonlyMap<string, import("./matching-profile").MatchingAccountProfile>>;
+  /**
    * `listCanonicalRegistrations` for showing people: one statement, with each person's current profile name in place of
    * the name stored at registration (which stays when there is no profile name). Not for matching, exports or writes.
    * Optional: memory repositories leave it out and callers use `listCanonicalRegistrations`.

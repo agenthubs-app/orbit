@@ -493,6 +493,18 @@ test(
         registrationClosesAt: "2001-01-01T00:00:00.000Z",
         registrationOpensAt: "2000-01-01T00:00:00.000Z", waitlistEnabled: false,
       });
+      // 2026-11-28: a close at or after the start now means "until the event ends" (this event ends in 2101), so it is open...
+      await assert.rejects(
+        service.submitApplication("actor:F3", {
+          eventId: "event:no-waitlist", profilePayload: profile("actor:F3"),
+        }),
+        (error: unknown) => error instanceof EventAdmissionError && error.code === "CAPACITY_FULL",
+      );
+      // ...while a close the organizer set before the start is kept.
+      await operationPool.query(
+        `update event_ops_configurations set event_starts_at = '2050-01-01T00:00:00.000Z' where workspace_id = $1 and event_id = $2`,
+        [workspaceId, "event:no-waitlist"],
+      );
       await assert.rejects(
         service.submitApplication("actor:F3", {
           eventId: "event:no-waitlist", profilePayload: profile("actor:F3"),

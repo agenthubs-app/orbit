@@ -1,3 +1,4 @@
+import { effectiveRegistrationCloseAt, profileEditCloseAt } from "../registration-close";
 import { afterAdmissionTransition } from "../../host/storage/admission-hooks";
 import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import { randomUUID } from "node:crypto";
@@ -470,6 +471,30 @@ async function currentEventOperationsConfiguration(
   };
 }
 
+/** The event's start / end from the current Event Operations configuration (null when not configured yet). */
+async function currentEventSchedule(
+  executor: EventOperationsSqlExecutor,
+  workspaceId: string,
+  eventId: string,
+): Promise<{ endsAt: string; startsAt: string } | null> {
+  const result = await executor.query<SqlRow>(
+    `select configuration.event_starts_at, configuration.event_ends_at
+       from event_ops_configuration_heads head
+       join event_ops_configurations configuration
+         on configuration.workspace_id = head.workspace_id
+        and configuration.event_id = head.event_id
+        and configuration.configuration_version = head.configuration_version
+      where head.workspace_id = $1 and head.event_id = $2`,
+    [workspaceId, eventId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    endsAt: isoTimestamp(row.event_ends_at, "Event Operations eventEndsAt"),
+    startsAt: isoTimestamp(row.event_starts_at, "Event Operations eventStartsAt"),
+  };
+}
+
 async function hasLegacyRegistrationMembershipHistory(
   executor: EventOperationsSqlExecutor,
   workspaceId: string,
@@ -786,7 +811,12 @@ async function updateApplicationProfile(
   const policy = await currentPolicy(executor, workspaceId, eventId);
   if (!policy) throw new EventAdmissionError("NOT_CONFIGURED", `Admission policy for ${eventId} is not configured.`);
   const now = await databaseNow(executor);
-  if (Date.parse(now) >= Math.min(Date.parse(policy.registrationClosesAt), Date.parse(policy.profileEditDeadlineAt))) {
+  // 2026-11-28：已报名的人改资料开到活动结束（admission/registration-close.ts）；没有配置时退回原来的截止。
+  const schedule = await currentEventSchedule(executor, workspaceId, eventId);
+  const editCloseAt = schedule
+    ? profileEditCloseAt(schedule.endsAt, schedule.startsAt, policy.registrationClosesAt)!
+    : new Date(Math.min(Date.parse(policy.registrationClosesAt), Date.parse(policy.profileEditDeadlineAt))).toISOString();
+  if (Date.parse(now) >= Date.parse(editCloseAt)) {
     throw new EventAdmissionError("PROFILE_EDIT_CLOSED", `${label} can no longer be changed.`);
   }
   const undecided = existing.decidedAt === null && policy.admissionMode === "instant";
@@ -1208,9 +1238,14 @@ export function createPostgresEventAdmissionRepository(input: {
         const policy = await currentPolicy(executor, workspaceId, eventId);
         if (!policy) throw new EventAdmissionError("NOT_CONFIGURED", `Admission policy for ${eventId} is not configured.`);
         const now = await databaseNow(executor);
+        // 2026-11-28：默认截止（=开场）放宽到活动结束；主办方设在开场前的截止照旧。
+        const schedule = await currentEventSchedule(executor, workspaceId, eventId);
+        const closesAt = schedule
+          ? effectiveRegistrationCloseAt(policy.registrationClosesAt, schedule.startsAt, schedule.endsAt)!
+          : policy.registrationClosesAt;
         if (
           Date.parse(now) < Date.parse(policy.registrationOpensAt) ||
-          Date.parse(now) >= Date.parse(policy.registrationClosesAt)
+          Date.parse(now) >= Date.parse(closesAt)
         ) {
           throw new EventAdmissionError("WINDOW_CLOSED", `Admission window for ${eventId} is closed.`);
         }

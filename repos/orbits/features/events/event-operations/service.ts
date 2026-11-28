@@ -15,6 +15,8 @@ import {
 } from "./contract";
 import type { EventOperationsEngine } from "./engine";
 import { eventOperationsParticipantFromRegistration } from "./participant";
+import { lateJoinerRecommendations, lateJoinerTables } from "./late-joiner";
+import { matchingParticipant } from "./matching-profile";
 import type { EventOperationsRepository } from "./repository";
 import type { EventOperationsLimitedCheckInRoster } from "./check-in-roster";
 import type { EventAccessCapability } from "../event-access/contract";
@@ -356,13 +358,35 @@ export function createEventOperationsService({
       ? published.directory.map((participant) => ({ ...participant }))
       : await currentParticipantsFor(eventId, configuration);
     const participant = participants.find((value) => value.actorId === actorId);
-    if (!participant) {
+    if (participant) return { configuration, late: false, participant, participants };
+    // 2026-11-28：匹配发布之后才报名的人（late-joiner.ts）：用本人当前的配对卡，加在已发布名单后面；已发布结果不改。
+    const late = published ? await currentMatchingParticipant(eventId, actorId, configuration) : null;
+    if (!late) {
       throw new EventOperationsError(
         "EVENT_OPERATIONS_PARTICIPANT_NOT_FOUND",
         "The actor has no active participant profile for this event.",
       );
     }
-    return { configuration, participant, participants };
+    return { configuration, late: true, participant: late, participants: [...participants, late] };
+  }
+
+  /** The person's current matching card, built the way the generation snapshot builds it (registration answers + account). */
+  async function currentMatchingParticipant(
+    eventId: string,
+    actorId: string,
+    configuration: EventOperationsConfiguration,
+  ): Promise<EventOperationsParticipant | null> {
+    const registration = (await repository.listCanonicalRegistrationsForUser(actorId, [eventId]))
+      .find((value) => value.eventId === eventId && value.status === "rsvped");
+    if (!registration) return null;
+    const base = eventOperationsParticipantFromRegistration(registration, configuration);
+    const accounts = repository.readMatchingAccountProfiles
+      ? await repository.readMatchingAccountProfiles([actorId]).catch(() => new Map())
+      : new Map();
+    return matchingParticipant(base, {
+      account: accounts.get(actorId) ?? null,
+      answers: registration.participantProfile?.answers ?? null,
+    });
   }
 
   async function requireGenerationScope(input: {
@@ -418,7 +442,7 @@ export function createEventOperationsService({
         published?.generationId === databaseVisiblePublished?.generationId
           ? databaseVisiblePublished
           : null;
-      const { configuration, participant, participants } =
+      const { configuration, late, participant, participants } =
         await participantContext(eventId, actorId, published);
       const [generations, checkIn, requests] = await Promise.all([
         repository.listGenerations(eventId),
@@ -431,10 +455,26 @@ export function createEventOperationsService({
         ? visiblePublished === null
         : currentMs < Date.parse(configuration.resultsAvailableAt);
       const latest = generations[0] ?? null;
-      const recommendations =
+      let recommendations =
         visiblePublished?.recommendations.find(
           (row) => row.sourceParticipantId === participant.participantId,
         ) ?? null;
+      let roundOneTable = visiblePublished
+        ? tableFor(visiblePublished.grouping.roundOne, participant.participantId)
+        : null;
+      let roundTwoTable = visiblePublished
+        ? tableFor(visiblePublished.grouping.roundTwo, participant.participantId)
+        : null;
+      // 2026-11-28 迟到者（late-joiner.ts）：只给本人现算推荐和入桌（复制一张已有的桌加上本人），别人的结果不变。
+      if (visiblePublished && late) {
+        recommendations = lateJoinerRecommendations(participant, visiblePublished.directory, configuration.recommendationCount);
+        ({ roundOneTable, roundTwoTable } = lateJoinerTables(participant, visiblePublished));
+      } else if (visiblePublished && recommendations && recommendations.recommendations.length === 0) {
+        // 匹配时资料还空着、之后才填完的人：按现在的资料给本人补推荐（桌次照旧）。
+        const current = await currentMatchingParticipant(eventId, actorId, configuration).catch(() => null);
+        const refreshed = current ? lateJoinerRecommendations({ ...current, participantId: participant.participantId }, visiblePublished.directory, configuration.recommendationCount) : null;
+        if (refreshed?.recommendations.length) recommendations = refreshed;
+      }
 
       return {
         checkIn,
@@ -457,8 +497,9 @@ export function createEventOperationsService({
           : null,
         graph: visiblePublished?.graph ?? null,
         me: participant,
+        // 2026-11-28：资料一直改到活动结束（admission/registration-close.ts）。
         profileEditable:
-          currentMs < Date.parse(configuration.profileEditDeadlineAt),
+          currentMs < Date.parse(configuration.eventEndsAt),
         publishedGenerationId: visiblePublished?.generationId ?? null,
         recommendations,
         resultsState: resultsLocked
@@ -470,12 +511,8 @@ export function createEventOperationsService({
               : latest?.status === "queued" || latest?.status === "running"
                 ? "processing"
                 : "not_generated",
-        roundOneTable: visiblePublished
-          ? tableFor(visiblePublished.grouping.roundOne, participant.participantId)
-          : null,
-        roundTwoTable: visiblePublished
-          ? tableFor(visiblePublished.grouping.roundTwo, participant.participantId)
-          : null,
+        roundOneTable,
+        roundTwoTable,
       };
     },
 

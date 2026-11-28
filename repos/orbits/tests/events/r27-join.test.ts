@@ -300,7 +300,10 @@ test("changing a registration: closed, cancelled, rejected and decided ones are 
   const calls: string[] = [];
   const ports = (status: "registered" | "cancelled" | "rejected" | "none", overrides: Partial<JoinPorts> = {}) => fakePorts({ registrationStatus: async () => status, removeIntro: async () => { calls.push("removeIntro"); }, saveIntro: async () => { calls.push("saveIntro"); }, submit: async () => { calls.push("submit"); return { status: "registered", submittedAt: "2026-09-20T05:32:00.000Z" }; }, ...overrides });
   const reason = (expected: string) => (error: unknown) => error instanceof JoinRefusedError && error.reason === expected && error.code === "CONFLICT";
-  await assert.rejects(createJoinService({ ports: ports("registered", { now: () => Date.parse("2026-10-04T00:00:00.000Z") }) }).submit("a", "ev", [], "zh", "介绍", true), reason("JOIN_CLOSED"));
+  // 2026-11-28: answers stay editable until the event ends (registration-close.ts); after the end nothing changes.
+  await assert.rejects(createJoinService({ ports: ports("registered", { now: () => Date.parse("2026-10-07T12:30:00.000Z") }) }).submit("a", "ev", [], "zh", "介绍", true), reason("JOIN_CLOSED"));
+  // A new registration after the organizer's own close (set before the start) is still refused.
+  await assert.rejects(createJoinService({ ports: ports("none", { now: () => Date.parse("2026-10-04T00:00:00.000Z") }) }).submit("a", "ev", [], "zh", "介绍"), reason("JOIN_CLOSED"));
   await assert.rejects(createJoinService({ ports: ports("cancelled") }).submit("a", "ev", [], "zh", "介绍", true), reason("JOIN_CANCELLED"));
   await assert.rejects(createJoinService({ ports: ports("rejected") }).submit("a", "ev", [], "zh", "介绍", true), reason("JOIN_REJECTED"));
   assert.deepEqual(calls, []);
@@ -406,7 +409,9 @@ test("edit: what cannot be changed says so before anything is asked; cancelled /
   const read = async (mine: Record<string, unknown>, overrides: Partial<JoinPorts> = {}) => (await createJoinService({ ports: editPorts(overrides, mine).ports }).current("a", "ev", "ja"))!;
   const review = { event: async () => ({ endsAt: null, registrationClosesAt: "2026-10-03T14:59:00.000Z", review: true, startsAt: "2026-10-07T10:00:00.000Z", title: "T" }) };
   assert.equal((await read({ status: "rejected" })).blocked, "JOIN_REJECTED");
-  assert.equal((await read({}, { now: () => Date.parse("2026-10-04T00:00:00.000Z") })).blocked, "JOIN_CLOSED");
+  assert.equal((await read({}, { now: () => Date.parse("2026-10-04T00:00:00.000Z") })).blocked, null, "after the registration close, before the end: still editable");
+  assert.equal((await read({}, { now: () => Date.parse("2026-10-07T12:30:00.000Z") })).blocked, "JOIN_CLOSED", "the event has ended");
+  assert.equal((await read({ status: "none" }, { now: () => Date.parse("2026-10-04T00:00:00.000Z") })).blocked, "JOIN_CLOSED", "a new registration after the organizer's own close");
   assert.equal((await read({ decided: true, status: "waitlisted" })).blocked, "JOIN_LOCKED");
   assert.equal((await read({}, review)).blocked, "JOIN_LOCKED", "approved in a screened event");
   assert.equal((await read({ status: "pending_review" }, review)).blocked, null);
@@ -467,7 +472,7 @@ test("changing a registration: the worst case (5 organizer questions + every int
 });
 
 test("closed or decided registrations come back read-only with what was submitted; nobody registered on a closed event is told at once (no first question)", async () => {
-  const late = { now: () => Date.parse("2026-10-04T00:00:00.000Z") };
+  const late = { now: () => Date.parse("2026-10-07T12:30:00.000Z") };
   const closed = (await createJoinService({ ports: editPorts(late).ports }).current("a", "ev", "ja"))!;
   assert.deepEqual([closed.blocked, closed.ask.length, closed.selfIntro], ["JOIN_CLOSED", 0, "前回の自己紹介"]);
   assert.ok(closed.answers.some((item) => item.field === "targetAttendees"), "the submitted answers, for the read-only card");

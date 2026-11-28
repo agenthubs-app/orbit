@@ -5,6 +5,7 @@
  *   一个可见回答都没有的报名者不出现（`matching_only` / 旧 `private` 只给匹配用；2026-11-26 前的参加目的 / 会いたい人 就存成这样，不回填）。
  * - 判定：`judgeEvent` 的结果原样折叠（分数、3 维、会えそうな人），只补「理由」一句与根拠文字。
  */
+import { effectiveRegistrationCloseAt } from "../admission/registration-close";
 import { createHash } from "node:crypto";
 
 import { eventCoverUrlFromPayload } from "../../../shared/compute/event-cover";
@@ -119,7 +120,8 @@ export function journeyEventFromCanonical(event: CanonicalEventLike, extra: { re
     organizerSlug: text(extra.organizerProfile?.slug),
     priceYen: facts.feeYen,
     publicCode: event.publicCode?.trim() || null,
-    registrationClosesAt: extra.policy?.registrationClosesAt ?? null,
+    // 2026-11-28：默认截止（=开场）放宽到活动结束；主办方特意设在开场前的截止照旧（见 admission/registration-close.ts）。
+    registrationClosesAt: extra.policy ? effectiveRegistrationCloseAt(extra.policy.registrationClosesAt, event.startsAt, event.endsAt) : null,
     registrationCount: Math.max(0, extra.registrationCount),
     review: extra.policy?.admissionMode === "approval_required",
     startsAt: event.startsAt,
@@ -317,7 +319,8 @@ export function venueWorkspaceFrom(workspace: EventOperationsAttendeeWorkspace, 
     roundOneTable: venueTable(localTable(workspace.roundOneTable)),
     roundTwoTable: venueTable(localTable(workspace.roundTwoTable)),
     rounds: published
-      ? { one: published.grouping.roundOne.map((table) => venueTable(localTable(table))!), two: published.grouping.roundTwo.map((table) => venueTable(localTable(table))!) }
+      // 迟到者（event-operations/late-joiner.ts）：本人所在那张桌换成加上本人的副本，其余桌照发布。
+      ? { one: published.grouping.roundOne.map((table) => venueTable(localTable(table.tableNumber === workspace.roundOneTable?.tableNumber ? workspace.roundOneTable : table))!), two: published.grouping.roundTwo.map((table) => venueTable(localTable(table.tableNumber === workspace.roundTwoTable?.tableNumber ? workspace.roundTwoTable : table))!) }
       : null,
   };
 }

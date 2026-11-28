@@ -18,7 +18,7 @@ import type {
 
 type FrozenSnapshotMethods = Pick<
   EventOperationsRepository,
-  "captureGenerationSnapshot"
+  "captureGenerationSnapshot" | "readMatchingAccountProfiles"
 >;
 
 type SqlRow = Record<string, unknown>;
@@ -374,6 +374,9 @@ export function createPostgresFrozenSnapshotMethods({
   workspaceId,
 }: EventOperationsPostgresRuntime): FrozenSnapshotMethods {
   return {
+    readMatchingAccountProfiles(actorIds) {
+      return client.transaction((executor) => readMatchingAccountProfiles(executor, workspaceId, actorIds));
+    },
     captureGenerationSnapshot(eventId) {
       return client.transaction(
         (executor) =>

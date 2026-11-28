@@ -138,7 +138,7 @@ async function createHarness(extra: { onSelfCheckedIn?: (input: { actorId: strin
     repository,
     token: () => "lease:test",
   });
-  const registeredActors = new Set(people.map((person) => person.actorId));
+  const registeredActors = new Set<string>(people.map((person) => person.actorId));
   const service = createEventOperationsService({
     access: {
       async requireCapability(input) {
@@ -257,6 +257,9 @@ async function createHarness(extra: { onSelfCheckedIn?: (input: { actorId: strin
       revokeGenerationAfterServiceCheck.add(actorId);
     },
     service,
+    markRegistered(actorId: string) {
+      registeredActors.add(actorId);
+    },
     setTimestamp(value: string) {
       timestamp = value;
     },
@@ -546,16 +549,12 @@ test("limited check-in roster rejects before repository reads and exposes only i
   );
 });
 
-test("event persona becomes read-only exactly at the configured profile deadline", async () => {
+test("event persona stays editable past the profile deadline and becomes read-only exactly when the event ends (2026-11-28)", async () => {
   const harness = await createHarness();
   harness.setTimestamp("2026-08-02T08:00:00.000Z");
-
-  const workspace = await harness.service.attendeeWorkspace({
-    actorId: "actor:akira",
-    eventId,
-  });
-
-  assert.equal(workspace.profileEditable, false);
+  assert.equal((await harness.service.attendeeWorkspace({ actorId: "actor:akira", eventId })).profileEditable, true);
+  harness.setTimestamp("2026-08-02T12:00:00.000Z");
+  assert.equal((await harness.service.attendeeWorkspace({ actorId: "actor:akira", eventId })).profileEditable, false);
 });
 
 test("business-card requests stay closed until the event starts", async () => {
@@ -928,4 +927,68 @@ test("R26-04: attendance reconcile also scores checked-in but unscored events (d
   } as never, { limit: 10 });
   assert.deepEqual(recorded, [{ actorId: "actor:a", eventId: "event:1", skip: true }, { actorId: "actor:b", eventId: "event:2", skip: true }]);
   assert.equal((result.summary as Record<string, number>).v2Marked, 2);
+});
+
+// 2026-11-28 用户定：匹配发布后才来的人也有分桌和给自己的推荐，其他人的推荐与桌次不变（late-joiner.ts）。
+test("a late joiner gets their own recommendations and a seat at an existing table; everyone else's published result is byte-for-byte unchanged", async () => {
+  const harness = await createHarness();
+  harness.setTimestamp("2026-08-02T09:31:00.000Z");
+  const before = await harness.service.attendeeWorkspace({ actorId: "actor:akira", eventId });
+  const [akira, mei, sora] = ["actor:akira", "actor:mei", "actor:sora"].map((actorId) => before.directory.find((participant) => participant.actorId === actorId)!);
+  const table = (round: 1 | 2, tableNumber: number, ids: string[]) => ({
+    icebreakers: ["q1", "q2", "q3"] as const, memberPrompts: {}, memberRationales: {},
+    members: ids.map((participantId, index) => ({ participantId, seat: `R${round}-T${tableNumber}-S${index + 1}` })),
+    rationale: "r", tableNumber, theme: "t",
+  });
+  const published = {
+    directory: before.directory,
+    eventId,
+    generationId: "generation:late-joiner",
+    graph: { edges: [], nodes: [] },
+    grouping: {
+      roundOne: [table(1, 1, [akira!.participantId, mei!.participantId]), table(1, 2, [sora!.participantId])],
+      roundTwo: [table(2, 1, [akira!.participantId, sora!.participantId]), table(2, 2, [mei!.participantId])],
+    },
+    profileEditDeadlineAt: before.configuration.profileEditDeadlineAt,
+    publishedAt: "2026-08-02T09:10:00.000Z",
+    recommendations: [
+      { noMatchReason: null, recommendations: [{ icebreakers: ["a", "b"] as const, memberHint: "h", rank: 1, reasons: ["because"] as [string], score: 50, targetParticipantId: mei!.participantId }], sourceParticipantId: akira!.participantId },
+      { noMatchReason: null, recommendations: [{ icebreakers: ["a", "b"] as const, memberHint: "h", rank: 1, reasons: ["because"] as [string], score: 50, targetParticipantId: akira!.participantId }], sourceParticipantId: mei!.participantId },
+    ],
+    resultsAvailableAt: "2026-08-02T09:05:00.000Z",
+    snapshotHash: "snapshot:late-joiner",
+  };
+  const publishedBytes = JSON.stringify(published);
+  harness.repository.getPublishedResult = async (requestedEventId) => (requestedEventId === eventId ? published : null);
+  harness.repository.getPublishedResultForAttendee = async (requestedEventId) => (requestedEventId === eventId ? published : null);
+  const view = async (actorId: string) => {
+    const workspace = await harness.service.attendeeWorkspace({ actorId, eventId });
+    return JSON.stringify({ directory: workspace.directory, recommendations: workspace.recommendations, roundOneTable: workspace.roundOneTable, roundTwoTable: workspace.roundTwoTable });
+  };
+  const othersBefore = await Promise.all(["actor:akira", "actor:mei", "actor:sora"].map(view));
+
+  // Someone registers after the matching was published, wanting what Akira offers.
+  const late = await harness.repository.registerCanonicalParticipant({
+    answers: { desiredOutcome: "find a pilot design partner", industry: "industrial AI", targetAttendees: "factory computer vision deployments" },
+    displayName: "Late Comer",
+    eventId,
+    userId: "actor:late",
+  });
+  harness.markRegistered("actor:late");
+  const mine = await harness.service.attendeeWorkspace({ actorId: "actor:late", eventId });
+  assert.equal(mine.resultsState, "ready");
+  assert.equal(mine.me.participantId, late.participantProfileId);
+  assert.equal(mine.recommendations?.sourceParticipantId, late.participantProfileId);
+  assert.ok(mine.recommendations!.recommendations.length > 0, "the person offering what they want is recommended");
+  assert.ok(mine.recommendations!.recommendations.every((recommendation) => recommendation.targetParticipantId !== late.participantProfileId));
+  // One existing table per round (the smaller one), with the late joiner added; no new table.
+  assert.deepEqual(mine.roundOneTable?.tableNumber, 2);
+  assert.deepEqual(mine.roundOneTable?.members.map((member) => member.participantId), [sora!.participantId, late.participantProfileId]);
+  assert.deepEqual(mine.roundTwoTable?.tableNumber, 2);
+  assert.ok(mine.roundTwoTable?.members.some((member) => member.participantId === late.participantProfileId));
+  assert.equal(await view("actor:late"), await view("actor:late"), "the same person always gets the same answer");
+
+  // Everyone else: byte-for-byte the same, and the published result itself was not touched.
+  assert.deepEqual(await Promise.all(["actor:akira", "actor:mei", "actor:sora"].map(view)), othersBefore);
+  assert.equal(JSON.stringify(published), publishedBytes);
 });
